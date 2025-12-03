@@ -1,5 +1,3 @@
-# rejection_sampler.py
-
 import random
 from typing import List, Dict, Any, Set
 from collections import defaultdict
@@ -21,6 +19,10 @@ class RejectionSampler:
     - Starts with top percentile queries
     - Gradually lowers threshold until global target is met
     - Ensures diversity across topics and categories
+
+    Additionally supports lexical + semantic diversity gates if rows contain:
+      - lex_div_score: float in [0,1]
+      - sem_div_score: float in [0,1]
     """
 
     def __init__(
@@ -31,6 +33,8 @@ class RejectionSampler:
         initial_percentile: float = 0.90,  # Start with top 10%
         percentile_step: float = 0.05,     # Lower by 5% each iteration
         min_percentile: float = 0.50,      # Don't go below 50th percentile
+        lexical_min_div: float = 0.30,     # NEW: min allowed lex_div_score
+        semantic_min_div: float = 0.15,    # NEW: min allowed sem_div_score (≈ 1 - 0.85 cos)
     ) -> None:
         self.min_per_topic_per_type = min_per_topic_per_type
         self.enforce_dedup = enforce_dedup
@@ -38,6 +42,8 @@ class RejectionSampler:
         self.initial_percentile = initial_percentile
         self.percentile_step = percentile_step
         self.min_percentile = min_percentile
+        self.lexical_min_div = lexical_min_div
+        self.semantic_min_div = semantic_min_div
         self.rng = random.Random(random_seed)
 
     def _compute_percentile_threshold(
@@ -59,7 +65,7 @@ class RejectionSampler:
         target_per_type: Dict[str, int],
     ) -> List[Dict[str, Any]]:
         """
-        Select queries using dynamic percentile-based thresholding.
+        Select queries using dynamic percentile-based thresholding + diversity.
         
         Args:
             scored_rows: All scored queries
@@ -149,7 +155,7 @@ class RejectionSampler:
                     if current_count >= target_count:
                         break
 
-                    # Check if already selected
+                    # Check if already selected (exact match)
                     if any(s.get("query") == r.get("query") for s in selected):
                         continue
 
@@ -158,6 +164,19 @@ class RejectionSampler:
                         norm = normalize_query(r.get("query", ""))
                         if norm in seen_normalized:
                             continue
+
+                    # NEW: diversity gates (if scores present)
+                    lex_div = r.get("lex_div_score")
+                    sem_div = r.get("sem_div_score")
+
+                    if isinstance(lex_div, (int, float)) and lex_div < self.lexical_min_div:
+                        continue
+
+                    if isinstance(sem_div, (int, float)) and sem_div < self.semantic_min_div:
+                        continue
+
+                    # Accept
+                    if self.enforce_dedup:
                         seen_normalized.add(norm)
 
                     selected.append(r)
@@ -193,11 +212,20 @@ class RejectionSampler:
                 if len(selected) >= global_target:
                     break
 
-                # Dedup check
                 if self.enforce_dedup:
                     norm = normalize_query(r.get("query", ""))
                     if norm in seen_normalized:
                         continue
+
+                lex_div = r.get("lex_div_score")
+                sem_div = r.get("sem_div_score")
+
+                if isinstance(lex_div, (int, float)) and lex_div < self.lexical_min_div:
+                    continue
+                if isinstance(sem_div, (int, float)) and sem_div < self.semantic_min_div:
+                    continue
+
+                if self.enforce_dedup:
                     seen_normalized.add(norm)
 
                 selected.append(r)

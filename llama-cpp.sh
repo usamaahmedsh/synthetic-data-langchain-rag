@@ -10,7 +10,7 @@ set -e  # Exit on error
 # ============================================
 
 # Model path - UPDATE THIS to your actual model path
-MODEL_PATH="$HOME/models/Llama-3.1-8B-Instruct-Q4_K_M.gguf"
+MODEL_PATH="$HOME/models/Meta-Llama-3.1-8B-Instruct-Q6_K_L.gguf"
 
 # Server settings
 HOST="127.0.0.1"
@@ -29,7 +29,7 @@ GPU_LAYERS=99            # Offload all layers to Metal GPU (-ngl)
 THREADS=0                # 0 = auto-detect optimal thread count
 
 # Model name for OpenAI API compatibility
-MODEL_ALIAS="llama-3.1-8b-q4_k_m"
+MODEL_ALIAS="llama-3.1-8b-q6_k_l"
 
 # ============================================
 # Validation
@@ -75,13 +75,14 @@ echo ""
 echo "Configuration:"
 echo "──────────────────────────────────────"
 echo "  Host:              $HOST:$PORT"
-echo "  Model:             $(basename $MODEL_PATH)"
+echo "  Model:             $(basename "$MODEL_PATH")"
 echo "  Context size:      $CONTEXT_SIZE tokens"
 echo "  Parallel requests: $PARALLEL_REQUESTS"
 echo "  Batch size:        $BATCH_SIZE"
 echo "  UBatch size:       $UBATCH_SIZE"
 echo "  GPU layers:        $GPU_LAYERS (Metal)"
 echo "  Threads:           $THREADS (auto)"
+echo "  Alias:             $MODEL_ALIAS"
 echo ""
 
 # Calculate effective parallelism
@@ -126,7 +127,6 @@ $LLAMA_SERVER \
 # --ubatch-size (-ub)    : Physical batch size (memory control)
 # --threads (-t)         : CPU threads (0 = auto)
 # --n-gpu-layers (-ngl)  : GPU layers to offload (99 = all)
-# --cont-batching (-cb)  : Enable continuous batching (critical!)
+# --cont-batching (-cb)  : Enable continuous batching
 # --metrics              : Enable /metrics endpoint for monitoring
-# --log-format           : Log format (text/json)
 # --alias                : Model name for OpenAI API compatibility

@@ -8,11 +8,9 @@ import textwrap
 from pathlib import Path
 from typing import List, Dict, Any, Tuple, Set
 
+import requests
 from rank_bm25 import BM25Okapi
 from nltk.tokenize import word_tokenize
-
-# Hugging Face Inference client (chat completions)
-from huggingface_hub import InferenceClient
 
 # ------------------------
 # Generation hyperparams
@@ -108,8 +106,8 @@ class BuildQueries:
     """
     Container for generating search-like queries per topic with parallel processing.
 
-    Uses Hugging Face InferenceClient.chat.completions.create for query generation,
-    keeping all retrieval and async orchestration locally.
+    Uses a local llama.cpp HTTP server (OpenAI-compatible /v1/chat/completions)
+    for query generation.
     """
 
     DEFAULT_TAXONOMY = [
@@ -124,7 +122,7 @@ class BuildQueries:
     def __init__(
         self,
         *,
-        hf_model: str = "meta-llama/Llama-3.1-8B-Instruct",
+        hf_model: str = "llama-3.1-8b-q6_k_l",
         query_types: List[str] | None = None,
         sleep_between_calls: float = 0.0,
         max_attempts_per_topic: int = 10,
@@ -132,8 +130,9 @@ class BuildQueries:
         batch_size: int = BATCH_SIZE,
     ) -> None:
         """
-        hf_model: Full HF model id for chat completions (e.g. "meta-llama/Llama-3.1-8B-Instruct:novita").
-        Expects HF_TOKEN in the environment.
+        hf_model: Logical model name as seen by your llama.cpp server.
+        Environment:
+          LLAMA_CPP_URL  - base URL of local server (e.g. http://127.0.0.1:8080)
         """
         self.hf_model = hf_model
         self.query_types = query_types or self.DEFAULT_TAXONOMY
@@ -142,10 +141,8 @@ class BuildQueries:
         self.max_concurrent = max_concurrent
         self.batch_size = batch_size
 
-        # HF Inference client (chat completions API)
-        self.client = InferenceClient(
-            api_key=os.environ.get("HUGGINGFACEHUB_API_TOKEN")
-        )
+        # Local llama.cpp HTTP endpoint
+        self.base_url = os.environ.get("LLAMA_CPP_URL", "http://127.0.0.1:8080")
 
     # ---- internal helpers ----
 
@@ -229,30 +226,40 @@ class BuildQueries:
         context = "\n\n".join(top_passages)[:MAX_CONTEXT_CHARS]
         return context
 
-    # ---- async batch processing via HF chat completions ----
+    # ---- llama.cpp HTTP client ----
+
+    def _call_llama_sync(self, prompt: str) -> str:
+        """
+        Synchronous call to local llama.cpp /v1/chat/completions endpoint.
+        Expects an OpenAI-compatible API (llama.cpp server -c).
+        """
+        url = f"{self.base_url.rstrip('/')}/v1/chat/completions"
+        payload = {
+            "model": self.hf_model,
+            "messages": [
+                {"role": "user", "content": prompt},
+            ],
+            "max_tokens": MAX_NEW_TOKENS,
+            "temperature": TEMPERATURE,
+            "top_p": TOP_P,
+        }
+        try:
+            resp = requests.post(url, json=payload, timeout=120)
+            resp.raise_for_status()
+            data = resp.json()
+            # OpenAI-style: choices[0].message.content
+            return data["choices"][0]["message"]["content"]
+        except Exception as e:
+            raise RuntimeError(f"llama.cpp request failed: {e}")
+
+    # ---- async batch processing via llama.cpp ----
 
     async def _generate_one_async(self, prompt: str) -> Dict[str, Any]:
         """
-        Call HF chat completions API asynchronously for a single prompt.
+        Call local llama.cpp asynchronously for a single prompt (thread off sync HTTP).
         """
-
-        def _call_sync() -> str:
-            completion = self.client.chat.completions.create(
-                model=self.hf_model,
-                messages=[
-                    {
-                        "role": "user",
-                        "content": prompt,
-                    }
-                ],
-                max_tokens=MAX_NEW_TOKENS,
-                temperature=TEMPERATURE,
-                top_p=TOP_P,
-            )
-            return completion.choices[0].message.content
-
         try:
-            text = await asyncio.to_thread(_call_sync)
+            text = await asyncio.to_thread(self._call_llama_sync, prompt)
             return {"success": True, "content": text}
         except Exception as e:
             return {"success": False, "error": str(e)}

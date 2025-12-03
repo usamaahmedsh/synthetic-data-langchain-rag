@@ -1,29 +1,34 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+
 """
 Main orchestrator for the LangChain-based query-generation pipeline.
+
 
 Steps:
   1) Build Wikipedia corpus for a user topic (async tool, capped at 500 pages).
   2) Build BERTopic topics (with caching).
   3) Deduplicate topics.
   4) Generate candidate queries via HF model (LangChain tool, async under the hood).
-  5) Score queries with local LLM-as-a-judge (LangChain-wrapped client).
-  6) Dynamic percentile-based rejection sampling to keep final queries.
+  5) Score queries with heuristic metrics (LangChain tool).
+  6) Adaptive percentile-based rejection sampling to keep final queries.
+
 
 All heavy logic lives in client modules and LangChain tools:
   - tools_pipeline.fetch_wikipedia_corpus
   - tools_pipeline.build_topics
   - tools_pipeline.dedupe_topics
   - tools_pipeline.generate_queries
-  - tools_pipeline.judge_queries
+  - tools_pipeline.heuristic_score_queries
   - rejection_sampler.RejectionSampler
 """
+
 
 import json
 from pathlib import Path
 from typing import List, Dict, Any, Tuple
+
 
 from tools_pipeline import (
     fetch_wikipedia_corpus,
@@ -31,23 +36,48 @@ from tools_pipeline import (
     dedupe_topics,
     generate_queries,
     judge_queries,
+    heuristic_score_queries,
 )
 from queries_builder import BuildQueries
 from rejection_sampler import RejectionSampler
 
-from dotenv import load_dotenv
+
+# Safely import load_dotenv; if python-dotenv is not installed, provide a no-op fallback
+try:
+    from dotenv import load_dotenv  # type: ignore
+except Exception:
+    def load_dotenv(*args, **kwargs):
+        # dotenv is not available in the environment; behave as a no-op.
+        return False
+
 
 load_dotenv()
+
 
 # -------------------------
 # Configuration
 # -------------------------
 
-MAX_WIKI_PAGES = 10
-QUERIES_PER_TOPIC_PER_CATEGORY = 3
-HF_GENERATION_MODEL = "meta-llama/Llama-3.1-8B-Instruct"  
-JUDGE_MODEL_PATH = "$HOME/models/Llama-3.1-8B-Instruct-Q4_K_M.gguf"
 
+MAX_WIKI_PAGES = 2000
+QUERIES_PER_TOPIC_PER_CATEGORY = 3
+HF_GENERATION_MODEL = "llama-3.2-3b-instruct"
+JUDGE_MODEL_PATH = "/Users/usamaahmedsh/models/Meta-Llama-3.1-8B-Instruct-Q6_K_L.gguf"
+
+# Over-generation strategy
+OVER_GENERATION_STRATEGY = "adaptive"  # Options: "global", "adaptive"
+GLOBAL_OVER_GENERATION_FACTOR = 3.0
+
+# Category-specific over-generation factors (for "adaptive" strategy)
+# Some categories are harder to generate quality queries for
+CATEGORY_OVER_GENERATION = {
+    "informational": 2.5,           # Easier - factual queries
+    "exploratory": 3.5,             # Medium - needs breadth
+    "navigational": 2.0,            # Easier - specific destinations
+    "comparative": 4.0,             # Harder - needs valid comparisons
+    "transactional": 3.5,           # Medium - needs actionable intent
+    "commercial_investigation": 4.0, # Harder - needs evaluation context
+}
 
 
 # -------------------------
@@ -81,6 +111,67 @@ def compute_per_type_targets(total: int, types: List[str]) -> Dict[str, int]:
         for i, t in enumerate(types)
     }
     return targets
+
+
+def get_over_generation_factor(
+    category: str,
+    strategy: str = "global",
+    global_factor: float = 3.0,
+    category_factors: Dict[str, float] = None,
+) -> float:
+    """
+    Get over-generation factor based on strategy.
+    
+    Args:
+        category: Query category/type
+        strategy: "global" (same for all) or "adaptive" (per-category)
+        global_factor: Factor to use for global strategy
+        category_factors: Dict of category-specific factors
+        
+    Returns:
+        Over-generation factor for this category
+    """
+    if strategy == "global":
+        return global_factor
+    elif strategy == "adaptive" and category_factors:
+        return category_factors.get(category, global_factor)
+    else:
+        return global_factor
+
+
+def compute_adaptive_topic_distribution(
+    num_final_queries: int,
+    query_types: List[str],
+    strategy: str,
+    global_factor: float,
+    category_factors: Dict[str, float],
+) -> Dict[str, Dict[str, Any]]:
+    """
+    Compute how many candidates to generate per category with adaptive over-generation.
+    
+    Returns:
+        Dict mapping category -> {
+            "target": final queries needed,
+            "over_gen_factor": over-generation factor,
+            "candidates": total candidates to generate
+        }
+    """
+    # Split final queries evenly across categories
+    base_per_type = compute_per_type_targets(num_final_queries, query_types)
+    
+    distribution = {}
+    for qtype in query_types:
+        target = base_per_type[qtype]
+        factor = get_over_generation_factor(
+            qtype, strategy, global_factor, category_factors
+        )
+        distribution[qtype] = {
+            "target": target,
+            "over_gen_factor": factor,
+            "candidates": int(target * factor),
+        }
+    
+    return distribution
 
 
 def topic_richness(topic: Dict[str, Any], docs_root: Path) -> int:
@@ -127,6 +218,41 @@ def select_rich_topics(
     return [t for t, _ in scored[:selected]]
 
 
+def calculate_optimal_topics(
+    distribution: Dict[str, Dict[str, Any]],
+    num_deduped_topics: int,
+    queries_per_topic_per_category: int,
+    num_categories: int,
+) -> int:
+    """
+    Calculate optimal number of topics to use based on adaptive distribution.
+    
+    Args:
+        distribution: Per-category distribution from compute_adaptive_topic_distribution
+        num_deduped_topics: Total deduped topics available
+        queries_per_topic_per_category: Queries generated per topic per category
+        num_categories: Number of taxonomy categories
+        
+    Returns:
+        Optimal number of topics to select
+    """
+    if num_deduped_topics == 0:
+        return 0
+    
+    queries_per_topic = queries_per_topic_per_category * num_categories
+    
+    # Total candidates needed across all categories
+    total_candidates = sum(info["candidates"] for info in distribution.values())
+    
+    # How many topics needed to hit target? (ceiling division)
+    topics_needed = max(1, (total_candidates + queries_per_topic - 1) // queries_per_topic)
+    
+    # Use whatever is smaller: what we need or what we have
+    optimal = min(topics_needed, num_deduped_topics)
+    
+    return optimal
+
+
 # -------------------------
 # Orchestrator (sync, tools hide async)
 # -------------------------
@@ -148,6 +274,11 @@ def main() -> None:
     print(f"  Taxonomy categories:{len(query_types)} ({', '.join(query_types)})")
     print(f"  Queries per topic per category: {QUERIES_PER_TOPIC_PER_CATEGORY}")
     print(f"  Generation HF model:{HF_GENERATION_MODEL}")
+    print(f"  Over-generation strategy: {OVER_GENERATION_STRATEGY}")
+    if OVER_GENERATION_STRATEGY == "global":
+        print(f"  Over-generation factor: {GLOBAL_OVER_GENERATION_FACTOR}x (global)")
+    else:
+        print(f"  Over-generation factors: adaptive per category")
     print(f"  Judge GGUF model:   {JUDGE_MODEL_PATH}")
     print("=" * 60 + "\n")
 
@@ -196,29 +327,50 @@ def main() -> None:
     print(f"  ✓ Topics deduped. Saved to {topics_deduped_path}")
     print(f"  Total deduped topics: {len(topics_deduped)}\n")
 
-    # 4) Generate queries (tool, async under the hood)
+    # 4) Generate queries (tool, async under the hood) - ADAPTIVE TOPIC SELECTION
     print("STEP 4: Generating candidate queries (LangChain tool)...")
 
-    max_topics_to_use = max(10, min(30, len(topics_deduped)))
+    # Compute adaptive distribution
+    distribution = compute_adaptive_topic_distribution(
+        num_final_queries=num_final_queries,
+        query_types=query_types,
+        strategy=OVER_GENERATION_STRATEGY,
+        global_factor=GLOBAL_OVER_GENERATION_FACTOR,
+        category_factors=CATEGORY_OVER_GENERATION,
+    )
+
+    # Display distribution
+    print(f"\n  Over-generation strategy: {OVER_GENERATION_STRATEGY}")
+    print("  Per-category targets:")
+    for qtype, info in distribution.items():
+        print(
+            f"    {qtype:30s}: {info['target']:3d} final → "
+            f"{info['candidates']:3d} candidates ({info['over_gen_factor']:.1f}x)"
+        )
+    print()
+
+    # Dynamically calculate optimal number of topics
+    optimal_topics = calculate_optimal_topics(
+        distribution=distribution,
+        num_deduped_topics=len(topics_deduped),
+        queries_per_topic_per_category=QUERIES_PER_TOPIC_PER_CATEGORY,
+        num_categories=len(query_types),
+    )
+
     rich_topics = select_rich_topics(
         topics=topics_deduped,
         docs_dir=corpus_topic_dir,
-        num_topics=max_topics_to_use,
+        num_topics=optimal_topics,
     )
+
+    total_candidates = sum(info["candidates"] for info in distribution.values())
+    overgen_avg = total_candidates / num_final_queries if num_final_queries > 0 else 0
+
     print(
-        f"  Using {len(rich_topics)} topics out of {len(topics_deduped)} "
-        f"(richest topics based on document coverage)."
+        f"  → Using {len(rich_topics)} topics (out of {len(topics_deduped)}) "
+        f"[dynamically selected for {num_final_queries} final queries]."
     )
-
-    total_candidates = (
-        len(rich_topics) * len(query_types) * QUERIES_PER_TOPIC_PER_CATEGORY
-    )
-    overgen_ratio = (
-        total_candidates / num_final_queries if num_final_queries > 0 else 0
-    )
-
-    print(f"  Queries per topic per category: {QUERIES_PER_TOPIC_PER_CATEGORY}")
-    print(f"  Total candidate queries: {total_candidates} ({overgen_ratio:.1f}x over-generation)")
+    print(f"  → Total candidate queries: {total_candidates} ({overgen_avg:.1f}x average over-generation)")
 
     candidate_rows = generate_queries.invoke(
         {
@@ -234,42 +386,41 @@ def main() -> None:
         print("No candidate queries generated; exiting.")
         return
 
-    # 5) Score queries with judge (tool)
-    print("STEP 5: Scoring queries with judge (LangChain tool)...")
-
+    # 5) Score queries with heuristic metrics
+    print("STEP 5: Scoring queries with heuristic metrics (LangChain tool)...")
     scored_all: List[Dict[str, Any]] = []
+
     for qtype in query_types:
         rows_for_type = [r for r in candidate_rows if r.get("query_type") == qtype]
         if not rows_for_type:
             continue
-        print(f"  Scoring {len(rows_for_type)} queries of type '{qtype}'...")
 
-        scored = judge_queries.invoke(
+        print(f"  Scoring {len(rows_for_type)} queries of type '{qtype}'...")
+        scored = heuristic_score_queries.invoke(
             {
                 "rows": rows_for_type,
                 "category": qtype,
                 "topics_json_path": str(topics_json_path),
                 "docs_dir": str(corpus_topic_dir),
-                "model_path": JUDGE_MODEL_PATH,
-                "batch_size": 24,
-                "max_concurrent": 12,
+                # You can override defaults if you like:
+                # "semantic_model_name": "...",
+                # "semantic_max_sim": 0.85,
+                # "lexical_min_dist": 0.3,
             }
         )
         scored_all.extend(scored)
-
-    print(f"✓ Scoring done. Total scored rows: {len(scored_all)}\n")
+    
+    print(f"  ✓ Scoring done. Total scored rows: {len(scored_all)}\n")
 
     if not scored_all:
-        print("No scored rows available; exiting.")
+        print("✗ No scored rows available, exiting.")
         return
 
-    # 6) Dynamic percentile-based rejection sampling (plain Python)
+    # 6) Adaptive percentile-based rejection sampling (plain Python)
     print("STEP 6: Selecting queries with dynamic percentile thresholding...")
 
-    target_per_type = compute_per_type_targets(
-        total=num_final_queries,
-        types=query_types,
-    )
+    # Extract final targets from distribution
+    target_per_type = {qtype: info["target"] for qtype, info in distribution.items()}
     print(f"  Target per type: {target_per_type}")
 
     sampler = RejectionSampler(
@@ -296,7 +447,7 @@ def main() -> None:
         for row in final_rows:
             f.write(json.dumps(row, ensure_ascii=False) + "\n")
 
-    # Print top 10 queries for quick inspection
+    # Print top 10 queries by score
     print("\nTop 10 queries by score:")
     top10 = sorted(
         [r for r in final_rows if r.get("total_score") is not None],

@@ -21,6 +21,40 @@ from judge_mlx_client import (
 )  # LangChain+ChatLlamaCpp version
 
 
+from sentence_transformers import SentenceTransformer  # or your existing encoder
+import numpy as np
+from pathlib import Path
+
+from corpus_wikipedia import load_topics, precompute_topic_cache  # adjust imports
+from rank_bm25 import BM25Okapi
+import re
+
+WORD_RE = re.compile(r"[A-Za-z0-9_]+")
+
+def tokenize(text: str) -> list[str]:
+    return WORD_RE.findall(text.lower())
+
+def jaccard(a: list[str], b: list[str]) -> float:
+    A, B = set(a), set(b)
+    if not A and not B:
+        return 0.0
+    return len(A & B) / (len(A | B) + 1e-6)
+
+def build_bm25_for_topic_docs(docs_dir: Path) -> tuple[BM25Okapi, list[str]]:
+    docs: list[str] = []
+    for p in docs_dir.glob("*.txt"):
+        try:
+            txt = p.read_text(encoding="utf-8", errors="ignore")
+        except Exception:
+            continue
+        if txt.strip():
+            docs.append(txt)
+    if not docs:
+        docs = [""]
+    tokenized = [tokenize(d) for d in docs]
+    return BM25Okapi(tokenized), docs
+
+
 # =========================
 # Wikipedia / corpus tools
 # =========================
@@ -210,3 +244,138 @@ def judge_queries(
         topic_cache=topic_cache,
     )
     return scored_rows
+
+
+
+@tool("heuristic_score_queries", return_direct=True)
+def heuristic_score_queries(
+    rows: list[dict[str, object]],
+    category: str,
+    topics_json_path: str,
+    docs_dir: str,
+    semantic_model_name: str = "sentence-transformers/all-MiniLM-L6-v2",
+    semantic_max_sim: float = 0.85,
+    lexical_min_dist: float = 0.3,
+) -> list[dict[str, object]]:
+    """
+    Score queries with simple heuristics + diversity (no LLM).
+
+    Inputs:
+      - rows: list of query dicts from generate_queries
+      - category: taxonomy label (informational, exploratory, ...)
+      - topics_json_path: path to topics.json for the corpus
+      - docs_dir: directory with topic-specific documents
+
+    Output:
+      - rows with added fields:
+          total_score, quality_score, lex_div_score, sem_div_score
+    """
+    if not rows:
+        return []
+
+    topics_by_id = load_topics(Path(topics_json_path))
+    docs_dir_path = Path(docs_dir)
+
+    # Pre-build BM25 per topic_id (coarse, doc-level)
+    bm25_by_topic: dict[int, BM25Okapi] = {}
+    for tid in {int(r["topic_id"]) for r in rows if "topic_id" in r}:
+        t_docs_dir = docs_dir_path  # single dir per run in your pipeline
+        bm25, _ = build_bm25_for_topic_docs(t_docs_dir)
+        bm25_by_topic[tid] = bm25
+
+    # Prepare embeddings for all queries
+    model = SentenceTransformer(semantic_model_name)
+    queries = [str(r["query"]) for r in rows]
+    embs = model.encode(queries, normalize_embeddings=True)
+    embs = np.asarray(embs)
+
+    # Tokenize all queries once
+    tokens_all = [tokenize(q) for q in queries]
+
+    # Group rows by (topic_id, query_type)
+    grouped: dict[tuple[int, str], list[int]] = {}
+    for idx, r in enumerate(rows):
+        try:
+            tid = int(r["topic_id"])
+        except Exception:
+            continue
+        qtype = str(r.get("query_type", ""))
+        grouped.setdefault((tid, qtype), []).append(idx)
+
+    # Helper: simple quality score per query
+    def quality_score(idx: int, topic_id: int) -> float:
+        q_tokens = tokens_all[idx]
+        n = len(q_tokens)
+        if n < 2:
+            return 0.0
+        # length prior ~ Gaussian around 6 tokens
+        s_len = float(np.exp(-((n - 6) ** 2) / 18.0))
+
+        # BM25 relevance (normalized per topic bucket later if needed)
+        bm25 = bm25_by_topic.get(topic_id)
+        if bm25 is None:
+            s_bm25 = 0.0
+        else:
+            s = bm25.get_scores(q_tokens)
+            s_bm25 = float(np.max(s)) if len(s) > 0 else 0.0
+
+        # We can just log BM25 raw; for now, simple combination
+        return 0.6 * s_bm25 + 0.4 * s_len
+
+    # Compute scores per group with diversity
+    for (tid, qtype), idxs in grouped.items():
+        if not idxs:
+            continue
+
+        # Precompute raw quality scores in this group
+        q_raw = {i: quality_score(i, tid) for i in idxs}
+        # Normalize quality within group for stability
+        vals = np.array(list(q_raw.values()), dtype=float)
+        q_min, q_max = float(vals.min()), float(vals.max())
+        for i in idxs:
+            if q_max > q_min:
+                rows[i]["quality_score"] = (q_raw[i] - q_min) / (q_max - q_min)
+            else:
+                rows[i]["quality_score"] = 0.0
+
+        # Greedy selection for diversity-aware scores (we still score all rows)
+        selected: list[int] = []
+
+        # Process in descending quality order
+        for i in sorted(idxs, key=lambda j: rows[j]["quality_score"], reverse=True):
+            e_i = embs[i]
+            t_i = tokens_all[i]
+
+            if not selected:
+                # First one is both lex/sem-diverse by definition
+                rows[i]["lex_div_score"] = 1.0
+                rows[i]["sem_div_score"] = 1.0
+                # total_score = quality only for now
+                rows[i]["total_score"] = rows[i]["quality_score"]
+                selected.append(i)
+                continue
+
+            # Compute lexical diversity vs selected
+            lex_sims = [jaccard(t_i, tokens_all[j]) for j in selected]
+            max_lex_sim = max(lex_sims)
+            d_lex_min = 1.0 - max_lex_sim
+
+            # Compute semantic similarity vs selected
+            sem_sims = [float(np.dot(e_i, embs[j])) for j in selected]
+            max_sem_sim = max(sem_sims)
+            d_sem = 1.0 - max_sem_sim
+
+            rows[i]["lex_div_score"] = d_lex_min
+            rows[i]["sem_div_score"] = d_sem
+
+            # Diversity-aware score (but do not hard-reject here; let sampler decide)
+            # You can weight these however you like:
+            total = (
+                0.6 * rows[i]["quality_score"] +
+                0.2 * d_lex_min +
+                0.2 * d_sem
+            )
+            rows[i]["total_score"] = total
+
+    return rows
+
