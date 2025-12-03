@@ -1,5 +1,6 @@
 """Query generation using LLM with parallel processing."""
 
+
 import asyncio
 import httpx
 from pathlib import Path
@@ -8,11 +9,13 @@ from rank_bm25 import BM25Okapi
 from tqdm import tqdm
 
 
+
 class BuildQueries:
     """
     Generate search queries for topics using LLM.
     Supports parallel processing for efficiency.
     """
+
 
     # Default taxonomy categories
     DEFAULT_TAXONOMY = [
@@ -24,6 +27,7 @@ class BuildQueries:
         "commercial_investigation",
     ]
 
+
     # Category descriptions for prompt
     CATEGORY_DESCRIPTIONS = {
         "informational": "Seeking factual information, definitions, or explanations",
@@ -34,16 +38,17 @@ class BuildQueries:
         "commercial_investigation": "Pre-purchase research or product evaluation",
     }
 
+
     def __init__(
         self,
         hf_model: str = "meta-llama/Llama-3.1-8B-Instruct",
         llama_cpp_url: str = "http://127.0.0.1:8080",
-        max_parallel_topics: int = 8,
-        max_parallel_categories: int = 6,
+        max_parallel_topics: int = 2,
+        max_parallel_categories: int = 2,
         temperature: float = 0.6,
         top_p: float = 0.9,
         max_tokens: int = 80,
-        timeout: float = 30.0,
+        timeout: float = 60.0,
     ):
         """
         Initialize query generator.
@@ -67,67 +72,74 @@ class BuildQueries:
         self.max_tokens = max_tokens
         self.timeout = timeout
 
-def _build_prompt(
-    self,
-    topic_name: str,
-    category: str,
-    context: str,
-    num_queries: int,
-) -> str:
-    """Build enhanced prompt with examples and constraints."""
-    
-    category_desc = self.CATEGORY_DESCRIPTIONS.get(category, "")
-    
-    # Category-specific examples
-    category_examples = {
-        "informational": [
-            "what is {topic}",
-            "{topic} definition and meaning",
-            "explain {topic} in simple terms",
-        ],
-        "exploratory": [
-            "{topic} overview and history",
-            "everything about {topic}",
-            "comprehensive guide to {topic}",
-        ],
-        "navigational": [
-            "{topic} official website",
-            "{topic} wikipedia page",
-            "where to find {topic}",
-        ],
-        "comparative": [
-            "{topic} vs alternatives",
-            "difference between {topic} and",
-            "compare {topic} with",
-        ],
-        "transactional": [
-            "buy {topic}",
-            "download {topic}",
-            "sign up for {topic}",
-        ],
-        "commercial_investigation": [
-            "{topic} reviews",
-            "best {topic} options",
-            "{topic} pros and cons",
-        ],
-    }
-    
-    examples = category_examples.get(category, [])
-    example_text = "\n".join([f"  - {ex.format(topic=topic_name)}" for ex in examples[:3]])
 
-    # Enhanced prompt with negative examples
-    prompt = f"""You are a search query expert. Generate realistic search queries that users would type into Google.
+    def _build_prompt(
+        self,
+        topic_name: str,
+        category: str,
+        context: str,
+        num_queries: int,
+    ) -> str:
+        """Build enhanced prompt with examples and constraints."""
+        
+        category_desc = self.CATEGORY_DESCRIPTIONS.get(category, "")
+        
+        # Category-specific examples
+        category_examples = {
+            "informational": [
+                "what is {topic}",
+                "{topic} definition and meaning",
+                "explain {topic} in simple terms",
+            ],
+            "exploratory": [
+                "{topic} overview and history",
+                "everything about {topic}",
+                "comprehensive guide to {topic}",
+            ],
+            "navigational": [
+                "{topic} official website",
+                "{topic} wikipedia page",
+                "where to find {topic}",
+            ],
+            "comparative": [
+                "{topic} vs alternatives",
+                "difference between {topic} and",
+                "compare {topic} with",
+            ],
+            "transactional": [
+                "buy {topic}",
+                "download {topic}",
+                "sign up for {topic}",
+            ],
+            "commercial_investigation": [
+                "{topic} reviews",
+                "best {topic} options",
+                "{topic} pros and cons",
+            ],
+        }
+        
+        examples = category_examples.get(category, [])
+        example_text = "\n".join([f"  - {ex.format(topic=topic_name)}" for ex in examples[:3]])
+
+
+        # Enhanced prompt with negative examples
+        prompt = f"""You are a search query expert. Generate realistic search queries that users would type into Google.
+
 
 Topic: {topic_name}
 Category: {category} ({category_desc})
 
+
 Context from documents:
 {context}
 
+
 Task: Generate exactly {num_queries} diverse, natural search queries about "{topic_name}" in the "{category}" category.
+
 
 Examples of GOOD queries for this category:
 {example_text}
+
 
 Quality Guidelines:
 ✓ Natural language (how real people search)
@@ -135,6 +147,7 @@ Quality Guidelines:
 ✓ Different aspects of the topic
 ✓ Use synonyms and related terms
 ✓ Include both simple and complex queries
+
 
 DO NOT:
 ✗ Include numbering, bullets, or formatting
@@ -144,11 +157,15 @@ DO NOT:
 ✗ Generate incomplete or truncated queries
 ✗ Use overly formal or academic language
 
+
 Output format: One query per line, nothing else.
+
 
 Queries:"""
 
-    return prompt
+
+        return prompt
+
 
     async def _call_llm_async(
         self,
@@ -173,6 +190,7 @@ Queries:"""
             "stop": ["\n\n", "###", "---"],
         }
 
+
         try:
             response = await client.post(
                 f"{self.llama_cpp_url}/completion",
@@ -185,6 +203,7 @@ Queries:"""
         except Exception as e:
             print(f"  ⚠ LLM call failed: {e}")
             return ""
+
 
     def _extract_queries(self, text: str, num_expected: int) -> List[str]:
         """
@@ -199,6 +218,7 @@ Queries:"""
         """
         lines = text.split("\n")
         queries = []
+
 
         for line in lines:
             line = line.strip()
@@ -232,7 +252,9 @@ Queries:"""
             if len(queries) >= num_expected * 2:  # Allow some extras for filtering
                 break
 
+
         return queries[:num_expected * 2]  # Return up to 2x expected (for quality filtering)
+
 
     def _get_context_for_topic(
         self,
@@ -256,10 +278,12 @@ Queries:"""
         context_parts = []
         total_chars = 0
 
+
         for doc_name in relevant_docs[:5]:  # Use top 5 relevant docs
             doc_path = docs_dir / doc_name
             if not doc_path.exists():
                 continue
+
 
             try:
                 text = doc_path.read_text(encoding="utf-8", errors="ignore")
@@ -268,17 +292,21 @@ Queries:"""
                 context_parts.append(chunk)
                 total_chars += len(chunk)
 
+
                 if total_chars >= max_chars:
                     break
             except Exception:
                 continue
+
 
         if not context_parts:
             # Fallback to topic name and top words
             top_words = topic.get("top_words", [])[:10]
             return f"Topic keywords: {', '.join(top_words)}"
 
+
         return "\n\n".join(context_parts)[:max_chars]
+
 
     async def generate_queries_for_category_async(
         self,
@@ -333,6 +361,7 @@ Queries:"""
         
         return rows
 
+
     async def run_for_topic_async(
         self,
         topic: Dict[str, Any],
@@ -378,6 +407,7 @@ Queries:"""
             all_rows.extend(result)
         
         return all_rows
+
 
     async def run_for_topics_async(
         self,
@@ -440,6 +470,7 @@ Queries:"""
         print(f"  ✓ Generated {len(all_rows)} queries total")
         
         return all_rows
+
 
 
 # Synchronous wrapper for compatibility
