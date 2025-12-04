@@ -122,21 +122,28 @@ Key components:
 
 From the repo root:
 
+```r
 cd synthetic-data-langchain-rag
 
-text
+```
+
 
 ### 1. Create and activate a virtual environment
 
+```r
 python3 -m venv syn
 source syn/bin/activate # macOS / Linux
 
+```
+
 or the equivalent command on your platform
-text
 
 ### 2. Install dependencies
 
+```r
 pip install -r requirements.txt
+
+```
 
 
 ---
@@ -147,9 +154,10 @@ There is a **bash script** in this repository that starts the llama.cpp server w
 
 From the repo root (or wherever the script lives), run:
 
+```r
 bash llama-cpp.sh
 
-text
+```
 
 This script should:
 
@@ -201,15 +209,18 @@ From the repo root:
 
 ### 1. Activate the virtual environment
 
+```r
 source syn/bin/activate
 
-text
+```
 
 ### 2. Start the LLM server
 
+```r
 bash llama-cpp.sh
 
-text
+```
+
 
 Wait until the server is up and listening on the configured port.
 
