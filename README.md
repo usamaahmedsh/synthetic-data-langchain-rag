@@ -215,17 +215,22 @@ Wait until the server is up and listening on the configured port.
 
 ### 3. Run the pipeline
 
+```r
 cd scripts
 python3 main.py
 
-text
+```
+
 
 You will be prompted:
+
+```r
 
 Enter topic/person for corpus (e.g. 'Imran Khan'): Albert Einstein
 Enter desired TOTAL number of final queries (e.g. 30): 100
 
-text
+```
+
 
 The pipeline will then:
 
