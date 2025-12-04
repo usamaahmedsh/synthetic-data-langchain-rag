@@ -94,7 +94,7 @@ USE_PASSAGE_LEVEL_BM25 = True
 
 def ask_topic() -> str:
     """Ask user for topic name."""
-    topic = input("Enter topic/person for corpus (e.g. 'Imran Khan'): ").strip()
+    topic = input("Enter topic/person for corpus (e.g. 'Albert Einstein'): ").strip()
     while not topic:
         topic = input("Topic cannot be empty. Enter topic/person: ").strip()
     return topic
@@ -102,7 +102,7 @@ def ask_topic() -> str:
 
 def ask_num_final_queries() -> int:
     """Ask user for target number of queries."""
-    raw = input("Enter desired TOTAL number of final queries (e.g. 30): ").strip()
+    raw = input("Enter desired APPROXIMATE number of final queries (e.g. 30): ").strip()
     while not raw.isdigit() or int(raw) <= 0:
         raw = input("Please enter a positive integer (e.g. 30): ").strip()
     return int(raw)
@@ -234,7 +234,7 @@ def calculate_optimal_topics(
 def main() -> None:
     """Main pipeline orchestrator."""
     print("=" * 70)
-    print("🚀 Advanced Query Generation Pipeline")
+    print("Query Generation Pipeline")
     print("=" * 70)
     print()
 
@@ -477,97 +477,22 @@ def main() -> None:
         "candidates_generated": len(candidate_rows),
     })
 
-    # ========================
-    # STEP 4.5: Advanced Query Filtering
-    # ========================
-    if USE_ADVANCED_FILTERING:
-        print("\n" + "=" * 70)
-        print("STEP 4.5: Advanced Query Filtering")
-        print("=" * 70)
-        
-        with profiler.profile("advanced_filtering"):
-            # Basic validation first
-            if USE_VALIDATION:
-                validator = QueryValidator()
-                topics_by_id = {int(t["topic_id"]): t for t in rich_topics if "topic_id" in t}
-                candidate_rows, basic_rejection_stats = validator.filter_queries(
-                    candidate_rows, topics_by_id
-                )
-                
-                print(f"  Basic validation: {len(candidate_rows)} passed")
-                if basic_rejection_stats:
-                    for reason, count in sorted(basic_rejection_stats.items(), key=lambda x: x[1], reverse=True):
-                        print(f"    - Rejected ({reason}): {count}")
-            
-            # Advanced filtering
-            print("\n  Applying advanced quality filters...")
-            advanced_filter = AdvancedQueryFilter(
-                min_length=5,
-                max_length=150,
-                min_words=2,
-                max_words=20,
-                max_repetition_ratio=0.5,
-                min_entropy=1.5,
-            )
-            
-            # Filter by topic
-            filtered_by_topic = {}
+    # ======================================================================
+    # STEP 4.5: Query Validation (DISABLED)
+    # ======================================================================
+    print("\n" + "=" * 70)
+    print("STEP 4.5: Query Validation (DISABLED)")
+    print("=" * 70)
+    print(f"  ℹ Skipping advanced filtering - keeping all {len(candidate_rows)} queries")
+    print(f"  Rationale: Human queries are naturally diverse and don't follow strict rules")
+
+    # Save checkpoint
+    if USE_CHECKPOINTS:
+        checkpoint_path = output_mgr.run_dir / "candidate_queries.jsonl"
+        with open(checkpoint_path, 'w') as f:
             for row in candidate_rows:
-                topic_id = row.get("topic_id")
-                if topic_id not in filtered_by_topic:
-                    filtered_by_topic[topic_id] = []
-                filtered_by_topic[topic_id].append(row)
-            
-            all_filtered = []
-            total_rejected = {}
-            
-            for topic_id, rows_for_topic in filtered_by_topic.items():
-                topic = topics_by_id.get(topic_id, {})
-                topic_keywords = topic.get("top_words", [])[:10]
-                
-                queries = [r["query"] for r in rows_for_topic]
-                valid_queries, rejection_stats = advanced_filter.filter_batch(
-                    queries, topic_keywords
-                )
-                
-                # Update rejection stats
-                for reason, count in rejection_stats.items():
-                    total_rejected[reason] = total_rejected.get(reason, 0) + count
-                
-                # Keep only valid rows
-                valid_set = set(valid_queries)
-                for row in rows_for_topic:
-                    if row["query"] in valid_set:
-                        all_filtered.append(row)
-            
-            candidate_rows = all_filtered
-            
-            print(f"  ✓ Advanced filtering: {len(candidate_rows)} passed")
-            if total_rejected:
-                print("  Rejection reasons:")
-                for reason, count in sorted(total_rejected.items(), key=lambda x: x[1], reverse=True)[:5]:
-                    print(f"    - {reason}: {count}")
-            
-            # Near-duplicate removal within candidates
-            print("\n  Removing near-duplicates within candidates...")
-            queries_before = len(candidate_rows)
-            unique_queries = deduplicate_near_duplicates(
-                [r["query"] for r in candidate_rows],
-                similarity_threshold=0.85
-            )
-            unique_set = set(unique_queries)
-            candidate_rows = [r for r in candidate_rows if r["query"] in unique_set]
-            print(f"  ✓ Removed {queries_before - len(candidate_rows)} near-duplicates")
-        
-        print()
-
-        metrics.record_stage("advanced_filtering", {
-            "before": queries_before,
-            "after": len(candidate_rows),
-            "rejected": total_rejected,
-        })
-
-    output_mgr.save_jsonl(candidate_rows, "candidate_queries.jsonl")
+                f.write(json.dumps(row) + '\n')
+        print(f"  ✓ Saved: {checkpoint_path}")
 
     # ========================
     # STEP 5: BM25 Indexing (Passage-Level)
