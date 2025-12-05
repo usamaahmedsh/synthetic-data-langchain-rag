@@ -2,13 +2,14 @@
 
 Synthetic query generation pipeline for **RAG** and **search / IR evaluation**.
 
-This project builds a Wikipedia-based corpus for a given topic, discovers sub-topics, generates LLM-based search queries, and then **scores, samples, and deduplicates** them into a high-quality, diverse final set.
+This project builds a Wikipedia-based corpus for a given topic, discovers sub-topics, generates LLM-based search queries, and then **filters, scores, samples, and deduplicates** them into a high-quality, diverse final set.
 
 The design balances:
 
 - Practical usefulness (easy to run, reusable outputs)
 - IR-style grounding (BM25, passage retrieval)
 - Modern NLP (embeddings, topic models, LLM generation)
+- Batch, multi-topic dataset generation
 
 ---
 
@@ -18,12 +19,17 @@ The design balances:
 - **Topic discovery + deduplication** with BERTopic
 - **Topic quality scoring** to focus on rich, well-covered topics
 - **LLM-based query generation** via a local **llama.cpp** HTTP server
+- **Advanced heuristic query filtering** (length, entropy, repetition, stopwords; no hard topic-name constraint)
 - **Heuristic query scoring** (BM25 + length + lexical + semantic diversity)
 - **Rejection sampling** with percentile-based thresholds per query type
 - **Global semantic deduplication**
 - **Optional semantic diversity enforcement** (MMR-style)
 - **Passage-level BM25 indexing** for finer relevance signals
 - **Checkpoints, metrics, and profiling** for iterative runs
+- **Multi-topic driver**:
+  - Each topic gets the full requested number of queries
+  - Per-topic error isolation (one topic can fail, others continue)
+  - Optional global aggregation into a single JSONL file
 
 ---
 
@@ -41,17 +47,26 @@ Given a topic like **“Albert Einstein”**, the pipeline:
    - comparative
    - transactional
    - commercial_investigation
-5. **Builds a passage-level BM25 index** over the corpus.
-6. **Scores queries** with a heuristic that combines:
+5. **Applies advanced query filtering**:
+   - Length, word count
+   - Entropy (diversity)
+   - Repetition and stopword ratio
+   - Basic linguistic quality (punctuation, special chars, etc.)
+   - **No hard “topic name must appear” constraint**
+6. **Removes near-duplicate candidates** using TF-IDF similarity.
+7. **Builds a passage-level BM25 index** over the corpus.
+8. **Scores queries** with a heuristic that combines:
    - BM25 relevance to passages
    - length-based quality
    - lexical diversity
    - semantic diversity
-7. **Runs rejection sampling** to hit the target number of queries per type using percentile thresholds.
-8. **Deduplicates semantically** across all queries.
-9. **Optionally enforces semantic diversity** (MMR-style) if you generated more than you need.
+9. **Runs rejection sampling** to hit the target number of queries per type using percentile thresholds.
+10. **Deduplicates semantically** across all queries.
+11. **Optionally enforces semantic diversity** (MMR-style) if you generated more than you need.
 
-The end result is a **`final_queries.jsonl`** file containing realistic, grounded, and diverse queries for your topic.
+The end result per topic is a **`final_queries.jsonl`** file containing realistic, grounded, and diverse queries.
+
+When using the multi-topic driver, you can also get a **single aggregated file** (`global_final_queries.jsonl`) containing queries for all topics.
 
 ---
 
@@ -64,6 +79,7 @@ The end result is a **`final_queries.jsonl`** file containing realistic, grounde
 - **LLM inference**: llama.cpp HTTP server (local)
 - **Deep learning backend**: PyTorch (CPU, CUDA, or Apple MPS)
 - **Orchestration / utilities**: httpx, requests, tqdm, dotenv
+- **Vectorization / similarity**: scikit-learn (TF-IDF + cosine similarity)
 
 ---
 
@@ -72,8 +88,15 @@ The end result is a **`final_queries.jsonl`** file containing realistic, grounde
 Key components:
 
 - `scripts/main.py`  
-  Main entry point. Orchestrates the full pipeline:
-  - corpus → topics → topic selection → query generation → BM25 → scoring → sampling → dedup → output
+  Main single-topic entry point. Orchestrates the full pipeline:
+  - corpus → topics → topic selection → query generation → advanced filtering → BM25 → scoring → sampling → dedup → output  
+  Exposes `_run_pipeline(topic_name, num_final_queries)` for programmatic use.
+
+- `scripts/run_multi_topics.py`  
+  Multi-topic batch driver:
+  - Runs `_run_pipeline` for each topic
+  - Continues if one topic fails
+  - Optionally aggregates all `final_queries.jsonl` into `outputs/global_final_queries.jsonl`
 
 - `scripts/tools/langchain_tools.py`  
   LangChain-style tool wrappers:
@@ -87,6 +110,7 @@ Key components:
   - `query_generator.py` – Asynchronous query generation via llama.cpp (`BuildQueries`)
   - `query_scorer.py` – Heuristic scoring (BM25 + length + lexical/semantic diversity)
   - `topic_scorer.py` – Topic quality scoring and ranking
+  - `query_filter.py` – Advanced query filtering (entropy, repetition, stopwords, etc.) and TF-IDF-based near-duplicate removal
 
 - `scripts/postprocessing/`  
   - `sampling.py` – Rejection sampling + semantic diversity (MMR-style)
@@ -115,6 +139,7 @@ Key components:
   - `candidate_queries.jsonl`, `scored_queries.jsonl`, `final_queries.jsonl`
   - `metrics.json`, `config.json`
   - human-readable run summary
+  - optionally `global_final_queries.jsonl` (multi-topic aggregation)
 
 ---
 
@@ -124,16 +149,13 @@ From the repo root:
 
 ```r
 cd synthetic-data-langchain-rag
-
 ```
-
 
 ### 1. Create and activate a virtual environment
 
 ```r
 python3 -m venv syn
 source syn/bin/activate # macOS / Linux
-
 ```
 
 or the equivalent command on your platform
@@ -142,9 +164,7 @@ or the equivalent command on your platform
 
 ```r
 pip install -r requirements.txt
-
 ```
-
 
 ---
 
@@ -155,13 +175,12 @@ There is a **bash script** in this repository that starts the llama.cpp server w
 From the repo root (or wherever the script lives), run:
 
 ```r
-bash llama-cpp.sh
-
+bash run_llama_server.sh
 ```
 
 This script should:
 
-- Point to your GGUF model (for example, `llama-3.2-3b-instruct.Q4_K_M.gguf`)
+- Point to your GGUF model (for example, `Meta-Llama-3.1-8B-Instruct-Q6_K_L.gguf`)
 - Configure context length, GPU offload, port (usually `8080`), etc.
 
 The query generator (`BuildQueries`) expects the server to be reachable at the URL configured in `config/settings.py` (commonly `http://127.0.0.1:8080`).
@@ -191,6 +210,7 @@ Most knobs live in `config/settings.py`. Important ones:
   - `USE_TOPIC_QUALITY_SCORING`
   - `USE_SEMANTIC_DIVERSITY`
   - `USE_GLOBAL_DEDUP`
+  - `USE_ADVANCED_FILTERING`
   - `USE_CHECKPOINTS`
 
 - **Performance**
@@ -199,11 +219,11 @@ Most knobs live in `config/settings.py`. Important ones:
   - `MAX_PARALLEL_CATEGORIES`
   - `USE_GPU`, `IS_APPLE_SILICON`
 
-You can treat these as experimentation controls to trade off **quality**, **diversity**, and **runtime**.
+You can treat these as experiment controls to trade off **quality**, **diversity**, and **runtime**.
 
 ---
 
-## How to Run
+## How to Run (Single Topic)
 
 From the repo root:
 
@@ -211,35 +231,28 @@ From the repo root:
 
 ```r
 source syn/bin/activate
-
 ```
 
 ### 2. Start the LLM server
 
 ```r
-bash llama-cpp.sh
-
+bash run_llama_server.sh
 ```
-
 
 Wait until the server is up and listening on the configured port.
 
-### 3. Run the pipeline
+### 3. Run the single-topic pipeline
 
 ```r
 cd scripts
 python3 main.py
-
 ```
-
 
 You will be prompted:
 
 ```r
-
 Enter topic/person for corpus (e.g. 'Imran Khan'): Albert Einstein
-Enter desired TOTAL number of final queries (e.g. 30): 100
-
+Enter desired APPROXIMATE number of final queries (e.g. 30): 100
 ```
 
 
@@ -249,6 +262,7 @@ The pipeline will then:
 - Build topics and deduplicate them
 - Select rich topics for generation
 - Generate candidate queries via the LLM
+- Apply advanced query filtering and near-duplicate removal
 - Build a passage-level BM25 index
 - Score queries (quality + diversity)
 - Run rejection sampling and global deduplication
@@ -256,6 +270,42 @@ The pipeline will then:
 - Save all outputs under `outputs/<topic_slug>/<timestamp>/`
 
 At the end, it prints a summary and the top queries by score.
+
+---
+
+## How to Run (Multi-Topic Batch)
+
+For batch dataset generation across multiple topics, use the multi-topic driver:
+
+```r
+cd synthetic-data-langchain-rag
+source syn/bin/activate
+bash llama-cpp.sh # in another terminal, keep it running
+```
+
+```r
+cd scripts
+python3 run_multi_topics.py
+--topics "Albert Einstein" "Imran Khan"
+--num-final-queries 2000
+```
+
+
+
+This will:
+
+- Run the full pipeline for **each topic** (2000 final queries per topic, approximately).
+- Continue even if one topic fails (per-topic error isolation).
+- By default, also create `outputs/global_final_queries.jsonl` containing all final queries with an added `topic_slug` field.
+
+To disable global aggregation and only keep per-topic files:
+
+```r
+python3 run_multi_topics.py
+--topics "Albert Einstein" "Imran Khan"
+--num-final-queries 2000
+--no-aggregate
+```
 
 ---
 
@@ -270,7 +320,7 @@ For a run on **“Albert Einstein”**, you’ll typically see:
   Deduplicated topics.
 
 - `outputs/albert_einstein/<timestamp>/candidate_queries.jsonl`  
-  Raw candidate queries from the LLM.
+  Candidate queries after generation (and filtering, if checkpoints enabled at that step).
 
 - `outputs/albert_einstein/<timestamp>/scored_queries.jsonl`  
   Candidate queries annotated with:
@@ -289,12 +339,17 @@ For a run on **“Albert Einstein”**, you’ll typically see:
 - `outputs/albert_einstein/<timestamp>/config.json`  
   Configuration snapshot for reproducibility.
 
+When using the multi-topic driver with aggregation:
+
+- `outputs/global_final_queries.jsonl`  
+  All final queries across all topics in one file, each with an added `topic_slug` field.
+
 ---
 
 ## Example Use Cases
 
 - **RAG evaluation**
-  - Use `final_queries.jsonl` as realistic query sets to benchmark retrieval and RAG pipelines.
+  - Use `final_queries.jsonl` (or `global_final_queries.jsonl`) as realistic query sets to benchmark retrieval and RAG pipelines.
 
 - **Search / ranking experiments**
   - Inject synthetic queries into your index to test ranking, coverage, and robustness.
@@ -304,6 +359,7 @@ For a run on **“Albert Einstein”**, you’ll typically see:
     - topic quality scoring on/off
     - passage vs. document-level BM25
     - over-generation factors
+    - advanced filtering
     - semantic diversity enforcement  
   - Compare outputs and metrics across runs.
 
@@ -319,5 +375,6 @@ For a run on **“Albert Einstein”**, you’ll typically see:
   - Swap embedding models
   - Add neural rerankers
   - Add an optional LLM judge as a final filter
+  - Add more sophisticated topic- or category-aware over-generation strategies
 
-The codebase is structured so you can tweak individual components (generation, scoring, sampling) and re-run the pipeline to see how the final query set changes.
+The codebase is structured so you can tweak individual components (generation, filtering, scoring, sampling) and re-run the pipeline to see how the final query set changes.
