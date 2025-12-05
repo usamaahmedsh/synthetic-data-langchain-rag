@@ -175,7 +175,7 @@ There is a **bash script** in this repository that starts the llama.cpp server w
 From the repo root (or wherever the script lives), run:
 
 ```r
-bash run_llama_server.sh
+bash llama-cpp.sh
 ```
 
 This script should:
@@ -236,7 +236,7 @@ source syn/bin/activate
 ### 2. Start the LLM server
 
 ```r
-bash run_llama_server.sh
+bash llama-cpp.sh
 ```
 
 Wait until the server is up and listening on the configured port.
@@ -378,3 +378,11 @@ When using the multi-topic driver with aggregation:
   - Add more sophisticated topic- or category-aware over-generation strategies
 
 The codebase is structured so you can tweak individual components (generation, filtering, scoring, sampling) and re-run the pipeline to see how the final query set changes.
+
+## License and ownership
+
+Copyright (c) 2025 Usama Ahmed.  
+All rights reserved.
+
+You may view, clone, and fork this repository for personal or internal use.  
+You may not redistribute modified versions, create derivative works, or use this project in commercial products without explicit written permission from the author.
