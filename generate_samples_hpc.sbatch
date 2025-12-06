@@ -1,16 +1,17 @@
 #!/bin/bash
 #SBATCH --job-name=syn-100k-gpu
-#SBATCH --partition=gpu              # adjust to your cluster
-#SBATCH --gres=gpu:1
+#SBATCH --account=liangmingpan
+#SBATCH --partition=gpu_standard              
+#SBATCH --gres=gpu:2
 #SBATCH --cpus-per-task=16
-#SBATCH --mem=64G
-#SBATCH --time=30:00:00
+#SBATCH --time=100:00:00
 #SBATCH --output=logs/%x_%j.out
 #SBATCH --error=logs/%x_%j.err
 
+
 module load python/3.11/3.11.4
-module load cuda12/12.4.1                   # or cuda12/12.5
-module load cmake                    # if needed
+module load cuda12/12.4.1             
+module load cmake                    
 
 source "$HOME/Documents/Github/synthetic-data-langchain-rag/syn/bin/activate"
 
@@ -30,14 +31,54 @@ cd $HOME/Documents/Github/synthetic-data-langchain-rag/scripts
 
 python3 run_multi_topics.py \
   --topics \
-    "Albert Einstein" \
+    "Einstein" \
+    "Newton" \
+    "Tesla" \
+    "Beethoven" \
+    "Shakespeare" \
+    "Napoleon" \
+    "Hitler" \
+    "Gandhi" \
+    "Mandela" \
+    "Cleopatra" \
     "Imran Khan" \
     "Donald Trump" \
+    "Barack Obama" \
+    "Joe Biden" \
+    "Putin" \
+    "Stalin" \
+    "World War I" \
+    "World War II" \
+    "Cold War" \
+    "French Revolution" \
+    "Industrial Revolution" \
+    "Renaissance" \
+    "Moon landing" \
+    "9/11 attacks" \
+    "Chernobyl disaster" \
+    "COVID-19 pandemic" \
+    "Olympic Games" \
+    "Black Death" \
+    "Great Depression" \
     "Machine learning" \
     "Deep learning" \
-    "Large language models" \
-    "Information retrieval" \
-    "Neural networks" \
-    "Reinforcement learning" \
-    "Natural language processing" \
-  --num-final-queries 100000
+    "Cryptocurrency" \
+    "Blockchain" \
+    "Internet" \
+    "Smartphones" \
+    "Facebook" \
+    "Google" \
+    "Apple" \
+    "Amazon" \
+    "Python" \
+    "Linux" \
+    "GitHub" \
+    "YouTube" \
+    "Instagram" \
+    "TikTok" \
+    "Climate change" \
+    "Globalization" \
+    "Democracy" \
+    "Capitalism" \
+  --num-final-queries 20000
+

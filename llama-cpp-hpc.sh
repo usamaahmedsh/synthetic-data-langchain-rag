@@ -8,31 +8,24 @@ set -euo pipefail
 # Configuration
 # ============================================
 
-# Model repo + filename on Hugging Face
 HF_REPO="bartowski/Meta-Llama-3.1-8B-Instruct-GGUF"
 HF_FILENAME="Meta-Llama-3.1-8B-Instruct-Q6_K_L.gguf"
 
-# Local model path
 MODEL_DIR="$HOME/models"
 MODEL_PATH="$MODEL_DIR/$HF_FILENAME"
 
-# Server settings
 HOST="127.0.0.1"
 PORT=8080
 
-# Context and parallel settings (safe defaults)
-CONTEXT_SIZE=4096        # Total KV cache size
-PARALLEL_REQUESTS=4      # Max simultaneous requests (-np)
-BATCH_SIZE=512           # Logical batch size (-b)
-UBATCH_SIZE=256          # Physical batch size (-ub)
-
-# Threads: default to SLURM_CPUS_PER_TASK if set, else auto (0)
+# A100-optimized defaults (you can tune further if stable)
+CONTEXT_SIZE="${CONTEXT_SIZE:-4096}"
+PARALLEL_REQUESTS="${PARALLEL_REQUESTS:-4}"
+BATCH_SIZE="${BATCH_SIZE:-1024}"
+UBATCH_SIZE="${UBATCH_SIZE:-256}"
 THREADS="${SLURM_CPUS_PER_TASK:-0}"
 
-# Model alias for OpenAI-compatible APIs
 MODEL_ALIAS="llama-3.1-8b-q6_k_l"
 
-# Where to log server stdout/stderr
 LOG_DIR="${LOG_DIR:-$HOME/llama_logs}"
 LOG_FILE="$LOG_DIR/llama_server_${PORT}.log"
 
@@ -52,10 +45,11 @@ detect_cuda() {
 
 # Decide GPU_LAYERS based on detection
 if detect_cuda; then
-  GPU_LAYERS_DEFAULT=99    # try full offload; tune down if VRAM is tight
+  # On A100 we try full offload by default; allow override via env
+  GPU_LAYERS_DEFAULT=99
   GPU_MODE_LABEL="GPU"
 else
-  GPU_LAYERS_DEFAULT=0     # CPU-only
+  GPU_LAYERS_DEFAULT=0
   GPU_MODE_LABEL="CPU"
 fi
 
@@ -94,7 +88,6 @@ echo "  LLaMA.cpp Server Launcher ($GPU_MODE_LABEL mode)"
 echo "════════════════════════════════════════"
 echo ""
 
-# Try common install locations first
 if ! command -v llama-server &> /dev/null; then
   if [ -f "./llama-server" ]; then
     LLAMA_SERVER="./llama-server"
@@ -111,9 +104,6 @@ if ! command -v llama-server &> /dev/null; then
     echo "    ./llama-server"
     echo "    ./llama.cpp/llama-server"
     echo "    \$HOME/llama.cpp/build/bin/llama-server"
-    echo "  Build it with e.g.:"
-    echo "    cd \$HOME/llama.cpp"
-    echo "    bash build_llama_cpp.sh   # or your cmake build command"
     exit 1
   fi
 else
@@ -121,7 +111,6 @@ else
   echo "✓ Found llama-server in PATH"
 fi
 
-# Ensure model exists (download if not)
 if [ ! -f "$MODEL_PATH" ]; then
   download_model
 fi
