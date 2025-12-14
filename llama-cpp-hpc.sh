@@ -1,6 +1,6 @@
 #!/bin/bash
-# run_llama_server_hpc_gpu.sh
-# Llama.cpp server launcher for HPC (GPU offload, auto-download model, background)
+# run_llama_server_hpc.sh
+# Llama.cpp server launcher for HPC or local (CPU/GPU auto-detect, auto-download model, background)
 
 set -euo pipefail
 
@@ -8,36 +8,52 @@ set -euo pipefail
 # Configuration
 # ============================================
 
-# Model repo + filename on Hugging Face
 HF_REPO="bartowski/Meta-Llama-3.1-8B-Instruct-GGUF"
 HF_FILENAME="Meta-Llama-3.1-8B-Instruct-Q6_K_L.gguf"
 
-# Local model path
 MODEL_DIR="$HOME/models"
 MODEL_PATH="$MODEL_DIR/$HF_FILENAME"
 
-# Server settings
 HOST="127.0.0.1"
 PORT=8080
 
-# Context and parallel settings (more conservative for GPU stability)
-CONTEXT_SIZE=4096        # Total KV cache size
-PARALLEL_REQUESTS=4      # Max simultaneous requests (-np)
-BATCH_SIZE=512           # Logical batch size (-b)
-UBATCH_SIZE=256          # Physical batch size (-ub)
-
-# GPU offload
-GPU_LAYERS=99            # Offload all layers (tune down if VRAM is tight)
-
-# Threads: default to SLURM_CPUS_PER_TASK if set, else auto (0)
+# A100-optimized defaults (you can tune further if stable)
+CONTEXT_SIZE="${CONTEXT_SIZE:-4096}"
+PARALLEL_REQUESTS="${PARALLEL_REQUESTS:-4}"
+BATCH_SIZE="${BATCH_SIZE:-1024}"
+UBATCH_SIZE="${UBATCH_SIZE:-256}"
 THREADS="${SLURM_CPUS_PER_TASK:-0}"
 
-# Model alias for OpenAI-compatible APIs
 MODEL_ALIAS="llama-3.1-8b-q6_k_l"
 
-# Where to log server stdout/stderr
 LOG_DIR="${LOG_DIR:-$HOME/llama_logs}"
-LOG_FILE="$LOG_DIR/llama_server_gpu_${PORT}.log"
+LOG_FILE="$LOG_DIR/llama_server_${PORT}.log"
+
+# ============================================
+# Helper: detect CUDA GPU
+# ============================================
+
+detect_cuda() {
+  if command -v nvidia-smi >/dev/null 2>&1; then
+    return 0
+  fi
+  if ldconfig -p 2>/dev/null | grep -qi "libcuda.so"; then
+    return 0
+  fi
+  return 1
+}
+
+# Decide GPU_LAYERS based on detection
+if detect_cuda; then
+  # On A100 we try full offload by default; allow override via env
+  GPU_LAYERS_DEFAULT=99
+  GPU_MODE_LABEL="GPU"
+else
+  GPU_LAYERS_DEFAULT=0
+  GPU_MODE_LABEL="CPU"
+fi
+
+GPU_LAYERS="${GPU_LAYERS:-$GPU_LAYERS_DEFAULT}"
 
 # ============================================
 # Helper: download model if missing
@@ -68,11 +84,10 @@ download_model() {
 # ============================================
 
 echo "════════════════════════════════════════"
-echo "  LLaMA.cpp Server Launcher (HPC GPU)"
+echo "  LLaMA.cpp Server Launcher ($GPU_MODE_LABEL mode)"
 echo "════════════════════════════════════════"
 echo ""
 
-# Check llama-server
 if ! command -v llama-server &> /dev/null; then
   if [ -f "./llama-server" ]; then
     LLAMA_SERVER="./llama-server"
@@ -80,10 +95,15 @@ if ! command -v llama-server &> /dev/null; then
   elif [ -f "./llama.cpp/llama-server" ]; then
     LLAMA_SERVER="./llama.cpp/llama-server"
     echo "✓ Found llama-server in ./llama.cpp/"
+  elif [ -f "$HOME/llama.cpp/build/bin/llama-server" ]; then
+    LLAMA_SERVER="$HOME/llama.cpp/build/bin/llama-server"
+    echo "✓ Found llama-server in ~/llama.cpp/build/bin/"
   else
     echo "✗ Error: llama-server not found!"
-    echo "  Ensure llama-server is in PATH or current directory."
-    echo "  Build it with: cd llama.cpp && make llama-server"
+    echo "  Ensure llama-server is in PATH or one of:"
+    echo "    ./llama-server"
+    echo "    ./llama.cpp/llama-server"
+    echo "    \$HOME/llama.cpp/build/bin/llama-server"
     exit 1
   fi
 else
@@ -91,7 +111,6 @@ else
   echo "✓ Found llama-server in PATH"
 fi
 
-# Ensure model exists (download if not)
 if [ ! -f "$MODEL_PATH" ]; then
   download_model
 fi
@@ -106,6 +125,7 @@ mkdir -p "$LOG_DIR"
 
 echo "Configuration:"
 echo "──────────────────────────────────────"
+echo "  Mode:              $GPU_MODE_LABEL"
 echo "  Host:              $HOST:$PORT"
 echo "  Model:             $(basename "$MODEL_PATH")"
 echo "  Context size:      $CONTEXT_SIZE tokens"
@@ -113,7 +133,7 @@ echo "  Parallel requests: $PARALLEL_REQUESTS"
 echo "  Batch size:        $BATCH_SIZE"
 echo "  UBatch size:       $UBATCH_SIZE"
 echo "  GPU layers:        $GPU_LAYERS"
-echo "  Threads:           $THREADS (0 = auto / SLURM_CPUS_PER_TASK=$SLURM_CPUS_PER_TASK)"
+echo "  Threads:           $THREADS (0 = auto / SLURM_CPUS_PER_TASK=${SLURM_CPUS_PER_TASK:-unset})"
 echo "  Alias:             $MODEL_ALIAS"
 echo "  Log file:          $LOG_FILE"
 echo ""
@@ -127,7 +147,7 @@ echo ""
 # Launch server in background
 # ============================================
 
-echo "Starting llama.cpp server (GPU) in background..."
+echo "Starting llama.cpp server ($GPU_MODE_LABEL) in background..."
 echo "Logs: $LOG_FILE"
 echo ""
 
@@ -147,7 +167,7 @@ nohup "$LLAMA_SERVER" \
 
 SERVER_PID=$!
 
-echo "✓ llama-server (GPU) started with PID $SERVER_PID"
+echo "✓ llama-server ($GPU_MODE_LABEL) started with PID $SERVER_PID"
 echo "Waiting a few seconds to ensure it is up..."
 sleep 5
 
