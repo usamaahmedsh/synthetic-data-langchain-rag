@@ -1,0 +1,2893 @@
+In probability theory, Dirichlet processes (after the distribution associated with Peter Gustav Lejeune Dirichlet) are a family of stochastic processes whose realizations are probability distributions. In other words, a Dirichlet process is a probability distribution whose range is itself a set of probability distributions. It is often used in Bayesian inference to describe the prior knowledge about the distribution of random variables—how likely it is that the random variables are distributed according to one or another particular distribution.
+As an example, a bag of 100 real-world dice is a random probability mass function (random pmf)—to sample this random pmf you put your hand in the bag and draw out a die, that is, you draw a pmf. A bag of dice manufactured using a crude process 100 years ago will likely have probabilities that deviate wildly from the uniform pmf, whereas a bag of state-of-the-art dice used by Las Vegas casinos may have barely perceptible imperfections. We can model the randomness of pmfs with the Dirichlet distribution.
+The Dirichlet process is specified by a base distribution 
+  
+    
+      
+        H
+      
+    
+    {\displaystyle H}
+  
+ and a positive real number 
+  
+    
+      
+        α
+      
+    
+    {\displaystyle \alpha }
+  
+ called the concentration parameter (also known as scaling parameter). The base distribution is the expected value of the process, i.e., the Dirichlet process draws distributions "around" the base distribution the way a normal distribution draws real numbers around its mean. However, even if the base distribution is continuous, the distributions drawn from the Dirichlet process are almost surely discrete. The scaling parameter specifies how strong this discretization is: in the limit of 
+  
+    
+      
+        α
+        →
+        0
+      
+    
+    {\displaystyle \alpha \rightarrow 0}
+  
+, the realizations are all concentrated at a single value, while in the limit of 
+  
+    
+      
+        α
+        →
+        ∞
+      
+    
+    {\displaystyle \alpha \rightarrow \infty }
+  
+ the realizations become continuous. Between the two extremes the realizations are discrete distributions with less and less concentration as 
+  
+    
+      
+        α
+      
+    
+    {\displaystyle \alpha }
+  
+ increases.
+The Dirichlet process can also be seen as the infinite-dimensional generalization of the Dirichlet distribution. In the same way as the Dirichlet distribution is the conjugate prior for the categorical distribution, the Dirichlet process is the conjugate prior for infinite, nonparametric discrete distributions. A particularly important application of Dirichlet processes is as a prior probability distribution in infinite mixture models.
+The Dirichlet process was formally introduced by Thomas S. Ferguson in 1973.
+It has since been applied in data mining and machine learning, among others for natural language processing, computer vision and bioinformatics.
+
+
+== Introduction ==
+Dirichlet processes are usually used when modelling data that tends to repeat previous values in a so-called "rich get richer" fashion. Specifically, suppose that the generation of values 
+  
+    
+      
+        
+          X
+          
+            1
+          
+        
+        ,
+        
+          X
+          
+            2
+          
+        
+        ,
+        …
+      
+    
+    {\displaystyle X_{1},X_{2},\dots }
+  
+ can be simulated by the following algorithm.
+
+Input: 
+  
+    
+      
+        H
+      
+    
+    {\displaystyle H}
+  
+ (a probability distribution called base distribution), 
+  
+    
+      
+        α
+      
+    
+    {\displaystyle \alpha }
+  
+ (a positive real number called scaling parameter)
+For 
+  
+    
+      
+        n
+        ≥
+        1
+      
+    
+    {\displaystyle n\geq 1}
+  
+:
+
+At the same time, another common model for data is that the observations 
+  
+    
+      
+        
+          X
+          
+            1
+          
+        
+        ,
+        
+          X
+          
+            2
+          
+        
+        ,
+        …
+      
+    
+    {\displaystyle X_{1},X_{2},\dots }
+  
+ are assumed to be independent and identically distributed (i.i.d.) according to some (random) distribution 
+  
+    
+      
+        P
+      
+    
+    {\displaystyle P}
+  
+. The goal of introducing Dirichlet processes is to be able to describe the procedure outlined above in this i.i.d. model.
+The 
+  
+    
+      
+        
+          X
+          
+            1
+          
+        
+        ,
+        
+          X
+          
+            2
+          
+        
+        ,
+        …
+      
+    
+    {\displaystyle X_{1},X_{2},\dots }
+  
+ observations in the algorithm are not independent, since we have to consider the previous results when generating the next value. They are, however, exchangeable. This fact can be shown by calculating the joint probability distribution of the observations and noticing that the resulting formula only depends on which 
+  
+    
+      
+        x
+      
+    
+    {\displaystyle x}
+  
+ values occur among the observations and how many repetitions they each have. Because of this exchangeability, de Finetti's representation theorem applies and it implies that the observations 
+  
+    
+      
+        
+          X
+          
+            1
+          
+        
+        ,
+        
+          X
+          
+            2
+          
+        
+        ,
+        …
+      
+    
+    {\displaystyle X_{1},X_{2},\dots }
+  
+ are conditionally independent given a (latent) distribution 
+  
+    
+      
+        P
+      
+    
+    {\displaystyle P}
+  
+. This 
+  
+    
+      
+        P
+      
+    
+    {\displaystyle P}
+  
+ is a random variable itself and has a distribution. This distribution (over distributions) is called a Dirichlet process (
+  
+    
+      
+        DP
+      
+    
+    {\displaystyle \operatorname {DP} }
+  
+). In summary, this means that we get an equivalent procedure to the above algorithm:
+
+Draw a distribution 
+  
+    
+      
+        P
+      
+    
+    {\displaystyle P}
+  
+ from 
+  
+    
+      
+        DP
+        ⁡
+        
+          (
+          
+            H
+            ,
+            α
+          
+          )
+        
+      
+    
+    {\displaystyle \operatorname {DP} \left(H,\alpha \right)}
+  
+
+Draw observations 
+  
+    
+      
+        
+          X
+          
+            1
+          
+        
+        ,
+        
+          X
+          
+            2
+          
+        
+        ,
+        …
+      
+    
+    {\displaystyle X_{1},X_{2},\dots }
+  
+ independently from 
+  
+    
+      
+        P
+      
+    
+    {\displaystyle P}
+  
+.
+In practice, however, drawing a concrete distribution 
+  
+    
+      
+        P
+      
+    
+    {\displaystyle P}
+  
+ is impossible, since its specification requires an infinite amount of information. This is a common phenomenon in the context of Bayesian non-parametric statistics where a typical task is to learn distributions on function spaces, which involve effectively infinitely many parameters. The key insight is that in many applications the infinite-dimensional distributions appear only as an intermediary computational device and are not required for either the initial specification of prior beliefs or for the statement of the final inference.
+
+
+== Formal definition ==
+Given a measurable set S, a base probability distribution H and a positive real number 
+  
+    
+      
+        α
+      
+    
+    {\displaystyle \alpha }
+  
+, the Dirichlet process 
+  
+    
+      
+        DP
+        ⁡
+        (
+        H
+        ,
+        α
+        )
+      
+    
+    {\displaystyle \operatorname {DP} (H,\alpha )}
+  
+ is a stochastic process whose sample path (or realization, i.e. an infinite sequence of random variates drawn from the process) is a probability distribution over S, such that the following holds. For any measurable finite partition of S, denoted 
+  
+    
+      
+        {
+        
+          B
+          
+            i
+          
+        
+        
+          }
+          
+            i
+            =
+            1
+          
+          
+            n
+          
+        
+      
+    
+    {\displaystyle \{B_{i}\}_{i=1}^{n}}
+  
+,
+
+  
+    
+      
+        
+          if 
+        
+        X
+        ∼
+        DP
+        ⁡
+        (
+        H
+        ,
+        α
+        )
+      
+    
+    {\displaystyle {\text{if }}X\sim \operatorname {DP} (H,\alpha )}
+  
+
+  
+    
+      
+        
+          then 
+        
+        (
+        X
+        (
+        
+          B
+          
+            1
+          
+        
+        )
+        ,
+        …
+        ,
+        X
+        (
+        
+          B
+          
+            n
+          
+        
+        )
+        )
+        ∼
+        Dir
+        ⁡
+        (
+        α
+        H
+        (
+        
+          B
+          
+            1
+          
+        
+        )
+        ,
+        …
+        ,
+        α
+        H
+        (
+        
+          B
+          
+            n
+          
+        
+        )
+        )
+        ,
+      
+    
+    {\displaystyle {\text{then }}(X(B_{1}),\dots ,X(B_{n}))\sim \operatorname {Dir} (\alpha H(B_{1}),\dots ,\alpha H(B_{n})),}
+  
+
+where 
+  
+    
+      
+        Dir
+      
+    
+    {\displaystyle \operatorname {Dir} }
+  
+ denotes the Dirichlet distribution and the notation 
+  
+    
+      
+        X
+        ∼
+        D
+      
+    
+    {\displaystyle X\sim D}
+  
+ means that the random variable 
+  
+    
+      
+        X
+      
+    
+    {\displaystyle X}
+  
+ has the distribution 
+  
+    
+      
+        D
+      
+    
+    {\displaystyle D}
+  
+.
+
+
+== Alternative views ==
+There are several equivalent views of the Dirichlet process. Besides the formal definition above, the Dirichlet process can be defined implicitly through de Finetti's theorem as described in the first section; this is often called the Chinese restaurant process. A third alternative is the stick-breaking process, which defines the Dirichlet process constructively by writing a distribution sampled from the process as 
+  
+    
+      
+        f
+        (
+        x
+        )
+        =
+        
+          ∑
+          
+            k
+            =
+            1
+          
+          
+            ∞
+          
+        
+        
+          β
+          
+            k
+          
+        
+        
+          δ
+          
+            
+              x
+              
+                k
+              
+            
+          
+        
+        (
+        x
+        )
+      
+    
+    {\displaystyle f(x)=\sum _{k=1}^{\infty }\beta _{k}\delta _{x_{k}}(x)}
+  
+, where 
+  
+    
+      
+        {
+        
+          x
+          
+            k
+          
+        
+        
+          }
+          
+            k
+            =
+            1
+          
+          
+            ∞
+          
+        
+      
+    
+    {\displaystyle \{x_{k}\}_{k=1}^{\infty }}
+  
+ are samples from the base distribution 
+  
+    
+      
+        H
+      
+    
+    {\displaystyle H}
+  
+, 
+  
+    
+      
+        
+          δ
+          
+            
+              x
+              
+                k
+              
+            
+          
+        
+      
+    
+    {\displaystyle \delta _{x_{k}}}
+  
+ is an indicator function centered on 
+  
+    
+      
+        
+          x
+          
+            k
+          
+        
+      
+    
+    {\displaystyle x_{k}}
+  
+ (zero everywhere except for 
+  
+    
+      
+        
+          δ
+          
+            
+              x
+              
+                k
+              
+            
+          
+        
+        (
+        
+          x
+          
+            k
+          
+        
+        )
+        =
+        1
+      
+    
+    {\displaystyle \delta _{x_{k}}(x_{k})=1}
+  
+) and the 
+  
+    
+      
+        
+          β
+          
+            k
+          
+        
+      
+    
+    {\displaystyle \beta _{k}}
+  
+ are defined by a recursive scheme that repeatedly samples from the beta distribution 
+  
+    
+      
+        Beta
+        ⁡
+        (
+        1
+        ,
+        α
+        )
+      
+    
+    {\displaystyle \operatorname {Beta} (1,\alpha )}
+  
+.
+
+
+=== The Chinese restaurant process ===
+
+A widely employed metaphor for the Dirichlet process is based on the so-called Chinese restaurant process. The metaphor is as follows:
+Imagine a Chinese restaurant in which customers enter. A new customer sits down at a table with a probability proportional to the number of customers already sitting there. Additionally, a customer opens a new table with a probability proportional to the scaling parameter 
+  
+    
+      
+        α
+      
+    
+    {\displaystyle \alpha }
+  
+. After infinitely many customers entered, one obtains a probability distribution over infinitely many tables to be chosen.
+This probability distribution over the tables is a random sample of the probabilities of observations drawn from a Dirichlet process with scaling parameter 
+  
+    
+      
+        α
+      
+    
+    {\displaystyle \alpha }
+  
+.
+If one associates draws from the base measure 
+  
+    
+      
+        H
+      
+    
+    {\displaystyle H}
+  
+ with every table, the resulting distribution over the sample space 
+  
+    
+      
+        S
+      
+    
+    {\displaystyle S}
+  
+ is a random sample of a Dirichlet process.
+The Chinese restaurant process is related to the Pólya urn sampling scheme which yields samples from finite Dirichlet distributions.
+Because customers sit at a table with a probability proportional to the number of customers already sitting at the table, two properties of the DP can be deduced:
+
+The Dirichlet process exhibits a self-reinforcing property: The more often a given value has been sampled in the past, the more likely it is to be sampled again.
+Even if 
+  
+    
+      
+        H
+      
+    
+    {\displaystyle H}
+  
+ is a distribution over an uncountable set, there is a nonzero probability that two samples will have exactly the same value because the probability mass will concentrate on a small number of tables.
+
+
+=== The stick-breaking process ===
+A third approach to the Dirichlet process is the so-called stick-breaking process view. Conceptually, this involves repeatedly breaking off and discarding a random fraction (sampled from a Beta distribution) of a "stick" that is initially of length 1. Remember that draws from a Dirichlet process are distributions over a set 
+  
+    
+      
+        S
+      
+    
+    {\displaystyle S}
+  
+. As noted previously, the distribution drawn is discrete with probability 1. In the stick-breaking process view, we explicitly use the discreteness and give the probability mass function of this (random) discrete distribution as:
+
+  
+    
+      
+        f
+        (
+        θ
+        )
+        =
+        
+          ∑
+          
+            k
+            =
+            1
+          
+          
+            ∞
+          
+        
+        
+          β
+          
+            k
+          
+        
+        ⋅
+        
+          δ
+          
+            
+              θ
+              
+                k
+              
+            
+          
+        
+        (
+        θ
+        )
+      
+    
+    {\displaystyle f(\theta )=\sum _{k=1}^{\infty }\beta _{k}\cdot \delta _{\theta _{k}}(\theta )}
+  
+
+where 
+  
+    
+      
+        
+          δ
+          
+            
+              θ
+              
+                k
+              
+            
+          
+        
+      
+    
+    {\displaystyle \delta _{\theta _{k}}}
+  
+ is the indicator function which evaluates to zero everywhere, except for 
+  
+    
+      
+        
+          δ
+          
+            
+              θ
+              
+                k
+              
+            
+          
+        
+        (
+        
+          θ
+          
+            k
+          
+        
+        )
+        =
+        1
+      
+    
+    {\displaystyle \delta _{\theta _{k}}(\theta _{k})=1}
+  
+. Since this distribution is random itself, its mass function is parameterized by two sets of random variables: the locations 
+  
+    
+      
+        
+          
+            {
+            
+              θ
+              
+                k
+              
+            
+            }
+          
+          
+            k
+            =
+            1
+          
+          
+            ∞
+          
+        
+      
+    
+    {\displaystyle \left\{\theta _{k}\right\}_{k=1}^{\infty }}
+  
+ and the corresponding probabilities 
+  
+    
+      
+        
+          
+            {
+            
+              β
+              
+                k
+              
+            
+            }
+          
+          
+            k
+            =
+            1
+          
+          
+            ∞
+          
+        
+      
+    
+    {\displaystyle \left\{\beta _{k}\right\}_{k=1}^{\infty }}
+  
+. In the following, we present without proof what these random variables are.
+The locations 
+  
+    
+      
+        
+          θ
+          
+            k
+          
+        
+      
+    
+    {\displaystyle \theta _{k}}
+  
+ are independent and identically distributed according to 
+  
+    
+      
+        H
+      
+    
+    {\displaystyle H}
+  
+, the base distribution of the Dirichlet process. The probabilities 
+  
+    
+      
+        
+          β
+          
+            k
+          
+        
+      
+    
+    {\displaystyle \beta _{k}}
+  
+ are given by a procedure resembling the breaking of a unit-length stick (hence the name):
+
+  
+    
+      
+        
+          β
+          
+            k
+          
+        
+        =
+        
+          β
+          
+            k
+          
+          ′
+        
+        ⋅
+        
+          ∏
+          
+            i
+            =
+            1
+          
+          
+            k
+            −
+            1
+          
+        
+        
+          (
+          
+            1
+            −
+            
+              β
+              
+                i
+              
+              ′
+            
+          
+          )
+        
+      
+    
+    {\displaystyle \beta _{k}=\beta '_{k}\cdot \prod _{i=1}^{k-1}\left(1-\beta '_{i}\right)}
+  
+
+where 
+  
+    
+      
+        
+          β
+          
+            k
+          
+          ′
+        
+      
+    
+    {\displaystyle \beta '_{k}}
+  
+ are independent random variables with the beta distribution 
+  
+    
+      
+        Beta
+        ⁡
+        (
+        1
+        ,
+        α
+        )
+      
+    
+    {\displaystyle \operatorname {Beta} (1,\alpha )}
+  
+. The resemblance to 'stick-breaking' can be seen by considering 
+  
+    
+      
+        
+          β
+          
+            k
+          
+        
+      
+    
+    {\displaystyle \beta _{k}}
+  
+ as the length of a piece of a stick. We start with a unit-length stick and in each step we break off a portion of the remaining stick according to 
+  
+    
+      
+        
+          β
+          
+            k
+          
+          ′
+        
+      
+    
+    {\displaystyle \beta '_{k}}
+  
+ and assign this broken-off piece to 
+  
+    
+      
+        
+          β
+          
+            k
+          
+        
+      
+    
+    {\displaystyle \beta _{k}}
+  
+. The formula can be understood by noting that after the first k − 1 values have their portions assigned, the length of the remainder of the stick is 
+  
+    
+      
+        
+          ∏
+          
+            i
+            =
+            1
+          
+          
+            k
+            −
+            1
+          
+        
+        
+          (
+          
+            1
+            −
+            
+              β
+              
+                i
+              
+              ′
+            
+          
+          )
+        
+      
+    
+    {\displaystyle \prod _{i=1}^{k-1}\left(1-\beta '_{i}\right)}
+  
+ and this piece is broken according to 
+  
+    
+      
+        
+          β
+          
+            k
+          
+          ′
+        
+      
+    
+    {\displaystyle \beta '_{k}}
+  
+ and gets assigned to 
+  
+    
+      
+        
+          β
+          
+            k
+          
+        
+      
+    
+    {\displaystyle \beta _{k}}
+  
+.
+The smaller 
+  
+    
+      
+        α
+      
+    
+    {\displaystyle \alpha }
+  
+ is, the less of the stick will be left for subsequent values (on average), yielding more concentrated distributions. 
+The stick-breaking process is similar to the construction where one samples sequentially from marginal beta distributions in order to generate a sample from a Dirichlet distribution.
+
+
+=== The Pólya urn scheme ===
+Yet another way to visualize the Dirichlet process and Chinese restaurant process is as a modified Pólya urn scheme sometimes called the Blackwell–MacQueen sampling scheme. Imagine that we start with an urn filled with 
+  
+    
+      
+        α
+      
+    
+    {\displaystyle \alpha }
+  
+ black balls. Then we proceed as follows:
+
+Each time we need an observation, we draw a ball from the urn.
+If the ball is black, we generate a new (non-black) colour uniformly, label a new ball this colour, drop the new ball into the urn along with the ball we drew, and return the colour we generated.
+Otherwise, label a new ball with the colour of the ball we drew, drop the new ball into the urn along with the ball we drew, and return the colour we observed.
+The resulting distribution over colours is the same as the distribution over tables in the Chinese restaurant process. Furthermore, when we draw a black ball, if rather than generating a new colour, we instead pick a random value from a base distribution 
+  
+    
+      
+        H
+      
+    
+    {\displaystyle H}
+  
+ and use that value to label the new ball, the resulting distribution over labels will be the same as the distribution over the values in a Dirichlet process.
+
+
+== Use as a prior distribution ==
+The Dirichlet Process can be used as a prior distribution to estimate the probability distribution that generates the data. In this section, we consider the model 
+
+  
+    
+      
+        
+          
+            
+              
+                P
+              
+              
+                
+                ∼
+                
+                  
+                    DP
+                  
+                
+                (
+                H
+                ,
+                α
+                )
+              
+            
+            
+              
+                
+                  X
+                  
+                    1
+                  
+                
+                ,
+                …
+                ,
+                
+                  X
+                  
+                    n
+                  
+                
+                ∣
+                P
+              
+              
+                
+                
+                
+                  
+                    ∼
+                    
+                      i.i.d.
+                    
+                  
+                
+                
+                P
+                .
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{aligned}P&\sim {\textrm {DP}}(H,\alpha )\\X_{1},\ldots ,X_{n}\mid P&\,{\overset {\textrm {i.i.d.}}{\sim }}\,P.\end{aligned}}}
+  
+
+The Dirichlet Process distribution satisfies prior conjugacy, posterior consistency, and the Bernstein–von Mises theorem.
+
+
+=== Prior conjugacy ===
+In this model, the posterior distribution is again a Dirichlet process. This means that the Dirichlet process is a conjugate prior for this model.  The posterior distribution is given by
+
+  
+    
+      
+        
+          
+            
+              
+                P
+                ∣
+                
+                  X
+                  
+                    1
+                  
+                
+                ,
+                …
+                ,
+                
+                  X
+                  
+                    n
+                  
+                
+              
+              
+                
+                ∼
+                
+                  
+                    DP
+                  
+                
+                
+                  (
+                  
+                    
+                      
+                        α
+                        
+                          α
+                          +
+                          n
+                        
+                      
+                    
+                    H
+                    +
+                    
+                      
+                        1
+                        
+                          α
+                          +
+                          n
+                        
+                      
+                    
+                    
+                      ∑
+                      
+                        i
+                        =
+                        1
+                      
+                      
+                        n
+                      
+                    
+                    
+                      δ
+                      
+                        
+                          X
+                          
+                            i
+                          
+                        
+                      
+                    
+                    ,
+                    
+                    α
+                    +
+                    n
+                  
+                  )
+                
+              
+            
+            
+              
+              
+                
+                =
+                
+                  
+                    DP
+                  
+                
+                
+                  (
+                  
+                    
+                      
+                        α
+                        
+                          α
+                          +
+                          n
+                        
+                      
+                    
+                    H
+                    +
+                    
+                      
+                        n
+                        
+                          α
+                          +
+                          n
+                        
+                      
+                    
+                    
+                      
+                        P
+                      
+                      
+                        n
+                      
+                    
+                    ,
+                    
+                    α
+                    +
+                    n
+                  
+                  )
+                
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{aligned}P\mid X_{1},\ldots ,X_{n}&\sim {\textrm {DP}}\left({\frac {\alpha }{\alpha +n}}H+{\frac {1}{\alpha +n}}\sum _{i=1}^{n}\delta _{X_{i}},\;\alpha +n\right)\\&={\textrm {DP}}\left({\frac {\alpha }{\alpha +n}}H+{\frac {n}{\alpha +n}}\mathbb {P} _{n},\;\alpha +n\right)\end{aligned}}}
+  
+
+where 
+  
+    
+      
+        
+          
+            P
+          
+          
+            n
+          
+        
+      
+    
+    {\displaystyle \mathbb {P} _{n}}
+  
+ is defined below.
+
+
+=== Posterior consistency ===
+If we take the frequentist view of probability, we believe there is a true probability distribution 
+  
+    
+      
+        
+          P
+          
+            0
+          
+        
+      
+    
+    {\displaystyle P_{0}}
+  
+ that generated the data. Then it turns out that the Dirichlet process is consistent in the weak topology, which means that for every weak neighbourhood 
+  
+    
+      
+        U
+      
+    
+    {\displaystyle U}
+  
+ of 
+  
+    
+      
+        
+          P
+          
+            0
+          
+        
+      
+    
+    {\displaystyle P_{0}}
+  
+, the posterior probability of 
+  
+    
+      
+        U
+      
+    
+    {\displaystyle U}
+  
+ converges to 
+  
+    
+      
+        1
+      
+    
+    {\displaystyle 1}
+  
+.
+
+
+=== Bernstein–Von Mises theorem ===
+In order to interpret the credible sets as confidence sets, a Bernstein–von Mises theorem is needed. In case of the Dirichlet process we compare the posterior distribution with the empirical process 
+  
+    
+      
+        
+          
+            P
+          
+          
+            n
+          
+        
+        =
+        
+          
+            1
+            n
+          
+        
+        
+          ∑
+          
+            i
+            =
+            1
+          
+          
+            n
+          
+        
+        
+          δ
+          
+            
+              X
+              
+                i
+              
+            
+          
+        
+      
+    
+    {\displaystyle \mathbb {P} _{n}={\frac {1}{n}}\sum _{i=1}^{n}\delta _{X_{i}}}
+  
+. Suppose 
+  
+    
+      
+        
+          
+            F
+          
+        
+      
+    
+    {\displaystyle {\mathcal {F}}}
+  
+ is a 
+  
+    
+      
+        
+          P
+          
+            0
+          
+        
+      
+    
+    {\displaystyle P_{0}}
+  
+-Donsker class, i.e. 
+
+  
+    
+      
+        
+          
+            n
+          
+        
+        
+          (
+          
+            
+              
+                P
+              
+              
+                n
+              
+            
+            −
+            
+              P
+              
+                0
+              
+            
+          
+          )
+        
+        ⇝
+        
+          G
+          
+            
+              P
+              
+                0
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\sqrt {n}}\left(\mathbb {P} _{n}-P_{0}\right)\rightsquigarrow G_{P_{0}}}
+  
+
+for some Brownian Bridge 
+  
+    
+      
+        
+          G
+          
+            
+              P
+              
+                0
+              
+            
+          
+        
+      
+    
+    {\displaystyle G_{P_{0}}}
+  
+. Suppose also that there exists a function 
+  
+    
+      
+        F
+      
+    
+    {\displaystyle F}
+  
+ such that 
+  
+    
+      
+        F
+        (
+        x
+        )
+        ≥
+        
+          sup
+          
+            f
+            ∈
+            
+              
+                F
+              
+            
+          
+        
+        f
+        (
+        x
+        )
+      
+    
+    {\displaystyle F(x)\geq \sup _{f\in {\mathcal {F}}}f(x)}
+  
+ such that 
+  
+    
+      
+        ∫
+        
+          F
+          
+            2
+          
+        
+        
+        
+          d
+        
+        H
+        <
+        ∞
+      
+    
+    {\displaystyle \int F^{2}\,\mathrm {d} H<\infty }
+  
+, then, 
+  
+    
+      
+        
+          P
+          
+            0
+          
+        
+      
+    
+    {\displaystyle P_{0}}
+  
+ almost surely
+
+  
+    
+      
+        
+          
+            n
+          
+        
+        
+          (
+          
+            P
+            −
+            
+              
+                P
+              
+              
+                n
+              
+            
+          
+          )
+        
+        ∣
+        
+          X
+          
+            1
+          
+        
+        ,
+        ⋯
+        ,
+        
+          X
+          
+            n
+          
+        
+        ⇝
+        
+          G
+          
+            
+              P
+              
+                0
+              
+            
+          
+        
+        .
+      
+    
+    {\displaystyle {\sqrt {n}}\left(P-\mathbb {P} _{n}\right)\mid X_{1},\cdots ,X_{n}\rightsquigarrow G_{P_{0}}.}
+  
+
+This implies that credible sets you construct are asymptotic confidence sets, and the Bayesian inference based on the Dirichlet process is asymptotically also valid frequentist inference.
+
+
+== Use in Dirichlet mixture models ==
+
+To understand what Dirichlet processes are and the problem they solve we consider the example of data clustering. It is a common situation that data points are assumed to be distributed in a hierarchical fashion where each data point belongs to a (randomly chosen) cluster and the members of a cluster are further distributed randomly within that cluster.
+
+
+=== Example 1 ===
+For example, we might be interested in how people will vote on a number of questions in an upcoming election. A reasonable model for this situation might be to classify each voter as a liberal, a conservative or a moderate and then model the event that a voter says "Yes" to any particular question as a Bernoulli random variable with the probability dependent on which political cluster they belong to. By looking at how votes were cast in previous years on similar pieces of legislation one could fit a predictive model using a simple clustering algorithm such as k-means. That algorithm, however, requires knowing in advance the number of clusters that generated the data. In many situations, it is not possible to determine this ahead of time, and even when we can reasonably assume a number of clusters we would still like to be able to check this assumption. For example, in the voting example above the division into liberal, conservative and moderate might not be finely tuned enough; attributes such as a religion, class or race could also be critical for modelling voter behaviour, resulting in more clusters in the model.
+
+
+=== Example 2 ===
+As another example, we might be interested in modelling the velocities of galaxies using a simple model assuming that the velocities are clustered, for instance by assuming each velocity is distributed according to the normal distribution 
+  
+    
+      
+        
+          v
+          
+            i
+          
+        
+        ∼
+        N
+        (
+        
+          μ
+          
+            k
+          
+        
+        ,
+        
+          σ
+          
+            2
+          
+        
+        )
+      
+    
+    {\displaystyle v_{i}\sim N(\mu _{k},\sigma ^{2})}
+  
+, where the 
+  
+    
+      
+        i
+      
+    
+    {\displaystyle i}
+  
+th observation belongs to the 
+  
+    
+      
+        k
+      
+    
+    {\displaystyle k}
+  
+th cluster of galaxies with common expected velocity. In this case it is far from obvious how to determine a priori how many clusters (of common velocities) there should be and any model for this would be highly suspect and should be checked against the data. By using a Dirichlet process prior for the distribution of cluster means we circumvent the need to explicitly specify ahead of time how many clusters there are, although the concentration parameter still controls it implicitly.
+We consider this example in more detail. A first naive model is to presuppose that there are 
+  
+    
+      
+        K
+      
+    
+    {\displaystyle K}
+  
+ clusters of normally distributed velocities with common known fixed variance 
+  
+    
+      
+        
+          σ
+          
+            2
+          
+        
+      
+    
+    {\displaystyle \sigma ^{2}}
+  
+. Denoting the event that the 
+  
+    
+      
+        i
+      
+    
+    {\displaystyle i}
+  
+th observation is in the 
+  
+    
+      
+        k
+      
+    
+    {\displaystyle k}
+  
+th cluster as 
+  
+    
+      
+        
+          z
+          
+            i
+          
+        
+        =
+        k
+      
+    
+    {\displaystyle z_{i}=k}
+  
+ we can write this model as:
+
+  
+    
+      
+        
+          
+            
+              
+                (
+                
+                  v
+                  
+                    i
+                  
+                
+                ∣
+                
+                  z
+                  
+                    i
+                  
+                
+                =
+                k
+                ,
+                
+                  μ
+                  
+                    k
+                  
+                
+                )
+              
+              
+                
+                ∼
+                N
+                (
+                
+                  μ
+                  
+                    k
+                  
+                
+                ,
+                
+                  σ
+                  
+                    2
+                  
+                
+                )
+              
+            
+            
+              
+                P
+                ⁡
+                (
+                
+                  z
+                  
+                    i
+                  
+                
+                =
+                k
+                )
+              
+              
+                
+                =
+                
+                  π
+                  
+                    k
+                  
+                
+              
+            
+            
+              
+                (
+                
+                  π
+                
+                ∣
+                α
+                )
+              
+              
+                
+                ∼
+                Dir
+                ⁡
+                
+                  (
+                  
+                    
+                      
+                        α
+                        K
+                      
+                    
+                    ⋅
+                    
+                      
+                        1
+                      
+                      
+                        K
+                      
+                    
+                  
+                  )
+                
+              
+            
+            
+              
+                
+                  μ
+                  
+                    k
+                  
+                
+              
+              
+                
+                ∼
+                H
+                (
+                λ
+                )
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{aligned}(v_{i}\mid z_{i}=k,\mu _{k})&\sim N(\mu _{k},\sigma ^{2})\\\operatorname {P} (z_{i}=k)&=\pi _{k}\\({\boldsymbol {\pi }}\mid \alpha )&\sim \operatorname {Dir} \left({\frac {\alpha }{K}}\cdot \mathbf {1} _{K}\right)\\\mu _{k}&\sim H(\lambda )\end{aligned}}}
+  
+
+That is, we assume that the data belongs to 
+  
+    
+      
+        K
+      
+    
+    {\displaystyle K}
+  
+ distinct clusters with means 
+  
+    
+      
+        
+          μ
+          
+            k
+          
+        
+      
+    
+    {\displaystyle \mu _{k}}
+  
+ and that 
+  
+    
+      
+        
+          π
+          
+            k
+          
+        
+      
+    
+    {\displaystyle \pi _{k}}
+  
+ is the (unknown) prior probability of a data point belonging to the 
+  
+    
+      
+        k
+      
+    
+    {\displaystyle k}
+  
+th cluster. We assume that we have no initial information distinguishing the clusters, which is captured by the symmetric prior 
+  
+    
+      
+        Dir
+        ⁡
+        
+          (
+          
+            α
+            
+              /
+            
+            K
+            ⋅
+            
+              
+                1
+              
+              
+                K
+              
+            
+          
+          )
+        
+      
+    
+    {\displaystyle \operatorname {Dir} \left(\alpha /K\cdot \mathbf {1} _{K}\right)}
+  
+. Here 
+  
+    
+      
+        Dir
+      
+    
+    {\displaystyle \operatorname {Dir} }
+  
+ denotes the Dirichlet distribution and 
+  
+    
+      
+        
+          
+            1
+          
+          
+            K
+          
+        
+      
+    
+    {\displaystyle \mathbf {1} _{K}}
+  
+ denotes a vector of length 
+  
+    
+      
+        K
+      
+    
+    {\displaystyle K}
+  
+ where each element is 1. We further assign independent and identical prior distributions 
+  
+    
+      
+        H
+        (
+        λ
+        )
+      
+    
+    {\displaystyle H(\lambda )}
+  
+ to each of the cluster means, where 
+  
+    
+      
+        H
+      
+    
+    {\displaystyle H}
+  
+ may be any parametric distribution with parameters denoted as 
+  
+    
+      
+        λ
+      
+    
+    {\displaystyle \lambda }
+  
+. The hyper-parameters 
+  
+    
+      
+        α
+      
+    
+    {\displaystyle \alpha }
+  
+ and 
+  
+    
+      
+        λ
+      
+    
+    {\displaystyle \lambda }
+  
+ are taken to be known fixed constants, chosen to reflect our prior beliefs about the system. To understand the connection to Dirichlet process priors we rewrite this model in an equivalent but more suggestive form:
+
+  
+    
+      
+        
+          
+            
+              
+                (
+                
+                  v
+                  
+                    i
+                  
+                
+                ∣
+                
+                  
+                    
+                      
+                        μ
+                        ~
+                      
+                    
+                  
+                  
+                    i
+                  
+                
+                )
+              
+              
+                
+                ∼
+                N
+                (
+                
+                  
+                    
+                      
+                        μ
+                        ~
+                      
+                    
+                  
+                  
+                    i
+                  
+                
+                ,
+                
+                  σ
+                  
+                    2
+                  
+                
+                )
+              
+            
+            
+              
+                
+                  
+                    
+                      
+                        μ
+                        ~
+                      
+                    
+                  
+                  
+                    i
+                  
+                
+              
+              
+                
+                ∼
+                G
+                =
+                
+                  ∑
+                  
+                    k
+                    =
+                    1
+                  
+                  
+                    K
+                  
+                
+                
+                  π
+                  
+                    k
+                  
+                
+                
+                  δ
+                  
+                    
+                      μ
+                      
+                        k
+                      
+                    
+                  
+                
+                (
+                
+                  
+                    
+                      
+                        μ
+                        ~
+                      
+                    
+                  
+                  
+                    i
+                  
+                
+                )
+              
+            
+            
+              
+                (
+                
+                  π
+                
+                ∣
+                α
+                )
+              
+              
+                
+                ∼
+                Dir
+                ⁡
+                
+                  (
+                  
+                    
+                      
+                        α
+                        K
+                      
+                    
+                    ⋅
+                    
+                      
+                        1
+                      
+                      
+                        K
+                      
+                    
+                  
+                  )
+                
+              
+            
+            
+              
+                
+                  μ
+                  
+                    k
+                  
+                
+              
+              
+                
+                ∼
+                H
+                (
+                λ
+                )
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{aligned}(v_{i}\mid {\tilde {\mu }}_{i})&\sim N({\tilde {\mu }}_{i},\sigma ^{2})\\{\tilde {\mu }}_{i}&\sim G=\sum _{k=1}^{K}\pi _{k}\delta _{\mu _{k}}({\tilde {\mu }}_{i})\\({\boldsymbol {\pi }}\mid \alpha )&\sim \operatorname {Dir} \left({\frac {\alpha }{K}}\cdot \mathbf {1} _{K}\right)\\\mu _{k}&\sim H(\lambda )\end{aligned}}}
+  
+
+Instead of imagining that each data point is first assigned a cluster and then drawn from the distribution associated to that cluster we now think of each observation being associated with parameter 
+  
+    
+      
+        
+          
+            
+              
+                μ
+                ~
+              
+            
+          
+          
+            i
+          
+        
+      
+    
+    {\displaystyle {\tilde {\mu }}_{i}}
+  
+ drawn from some discrete distribution 
+  
+    
+      
+        G
+      
+    
+    {\displaystyle G}
+  
+ with support on the 
+  
+    
+      
+        K
+      
+    
+    {\displaystyle K}
+  
+ means. That is, we are now treating the 
+  
+    
+      
+        
+          
+            
+              
+                μ
+                ~
+              
+            
+          
+          
+            i
+          
+        
+      
+    
+    {\displaystyle {\tilde {\mu }}_{i}}
+  
+ as being drawn from the random distribution 
+  
+    
+      
+        G
+      
+    
+    {\displaystyle G}
+  
+ and our prior information is incorporated into the model by the distribution over distributions 
+  
+    
+      
+        G
+      
+    
+    {\displaystyle G}
+  
+.
+
+We would now like to extend this model to work without pre-specifying a fixed number of clusters 
+  
+    
+      
+        K
+      
+    
+    {\displaystyle K}
+  
+. Mathematically, this means we would like to select a random prior distribution 
+  
+    
+      
+        G
+        (
+        
+          
+            
+              
+                μ
+                ~
+              
+            
+          
+          
+            i
+          
+        
+        )
+        =
+        
+          ∑
+          
+            k
+            =
+            1
+          
+          
+            ∞
+          
+        
+        
+          π
+          
+            k
+          
+        
+        
+          δ
+          
+            
+              μ
+              
+                k
+              
+            
+          
+        
+        (
+        
+          
+            
+              
+                μ
+                ~
+              
+            
+          
+          
+            i
+          
+        
+        )
+      
+    
+    {\displaystyle G({\tilde {\mu }}_{i})=\sum _{k=1}^{\infty }\pi _{k}\delta _{\mu _{k}}({\tilde {\mu }}_{i})}
+  
+ where the values of the clusters means 
+  
+    
+      
+        
+          μ
+          
+            k
+          
+        
+      
+    
+    {\displaystyle \mu _{k}}
+  
+ are again independently distributed according to 
+  
+    
+      
+        H
+        
+          (
+          λ
+          )
+        
+      
+    
+    {\displaystyle H\left(\lambda \right)}
+  
+ and the distribution over 
+  
+    
+      
+        
+          π
+          
+            k
+          
+        
+      
+    
+    {\displaystyle \pi _{k}}
+  
+ is symmetric over the infinite set of clusters. This is exactly what is accomplished by the model:
+
+  
+    
+      
+        
+          
+            
+              
+                (
+                
+                  v
+                  
+                    i
+                  
+                
+                ∣
+                
+                  
+                    
+                      
+                        μ
+                        ~
+                      
+                    
+                  
+                  
+                    i
+                  
+                
+                )
+              
+              
+                
+                ∼
+                N
+                (
+                
+                  
+                    
+                      
+                        μ
+                        ~
+                      
+                    
+                  
+                  
+                    i
+                  
+                
+                ,
+                
+                  σ
+                  
+                    2
+                  
+                
+                )
+              
+            
+            
+              
+                
+                  
+                    
+                      
+                        μ
+                        ~
+                      
+                    
+                  
+                  
+                    i
+                  
+                
+              
+              
+                
+                ∼
+                G
+              
+            
+            
+              
+                G
+              
+              
+                
+                ∼
+                DP
+                ⁡
+                (
+                H
+                (
+                λ
+                )
+                ,
+                α
+                )
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{aligned}(v_{i}\mid {\tilde {\mu }}_{i})&\sim N({\tilde {\mu }}_{i},\sigma ^{2})\\{\tilde {\mu }}_{i}&\sim G\\G&\sim \operatorname {DP} (H(\lambda ),\alpha )\end{aligned}}}
+  
+
+With this in hand we can better understand the computational merits of the Dirichlet process. Suppose that we wanted to draw 
+  
+    
+      
+        n
+      
+    
+    {\displaystyle n}
+  
+ observations from the naive model with exactly 
+  
+    
+      
+        K
+      
+    
+    {\displaystyle K}
+  
+ clusters. A simple algorithm for doing this would be to draw 
+  
+    
+      
+        K
+      
+    
+    {\displaystyle K}
+  
+ values of 
+  
+    
+      
+        
+          μ
+          
+            k
+          
+        
+      
+    
+    {\displaystyle \mu _{k}}
+  
+ from 
+  
+    
+      
+        H
+        (
+        λ
+        )
+      
+    
+    {\displaystyle H(\lambda )}
+  
+, a distribution 
+  
+    
+      
+        π
+      
+    
+    {\displaystyle \pi }
+  
+ from 
+  
+    
+      
+        Dir
+        ⁡
+        
+          (
+          
+            α
+            
+              /
+            
+            K
+            ⋅
+            
+              
+                1
+              
+              
+                K
+              
+            
+          
+          )
+        
+      
+    
+    {\displaystyle \operatorname {Dir} \left(\alpha /K\cdot \mathbf {1} _{K}\right)}
+  
+ and then for each observation independently sample the cluster 
+  
+    
+      
+        k
+      
+    
+    {\displaystyle k}
+  
+ with probability 
+  
+    
+      
+        
+          π
+          
+            k
+          
+        
+      
+    
+    {\displaystyle \pi _{k}}
+  
+ and the value of the observation according to 
+  
+    
+      
+        N
+        
+          (
+          
+            
+              μ
+              
+                k
+              
+            
+            ,
+            
+              σ
+              
+                2
+              
+            
+          
+          )
+        
+      
+    
+    {\displaystyle N\left(\mu _{k},\sigma ^{2}\right)}
+  
+. It is easy to see that this algorithm does not work in case where we allow infinite clusters because this would require sampling an infinite dimensional parameter 
+  
+    
+      
+        
+          π
+        
+      
+    
+    {\displaystyle {\boldsymbol {\pi }}}
+  
+. However, it is still possible to sample observations 
+  
+    
+      
+        
+          v
+          
+            i
+          
+        
+      
+    
+    {\displaystyle v_{i}}
+  
+. One can e.g. use the Chinese restaurant representation described below and calculate the probability for used clusters and a new cluster to be created. This avoids having to explicitly specify 
+  
+    
+      
+        
+          π
+        
+      
+    
+    {\displaystyle {\boldsymbol {\pi }}}
+  
+. Other solutions are based on a truncation of clusters: A (high) upper bound to the true number of clusters is introduced and cluster numbers higher than the lower bound are treated as one cluster.
+Fitting the model described above based on observed data 
+  
+    
+      
+        D
+      
+    
+    {\displaystyle D}
+  
+ means finding the posterior distribution 
+  
+    
+      
+        p
+        
+          (
+          
+            
+              π
+            
+            ,
+            
+              μ
+            
+            ∣
+            D
+          
+          )
+        
+      
+    
+    {\displaystyle p\left({\boldsymbol {\pi }},{\boldsymbol {\mu }}\mid D\right)}
+  
+ over cluster probabilities and their associated means. In the infinite dimensional case it is obviously impossible to write down the posterior explicitly. It is, however, possible to draw samples from this posterior using a modified Gibbs sampler. This is the critical fact that makes the Dirichlet process prior useful for inference.
+
+
+== Applications of the Dirichlet process ==
+Dirichlet processes are frequently used in Bayesian nonparametric statistics. "Nonparametric" here does not mean a parameter-less model, rather a model in which representations grow as more data are observed. Bayesian nonparametric models have gained considerable popularity in the field of machine learning because of the above-mentioned flexibility, especially in unsupervised learning. In a Bayesian nonparametric model, the prior and posterior distributions are not parametric distributions, but stochastic processes. The fact that the Dirichlet distribution is a probability distribution on the simplex of sets of non-negative numbers that sum to one makes it a good candidate to model distributions over distributions or distributions over functions. Additionally, the nonparametric nature of this model makes it an ideal candidate for clustering problems where the distinct number of clusters is unknown beforehand. In addition, the Dirichlet process has also been used for developing a mixture of expert models, in the context of supervised learning algorithms (regression or classification settings). For instance, mixtures of Gaussian process experts, where the number of required experts must be inferred from the data.
+As draws from a Dirichlet process are discrete, an important use is as a prior probability in infinite mixture models. In this case, 
+  
+    
+      
+        S
+      
+    
+    {\displaystyle S}
+  
+ is the parametric set of component distributions. The generative process is therefore that a sample is drawn from a Dirichlet process, and for each data point, in turn, a value is drawn from this sample distribution and used as the component distribution for that data point. The fact that there is no limit to the number of distinct components which may be generated makes this kind of model appropriate for the case when the number of mixture components is not well-defined in advance. For example, the infinite mixture of Gaussians model, as well as associated mixture regression models, e.g.
+The infinite nature of these models also lends them to natural language processing applications, where it is often desirable to treat the vocabulary as an infinite, discrete set.
+The Dirichlet Process can also be used for nonparametric hypothesis testing, i.e. to develop Bayesian nonparametric versions of the classical nonparametric hypothesis tests, e.g. sign test, Wilcoxon rank-sum test, Wilcoxon signed-rank test, etc.
+For instance, Bayesian nonparametric versions of the Wilcoxon rank-sum test and the Wilcoxon signed-rank test have been developed by using the imprecise Dirichlet process, a prior ignorance Dirichlet process. 
+
+
+== Related distributions ==
+The Pitman–Yor process is a generalization of the Dirichlet process to accommodate power-law tails
+The hierarchical Dirichlet process extends the ordinary Dirichlet process for modelling grouped data.
+
+
+== References ==
+
+
+== External links ==
+Introduction to the Dirichlet Distribution and Related Processes by Frigyik, Kapila and Gupta
+Yee Whye Teh's overview of Dirichlet processes
+Webpage for the NIPS 2003 workshop on non-parametric Bayesian methods
+Michael Jordan's NIPS 2005 tutorial: Nonparametric Bayesian Methods: Dirichlet Processes, Chinese Restaurant Processes and All That
+Peter Green's summary of construction of Dirichlet Processes
+Peter Green's paper on probabilistic models of Dirichlet Processes with implications for statistical modelling and analysis
+Zoubin Ghahramani's UAI 2005 tutorial on Nonparametric Bayesian methods
+GIMM software for performing cluster analysis using Infinite Mixture Models
+A Toy Example of Clustering using Dirichlet Process. by Zhiyuan Weng

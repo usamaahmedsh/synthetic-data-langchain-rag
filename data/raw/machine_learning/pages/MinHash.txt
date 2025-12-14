@@ -1,0 +1,747 @@
+In computer science and data mining, MinHash (or the min-wise independent permutations locality sensitive hashing scheme) is a technique for quickly estimating how similar two sets are. The scheme was published by Andrei Broder in a 1997 conference, and initially used in the AltaVista search engine to detect duplicate web pages and eliminate them from search results. It has also been applied in large-scale clustering problems, such as clustering documents by the similarity of their sets of words.
+
+
+== Jaccard similarity and minimum hash values ==
+The Jaccard similarity coefficient is a commonly used indicator of the similarity between two sets. Let U be a set and A and B be subsets of U, then the Jaccard index is defined to be the ratio of the number of elements of their intersection and the number of elements of their union:
+
+  
+    
+      
+        J
+        (
+        A
+        ,
+        B
+        )
+        =
+        
+          
+            
+              
+                |
+              
+              A
+              ∩
+              B
+              
+                |
+              
+            
+            
+              
+                |
+              
+              A
+              ∪
+              B
+              
+                |
+              
+            
+          
+        
+        .
+      
+    
+    {\displaystyle J(A,B)={{|A\cap B|} \over {|A\cup B|}}.}
+  
+
+This value is 0 when the two sets are disjoint, 1 when they are equal, and strictly between 0 and 1 otherwise. Two sets are more similar (i.e. have relatively more members in common) when their Jaccard index is closer to 1. The goal of MinHash is to estimate J(A,B) quickly, without explicitly computing the intersection and union.
+Let h be a hash function that maps the members of U to distinct integers, let perm be a random permutation of the elements of the set U, and for any subset S of U define hmin(S) to be the minimal member of S with respect to h ∘ perm—that is, the member x of S with the minimum value of h(perm(x)).  (In cases where the hash function used is assumed to have pseudo-random properties, the random permutation would not be used.)
+Now, applying hmin to both A and B, and assuming no hash collisions, we see that the values are equal (hmin(A) = hmin(B)) if and only if among all elements of 
+  
+    
+      
+        A
+        ∪
+        B
+      
+    
+    {\displaystyle A\cup B}
+  
+, the element with the minimum hash value lies in the intersection 
+  
+    
+      
+        A
+        ∩
+        B
+      
+    
+    {\displaystyle A\cap B}
+  
+.  The probability of this being true is exactly the Jaccard index, therefore:
+
+  
+    
+      
+        
+          Pr
+        
+        [
+        
+          h
+          
+            min
+          
+        
+        (
+        A
+        )
+        =
+        
+          h
+          
+            min
+          
+        
+        (
+        B
+        )
+        ]
+        =
+        J
+        (
+        A
+        ,
+        B
+        )
+        ,
+      
+    
+    {\displaystyle {\text{Pr}}[h_{\text{min}}(A)=h_{\text{min}}(B)]=J(A,B),}
+  
+
+That is, the probability that hmin(A) = hmin(B) is true is equal to the similarity J(A,B), assuming drawing perm from a uniform distribution. In other words, if r is the random variable that is one when hmin(A) = hmin(B) and zero otherwise, then r is an unbiased estimator of J(A,B). r has too high a variance to be a useful estimator for the Jaccard similarity on its own, because 
+  
+    
+      
+        r
+      
+    
+    {\displaystyle r}
+  
+ is always zero or one. The idea of the MinHash scheme is to reduce this variance by averaging together several variables constructed in the same way.
+
+
+== Algorithm ==
+
+
+=== Variant with many hash functions ===
+The simplest version of the minhash scheme uses k different hash functions, where k is a fixed integer parameter, and represents each set S by the k values of hmin(S) for these k functions.
+To estimate J(A,B) using this version of the scheme, let y be the number of hash functions for which hmin(A) = hmin(B), and use y/k as the estimate. This estimate is the average of k different 0-1 random variables, each of which is one when hmin(A) = hmin(B) and zero otherwise, and each of which is an unbiased estimator of  J(A,B). Therefore, their average is also an unbiased estimator, and by standard deviation for sums of 0-1 random variables, its expected error is O(1/√k).
+Therefore, for any constant ε > 0 there is a constant k = O(1/ε2) such that the expected error of the estimate is at most ε.  For example, 400 hashes would be required to estimate J(A,B) with an expected error less than or equal to .05.
+
+
+=== Variant with a single hash function ===
+It may be computationally expensive to compute multiple hash functions, but a related version of MinHash scheme avoids this penalty by using only a single hash function and uses it to select multiple values from each set rather than selecting only a single minimum value per hash function. Let h be a hash function, and let k be a fixed integer. If S is any set of k or more values in the domain of h,
+define h(k)(S) to be the subset of the k members of S that have the smallest values of h. This subset h(k)(S) is used as a signature for the set S, and the similarity of any two sets is estimated by comparing their signatures.
+Specifically, let A and B be any two sets.
+Then X = h(k)(h(k)(A) ∪ h(k)(B)) = h(k)(A ∪ B) is a set of k elements of A ∪ B, and if h is a random function then any subset of k elements is equally likely to be chosen; that is, X is a simple random sample of A ∪ B. The subset Y = X ∩ h(k)(A) ∩ h(k)(B) is the set of members of X that belong to the intersection A ∩ B. Therefore, |Y|/k is an unbiased estimator of J(A,B). The difference between this estimator and the estimator produced by multiple hash functions is that X always has exactly k members, whereas the multiple hash functions may lead to a smaller number of sampled elements due to the possibility that two different hash functions may have the same minima. However, when k is small relative to the sizes of the sets, this difference is negligible.
+By standard Chernoff bounds for sampling without replacement, this estimator has expected error O(1/√k), matching the performance of the multiple-hash-function scheme.
+
+
+=== Time analysis ===
+The estimator |Y|/k can be computed in time O(k) from the two signatures of the given sets, in either variant of the scheme. Therefore, when ε and k are constants, the time to compute the estimated similarity from the signatures is also constant. The signature of each set can be computed in linear time on the size of the set, so when many pairwise similarities need to be estimated this method can lead to a substantial savings in running time compared to doing a full comparison of the members of each set.  Specifically, for set size n the many hash variant takes O(n k) time.  The single hash variant is generally faster, requiring O(n) time to maintain the queue of minimum hash values assuming n >> k.
+
+
+== Incorporating weights ==
+A variety of techniques to introduce weights into the computation of MinHashes have been developed. The simplest extends it to integer weights.
+Extend our hash function h to accept both a set member and an integer, then generate multiple hashes for each item, according to its weight. If item i occurs n times, generate hashes 
+  
+    
+      
+        h
+        (
+        i
+        ,
+        1
+        )
+        ,
+        h
+        (
+        i
+        ,
+        2
+        )
+        ,
+        …
+        ,
+        h
+        (
+        i
+        ,
+        n
+        )
+      
+    
+    {\displaystyle h(i,1),h(i,2),\ldots ,h(i,n)}
+  
+. Run the original algorithm on this expanded set of hashes. Doing so yields the weighted Jaccard Index as the collision probability.
+
+  
+    
+      
+        
+          J
+          
+            
+              W
+            
+          
+        
+        (
+        x
+        ,
+        y
+        )
+        =
+        
+          
+            
+              
+                ∑
+                
+                  i
+                
+              
+              min
+              (
+              
+                x
+                
+                  i
+                
+              
+              ,
+              
+                y
+                
+                  i
+                
+              
+              )
+            
+            
+              
+                ∑
+                
+                  i
+                
+              
+              max
+              (
+              
+                x
+                
+                  i
+                
+              
+              ,
+              
+                y
+                
+                  i
+                
+              
+              )
+            
+          
+        
+      
+    
+    {\displaystyle J_{\mathcal {W}}(x,y)={\frac {\sum _{i}\min(x_{i},y_{i})}{\sum _{i}\max(x_{i},y_{i})}}}
+  
+
+Further extensions that achieve this collision probability on real weights with better runtime have been developed, one for dense data, and another for sparse data.
+Another family of extensions use exponentially distributed hashes. A uniformly random hash between 0 and 1 can be converted to follow an exponential distribution by CDF inversion. This method exploits the many beautiful properties of the minimum of a set of exponential variables.
+
+  
+    
+      
+        H
+        (
+        x
+        )
+        =
+        
+          
+            
+              a
+              r
+              g
+              
+              m
+              i
+              n
+            
+            i
+          
+        
+        
+          
+            
+              −
+              log
+              ⁡
+              (
+              h
+              (
+              i
+              )
+              )
+            
+            
+              x
+              
+                i
+              
+            
+          
+        
+      
+    
+    {\displaystyle H(x)={\underset {i}{\operatorname {arg\,min} }}{\frac {-\log(h(i))}{x_{i}}}}
+  
+
+This yields as its collision probability the probability Jaccard index
+
+  
+    
+      
+        
+          J
+          
+            
+              P
+            
+          
+        
+        (
+        x
+        ,
+        y
+        )
+        =
+        
+          ∑
+          
+            
+              
+                
+                  x
+                  
+                    i
+                  
+                
+                ≠
+                0
+              
+              
+                
+                  y
+                  
+                    i
+                  
+                
+                ≠
+                0
+              
+            
+          
+        
+        
+          
+            1
+            
+              
+                ∑
+                
+                  j
+                
+              
+              max
+              
+                (
+                
+                  
+                    
+                      
+                        x
+                        
+                          j
+                        
+                      
+                      
+                        x
+                        
+                          i
+                        
+                      
+                    
+                  
+                  ,
+                  
+                    
+                      
+                        y
+                        
+                          j
+                        
+                      
+                      
+                        y
+                        
+                          i
+                        
+                      
+                    
+                  
+                
+                )
+              
+            
+          
+        
+      
+    
+    {\displaystyle J_{\mathcal {P}}(x,y)=\sum _{x_{i}\neq 0 \atop y_{i}\neq 0}{\frac {1}{\sum _{j}\max \left({\frac {x_{j}}{x_{i}}},{\frac {y_{j}}{y_{i}}}\right)}}}
+  
+
+
+== Min-wise independent permutations ==
+In order to implement the MinHash scheme as described above, one needs the hash function h to define a random permutation on n elements, where n is the total number of distinct elements in the union of all of the sets to be compared. But because there are n! different permutations, it would require Ω(n log n) bits just to specify a truly random permutation, an infeasibly large number for even moderate values of n. Because of this fact, by analogy to the theory of universal hashing, there has been significant work on finding a family of permutations that is "min-wise independent", meaning that for any subset of the domain, any element is equally likely to be the minimum. It has been established that a min-wise independent family of permutations must include at least
+
+  
+    
+      
+        lcm
+        ⁡
+        (
+        1
+        ,
+        2
+        ,
+        ⋯
+        ,
+        n
+        )
+        ≥
+        
+          e
+          
+            n
+            −
+            o
+            (
+            n
+            )
+          
+        
+      
+    
+    {\displaystyle \operatorname {lcm} (1,2,\cdots ,n)\geq e^{n-o(n)}}
+  
+
+different permutations, and therefore that it needs Ω(n) bits to specify a single permutation, still infeasibly large.
+
+
+=== Practical min-wise independent hash functions ===
+Because of the above impracticality, two variant notions of min-wise independence have been introduced: restricted min-wise independent permutations families, and approximate min-wise independent families.
+Restricted min-wise independence is the min-wise independence property restricted to certain sets of cardinality at most k.
+Approximate min-wise independence has at most a fixed probability ε of varying from full independence.
+In 1999 Piotr Indyk proved that any k-wise independent family of hash functions is also approximately min-wise independent for 
+  
+    
+      
+        k
+      
+    
+    {\displaystyle k}
+  
+ large enough.
+In particular, there are constants 
+  
+    
+      
+        c
+        ,
+        
+          c
+          ′
+        
+        >
+        0
+      
+    
+    {\displaystyle c,c'>0}
+  
+ such that if 
+  
+    
+      
+        k
+        ≥
+        c
+        log
+        ⁡
+        
+          
+            
+              1
+              ϵ
+            
+          
+        
+      
+    
+    {\displaystyle k\geq c\log {\tfrac {1}{\epsilon }}}
+  
+, then
+
+  
+    
+      
+        
+          Pr
+          
+            h
+            ∈
+            
+              
+                H
+              
+            
+          
+        
+        [
+        h
+        (
+        x
+        )
+        <
+        min
+        h
+        (
+        X
+        )
+        ]
+        =
+        
+          
+            1
+            
+              
+                |
+              
+              X
+              
+                |
+              
+              +
+              1
+            
+          
+        
+        (
+        1
+        ±
+        ϵ
+        )
+        ,
+      
+    
+    {\displaystyle \Pr _{h\in {\mathcal {H}}}[h(x)<\min h(X)]={\frac {1}{|X|+1}}(1\pm \epsilon ),}
+  
+
+for all sets 
+  
+    
+      
+        
+          |
+        
+        X
+        
+          |
+        
+        ≤
+        ϵ
+        n
+        
+          c
+          ′
+        
+      
+    
+    {\displaystyle |X|\leq \epsilon nc'}
+  
+ and 
+  
+    
+      
+        x
+        ∉
+        X
+      
+    
+    {\displaystyle x\not \in X}
+  
+.
+(Note, here 
+  
+    
+      
+        (
+        1
+        ±
+        ϵ
+        )
+      
+    
+    {\displaystyle (1\pm \epsilon )}
+  
+ means the probability is at most a factor 
+  
+    
+      
+        1
+        +
+        ϵ
+      
+    
+    {\displaystyle 1+\epsilon }
+  
+ too big, and at most 
+  
+    
+      
+        1
+        −
+        ϵ
+      
+    
+    {\displaystyle 1-\epsilon }
+  
+ too small.)
+This guarantee is, among other things, sufficient to give the Jaccard bound required by the MinHash algorithm.
+That is, if 
+  
+    
+      
+        A
+      
+    
+    {\displaystyle A}
+  
+ and 
+  
+    
+      
+        B
+      
+    
+    {\displaystyle B}
+  
+ are sets, then
+
+  
+    
+      
+        
+          Pr
+          
+            h
+            ∈
+            
+              
+                H
+              
+            
+          
+        
+        [
+        min
+        h
+        (
+        A
+        )
+        =
+        min
+        h
+        (
+        B
+        )
+        ]
+        =
+        
+          
+            
+              
+                |
+              
+              A
+              ∩
+              B
+              
+                |
+              
+            
+            
+              
+                |
+              
+              A
+              ∪
+              B
+              
+                |
+              
+            
+          
+        
+        ±
+        ϵ
+        .
+      
+    
+    {\displaystyle \Pr _{h\in {\mathcal {H}}}[\min h(A)=\min h(B)]={\frac {|A\cap B|}{|A\cup B|}}\pm \epsilon .}
+  
+
+Since k-wise independent hash functions can be specified using just 
+  
+    
+      
+        k
+        log
+        ⁡
+        n
+      
+    
+    {\displaystyle k\log n}
+  
+ bits, this approach is much more practical than using completely min-wise independent permutations.
+Another practical family of hash functions that give approximate min-wise independence is Tabulation hashing.
+
+
+== Applications ==
+The original applications for MinHash involved clustering and eliminating near-duplicates among web documents, represented as sets of the words occurring in those documents. Similar techniques have also been used for clustering and near-duplicate elimination for other types of data, such as images: in the case of image data, an image can be represented as a set of smaller subimages cropped from it, or as sets of more complex image feature descriptions.
+In data mining, Cohen et al. (2001) use MinHash as a tool for association rule learning. Given a database in which each entry has multiple attributes (viewed as a 0–1 matrix with a row per database entry and a column per attribute) they use MinHash-based approximations to the Jaccard index to identify candidate pairs of attributes that frequently co-occur, and then compute the exact value of the index for only those pairs to determine the ones whose frequencies of co-occurrence are below a given strict threshold.
+The MinHash algorithm has been adapted for bioinformatics, where the problem of comparing genome sequences has a similar theoretical underpinning to that of comparing documents on the web. MinHash-based tools  allow rapid comparison of whole genome sequencing data with reference genomes (around 3 minutes to compare one genome with the 90000 reference genomes in RefSeq), and are suitable for speciation and maybe a limited degree of microbial sub-typing. There are also applications for metagenomics  and the use of MinHash derived algorithms for genome alignment and genome assembly. Accurate average nucleotide identity (ANI) values can be generated very efficiently with MinHash-based algorithms.
+
+
+== Other uses ==
+The MinHash scheme may be seen as an instance of locality-sensitive hashing, a collection of techniques for using hash functions to map large sets of objects down to smaller hash values in such a way that, when two objects have a small distance from each other, their hash values are likely to be the same. In this instance, the signature of a set may be seen as its hash value. Other locality sensitive hashing techniques exist for Hamming distance between sets and cosine distance between vectors; locality sensitive hashing has important applications in nearest neighbor search algorithms. For large distributed systems, and in particular MapReduce, there exist modified versions of MinHash to help compute similarities with no dependence on the point dimension.
+
+
+== Evaluation and benchmarks ==
+A large scale evaluation was conducted by Google in 2006   to compare the performance of Minhash and SimHash algorithms. In 2007 Google reported using Simhash for duplicate detection for web crawling and using Minhash and LSH for Google News personalization.
+
+
+== See also ==
+Bloom filter – Data structure for approximate set membership
+Count–min sketch – Probabilistic data structure in computer science
+w-shingling
+
+
+== References ==

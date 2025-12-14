@@ -1,0 +1,870 @@
+Although all RAID implementations differ from the specification to some extent, some companies and open-source projects have developed non-standard RAID implementations that differ substantially from the standard. Additionally, there are non-RAID drive architectures, providing configurations of multiple hard drives not referred to by RAID acronyms.
+
+
+== RAID-DP ==
+Row diagonal parity (RDP) is a scheme where one dedicated disk of parity is in a horizontal "row" like in RAID 4, but the other dedicated parity is calculated from blocks permuted ("diagonal") like in RAID 5. The parity themselves can be laid out on fully dedicated disks (like double RAID 4) or in a distributed way (like in RAID 5).
+RDP is invented by NetApp, which also uses it in an unusual system of parity storage called RAID-DP (RAID Double Parity). The "row" parity is stored on a dedicated disk like in RAID 4, but the "diagonal" parity is stored on a distributed way like in RAID 5. The technique can be considered RAID 6 in the broad SNIA definition and has the same failure characteristics as RAID 6.
+RDP is very CPU-efficient compared to earlier schemes (Reed-Solomon with or without Anvin's optimization, EVENODD). The performance penalty of RAID-DP is typically under 2% when compared to a similar RAID 4 configuration.
+
+
+== RAID 7, RAID N+M ==
+RAID 7.m has been used to describe an erasure coding system with m extra drives and able to tolerate the loss of m drives. In this scheme, RAID 5 would be RAID 7.1 and RAID 6 would be RAID 7.2. Alternatively, RAID N+M refers to N regular data drives with M redundancy drives, being able to recover all the data when any M drives fail.
+
+
+=== General parity system ===
+It is possible to support a far greater number of drives by choosing the parity function more carefully. The issue we face is to ensure that a system of equations over the finite field 
+  
+    
+      
+        
+          
+            Z
+          
+          
+            2
+          
+        
+      
+    
+    {\displaystyle \mathbb {Z} _{2}}
+  
+ has a unique solution. To do this, we can use the theory of polynomial equations over finite fields.
+Consider the Galois field 
+  
+    
+      
+        G
+        F
+        (
+        m
+        )
+      
+    
+    {\displaystyle GF(m)}
+  
+ with 
+  
+    
+      
+        m
+        =
+        
+          2
+          
+            k
+          
+        
+      
+    
+    {\displaystyle m=2^{k}}
+  
+. This field is isomorphic to a polynomial field 
+  
+    
+      
+        
+          F
+          
+            2
+          
+        
+        [
+        x
+        ]
+        
+          /
+        
+        (
+        p
+        (
+        x
+        )
+        )
+      
+    
+    {\displaystyle F_{2}[x]/(p(x))}
+  
+ for a suitable irreducible polynomial  
+  
+    
+      
+        p
+        (
+        x
+        )
+      
+    
+    {\displaystyle p(x)}
+  
+ of degree 
+  
+    
+      
+        k
+      
+    
+    {\displaystyle k}
+  
+ over 
+  
+    
+      
+        
+          
+            Z
+          
+          
+            2
+          
+        
+      
+    
+    {\displaystyle \mathbb {Z} _{2}}
+  
+. We will represent the data elements 
+  
+    
+      
+        D
+      
+    
+    {\displaystyle D}
+  
+ as polynomials 
+  
+    
+      
+        
+          D
+        
+        =
+        
+          d
+          
+            k
+            −
+            1
+          
+        
+        
+          x
+          
+            k
+            −
+            1
+          
+        
+        +
+        
+          d
+          
+            k
+            −
+            2
+          
+        
+        
+          x
+          
+            k
+            −
+            2
+          
+        
+        +
+        .
+        .
+        .
+        +
+        
+          d
+          
+            1
+          
+        
+        x
+        +
+        
+          d
+          
+            0
+          
+        
+      
+    
+    {\displaystyle \mathbf {D} =d_{k-1}x^{k-1}+d_{k-2}x^{k-2}+...+d_{1}x+d_{0}}
+  
+ in the Galois field. Let 
+  
+    
+      
+        
+          
+            D
+          
+          
+            0
+          
+        
+        ,
+        .
+        .
+        .
+        ,
+        
+          
+            D
+          
+          
+            n
+            −
+            1
+          
+        
+        ∈
+        G
+        F
+        (
+        m
+        )
+      
+    
+    {\displaystyle \mathbf {D} _{0},...,\mathbf {D} _{n-1}\in GF(m)}
+  
+ correspond to the stripes of data across hard drives encoded as field elements in this manner. We will use 
+  
+    
+      
+        ⊕
+      
+    
+    {\displaystyle \oplus }
+  
+ to denote addition in the field, and concatenation to denote multiplication. The reuse of 
+  
+    
+      
+        ⊕
+      
+    
+    {\displaystyle \oplus }
+  
+ is intentional: this is because addition in the finite field 
+  
+    
+      
+        
+          
+            Z
+          
+          
+            2
+          
+        
+      
+    
+    {\displaystyle \mathbb {Z} _{2}}
+  
+ represents to the XOR operator, so computing the sum of two elements is equivalent to computing XOR on the polynomial coefficients.
+A generator of a field is an element of the field such that 
+  
+    
+      
+        
+          g
+          
+            i
+          
+        
+      
+    
+    {\displaystyle g^{i}}
+  
+ is different for each non-negative 
+  
+    
+      
+        i
+        <
+        m
+        −
+        1
+      
+    
+    {\displaystyle i<m-1}
+  
+. This means each element of the field, except the value 
+  
+    
+      
+        0
+      
+    
+    {\displaystyle 0}
+  
+, can be written as a power of 
+  
+    
+      
+        g
+        .
+      
+    
+    {\displaystyle g.}
+  
+ A finite field is guaranteed to have at least one generator. Pick one such generator 
+  
+    
+      
+        g
+      
+    
+    {\displaystyle g}
+  
+, and define 
+  
+    
+      
+        
+          P
+        
+      
+    
+    {\displaystyle \mathbf {P} }
+  
+ and 
+  
+    
+      
+        
+          Q
+        
+      
+    
+    {\displaystyle \mathbf {Q} }
+  
+ as follows:
+
+As before, the first checksum 
+  
+    
+      
+        
+          P
+        
+      
+    
+    {\displaystyle \mathbf {P} }
+  
+ is just the XOR of each stripe, though interpreted now as a polynomial. The effect of 
+  
+    
+      
+        
+          g
+          
+            i
+          
+        
+      
+    
+    {\displaystyle g^{i}}
+  
+ can be thought of as the action of a carefully chosen linear feedback shift register on the data chunk.  Unlike the bit shift in the simplified example, which could only be applied 
+  
+    
+      
+        k
+      
+    
+    {\displaystyle k}
+  
+ times before the encoding began to repeat, applying the operator 
+  
+    
+      
+        g
+      
+    
+    {\displaystyle g}
+  
+ multiple times is guaranteed to produce 
+  
+    
+      
+        m
+        =
+        
+          2
+          
+            k
+          
+        
+        −
+        1
+      
+    
+    {\displaystyle m=2^{k}-1}
+  
+ unique invertible functions, which will allow a chunk length of  
+  
+    
+      
+        k
+      
+    
+    {\displaystyle k}
+  
+ to support up to 
+  
+    
+      
+        
+          2
+          
+            k
+          
+        
+        −
+        1
+      
+    
+    {\displaystyle 2^{k}-1}
+  
+ data pieces.
+If one data chunk is lost, the situation is similar to the one before. In the case of two lost data chunks, we can compute the recovery formulas algebraically. Suppose that 
+  
+    
+      
+        
+          
+            D
+          
+          
+            i
+          
+        
+      
+    
+    {\displaystyle \mathbf {D} _{i}}
+  
+ and 
+  
+    
+      
+        
+          
+            D
+          
+          
+            j
+          
+        
+      
+    
+    {\displaystyle \mathbf {D} _{j}}
+  
+ are the lost values with 
+  
+    
+      
+        i
+        ≠
+        j
+      
+    
+    {\displaystyle i\neq j}
+  
+, then, using the other values of 
+  
+    
+      
+        D
+      
+    
+    {\displaystyle D}
+  
+, we find constants 
+  
+    
+      
+        A
+      
+    
+    {\displaystyle A}
+  
+ and 
+  
+    
+      
+        B
+      
+    
+    {\displaystyle B}
+  
+:
+
+We can solve for 
+  
+    
+      
+        
+          D
+          
+            i
+          
+        
+      
+    
+    {\displaystyle D_{i}}
+  
+ in the second equation and plug it into the first to find  
+  
+    
+      
+        
+          D
+          
+            j
+          
+        
+        =
+        (
+        
+          g
+          
+            m
+            −
+            i
+            +
+            j
+          
+        
+        ⊕
+        1
+        
+          )
+          
+            −
+            1
+          
+        
+        (
+        
+          g
+          
+            m
+            −
+            i
+          
+        
+        B
+        ⊕
+        A
+        )
+      
+    
+    {\displaystyle D_{j}=(g^{m-i+j}\oplus 1)^{-1}(g^{m-i}B\oplus A)}
+  
+,  and then 
+  
+    
+      
+        
+          D
+          
+            i
+          
+        
+        =
+        A
+        ⊕
+        
+          D
+          
+            j
+          
+        
+      
+    
+    {\displaystyle D_{i}=A\oplus D_{j}}
+  
+.
+Unlike P, The computation of Q is relatively CPU intensive, as it involves polynomial multiplication in 
+  
+    
+      
+        
+          F
+          
+            2
+          
+        
+        [
+        x
+        ]
+        
+          /
+        
+        (
+        p
+        (
+        x
+        )
+        )
+      
+    
+    {\displaystyle F_{2}[x]/(p(x))}
+  
+. This can be mitigated through a hardware implementation (ASIC or FPGA).
+Alternatively, a cleaver choice of polynomials by Anvin allow fast calculation on CPUs: 
+  
+    
+      
+        k
+        =
+        8
+      
+    
+    {\displaystyle k=8}
+  
+, 
+  
+    
+      
+        
+          Q
+        
+        =
+        
+          ⨁
+          
+            i
+          
+        
+        
+          
+            2
+            
+              i
+            
+          
+          
+            
+              D
+            
+            
+              i
+            
+          
+        
+        .
+      
+    
+    {\textstyle \mathbf {Q} =\bigoplus _{i}{2^{i}\mathbf {D} _{i}}.}
+  
+ This construction allows for  efficient implementation using only addition and multiplication by two in GF(28) and opens the possibility of using SSSE3, AVX2, or other SIMD methods to implement efficiently. Similarly, one could define 
+  
+    
+      
+        
+          R
+        
+        =
+        
+          ⨁
+          
+            i
+          
+        
+        
+          
+            2
+            
+              −
+            
+          
+          i
+          
+            
+              D
+            
+            
+              i
+            
+          
+        
+      
+    
+    {\textstyle \mathbf {R} =\bigoplus _{i}{2^{-}i\mathbf {D} _{i}}}
+  
+ or 
+  
+    
+      
+        
+          R
+        
+        =
+        
+          ⨁
+          
+            i
+          
+        
+        
+          
+            4
+            
+              i
+            
+          
+          
+            
+              D
+            
+            
+              i
+            
+          
+        
+      
+    
+    {\textstyle \mathbf {R} =\bigoplus _{i}{4^{i}\mathbf {D} _{i}}}
+  
+.
+Unfortunately Anvin's Vandermonde matrix solutions only work up to triple parity; for beyond, a Cauchy matrix construction is required. SSSE3, AVX2, and other SIMD methods remain applicable.
+
+
+== RAID 5E, RAID 5EE, and RAID 6E ==
+RAID 5E, RAID 5EE, and RAID 6E (with the added E standing for Enhanced) generally refer to variants of RAID 5 or 6 with an integrated hot-spare drive, where the spare drive is an active part of the block rotation scheme. This spreads I/O across all drives, including the spare, thus reducing the load on each drive, increasing performance. It does, however, prevent sharing the spare drive among multiple arrays, which is occasionally desirable.
+
+
+== Intel Matrix RAID ==
+
+Intel Matrix RAID (a feature of Intel Rapid Storage Technology) is a feature (not a RAID level) present in the ICH6R and subsequent Southbridge chipsets from Intel, accessible and configurable via the RAID BIOS setup utility. Matrix RAID supports as few as two physical disks or as many as the controller supports. The distinguishing feature of Matrix RAID is that it allows any assortment of RAID 0, 1, 5, or 10 volumes in the array, to which a controllable (and identical) portion of each disk is allocated.
+As such, a Matrix RAID array can improve both performance and data integrity. A practical instance of this would use a small RAID 0 (stripe) volume for the operating system, program, and paging files; second larger RAID 1 (mirror) volume would store critical data. Linux MD RAID is also capable of this.
+
+
+== Linux MD RAID 10 ==
+The software RAID subsystem provided by the Linux kernel, called md, supports the creation of both classic (nested) RAID 1+0 arrays, and non-standard RAID arrays that use a single-level RAID layout with some additional features.
+The standard "near" layout, in which each chunk is repeated n times in a k-way stripe array, is equivalent to the standard RAID 10 arrangement, but it does not require that n evenly divides k. For example, an n2 layout on two, three, and four drives would look like:
+
+2 drives        3 drives          4 drives
+--------        ----------        --------------
+A1  A1          A1  A1  A2        A1  A1  A2  A2
+A2  A2          A2  A3  A3        A3  A3  A4  A4
+A3  A3          A4  A4  A5        A5  A5  A6  A6
+A4  A4          A5  A6  A6        A7  A7  A8  A8
+..  ..          ..  ..  ..        ..  ..  ..  ..
+
+The four-drive example is identical to a standard RAID 1+0 array, while the three-drive example is a software implementation of RAID 1E. The two-drive example is equivalent to RAID 1.
+The driver also supports a "far" layout, in which all the drives are divided into f sections. All the chunks are repeated in each section but are switched in groups (for example, in pairs). For example, f2 layouts on two-, three-, and four-drive arrays would look like this:
+
+2 drives        3 drives          4 drives
+--------        ------------      ------------------
+A1  A2          A1   A2   A3      A1   A2   A3   A4
+A3  A4          A4   A5   A6      A5   A6   A7   A8
+A5  A6          A7   A8   A9      A9   A10  A11  A12
+..  ..          ..   ..   ..      ..   ..   ..   ..
+A2  A1          A3   A1   A2      A2   A1   A4   A3
+A4  A3          A6   A4   A5      A6   A5   A8   A7
+A6  A5          A9   A7   A8      A10  A9   A12  A11
+..  ..          ..   ..   ..      ..   ..   ..   ..
+
+"Far" layout is designed for offering striping performance on a mirrored array; sequential reads can be striped, as in RAID 0 configurations. Random reads are somewhat faster, while sequential and random writes offer about equal speed to other mirrored RAID configurations. "Far" layout performs well for systems in which reads are more frequent than writes, which is a common case. For a comparison, regular RAID 1 as provided by Linux software RAID, does not stripe reads, but can perform reads in parallel.
+The md driver also supports an "offset" layout, in which each stripe is repeated o times and offset by f (far) devices. For example, o2 layouts on two-, three-, and four-drive arrays are laid out as:
+
+2 drives        3 drives          4 drives
+--------        ----------        ---------------
+A1  A2          A1  A2  A3        A1  A2  A3  A4
+A2  A1          A3  A1  A2        A4  A1  A2  A3
+A3  A4          A4  A5  A6        A5  A6  A7  A8
+A4  A3          A6  A4  A5        A8  A5  A6  A7
+A5  A6          A7  A8  A9        A9  A10 A11 A12
+A6  A5          A9  A7  A8        A12 A9  A10 A11
+..  ..          ..  ..  ..        ..  ..  ..  ..
+
+It is also possible to combine "near" and "offset" layouts (but not "far" and "offset").
+In the examples above, k is the number of drives, while n#, f#, and o# are given as parameters to mdadm's --layout option. Linux software RAID (Linux kernel's md driver) also supports creation of standard RAID 0, 1, 4, 5, and 6 configurations.
+
+
+== RAID 1E ==
+
+Some RAID 1 implementations treat arrays with more than two disks differently, creating a non-standard RAID level known as RAID 1E. In this layout, data striping is combined with mirroring, by mirroring each written stripe to one of the remaining disks in the array. Usable capacity of a RAID 1E array is 50% of the total capacity of all drives forming the array; if drives of different sizes are used, only the portions equal to the size of smallest member are utilized on each drive.
+One of the benefits of RAID 1E over usual RAID 1 mirrored pairs is that the performance of random read operations remains above the performance of a single drive even in a degraded array.
+
+
+== RAID-Z ==
+
+The ZFS filesystem provides RAID-Z, a data/parity distribution scheme similar to RAID 5, but using dynamic stripe width: every block is its own RAID stripe, regardless of blocksize, resulting in every RAID-Z write being a full-stripe write. This, when combined with the copy-on-write transactional semantics of ZFS, eliminates the write hole error. RAID-Z is also faster than traditional RAID 5 because it does not need to perform the usual read–modify–write sequence. RAID-Z does not require any special hardware, such as NVRAM for reliability, or write buffering for performance.
+Given the dynamic nature of RAID-Z's stripe width, RAID-Z reconstruction must traverse the filesystem metadata to determine the actual RAID-Z geometry. This would be impossible if the filesystem and the RAID array were separate products, whereas it becomes feasible when there is an integrated view of the logical and physical structure of the data. Going through the metadata means that ZFS can validate every block against its 256-bit checksum as it goes, whereas traditional RAID products usually cannot do this.
+In addition to handling whole-disk failures, RAID-Z can also detect and correct silent data corruption, offering "self-healing data": when reading a RAID-Z block, ZFS compares it against its checksum, and if the data disks did not return the right answer, ZFS reads the parity and then figures out which disk returned bad data. Then, it repairs the damaged data and returns good data to the requestor.
+There are five different RAID-Z modes: RAID-Z0 (similar to RAID 0, offers no redundancy), RAID-Z1 (similar to RAID 5, allows one disk to fail), RAID-Z2 (similar to RAID 6, allows two disks to fail), RAID-Z3 (a RAID 7.3  configuration, allows three disks to fail), and mirror (similar to RAID 1, allows all but one of the disks to fail).
+
+
+== Drive Extender ==
+Windows Home Server Drive Extender is a specialized case of JBOD RAID 1 implemented at the file system level.
+Microsoft announced in 2011 that Drive Extender would no longer be included as part of Windows Home Server Version 2, Windows Home Server 2011 (codename VAIL). As a result, there has been a third-party vendor move to fill the void left by DE. Included competitors are Division M, the developers of Drive Bender, and StableBit's DrivePool.
+
+
+== BeyondRAID ==
+BeyondRAID is not a true RAID extension, but consolidates up to 12 SATA hard drives into one pool of storage. It has the advantage of supporting multiple disk sizes at once, much like JBOD, while providing redundancy for all disks and allowing a hot-swap upgrade at any time. Internally it uses a mix of techniques similar to RAID 1 and 5. Depending on the fraction of data in relation to capacity, it can survive up to three drive failures, if the "array" can be restored onto the remaining good disks before another drive fails. The amount of usable storage can be approximated by summing the capacities of the disks and subtracting the capacity of the largest disk. For example, if a 500, 400, 200, and 100 GB drive were installed, the approximate usable capacity would be 500 + 400 + 200 + 100 − 500 = 700 GB of usable space. Internally the data would be distributed in two RAID 5–like arrays and two RAID 1-like sets:
+
+           Drives
+ | 100 GB |  | 200 GB |  | 400 GB |  | 500 GB |
+
+                                     ----------
+                                     |   x    | unusable space (100 GB)
+                                     ----------
+                         ----------  ----------
+                         |   A1   |  |   A1   | RAID 1 set (2× 100 GB)
+                         ----------  ----------
+                         ----------  ----------
+                         |   B1   |  |   B1   | RAID 1 set (2× 100 GB)
+                         ----------  ----------
+             ----------  ----------  ----------
+             |   C1   |  |   C2   |  |   Cp   | RAID 5 array (3× 100 GB)
+             ----------  ----------  ----------
+ ----------  ----------  ----------  ----------
+ |   D1   |  |   D2   |  |   D3   |  |   Dp   | RAID 5 array (4× 100 GB)
+ ----------  ----------  ----------  ----------
+
+BeyondRaid offers a RAID 6–like feature and can perform hash-based compression using 160-bit SHA-1 hashes to maximize storage efficiency.
+
+
+== Unraid ==
+
+Unraid is a proprietary Linux-based operating system optimized for media file storage.
+Unfortunately Unraid doesn't provide information about its storage technology, but some say its parity array is a rewrite of the mdadm module.
+Disadvantages include closed-source code, high price, slower write performance than a single disk and bottlenecks when multiple drives are written concurrently. However, Unraid allows support of a cache pool which can dramatically speed up the write performance. Cache pool data can be temporarily protected using Btrfs RAID 1 until Unraid moves it to the array based on a schedule set within the software.
+Advantages include lower power consumption than standard RAID levels, the ability to use multiple hard drives with differing sizes to their full capacity and in the event of multiple concurrent hard drive failures (exceeding the redundancy), only losing the data stored on the failed hard drives compared to standard RAID levels which offer striping in which case all of the data on the array is lost when more hard drives fail than the redundancy can handle.
+
+
+== CRYPTO softraid ==
+In OpenBSD, CRYPTO is an encrypting discipline for the softraid subsystem. It encrypts data on a single chunk to
+provide for data confidentiality. CRYPTO does not provide redundancy.
+RAID 1C provides both redundancy and encryption.
+
+
+== DUP profile ==
+Some filesystems, such as Btrfs, and ZFS/OpenZFS (with per-dataset copies=1|2|3 property), support creating multiple copies of the same data on a single drive or disks pool, protecting from individual bad sectors, but not from large numbers of bad sectors or complete drive failure. This allows some of the benefits of RAID on computers that can only accept a single drive, such as laptops.
+
+
+== Declustered RAID ==
+Declustered RAID from IBM allows for arbitrarily sized disk arrays while reducing the overhead to clients when recovering from disk failures. It uniformly spreads or declusters user data, redundancy information, and spare space across all the disks of a declustered array. Under traditional RAID, an entire disk storage system of, say, 100 disks would be split into multiple arrays each of, say, 10 disks. By contrast, under declustered RAID, the entire storage system is used to make one array. Every data item is written twice, as in mirroring, but logically adjacent data and copies are spread arbitrarily. When a disk fails, erased data is rebuilt using all the operational disks in the array, the bandwidth of which is greater than that of the fewer disks of a conventional RAID group. Furthermore, if an additional disk fault occurs during a rebuild, the number of impacted tracks requiring repair is markedly less than the previous failure and less than the constant rebuild overhead of a conventional array. The decrease in declustered rebuild impact and client overhead can be a factor of three to four times less than a conventional RAID. File system performance becomes less dependent upon the speed of any single rebuilding storage array.
+Dynamic disk pooling (DDP), also known as D-RAID, maintains performance even when up to 2 drives fail simultaneously.
+DDP is a high performance type of declustered RAID.
+
+
+== See also ==
+Nested RAID levels
+Standard RAID levels
+
+
+== Explanatory notes ==
+
+
+== References ==
+
+How To Build A Server Using Enterprise Parts

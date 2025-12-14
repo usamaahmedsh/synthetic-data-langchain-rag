@@ -1,0 +1,5240 @@
+In statistics, an expectation–maximization (EM) algorithm is an iterative method to find (local) maximum likelihood or maximum a posteriori (MAP) estimates of parameters in statistical models, where the model depends on unobserved latent variables. The EM iteration alternates between performing an expectation (E) step, which creates a function for the expectation of the log-likelihood evaluated using the current estimate for the parameters, and a maximization (M) step, which computes parameters maximizing the expected log-likelihood found on the E step. These parameter-estimates are then used to determine the distribution of the latent variables in the next E step. It can be used, for example, to estimate a mixture of gaussians, or to solve the multiple linear regression problem.
+
+
+== History ==
+The EM algorithm was explained and given its name in a classic 1977 paper by Arthur Dempster, Nan Laird, and Donald Rubin. They pointed out that the method had been "proposed many times in special circumstances" by earlier authors. One of the earliest is the gene-counting method for estimating allele frequencies by Cedric Smith. Another was proposed by H.O. Hartley in 1958, and Hartley and Hocking in 1977, from which many of the ideas in the Dempster–Laird–Rubin paper originated. Another one by S.K Ng, Thriyambakam Krishnan and G.J McLachlan in 1977. Hartley's ideas can be broadened to any grouped discrete distribution. A very detailed treatment of the EM method for exponential families was published by Rolf Sundberg in his thesis and several papers, following his collaboration with Per Martin-Löf and Anders Martin-Löf. The Dempster–Laird–Rubin paper in 1977 generalized the method and sketched a convergence analysis for a wider class of problems. The Dempster–Laird–Rubin paper established the EM method as an important tool of statistical analysis. See also Meng and van Dyk (1997).
+The convergence analysis of the Dempster–Laird–Rubin algorithm was flawed and a correct convergence analysis was published by C. F. Jeff Wu in 1983.
+Wu's proof established the EM method's convergence also outside of the exponential family, as claimed by Dempster–Laird–Rubin.
+
+
+== Introduction ==
+The EM algorithm is used to find (local) maximum likelihood parameters of a statistical model in cases where the equations cannot be solved directly. Typically these models involve latent variables in addition to unknown parameters and known data observations. That is, either missing values exist among the data, or the model can be formulated more simply by assuming the existence of further unobserved data points. For example, a mixture model can be described more simply by assuming that each observed data point has a corresponding unobserved data point, or latent variable, specifying the mixture component to which each data point belongs.
+Finding a maximum likelihood solution typically requires taking the derivatives of the likelihood function with respect to all the unknown values, the parameters and the latent variables, and simultaneously solving the resulting equations. In statistical models with latent variables, this is usually impossible. Instead, the result is typically a set of interlocking equations in which the solution to the parameters requires the values of the latent variables and vice versa, but substituting one set of equations into the other produces an unsolvable equation.
+The EM algorithm proceeds from the observation that there is a way to solve these two sets of equations numerically. One can simply pick arbitrary values for one of the two sets of unknowns, use them to estimate the second set, then use these new values to find a better estimate of the first set, and then keep alternating between the two until the resulting values both converge to fixed points. It's not obvious that this will work, but it can be proven in this context. Additionally, it can be proven that the derivative of the likelihood is (arbitrarily close to) zero at that point, which in turn means that the point is either a local maximum or a saddle point. In general, multiple maxima may occur, with no guarantee that the global maximum will be found. Some likelihoods also have singularities in them, i.e., nonsensical maxima. For example, one of the solutions that may be found by EM in a mixture model involves setting one of the components to have zero variance and the mean parameter for the same component to be equal to one of the data points.
+
+
+== Description ==
+
+
+=== The symbols ===
+Given the statistical model which generates a set 
+  
+    
+      
+        
+          X
+        
+      
+    
+    {\displaystyle \mathbf {X} }
+  
+ of observed data, a set of unobserved latent data or missing values 
+  
+    
+      
+        
+          Z
+        
+      
+    
+    {\displaystyle \mathbf {Z} }
+  
+, and a vector of unknown parameters 
+  
+    
+      
+        
+          θ
+        
+      
+    
+    {\displaystyle {\boldsymbol {\theta }}}
+  
+, along with a likelihood function 
+  
+    
+      
+        L
+        (
+        
+          θ
+        
+        ;
+        
+          X
+        
+        ,
+        
+          Z
+        
+        )
+        =
+        p
+        (
+        
+          X
+        
+        ,
+        
+          Z
+        
+        ∣
+        
+          θ
+        
+        )
+      
+    
+    {\displaystyle L({\boldsymbol {\theta }};\mathbf {X} ,\mathbf {Z} )=p(\mathbf {X} ,\mathbf {Z} \mid {\boldsymbol {\theta }})}
+  
+, the maximum likelihood estimate (MLE) of the unknown parameters is determined by maximizing the marginal likelihood of the observed data
+
+  
+    
+      
+        L
+        (
+        
+          θ
+        
+        ;
+        
+          X
+        
+        )
+        =
+        p
+        (
+        
+          X
+        
+        ∣
+        
+          θ
+        
+        )
+        =
+        ∫
+        p
+        (
+        
+          X
+        
+        ,
+        
+          Z
+        
+        ∣
+        
+          θ
+        
+        )
+        
+        d
+        
+          Z
+        
+        =
+        ∫
+        p
+        (
+        
+          X
+        
+        ∣
+        
+          Z
+        
+        ,
+        
+          θ
+        
+        )
+        p
+        (
+        
+          Z
+        
+        ∣
+        
+          θ
+        
+        )
+        
+        d
+        
+          Z
+        
+      
+    
+    {\displaystyle L({\boldsymbol {\theta }};\mathbf {X} )=p(\mathbf {X} \mid {\boldsymbol {\theta }})=\int p(\mathbf {X} ,\mathbf {Z} \mid {\boldsymbol {\theta }})\,d\mathbf {Z} =\int p(\mathbf {X} \mid \mathbf {Z} ,{\boldsymbol {\theta }})p(\mathbf {Z} \mid {\boldsymbol {\theta }})\,d\mathbf {Z} }
+  
+
+However, this quantity is often intractable since 
+  
+    
+      
+        
+          Z
+        
+      
+    
+    {\displaystyle \mathbf {Z} }
+  
+ is unobserved and the distribution of 
+  
+    
+      
+        
+          Z
+        
+      
+    
+    {\displaystyle \mathbf {Z} }
+  
+ is unknown before attaining 
+  
+    
+      
+        
+          θ
+        
+      
+    
+    {\displaystyle {\boldsymbol {\theta }}}
+  
+.
+
+
+=== The EM algorithm ===
+The EM algorithm seeks to find the maximum likelihood estimate of the marginal likelihood by iteratively applying these two steps:
+
+Expectation step (E step): Define 
+  
+    
+      
+        Q
+        (
+        
+          θ
+        
+        ∣
+        
+          
+            θ
+          
+          
+            (
+            t
+            )
+          
+        
+        )
+      
+    
+    {\displaystyle Q({\boldsymbol {\theta }}\mid {\boldsymbol {\theta }}^{(t)})}
+  
+ as the expected value of the log likelihood function of 
+  
+    
+      
+        
+          θ
+        
+      
+    
+    {\displaystyle {\boldsymbol {\theta }}}
+  
+, with respect to the current conditional distribution of 
+  
+    
+      
+        
+          Z
+        
+      
+    
+    {\displaystyle \mathbf {Z} }
+  
+ given 
+  
+    
+      
+        
+          X
+        
+      
+    
+    {\displaystyle \mathbf {X} }
+  
+ and the current estimates of the parameters 
+  
+    
+      
+        
+          
+            θ
+          
+          
+            (
+            t
+            )
+          
+        
+      
+    
+    {\displaystyle {\boldsymbol {\theta }}^{(t)}}
+  
+:
+
+  
+    
+      
+        Q
+        (
+        
+          θ
+        
+        ∣
+        
+          
+            θ
+          
+          
+            (
+            t
+            )
+          
+        
+        )
+        =
+        
+          E
+          
+            
+              Z
+            
+            ∼
+            p
+            (
+            ⋅
+            
+              |
+            
+            
+              X
+            
+            ,
+            
+              
+                θ
+              
+              
+                (
+                t
+                )
+              
+            
+            )
+          
+        
+        ⁡
+        
+          [
+          
+            log
+            ⁡
+            p
+            (
+            
+              X
+            
+            ,
+            
+              Z
+            
+            
+              |
+            
+            
+              θ
+            
+            )
+          
+          ]
+        
+        :=
+        ∫
+        log
+        ⁡
+        p
+        (
+        
+          X
+        
+        ,
+        
+          Z
+        
+        
+          |
+        
+        
+          θ
+        
+        )
+        
+        p
+        (
+        
+          Z
+        
+        
+          |
+        
+        
+          X
+        
+        ,
+        
+          
+            θ
+          
+          
+            (
+            t
+            )
+          
+        
+        )
+        
+        d
+        
+          Z
+        
+        
+      
+    
+    {\displaystyle Q({\boldsymbol {\theta }}\mid {\boldsymbol {\theta }}^{(t)})=\operatorname {E} _{\mathbf {Z} \sim p(\cdot |\mathbf {X} ,{\boldsymbol {\theta }}^{(t)})}\left[\log p(\mathbf {X} ,\mathbf {Z} |{\boldsymbol {\theta }})\right]:=\int \log p(\mathbf {X} ,\mathbf {Z} |{\boldsymbol {\theta }})\,p(\mathbf {Z} |\mathbf {X} ,{\boldsymbol {\theta }}^{(t)})\,d\mathbf {Z} \,}
+  
+
+Maximization step (M step): Find the parameters that maximize this quantity:
+
+  
+    
+      
+        
+          
+            θ
+          
+          
+            (
+            t
+            +
+            1
+            )
+          
+        
+        =
+        
+          
+            
+              a
+              r
+              g
+              
+              m
+              a
+              x
+            
+            θ
+          
+        
+         
+        Q
+        (
+        
+          θ
+        
+        ∣
+        
+          
+            θ
+          
+          
+            (
+            t
+            )
+          
+        
+        )
+        
+      
+    
+    {\displaystyle {\boldsymbol {\theta }}^{(t+1)}={\underset {\boldsymbol {\theta }}{\operatorname {arg\,max} }}\ Q({\boldsymbol {\theta }}\mid {\boldsymbol {\theta }}^{(t)})\,}
+  
+
+More succinctly, we can write it as one equation:
+  
+    
+      
+        
+          
+            θ
+          
+          
+            (
+            t
+            +
+            1
+            )
+          
+        
+        =
+        
+          
+            
+              a
+              r
+              g
+              
+              m
+              a
+              x
+            
+            θ
+          
+        
+        
+          E
+          
+            
+              Z
+            
+            ∼
+            p
+            (
+            ⋅
+            
+              |
+            
+            
+              X
+            
+            ,
+            
+              
+                θ
+              
+              
+                (
+                t
+                )
+              
+            
+            )
+          
+        
+        ⁡
+        
+          [
+          
+            log
+            ⁡
+            p
+            (
+            
+              X
+            
+            ,
+            
+              Z
+            
+            
+              |
+            
+            
+              θ
+            
+            )
+          
+          ]
+        
+        
+      
+    
+    {\displaystyle {\boldsymbol {\theta }}^{(t+1)}={\underset {\boldsymbol {\theta }}{\operatorname {arg\,max} }}\operatorname {E} _{\mathbf {Z} \sim p(\cdot |\mathbf {X} ,{\boldsymbol {\theta }}^{(t)})}\left[\log p(\mathbf {X} ,\mathbf {Z} |{\boldsymbol {\theta }})\right]\,}
+  
+
+
+=== Interpretation of the variables ===
+The typical models to which EM is applied use 
+  
+    
+      
+        
+          Z
+        
+      
+    
+    {\displaystyle \mathbf {Z} }
+  
+ as a latent variable indicating membership in one of a set of groups:
+
+The observed data points 
+  
+    
+      
+        
+          X
+        
+      
+    
+    {\displaystyle \mathbf {X} }
+  
+ may be discrete (taking values in a finite or countably infinite set) or continuous (taking values in an uncountably infinite set). Associated with each data point may be a vector of observations.
+The missing values (aka latent variables) 
+  
+    
+      
+        
+          Z
+        
+      
+    
+    {\displaystyle \mathbf {Z} }
+  
+ are discrete, drawn from a fixed number of values, and with one latent variable per observed unit.
+The parameters are continuous, and are of two kinds: Parameters that are associated with all data points, and those associated with a specific value of a latent variable (i.e., associated with all data points whose corresponding latent variable has that value).
+However, it is possible to apply EM to other sorts of models.
+The motivation is as follows. If the value of the parameters 
+  
+    
+      
+        
+          θ
+        
+      
+    
+    {\displaystyle {\boldsymbol {\theta }}}
+  
+ is known, usually the value of the latent variables 
+  
+    
+      
+        
+          Z
+        
+      
+    
+    {\displaystyle \mathbf {Z} }
+  
+ can be found by maximizing the log-likelihood over all possible values of 
+  
+    
+      
+        
+          Z
+        
+      
+    
+    {\displaystyle \mathbf {Z} }
+  
+, either simply by iterating over 
+  
+    
+      
+        
+          Z
+        
+      
+    
+    {\displaystyle \mathbf {Z} }
+  
+ or through an algorithm such as the Viterbi algorithm for hidden Markov models. Conversely, if we know the value of the latent variables 
+  
+    
+      
+        
+          Z
+        
+      
+    
+    {\displaystyle \mathbf {Z} }
+  
+, we can find an estimate of the parameters 
+  
+    
+      
+        
+          θ
+        
+      
+    
+    {\displaystyle {\boldsymbol {\theta }}}
+  
+ fairly easily, typically by simply grouping the observed data points according to the value of the associated latent variable and averaging the values, or some function of the values, of the points in each group. This suggests an iterative algorithm, in the case where both 
+  
+    
+      
+        
+          θ
+        
+      
+    
+    {\displaystyle {\boldsymbol {\theta }}}
+  
+ and 
+  
+    
+      
+        
+          Z
+        
+      
+    
+    {\displaystyle \mathbf {Z} }
+  
+ are unknown:
+
+First, initialize the parameters 
+  
+    
+      
+        
+          θ
+        
+      
+    
+    {\displaystyle {\boldsymbol {\theta }}}
+  
+ to some random values.
+Compute the probability of each possible value of 
+  
+    
+      
+        
+          Z
+        
+      
+    
+    {\displaystyle \mathbf {Z} }
+  
+ , given 
+  
+    
+      
+        
+          θ
+        
+      
+    
+    {\displaystyle {\boldsymbol {\theta }}}
+  
+.
+Then, use the just-computed values of 
+  
+    
+      
+        
+          Z
+        
+      
+    
+    {\displaystyle \mathbf {Z} }
+  
+ to compute a better estimate for the parameters 
+  
+    
+      
+        
+          θ
+        
+      
+    
+    {\displaystyle {\boldsymbol {\theta }}}
+  
+.
+Iterate steps 2 and 3 until convergence.
+The algorithm as just described monotonically approaches a local minimum of the cost function.
+
+
+== Properties ==
+Although an EM iteration does increase the observed data (i.e., marginal) likelihood function, no guarantee exists that the sequence converges to a maximum likelihood estimator. For multimodal distributions, this means that an EM algorithm may converge to a local maximum of the observed data likelihood function, depending on starting values. A variety of heuristic or metaheuristic approaches exist to escape a local maximum, such as random-restart hill climbing (starting with several different random initial estimates 
+  
+    
+      
+        
+          
+            θ
+          
+          
+            (
+            t
+            )
+          
+        
+      
+    
+    {\displaystyle {\boldsymbol {\theta }}^{(t)}}
+  
+), or applying simulated annealing methods.
+EM is especially useful when the likelihood is an exponential family, see Sundberg (2019, Ch. 8) for a comprehensive treatment: the E step becomes the sum of expectations of sufficient statistics, and the M step involves maximizing a linear function. In such a case, it is usually possible to derive closed-form expression updates for each step, using the Sundberg formula (proved and published by Rolf Sundberg, based on unpublished results of Per Martin-Löf and Anders Martin-Löf).
+The EM method was modified to compute maximum a posteriori (MAP) estimates for Bayesian inference in the original paper by Dempster, Laird, and Rubin.
+Other methods exist to find maximum likelihood estimates, such as gradient descent, conjugate gradient, or variants of the Gauss–Newton algorithm. Unlike EM, such methods typically require the evaluation of first and/or second derivatives of the likelihood function.
+
+
+== Proof of correctness ==
+Expectation-Maximization works to improve 
+  
+    
+      
+        Q
+        (
+        
+          θ
+        
+        ∣
+        
+          
+            θ
+          
+          
+            (
+            t
+            )
+          
+        
+        )
+      
+    
+    {\displaystyle Q({\boldsymbol {\theta }}\mid {\boldsymbol {\theta }}^{(t)})}
+  
+ rather than directly improving 
+  
+    
+      
+        log
+        ⁡
+        p
+        (
+        
+          X
+        
+        ∣
+        
+          θ
+        
+        )
+      
+    
+    {\displaystyle \log p(\mathbf {X} \mid {\boldsymbol {\theta }})}
+  
+. Here it is shown that improvements to the former imply improvements to the latter.
+For any 
+  
+    
+      
+        
+          Z
+        
+      
+    
+    {\displaystyle \mathbf {Z} }
+  
+ with non-zero probability 
+  
+    
+      
+        p
+        (
+        
+          Z
+        
+        ∣
+        
+          X
+        
+        ,
+        
+          θ
+        
+        )
+      
+    
+    {\displaystyle p(\mathbf {Z} \mid \mathbf {X} ,{\boldsymbol {\theta }})}
+  
+, we can write
+
+  
+    
+      
+        log
+        ⁡
+        p
+        (
+        
+          X
+        
+        ∣
+        
+          θ
+        
+        )
+        =
+        log
+        ⁡
+        p
+        (
+        
+          X
+        
+        ,
+        
+          Z
+        
+        ∣
+        
+          θ
+        
+        )
+        −
+        log
+        ⁡
+        p
+        (
+        
+          Z
+        
+        ∣
+        
+          X
+        
+        ,
+        
+          θ
+        
+        )
+        .
+      
+    
+    {\displaystyle \log p(\mathbf {X} \mid {\boldsymbol {\theta }})=\log p(\mathbf {X} ,\mathbf {Z} \mid {\boldsymbol {\theta }})-\log p(\mathbf {Z} \mid \mathbf {X} ,{\boldsymbol {\theta }}).}
+  
+
+We take the expectation over possible values of the unknown data 
+  
+    
+      
+        
+          Z
+        
+      
+    
+    {\displaystyle \mathbf {Z} }
+  
+ under the current parameter estimate 
+  
+    
+      
+        
+          θ
+          
+            (
+            t
+            )
+          
+        
+      
+    
+    {\displaystyle \theta ^{(t)}}
+  
+ by multiplying both sides by 
+  
+    
+      
+        p
+        (
+        
+          Z
+        
+        ∣
+        
+          X
+        
+        ,
+        
+          
+            θ
+          
+          
+            (
+            t
+            )
+          
+        
+        )
+      
+    
+    {\displaystyle p(\mathbf {Z} \mid \mathbf {X} ,{\boldsymbol {\theta }}^{(t)})}
+  
+ and summing (or integrating) over 
+  
+    
+      
+        
+          Z
+        
+      
+    
+    {\displaystyle \mathbf {Z} }
+  
+. The left-hand side is the expectation of a constant, so we get:
+
+  
+    
+      
+        
+          
+            
+              
+                log
+                ⁡
+                p
+                (
+                
+                  X
+                
+                ∣
+                
+                  θ
+                
+                )
+              
+              
+                
+                =
+                
+                  ∑
+                  
+                    
+                      Z
+                    
+                  
+                
+                p
+                (
+                
+                  Z
+                
+                ∣
+                
+                  X
+                
+                ,
+                
+                  
+                    θ
+                  
+                  
+                    (
+                    t
+                    )
+                  
+                
+                )
+                log
+                ⁡
+                p
+                (
+                
+                  X
+                
+                ,
+                
+                  Z
+                
+                ∣
+                
+                  θ
+                
+                )
+                −
+                
+                  ∑
+                  
+                    
+                      Z
+                    
+                  
+                
+                p
+                (
+                
+                  Z
+                
+                ∣
+                
+                  X
+                
+                ,
+                
+                  
+                    θ
+                  
+                  
+                    (
+                    t
+                    )
+                  
+                
+                )
+                log
+                ⁡
+                p
+                (
+                
+                  Z
+                
+                ∣
+                
+                  X
+                
+                ,
+                
+                  θ
+                
+                )
+              
+            
+            
+              
+              
+                
+                =
+                Q
+                (
+                
+                  θ
+                
+                ∣
+                
+                  
+                    θ
+                  
+                  
+                    (
+                    t
+                    )
+                  
+                
+                )
+                +
+                H
+                (
+                
+                  θ
+                
+                ∣
+                
+                  
+                    θ
+                  
+                  
+                    (
+                    t
+                    )
+                  
+                
+                )
+                ,
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{aligned}\log p(\mathbf {X} \mid {\boldsymbol {\theta }})&=\sum _{\mathbf {Z} }p(\mathbf {Z} \mid \mathbf {X} ,{\boldsymbol {\theta }}^{(t)})\log p(\mathbf {X} ,\mathbf {Z} \mid {\boldsymbol {\theta }})-\sum _{\mathbf {Z} }p(\mathbf {Z} \mid \mathbf {X} ,{\boldsymbol {\theta }}^{(t)})\log p(\mathbf {Z} \mid \mathbf {X} ,{\boldsymbol {\theta }})\\&=Q({\boldsymbol {\theta }}\mid {\boldsymbol {\theta }}^{(t)})+H({\boldsymbol {\theta }}\mid {\boldsymbol {\theta }}^{(t)}),\end{aligned}}}
+  
+
+where 
+  
+    
+      
+        H
+        (
+        
+          θ
+        
+        ∣
+        
+          
+            θ
+          
+          
+            (
+            t
+            )
+          
+        
+        )
+      
+    
+    {\displaystyle H({\boldsymbol {\theta }}\mid {\boldsymbol {\theta }}^{(t)})}
+  
+ is defined by the negated sum it is replacing.
+This last equation holds for every value of 
+  
+    
+      
+        
+          θ
+        
+      
+    
+    {\displaystyle {\boldsymbol {\theta }}}
+  
+ including 
+  
+    
+      
+        
+          θ
+        
+        =
+        
+          
+            θ
+          
+          
+            (
+            t
+            )
+          
+        
+      
+    
+    {\displaystyle {\boldsymbol {\theta }}={\boldsymbol {\theta }}^{(t)}}
+  
+,
+
+  
+    
+      
+        log
+        ⁡
+        p
+        (
+        
+          X
+        
+        ∣
+        
+          
+            θ
+          
+          
+            (
+            t
+            )
+          
+        
+        )
+        =
+        Q
+        (
+        
+          
+            θ
+          
+          
+            (
+            t
+            )
+          
+        
+        ∣
+        
+          
+            θ
+          
+          
+            (
+            t
+            )
+          
+        
+        )
+        +
+        H
+        (
+        
+          
+            θ
+          
+          
+            (
+            t
+            )
+          
+        
+        ∣
+        
+          
+            θ
+          
+          
+            (
+            t
+            )
+          
+        
+        )
+        ,
+      
+    
+    {\displaystyle \log p(\mathbf {X} \mid {\boldsymbol {\theta }}^{(t)})=Q({\boldsymbol {\theta }}^{(t)}\mid {\boldsymbol {\theta }}^{(t)})+H({\boldsymbol {\theta }}^{(t)}\mid {\boldsymbol {\theta }}^{(t)}),}
+  
+
+and subtracting this last equation from the previous equation gives
+
+  
+    
+      
+        log
+        ⁡
+        p
+        (
+        
+          X
+        
+        ∣
+        
+          θ
+        
+        )
+        −
+        log
+        ⁡
+        p
+        (
+        
+          X
+        
+        ∣
+        
+          
+            θ
+          
+          
+            (
+            t
+            )
+          
+        
+        )
+        =
+        Q
+        (
+        
+          θ
+        
+        ∣
+        
+          
+            θ
+          
+          
+            (
+            t
+            )
+          
+        
+        )
+        −
+        Q
+        (
+        
+          
+            θ
+          
+          
+            (
+            t
+            )
+          
+        
+        ∣
+        
+          
+            θ
+          
+          
+            (
+            t
+            )
+          
+        
+        )
+        +
+        H
+        (
+        
+          θ
+        
+        ∣
+        
+          
+            θ
+          
+          
+            (
+            t
+            )
+          
+        
+        )
+        −
+        H
+        (
+        
+          
+            θ
+          
+          
+            (
+            t
+            )
+          
+        
+        ∣
+        
+          
+            θ
+          
+          
+            (
+            t
+            )
+          
+        
+        )
+        .
+      
+    
+    {\displaystyle \log p(\mathbf {X} \mid {\boldsymbol {\theta }})-\log p(\mathbf {X} \mid {\boldsymbol {\theta }}^{(t)})=Q({\boldsymbol {\theta }}\mid {\boldsymbol {\theta }}^{(t)})-Q({\boldsymbol {\theta }}^{(t)}\mid {\boldsymbol {\theta }}^{(t)})+H({\boldsymbol {\theta }}\mid {\boldsymbol {\theta }}^{(t)})-H({\boldsymbol {\theta }}^{(t)}\mid {\boldsymbol {\theta }}^{(t)}).}
+  
+
+However, Gibbs' inequality tells us that 
+  
+    
+      
+        H
+        (
+        
+          θ
+        
+        ∣
+        
+          
+            θ
+          
+          
+            (
+            t
+            )
+          
+        
+        )
+        ≥
+        H
+        (
+        
+          
+            θ
+          
+          
+            (
+            t
+            )
+          
+        
+        ∣
+        
+          
+            θ
+          
+          
+            (
+            t
+            )
+          
+        
+        )
+      
+    
+    {\displaystyle H({\boldsymbol {\theta }}\mid {\boldsymbol {\theta }}^{(t)})\geq H({\boldsymbol {\theta }}^{(t)}\mid {\boldsymbol {\theta }}^{(t)})}
+  
+, so we can conclude that
+
+  
+    
+      
+        log
+        ⁡
+        p
+        (
+        
+          X
+        
+        ∣
+        
+          θ
+        
+        )
+        −
+        log
+        ⁡
+        p
+        (
+        
+          X
+        
+        ∣
+        
+          
+            θ
+          
+          
+            (
+            t
+            )
+          
+        
+        )
+        ≥
+        Q
+        (
+        
+          θ
+        
+        ∣
+        
+          
+            θ
+          
+          
+            (
+            t
+            )
+          
+        
+        )
+        −
+        Q
+        (
+        
+          
+            θ
+          
+          
+            (
+            t
+            )
+          
+        
+        ∣
+        
+          
+            θ
+          
+          
+            (
+            t
+            )
+          
+        
+        )
+        .
+      
+    
+    {\displaystyle \log p(\mathbf {X} \mid {\boldsymbol {\theta }})-\log p(\mathbf {X} \mid {\boldsymbol {\theta }}^{(t)})\geq Q({\boldsymbol {\theta }}\mid {\boldsymbol {\theta }}^{(t)})-Q({\boldsymbol {\theta }}^{(t)}\mid {\boldsymbol {\theta }}^{(t)}).}
+  
+
+In words, choosing 
+  
+    
+      
+        
+          θ
+        
+      
+    
+    {\displaystyle {\boldsymbol {\theta }}}
+  
+ to improve 
+  
+    
+      
+        Q
+        (
+        
+          θ
+        
+        ∣
+        
+          
+            θ
+          
+          
+            (
+            t
+            )
+          
+        
+        )
+      
+    
+    {\displaystyle Q({\boldsymbol {\theta }}\mid {\boldsymbol {\theta }}^{(t)})}
+  
+ causes 
+  
+    
+      
+        log
+        ⁡
+        p
+        (
+        
+          X
+        
+        ∣
+        
+          θ
+        
+        )
+      
+    
+    {\displaystyle \log p(\mathbf {X} \mid {\boldsymbol {\theta }})}
+  
+ to improve at least as much.
+
+
+== As a maximization–maximization procedure ==
+The EM algorithm can be viewed as two alternating maximization steps, that is, as an example of coordinate descent. Consider the function:
+
+  
+    
+      
+        F
+        (
+        q
+        ,
+        θ
+        )
+        :=
+        
+          E
+          
+            q
+          
+        
+        ⁡
+        [
+        log
+        ⁡
+        L
+        (
+        θ
+        ;
+        x
+        ,
+        Z
+        )
+        ]
+        +
+        H
+        (
+        q
+        )
+        ,
+      
+    
+    {\displaystyle F(q,\theta ):=\operatorname {E} _{q}[\log L(\theta ;x,Z)]+H(q),}
+  
+
+where q is an arbitrary probability distribution over the unobserved data z and H(q) is the entropy of the distribution q. This function can be written as
+
+  
+    
+      
+        F
+        (
+        q
+        ,
+        θ
+        )
+        =
+        −
+        
+          D
+          
+            
+              K
+              L
+            
+          
+        
+        
+          
+            (
+          
+        
+        q
+        ∥
+        
+          p
+          
+            Z
+            ∣
+            X
+          
+        
+        (
+        ⋅
+        ∣
+        x
+        ;
+        θ
+        )
+        
+          
+            )
+          
+        
+        +
+        log
+        ⁡
+        L
+        (
+        θ
+        ;
+        x
+        )
+        ,
+      
+    
+    {\displaystyle F(q,\theta )=-D_{\mathrm {KL} }{\big (}q\parallel p_{Z\mid X}(\cdot \mid x;\theta ){\big )}+\log L(\theta ;x),}
+  
+
+where  
+  
+    
+      
+        
+          p
+          
+            Z
+            ∣
+            X
+          
+        
+        (
+        ⋅
+        ∣
+        x
+        ;
+        θ
+        )
+      
+    
+    {\displaystyle p_{Z\mid X}(\cdot \mid x;\theta )}
+  
+ is the conditional distribution of the unobserved data given the observed data 
+  
+    
+      
+        x
+      
+    
+    {\displaystyle x}
+  
+ and 
+  
+    
+      
+        
+          D
+          
+            K
+            L
+          
+        
+      
+    
+    {\displaystyle D_{KL}}
+  
+ is the Kullback–Leibler divergence.
+Then the steps in the EM algorithm may be viewed as:
+
+Expectation step: Choose 
+  
+    
+      
+        q
+      
+    
+    {\displaystyle q}
+  
+ to maximize 
+  
+    
+      
+        F
+      
+    
+    {\displaystyle F}
+  
+:
+
+  
+    
+      
+        
+          q
+          
+            (
+            t
+            )
+          
+        
+        =
+        
+          
+            a
+            r
+            g
+            
+            m
+            a
+            x
+          
+          
+            q
+          
+        
+        ⁡
+         
+        F
+        (
+        q
+        ,
+        
+          θ
+          
+            (
+            t
+            )
+          
+        
+        )
+      
+    
+    {\displaystyle q^{(t)}=\operatorname {arg\,max} _{q}\ F(q,\theta ^{(t)})}
+  
+
+Maximization step: Choose 
+  
+    
+      
+        θ
+      
+    
+    {\displaystyle \theta }
+  
+ to maximize 
+  
+    
+      
+        F
+      
+    
+    {\displaystyle F}
+  
+:
+
+  
+    
+      
+        
+          θ
+          
+            (
+            t
+            +
+            1
+            )
+          
+        
+        =
+        
+          
+            a
+            r
+            g
+            
+            m
+            a
+            x
+          
+          
+            θ
+          
+        
+        ⁡
+         
+        F
+        (
+        
+          q
+          
+            (
+            t
+            )
+          
+        
+        ,
+        θ
+        )
+      
+    
+    {\displaystyle \theta ^{(t+1)}=\operatorname {arg\,max} _{\theta }\ F(q^{(t)},\theta )}
+  
+
+
+== Applications ==
+EM is frequently used for parameter estimation of mixed models, notably in quantitative genetics.
+In psychometrics, EM is an important tool for estimating item parameters and latent abilities of item response theory models.
+With the ability to deal with missing data and observe unidentified variables, EM is becoming a useful tool to price and manage risk of a portfolio.
+The EM algorithm (and its faster variant ordered subset expectation maximization) is also widely used in medical image reconstruction, especially in positron emission tomography, single-photon emission computed tomography, and x-ray computed tomography. See below for other faster variants of EM.
+In structural engineering, the Structural Identification using Expectation Maximization (STRIDE) algorithm is an output-only method for identifying natural vibration properties of a structural system using sensor data (see Operational Modal Analysis).
+EM is also used for data clustering. In natural language processing, two prominent instances of the algorithm are the Baum–Welch algorithm for hidden Markov models, and the inside-outside algorithm for unsupervised induction of probabilistic context-free grammars.
+In the analysis of intertrade waiting times the EM algorithm has proved to be very useful.
+
+
+== Filtering and smoothing EM algorithms ==
+A Kalman filter is typically used for on-line state estimation and a minimum-variance smoother may be employed for off-line or batch state estimation. However, these minimum-variance solutions require estimates of the state-space model parameters. EM algorithms can be used for solving joint state and parameter estimation problems.
+Filtering and smoothing EM algorithms arise by repeating this two-step procedure:
+
+E-step
+Operate a Kalman filter or a minimum-variance smoother designed with current parameter estimates to obtain updated state estimates.
+M-step
+Use the filtered or smoothed state estimates within maximum-likelihood calculations to obtain updated parameter estimates.
+Suppose that a Kalman filter or minimum-variance smoother operates on measurements of a single-input-single-output system that possess additive white noise. An updated measurement noise variance estimate can be obtained from the maximum likelihood calculation
+
+  
+    
+      
+        
+          
+            
+              
+                σ
+                ^
+              
+            
+          
+          
+            v
+          
+          
+            2
+          
+        
+        =
+        
+          
+            1
+            N
+          
+        
+        
+          ∑
+          
+            k
+            =
+            1
+          
+          
+            N
+          
+        
+        
+          
+            (
+            
+              z
+              
+                k
+              
+            
+            −
+            
+              
+                
+                  
+                    x
+                    ^
+                  
+                
+              
+              
+                k
+              
+            
+            )
+          
+          
+            2
+          
+        
+        ,
+      
+    
+    {\displaystyle {\widehat {\sigma }}_{v}^{2}={\frac {1}{N}}\sum _{k=1}^{N}{(z_{k}-{\widehat {x}}_{k})}^{2},}
+  
+
+where 
+  
+    
+      
+        
+          
+            
+              
+                x
+                ^
+              
+            
+          
+          
+            k
+          
+        
+      
+    
+    {\displaystyle {\widehat {x}}_{k}}
+  
+ are scalar output estimates calculated by a filter or a smoother from N scalar measurements 
+  
+    
+      
+        
+          z
+          
+            k
+          
+        
+      
+    
+    {\displaystyle z_{k}}
+  
+. The above update can also be applied to updating a Poisson measurement noise intensity. Similarly, for a first-order auto-regressive process, an updated process noise variance estimate can be calculated by
+
+  
+    
+      
+        
+          
+            
+              
+                σ
+                ^
+              
+            
+          
+          
+            w
+          
+          
+            2
+          
+        
+        =
+        
+          
+            1
+            N
+          
+        
+        
+          ∑
+          
+            k
+            =
+            1
+          
+          
+            N
+          
+        
+        
+          
+            (
+            
+              
+                
+                  
+                    x
+                    ^
+                  
+                
+              
+              
+                k
+                +
+                1
+              
+            
+            −
+            
+              
+                
+                  F
+                  ^
+                
+              
+            
+            
+              
+                
+                  
+                    x
+                    ^
+                  
+                
+              
+              
+                k
+              
+            
+            )
+          
+          
+            2
+          
+        
+        ,
+      
+    
+    {\displaystyle {\widehat {\sigma }}_{w}^{2}={\frac {1}{N}}\sum _{k=1}^{N}{({\widehat {x}}_{k+1}-{\widehat {F}}{\widehat {x}}_{k})}^{2},}
+  
+
+where 
+  
+    
+      
+        
+          
+            
+              
+                x
+                ^
+              
+            
+          
+          
+            k
+          
+        
+      
+    
+    {\displaystyle {\widehat {x}}_{k}}
+  
+ and 
+  
+    
+      
+        
+          
+            
+              
+                x
+                ^
+              
+            
+          
+          
+            k
+            +
+            1
+          
+        
+      
+    
+    {\displaystyle {\widehat {x}}_{k+1}}
+  
+ are scalar state estimates calculated by a filter or a smoother. The updated model coefficient estimate is obtained via
+
+  
+    
+      
+        
+          
+            
+              F
+              ^
+            
+          
+        
+        =
+        
+          
+            
+              
+                ∑
+                
+                  k
+                  =
+                  1
+                
+                
+                  N
+                
+              
+              
+                
+                  (
+                  
+                    
+                      
+                        
+                          x
+                          ^
+                        
+                      
+                    
+                    
+                      k
+                      +
+                      1
+                    
+                  
+                  −
+                  
+                    
+                      
+                        F
+                        ^
+                      
+                    
+                  
+                  
+                    
+                      
+                        
+                          x
+                          ^
+                        
+                      
+                    
+                    
+                      k
+                    
+                  
+                  )
+                
+                
+                  2
+                
+              
+            
+            
+              
+                ∑
+                
+                  k
+                  =
+                  1
+                
+                
+                  N
+                
+              
+              
+                
+                  
+                    
+                      x
+                      ^
+                    
+                  
+                
+                
+                  k
+                
+                
+                  2
+                
+              
+            
+          
+        
+        .
+      
+    
+    {\displaystyle {\widehat {F}}={\frac {\sum _{k=1}^{N}{({\widehat {x}}_{k+1}-{\widehat {F}}{\widehat {x}}_{k})}^{2}}{\sum _{k=1}^{N}{\widehat {x}}_{k}^{2}}}.}
+  
+
+The convergence of parameter estimates such as those above are well studied.
+
+
+== Variants ==
+A number of methods have been proposed to accelerate the sometimes slow convergence of the EM algorithm, such as those using conjugate gradient and modified Newton's methods (Newton–Raphson). Also, EM can be used with constrained estimation methods.
+Parameter-expanded expectation maximization (PX-EM) algorithm often provides speed up by "us[ing] a `covariance adjustment' to correct the analysis of the M step, capitalising on extra information captured in the imputed complete data".
+Expectation conditional maximization (ECM) replaces each M step with a sequence of conditional maximization (CM) steps in which each parameter θi is maximized individually, conditionally on the other parameters remaining fixed. Itself can be extended into the Expectation conditional maximization either (ECME) algorithm.
+This idea is further extended in generalized expectation maximization (GEM) algorithm, in which is sought only an increase in the objective function F for both the E step and M step as described in the As a maximization–maximization procedure section. GEM is further developed in a distributed environment and shows promising results.
+It is also possible to consider the EM algorithm as a subclass of the MM (Majorize/Minimize or Minorize/Maximize, depending on context) algorithm, and therefore use any machinery developed in the more general case.
+
+
+=== α-EM algorithm ===
+The Q-function used in the EM algorithm is based on the log likelihood. Therefore, it is regarded as the log-EM algorithm. The use of the log likelihood can be generalized to that of the α-log likelihood ratio. Then, the α-log likelihood ratio of the observed data can be exactly expressed as equality by using the Q-function of the α-log likelihood ratio and the α-divergence. Obtaining this Q-function is a generalized E step. Its maximization is a generalized M step. This pair is called the α-EM algorithm
+which contains the log-EM algorithm as its subclass. Thus, the α-EM algorithm by Yasuo Matsuyama is an exact generalization of the log-EM algorithm. No computation of gradient or Hessian matrix is needed. The α-EM shows faster convergence than the log-EM algorithm by choosing an appropriate α. The α-EM algorithm leads to a faster version of the Hidden Markov model estimation algorithm α-HMM.
+
+
+== Relation to variational Bayes methods ==
+EM is a partially non-Bayesian, maximum likelihood method. Its final result gives a probability distribution over the latent variables (in the Bayesian style) together with a point estimate for θ (either a maximum likelihood estimate or a posterior mode). A fully Bayesian version of this may be wanted, giving a probability distribution over θ and the latent variables. The Bayesian approach to inference is simply to treat θ as another latent variable. In this paradigm, the distinction between the E and M steps disappears. If using the factorized Q approximation as described above (variational Bayes), solving can iterate over each latent variable (now including θ) and optimize them one at a time. Now, k steps per iteration are needed, where k is the number of latent variables. For graphical models this is easy to do as each variable's new Q depends only on its Markov blanket, so local message passing can be used for efficient inference.
+
+
+== Geometric interpretation ==
+
+In information geometry, the E step and the M step are interpreted as projections under dual affine connections, called the e-connection and the m-connection; the Kullback–Leibler divergence can also be understood in these terms.
+
+
+== Examples ==
+
+
+=== Gaussian mixture ===
+
+Let 
+  
+    
+      
+        
+          x
+        
+        =
+        (
+        
+          
+            x
+          
+          
+            1
+          
+        
+        ,
+        
+          
+            x
+          
+          
+            2
+          
+        
+        ,
+        …
+        ,
+        
+          
+            x
+          
+          
+            n
+          
+        
+        )
+      
+    
+    {\displaystyle \mathbf {x} =(\mathbf {x} _{1},\mathbf {x} _{2},\ldots ,\mathbf {x} _{n})}
+  
+ be a sample of 
+  
+    
+      
+        n
+      
+    
+    {\displaystyle n}
+  
+ independent observations from a mixture of two multivariate normal distributions of dimension 
+  
+    
+      
+        d
+      
+    
+    {\displaystyle d}
+  
+, and let 
+  
+    
+      
+        
+          z
+        
+        =
+        (
+        
+          z
+          
+            1
+          
+        
+        ,
+        
+          z
+          
+            2
+          
+        
+        ,
+        …
+        ,
+        
+          z
+          
+            n
+          
+        
+        )
+      
+    
+    {\displaystyle \mathbf {z} =(z_{1},z_{2},\ldots ,z_{n})}
+  
+ be the latent variables that determine the component from which the observation originates.
+
+  
+    
+      
+        
+          X
+          
+            i
+          
+        
+        ∣
+        (
+        
+          Z
+          
+            i
+          
+        
+        =
+        1
+        )
+        ∼
+        
+          
+            
+              N
+            
+          
+          
+            d
+          
+        
+        (
+        
+          
+            μ
+          
+          
+            1
+          
+        
+        ,
+        
+          Σ
+          
+            1
+          
+        
+        )
+      
+    
+    {\displaystyle X_{i}\mid (Z_{i}=1)\sim {\mathcal {N}}_{d}({\boldsymbol {\mu }}_{1},\Sigma _{1})}
+  
+ and 
+  
+    
+      
+        
+          X
+          
+            i
+          
+        
+        ∣
+        (
+        
+          Z
+          
+            i
+          
+        
+        =
+        2
+        )
+        ∼
+        
+          
+            
+              N
+            
+          
+          
+            d
+          
+        
+        (
+        
+          
+            μ
+          
+          
+            2
+          
+        
+        ,
+        
+          Σ
+          
+            2
+          
+        
+        )
+        ,
+      
+    
+    {\displaystyle X_{i}\mid (Z_{i}=2)\sim {\mathcal {N}}_{d}({\boldsymbol {\mu }}_{2},\Sigma _{2}),}
+  
+
+where
+
+  
+    
+      
+        P
+        ⁡
+        (
+        
+          Z
+          
+            i
+          
+        
+        =
+        1
+        )
+        =
+        
+          τ
+          
+            1
+          
+        
+        
+      
+    
+    {\displaystyle \operatorname {P} (Z_{i}=1)=\tau _{1}\,}
+  
+ and 
+  
+    
+      
+        P
+        ⁡
+        (
+        
+          Z
+          
+            i
+          
+        
+        =
+        2
+        )
+        =
+        
+          τ
+          
+            2
+          
+        
+        =
+        1
+        −
+        
+          τ
+          
+            1
+          
+        
+        .
+      
+    
+    {\displaystyle \operatorname {P} (Z_{i}=2)=\tau _{2}=1-\tau _{1}.}
+  
+
+The aim is to estimate the unknown parameters representing the mixing value between the Gaussians and the means and covariances of each:
+
+  
+    
+      
+        θ
+        =
+        
+          
+            (
+          
+        
+        
+          τ
+        
+        ,
+        
+          
+            μ
+          
+          
+            1
+          
+        
+        ,
+        
+          
+            μ
+          
+          
+            2
+          
+        
+        ,
+        
+          Σ
+          
+            1
+          
+        
+        ,
+        
+          Σ
+          
+            2
+          
+        
+        
+          
+            )
+          
+        
+        ,
+      
+    
+    {\displaystyle \theta ={\big (}{\boldsymbol {\tau }},{\boldsymbol {\mu }}_{1},{\boldsymbol {\mu }}_{2},\Sigma _{1},\Sigma _{2}{\big )},}
+  
+
+where the incomplete-data likelihood function is
+
+  
+    
+      
+        L
+        (
+        θ
+        ;
+        
+          x
+        
+        )
+        =
+        
+          ∏
+          
+            i
+            =
+            1
+          
+          
+            n
+          
+        
+        
+          ∑
+          
+            j
+            =
+            1
+          
+          
+            2
+          
+        
+        
+          τ
+          
+            j
+          
+        
+         
+        f
+        (
+        
+          
+            x
+          
+          
+            i
+          
+        
+        ;
+        
+          
+            μ
+          
+          
+            j
+          
+        
+        ,
+        
+          Σ
+          
+            j
+          
+        
+        )
+        ,
+      
+    
+    {\displaystyle L(\theta ;\mathbf {x} )=\prod _{i=1}^{n}\sum _{j=1}^{2}\tau _{j}\ f(\mathbf {x} _{i};{\boldsymbol {\mu }}_{j},\Sigma _{j}),}
+  
+
+and the complete-data likelihood function is
+
+  
+    
+      
+        L
+        (
+        θ
+        ;
+        
+          x
+        
+        ,
+        
+          z
+        
+        )
+        =
+        p
+        (
+        
+          x
+        
+        ,
+        
+          z
+        
+        ∣
+        θ
+        )
+        =
+        
+          ∏
+          
+            i
+            =
+            1
+          
+          
+            n
+          
+        
+        
+          ∏
+          
+            j
+            =
+            1
+          
+          
+            2
+          
+        
+         
+        [
+        f
+        (
+        
+          
+            x
+          
+          
+            i
+          
+        
+        ;
+        
+          
+            μ
+          
+          
+            j
+          
+        
+        ,
+        
+          Σ
+          
+            j
+          
+        
+        )
+        
+          τ
+          
+            j
+          
+        
+        
+          ]
+          
+            
+              I
+            
+            (
+            
+              z
+              
+                i
+              
+            
+            =
+            j
+            )
+          
+        
+        ,
+      
+    
+    {\displaystyle L(\theta ;\mathbf {x} ,\mathbf {z} )=p(\mathbf {x} ,\mathbf {z} \mid \theta )=\prod _{i=1}^{n}\prod _{j=1}^{2}\ [f(\mathbf {x} _{i};{\boldsymbol {\mu }}_{j},\Sigma _{j})\tau _{j}]^{\mathbb {I} (z_{i}=j)},}
+  
+
+or
+
+  
+    
+      
+        L
+        (
+        θ
+        ;
+        
+          x
+        
+        ,
+        
+          z
+        
+        )
+        =
+        exp
+        ⁡
+        
+          {
+          
+            
+              ∑
+              
+                i
+                =
+                1
+              
+              
+                n
+              
+            
+            
+              ∑
+              
+                j
+                =
+                1
+              
+              
+                2
+              
+            
+            
+              I
+            
+            (
+            
+              z
+              
+                i
+              
+            
+            =
+            j
+            )
+            
+              
+                [
+              
+            
+            log
+            ⁡
+            
+              τ
+              
+                j
+              
+            
+            −
+            
+              
+                
+                  1
+                  2
+                
+              
+            
+            log
+            ⁡
+            
+              |
+            
+            
+              Σ
+              
+                j
+              
+            
+            
+              |
+            
+            −
+            
+              
+                
+                  1
+                  2
+                
+              
+            
+            (
+            
+              
+                x
+              
+              
+                i
+              
+            
+            −
+            
+              
+                μ
+              
+              
+                j
+              
+            
+            
+              )
+              
+                ⊤
+              
+            
+            
+              Σ
+              
+                j
+              
+              
+                −
+                1
+              
+            
+            (
+            
+              
+                x
+              
+              
+                i
+              
+            
+            −
+            
+              
+                μ
+              
+              
+                j
+              
+            
+            )
+            −
+            
+              
+                
+                  d
+                  2
+                
+              
+            
+            log
+            ⁡
+            (
+            2
+            π
+            )
+            
+              
+                ]
+              
+            
+          
+          }
+        
+        ,
+      
+    
+    {\displaystyle L(\theta ;\mathbf {x} ,\mathbf {z} )=\exp \left\{\sum _{i=1}^{n}\sum _{j=1}^{2}\mathbb {I} (z_{i}=j){\big [}\log \tau _{j}-{\tfrac {1}{2}}\log |\Sigma _{j}|-{\tfrac {1}{2}}(\mathbf {x} _{i}-{\boldsymbol {\mu }}_{j})^{\top }\Sigma _{j}^{-1}(\mathbf {x} _{i}-{\boldsymbol {\mu }}_{j})-{\tfrac {d}{2}}\log(2\pi ){\big ]}\right\},}
+  
+
+where 
+  
+    
+      
+        
+          I
+        
+      
+    
+    {\displaystyle \mathbb {I} }
+  
+ is an indicator function and 
+  
+    
+      
+        f
+      
+    
+    {\displaystyle f}
+  
+ is the probability density function of a multivariate normal.
+In the last equality, for each i, one indicator 
+  
+    
+      
+        
+          I
+        
+        (
+        
+          z
+          
+            i
+          
+        
+        =
+        j
+        )
+      
+    
+    {\displaystyle \mathbb {I} (z_{i}=j)}
+  
+ is equal to zero, and one indicator is equal to one. The inner sum thus reduces to one term.
+
+
+==== E step ====
+Given our current estimate of the parameters θ(t), the conditional distribution of the Zi is determined by Bayes' theorem to be the proportional height of the normal density weighted by τ:
+
+  
+    
+      
+        
+          T
+          
+            j
+            ,
+            i
+          
+          
+            (
+            t
+            )
+          
+        
+        :=
+        P
+        ⁡
+        (
+        
+          Z
+          
+            i
+          
+        
+        =
+        j
+        ∣
+        
+          X
+          
+            i
+          
+        
+        =
+        
+          
+            x
+          
+          
+            i
+          
+        
+        ;
+        
+          θ
+          
+            (
+            t
+            )
+          
+        
+        )
+        =
+        
+          
+            
+              
+                τ
+                
+                  j
+                
+                
+                  (
+                  t
+                  )
+                
+              
+               
+              f
+              (
+              
+                
+                  x
+                
+                
+                  i
+                
+              
+              ;
+              
+                
+                  μ
+                
+                
+                  j
+                
+                
+                  (
+                  t
+                  )
+                
+              
+              ,
+              
+                Σ
+                
+                  j
+                
+                
+                  (
+                  t
+                  )
+                
+              
+              )
+            
+            
+              
+                τ
+                
+                  1
+                
+                
+                  (
+                  t
+                  )
+                
+              
+               
+              f
+              (
+              
+                
+                  x
+                
+                
+                  i
+                
+              
+              ;
+              
+                
+                  μ
+                
+                
+                  1
+                
+                
+                  (
+                  t
+                  )
+                
+              
+              ,
+              
+                Σ
+                
+                  1
+                
+                
+                  (
+                  t
+                  )
+                
+              
+              )
+              +
+              
+                τ
+                
+                  2
+                
+                
+                  (
+                  t
+                  )
+                
+              
+               
+              f
+              (
+              
+                
+                  x
+                
+                
+                  i
+                
+              
+              ;
+              
+                
+                  μ
+                
+                
+                  2
+                
+                
+                  (
+                  t
+                  )
+                
+              
+              ,
+              
+                Σ
+                
+                  2
+                
+                
+                  (
+                  t
+                  )
+                
+              
+              )
+            
+          
+        
+        .
+      
+    
+    {\displaystyle T_{j,i}^{(t)}:=\operatorname {P} (Z_{i}=j\mid X_{i}=\mathbf {x} _{i};\theta ^{(t)})={\frac {\tau _{j}^{(t)}\ f(\mathbf {x} _{i};{\boldsymbol {\mu }}_{j}^{(t)},\Sigma _{j}^{(t)})}{\tau _{1}^{(t)}\ f(\mathbf {x} _{i};{\boldsymbol {\mu }}_{1}^{(t)},\Sigma _{1}^{(t)})+\tau _{2}^{(t)}\ f(\mathbf {x} _{i};{\boldsymbol {\mu }}_{2}^{(t)},\Sigma _{2}^{(t)})}}.}
+  
+
+These are called the "membership probabilities", which are normally considered the output of the E step (although this is not the Q function of below).
+This E step corresponds with setting up this function for Q:
+
+  
+    
+      
+        
+          
+            
+              
+                Q
+                (
+                θ
+                ∣
+                
+                  θ
+                  
+                    (
+                    t
+                    )
+                  
+                
+                )
+              
+              
+                
+                =
+                
+                  E
+                  
+                    
+                      Z
+                    
+                    ∣
+                    
+                      X
+                    
+                    =
+                    
+                      x
+                    
+                    ;
+                    
+                      
+                        θ
+                      
+                      
+                        (
+                        t
+                        )
+                      
+                    
+                  
+                
+                ⁡
+                [
+                log
+                ⁡
+                L
+                (
+                θ
+                ;
+                
+                  x
+                
+                ,
+                
+                  Z
+                
+                )
+                ]
+              
+            
+            
+              
+              
+                
+                =
+                
+                  E
+                  
+                    
+                      Z
+                    
+                    ∣
+                    
+                      X
+                    
+                    =
+                    
+                      x
+                    
+                    ;
+                    
+                      
+                        θ
+                      
+                      
+                        (
+                        t
+                        )
+                      
+                    
+                  
+                
+                ⁡
+                [
+                log
+                ⁡
+                
+                  ∏
+                  
+                    i
+                    =
+                    1
+                  
+                  
+                    n
+                  
+                
+                L
+                (
+                θ
+                ;
+                
+                  
+                    x
+                  
+                  
+                    i
+                  
+                
+                ,
+                
+                  Z
+                  
+                    i
+                  
+                
+                )
+                ]
+              
+            
+            
+              
+              
+                
+                =
+                
+                  E
+                  
+                    
+                      Z
+                    
+                    ∣
+                    
+                      X
+                    
+                    =
+                    
+                      x
+                    
+                    ;
+                    
+                      
+                        θ
+                      
+                      
+                        (
+                        t
+                        )
+                      
+                    
+                  
+                
+                ⁡
+                [
+                
+                  ∑
+                  
+                    i
+                    =
+                    1
+                  
+                  
+                    n
+                  
+                
+                log
+                ⁡
+                L
+                (
+                θ
+                ;
+                
+                  
+                    x
+                  
+                  
+                    i
+                  
+                
+                ,
+                
+                  Z
+                  
+                    i
+                  
+                
+                )
+                ]
+              
+            
+            
+              
+              
+                
+                =
+                
+                  ∑
+                  
+                    i
+                    =
+                    1
+                  
+                  
+                    n
+                  
+                
+                
+                  E
+                  
+                    
+                      Z
+                      
+                        i
+                      
+                    
+                    ∣
+                    
+                      X
+                      
+                        i
+                      
+                    
+                    =
+                    
+                      x
+                      
+                        i
+                      
+                    
+                    ;
+                    
+                      
+                        θ
+                      
+                      
+                        (
+                        t
+                        )
+                      
+                    
+                  
+                
+                ⁡
+                [
+                log
+                ⁡
+                L
+                (
+                θ
+                ;
+                
+                  
+                    x
+                  
+                  
+                    i
+                  
+                
+                ,
+                
+                  Z
+                  
+                    i
+                  
+                
+                )
+                ]
+              
+            
+            
+              
+              
+                
+                =
+                
+                  ∑
+                  
+                    i
+                    =
+                    1
+                  
+                  
+                    n
+                  
+                
+                
+                  ∑
+                  
+                    j
+                    =
+                    1
+                  
+                  
+                    2
+                  
+                
+                P
+                (
+                
+                  Z
+                  
+                    i
+                  
+                
+                =
+                j
+                ∣
+                
+                  X
+                  
+                    i
+                  
+                
+                =
+                
+                  
+                    x
+                  
+                  
+                    i
+                  
+                
+                ;
+                
+                  θ
+                  
+                    (
+                    t
+                    )
+                  
+                
+                )
+                log
+                ⁡
+                L
+                (
+                
+                  θ
+                  
+                    j
+                  
+                
+                ;
+                
+                  
+                    x
+                  
+                  
+                    i
+                  
+                
+                ,
+                j
+                )
+              
+            
+            
+              
+              
+                
+                =
+                
+                  ∑
+                  
+                    i
+                    =
+                    1
+                  
+                  
+                    n
+                  
+                
+                
+                  ∑
+                  
+                    j
+                    =
+                    1
+                  
+                  
+                    2
+                  
+                
+                
+                  T
+                  
+                    j
+                    ,
+                    i
+                  
+                  
+                    (
+                    t
+                    )
+                  
+                
+                
+                  
+                    [
+                  
+                
+                log
+                ⁡
+                
+                  τ
+                  
+                    j
+                  
+                
+                −
+                
+                  
+                    
+                      1
+                      2
+                    
+                  
+                
+                log
+                ⁡
+                
+                  |
+                
+                
+                  Σ
+                  
+                    j
+                  
+                
+                
+                  |
+                
+                −
+                
+                  
+                    
+                      1
+                      2
+                    
+                  
+                
+                (
+                
+                  
+                    x
+                  
+                  
+                    i
+                  
+                
+                −
+                
+                  
+                    μ
+                  
+                  
+                    j
+                  
+                
+                
+                  )
+                  
+                    ⊤
+                  
+                
+                
+                  Σ
+                  
+                    j
+                  
+                  
+                    −
+                    1
+                  
+                
+                (
+                
+                  
+                    x
+                  
+                  
+                    i
+                  
+                
+                −
+                
+                  
+                    μ
+                  
+                  
+                    j
+                  
+                
+                )
+                −
+                
+                  
+                    
+                      d
+                      2
+                    
+                  
+                
+                log
+                ⁡
+                (
+                2
+                π
+                )
+                
+                  
+                    ]
+                  
+                
+                .
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{aligned}Q(\theta \mid \theta ^{(t)})&=\operatorname {E} _{\mathbf {Z} \mid \mathbf {X} =\mathbf {x} ;\mathbf {\theta } ^{(t)}}[\log L(\theta ;\mathbf {x} ,\mathbf {Z} )]\\&=\operatorname {E} _{\mathbf {Z} \mid \mathbf {X} =\mathbf {x} ;\mathbf {\theta } ^{(t)}}[\log \prod _{i=1}^{n}L(\theta ;\mathbf {x} _{i},Z_{i})]\\&=\operatorname {E} _{\mathbf {Z} \mid \mathbf {X} =\mathbf {x} ;\mathbf {\theta } ^{(t)}}[\sum _{i=1}^{n}\log L(\theta ;\mathbf {x} _{i},Z_{i})]\\&=\sum _{i=1}^{n}\operatorname {E} _{Z_{i}\mid X_{i}=x_{i};\mathbf {\theta } ^{(t)}}[\log L(\theta ;\mathbf {x} _{i},Z_{i})]\\&=\sum _{i=1}^{n}\sum _{j=1}^{2}P(Z_{i}=j\mid X_{i}=\mathbf {x} _{i};\theta ^{(t)})\log L(\theta _{j};\mathbf {x} _{i},j)\\&=\sum _{i=1}^{n}\sum _{j=1}^{2}T_{j,i}^{(t)}{\big [}\log \tau _{j}-{\tfrac {1}{2}}\log |\Sigma _{j}|-{\tfrac {1}{2}}(\mathbf {x} _{i}-{\boldsymbol {\mu }}_{j})^{\top }\Sigma _{j}^{-1}(\mathbf {x} _{i}-{\boldsymbol {\mu }}_{j})-{\tfrac {d}{2}}\log(2\pi ){\big ]}.\end{aligned}}}
+  
+
+The expectation of 
+  
+    
+      
+        log
+        ⁡
+        L
+        (
+        θ
+        ;
+        
+          
+            x
+          
+          
+            i
+          
+        
+        ,
+        
+          Z
+          
+            i
+          
+        
+        )
+      
+    
+    {\displaystyle \log L(\theta ;\mathbf {x} _{i},Z_{i})}
+  
+ inside the sum is taken with respect to the probability density function 
+  
+    
+      
+        P
+        (
+        
+          Z
+          
+            i
+          
+        
+        ∣
+        
+          X
+          
+            i
+          
+        
+        =
+        
+          
+            x
+          
+          
+            i
+          
+        
+        ;
+        
+          θ
+          
+            (
+            t
+            )
+          
+        
+        )
+      
+    
+    {\displaystyle P(Z_{i}\mid X_{i}=\mathbf {x} _{i};\theta ^{(t)})}
+  
+, which might be different for each  
+  
+    
+      
+        
+          
+            x
+          
+          
+            i
+          
+        
+      
+    
+    {\displaystyle \mathbf {x} _{i}}
+  
+ of the training set. Everything in the E step is known before the step is taken except 
+  
+    
+      
+        
+          T
+          
+            j
+            ,
+            i
+          
+        
+      
+    
+    {\displaystyle T_{j,i}}
+  
+, which is computed according to the equation at the beginning of the E step section.
+This full conditional expectation does not need to be calculated in one step, because τ and μ/Σ appear in separate linear terms and can thus be maximized independently.
+
+
+==== M step ====
+
+  
+    
+      
+        Q
+        (
+        θ
+        ∣
+        
+          θ
+          
+            (
+            t
+            )
+          
+        
+        )
+      
+    
+    {\displaystyle Q(\theta \mid \theta ^{(t)})}
+  
+ being quadratic in form means that determining the maximizing values of 
+  
+    
+      
+        θ
+      
+    
+    {\displaystyle \theta }
+  
+ is relatively straightforward. Also, 
+  
+    
+      
+        τ
+      
+    
+    {\displaystyle \tau }
+  
+, 
+  
+    
+      
+        (
+        
+          
+            μ
+          
+          
+            1
+          
+        
+        ,
+        
+          Σ
+          
+            1
+          
+        
+        )
+      
+    
+    {\displaystyle ({\boldsymbol {\mu }}_{1},\Sigma _{1})}
+  
+ and 
+  
+    
+      
+        (
+        
+          
+            μ
+          
+          
+            2
+          
+        
+        ,
+        
+          Σ
+          
+            2
+          
+        
+        )
+      
+    
+    {\displaystyle ({\boldsymbol {\mu }}_{2},\Sigma _{2})}
+  
+ may all be maximized independently since they all appear in separate linear terms.
+To begin, consider 
+  
+    
+      
+        τ
+      
+    
+    {\displaystyle \tau }
+  
+, which has the constraint 
+  
+    
+      
+        
+          τ
+          
+            1
+          
+        
+        +
+        
+          τ
+          
+            2
+          
+        
+        =
+        1
+      
+    
+    {\displaystyle \tau _{1}+\tau _{2}=1}
+  
+:
+
+  
+    
+      
+        
+          
+            
+              
+                
+                  
+                    τ
+                  
+                  
+                    (
+                    t
+                    +
+                    1
+                    )
+                  
+                
+              
+              
+                
+                =
+                
+                  
+                    
+                      a
+                      r
+                      g
+                      
+                      m
+                      a
+                      x
+                    
+                    τ
+                  
+                
+                 
+                Q
+                (
+                θ
+                ∣
+                
+                  θ
+                  
+                    (
+                    t
+                    )
+                  
+                
+                )
+              
+            
+            
+              
+              
+                
+                =
+                
+                  
+                    
+                      a
+                      r
+                      g
+                      
+                      m
+                      a
+                      x
+                    
+                    τ
+                  
+                
+                 
+                
+                  {
+                  
+                    
+                      [
+                      
+                        
+                          ∑
+                          
+                            i
+                            =
+                            1
+                          
+                          
+                            n
+                          
+                        
+                        
+                          T
+                          
+                            1
+                            ,
+                            i
+                          
+                          
+                            (
+                            t
+                            )
+                          
+                        
+                      
+                      ]
+                    
+                    log
+                    ⁡
+                    
+                      τ
+                      
+                        1
+                      
+                    
+                    +
+                    
+                      [
+                      
+                        
+                          ∑
+                          
+                            i
+                            =
+                            1
+                          
+                          
+                            n
+                          
+                        
+                        
+                          T
+                          
+                            2
+                            ,
+                            i
+                          
+                          
+                            (
+                            t
+                            )
+                          
+                        
+                      
+                      ]
+                    
+                    log
+                    ⁡
+                    
+                      τ
+                      
+                        2
+                      
+                    
+                  
+                  }
+                
+                .
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{aligned}{\boldsymbol {\tau }}^{(t+1)}&={\underset {\boldsymbol {\tau }}{\operatorname {arg\,max} }}\ Q(\theta \mid \theta ^{(t)})\\&={\underset {\boldsymbol {\tau }}{\operatorname {arg\,max} }}\ \left\{\left[\sum _{i=1}^{n}T_{1,i}^{(t)}\right]\log \tau _{1}+\left[\sum _{i=1}^{n}T_{2,i}^{(t)}\right]\log \tau _{2}\right\}.\end{aligned}}}
+  
+
+This has the same form as the maximum likelihood estimate for the binomial distribution, so
+
+  
+    
+      
+        
+          τ
+          
+            j
+          
+          
+            (
+            t
+            +
+            1
+            )
+          
+        
+        =
+        
+          
+            
+              
+                ∑
+                
+                  i
+                  =
+                  1
+                
+                
+                  n
+                
+              
+              
+                T
+                
+                  j
+                  ,
+                  i
+                
+                
+                  (
+                  t
+                  )
+                
+              
+            
+            
+              
+                ∑
+                
+                  i
+                  =
+                  1
+                
+                
+                  n
+                
+              
+              (
+              
+                T
+                
+                  1
+                  ,
+                  i
+                
+                
+                  (
+                  t
+                  )
+                
+              
+              +
+              
+                T
+                
+                  2
+                  ,
+                  i
+                
+                
+                  (
+                  t
+                  )
+                
+              
+              )
+            
+          
+        
+        =
+        
+          
+            1
+            n
+          
+        
+        
+          ∑
+          
+            i
+            =
+            1
+          
+          
+            n
+          
+        
+        
+          T
+          
+            j
+            ,
+            i
+          
+          
+            (
+            t
+            )
+          
+        
+        .
+      
+    
+    {\displaystyle \tau _{j}^{(t+1)}={\frac {\sum _{i=1}^{n}T_{j,i}^{(t)}}{\sum _{i=1}^{n}(T_{1,i}^{(t)}+T_{2,i}^{(t)})}}={\frac {1}{n}}\sum _{i=1}^{n}T_{j,i}^{(t)}.}
+  
+
+For the next estimates of 
+  
+    
+      
+        (
+        
+          
+            μ
+          
+          
+            1
+          
+        
+        ,
+        
+          Σ
+          
+            1
+          
+        
+        )
+      
+    
+    {\displaystyle ({\boldsymbol {\mu }}_{1},\Sigma _{1})}
+  
+:
+
+  
+    
+      
+        
+          
+            
+              
+                (
+                
+                  
+                    μ
+                  
+                  
+                    1
+                  
+                  
+                    (
+                    t
+                    +
+                    1
+                    )
+                  
+                
+                ,
+                
+                  Σ
+                  
+                    1
+                  
+                  
+                    (
+                    t
+                    +
+                    1
+                    )
+                  
+                
+                )
+              
+              
+                
+                =
+                
+                  
+                    
+                      a
+                      r
+                      g
+                      
+                      m
+                      a
+                      x
+                    
+                    
+                      
+                        
+                          μ
+                        
+                        
+                          1
+                        
+                      
+                      ,
+                      
+                        Σ
+                        
+                          1
+                        
+                      
+                    
+                  
+                
+                 
+                Q
+                (
+                θ
+                ∣
+                
+                  θ
+                  
+                    (
+                    t
+                    )
+                  
+                
+                )
+              
+            
+            
+              
+              
+                
+                =
+                
+                  
+                    
+                      a
+                      r
+                      g
+                      
+                      m
+                      a
+                      x
+                    
+                    
+                      
+                        
+                          μ
+                        
+                        
+                          1
+                        
+                      
+                      ,
+                      
+                        Σ
+                        
+                          1
+                        
+                      
+                    
+                  
+                
+                 
+                
+                  ∑
+                  
+                    i
+                    =
+                    1
+                  
+                  
+                    n
+                  
+                
+                
+                  T
+                  
+                    1
+                    ,
+                    i
+                  
+                  
+                    (
+                    t
+                    )
+                  
+                
+                
+                  {
+                  
+                    −
+                    
+                      
+                        
+                          1
+                          2
+                        
+                      
+                    
+                    log
+                    ⁡
+                    
+                      |
+                    
+                    
+                      Σ
+                      
+                        1
+                      
+                    
+                    
+                      |
+                    
+                    −
+                    
+                      
+                        
+                          1
+                          2
+                        
+                      
+                    
+                    (
+                    
+                      
+                        x
+                      
+                      
+                        i
+                      
+                    
+                    −
+                    
+                      
+                        μ
+                      
+                      
+                        1
+                      
+                    
+                    
+                      )
+                      
+                        ⊤
+                      
+                    
+                    
+                      Σ
+                      
+                        1
+                      
+                      
+                        −
+                        1
+                      
+                    
+                    (
+                    
+                      
+                        x
+                      
+                      
+                        i
+                      
+                    
+                    −
+                    
+                      
+                        μ
+                      
+                      
+                        1
+                      
+                    
+                    )
+                  
+                  }
+                
+              
+            
+          
+        
+        .
+      
+    
+    {\displaystyle {\begin{aligned}({\boldsymbol {\mu }}_{1}^{(t+1)},\Sigma _{1}^{(t+1)})&={\underset {{\boldsymbol {\mu }}_{1},\Sigma _{1}}{\operatorname {arg\,max} }}\ Q(\theta \mid \theta ^{(t)})\\&={\underset {{\boldsymbol {\mu }}_{1},\Sigma _{1}}{\operatorname {arg\,max} }}\ \sum _{i=1}^{n}T_{1,i}^{(t)}\left\{-{\tfrac {1}{2}}\log |\Sigma _{1}|-{\tfrac {1}{2}}(\mathbf {x} _{i}-{\boldsymbol {\mu }}_{1})^{\top }\Sigma _{1}^{-1}(\mathbf {x} _{i}-{\boldsymbol {\mu }}_{1})\right\}\end{aligned}}.}
+  
+
+This has the same form as a weighted maximum likelihood estimate for a normal distribution, so
+
+  
+    
+      
+        
+          
+            μ
+          
+          
+            1
+          
+          
+            (
+            t
+            +
+            1
+            )
+          
+        
+        =
+        
+          
+            
+              
+                ∑
+                
+                  i
+                  =
+                  1
+                
+                
+                  n
+                
+              
+              
+                T
+                
+                  1
+                  ,
+                  i
+                
+                
+                  (
+                  t
+                  )
+                
+              
+              
+                
+                  x
+                
+                
+                  i
+                
+              
+            
+            
+              
+                ∑
+                
+                  i
+                  =
+                  1
+                
+                
+                  n
+                
+              
+              
+                T
+                
+                  1
+                  ,
+                  i
+                
+                
+                  (
+                  t
+                  )
+                
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\boldsymbol {\mu }}_{1}^{(t+1)}={\frac {\sum _{i=1}^{n}T_{1,i}^{(t)}\mathbf {x} _{i}}{\sum _{i=1}^{n}T_{1,i}^{(t)}}}}
+  
+ and 
+  
+    
+      
+        
+          Σ
+          
+            1
+          
+          
+            (
+            t
+            +
+            1
+            )
+          
+        
+        =
+        
+          
+            
+              
+                ∑
+                
+                  i
+                  =
+                  1
+                
+                
+                  n
+                
+              
+              
+                T
+                
+                  1
+                  ,
+                  i
+                
+                
+                  (
+                  t
+                  )
+                
+              
+              (
+              
+                
+                  x
+                
+                
+                  i
+                
+              
+              −
+              
+                
+                  μ
+                
+                
+                  1
+                
+                
+                  (
+                  t
+                  +
+                  1
+                  )
+                
+              
+              )
+              (
+              
+                
+                  x
+                
+                
+                  i
+                
+              
+              −
+              
+                
+                  μ
+                
+                
+                  1
+                
+                
+                  (
+                  t
+                  +
+                  1
+                  )
+                
+              
+              
+                )
+                
+                  ⊤
+                
+              
+            
+            
+              
+                ∑
+                
+                  i
+                  =
+                  1
+                
+                
+                  n
+                
+              
+              
+                T
+                
+                  1
+                  ,
+                  i
+                
+                
+                  (
+                  t
+                  )
+                
+              
+            
+          
+        
+      
+    
+    {\displaystyle \Sigma _{1}^{(t+1)}={\frac {\sum _{i=1}^{n}T_{1,i}^{(t)}(\mathbf {x} _{i}-{\boldsymbol {\mu }}_{1}^{(t+1)})(\mathbf {x} _{i}-{\boldsymbol {\mu }}_{1}^{(t+1)})^{\top }}{\sum _{i=1}^{n}T_{1,i}^{(t)}}}}
+  
+
+and, by symmetry,
+
+  
+    
+      
+        
+          
+            μ
+          
+          
+            2
+          
+          
+            (
+            t
+            +
+            1
+            )
+          
+        
+        =
+        
+          
+            
+              
+                ∑
+                
+                  i
+                  =
+                  1
+                
+                
+                  n
+                
+              
+              
+                T
+                
+                  2
+                  ,
+                  i
+                
+                
+                  (
+                  t
+                  )
+                
+              
+              
+                
+                  x
+                
+                
+                  i
+                
+              
+            
+            
+              
+                ∑
+                
+                  i
+                  =
+                  1
+                
+                
+                  n
+                
+              
+              
+                T
+                
+                  2
+                  ,
+                  i
+                
+                
+                  (
+                  t
+                  )
+                
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\boldsymbol {\mu }}_{2}^{(t+1)}={\frac {\sum _{i=1}^{n}T_{2,i}^{(t)}\mathbf {x} _{i}}{\sum _{i=1}^{n}T_{2,i}^{(t)}}}}
+  
+ and 
+  
+    
+      
+        
+          Σ
+          
+            2
+          
+          
+            (
+            t
+            +
+            1
+            )
+          
+        
+        =
+        
+          
+            
+              
+                ∑
+                
+                  i
+                  =
+                  1
+                
+                
+                  n
+                
+              
+              
+                T
+                
+                  2
+                  ,
+                  i
+                
+                
+                  (
+                  t
+                  )
+                
+              
+              (
+              
+                
+                  x
+                
+                
+                  i
+                
+              
+              −
+              
+                
+                  μ
+                
+                
+                  2
+                
+                
+                  (
+                  t
+                  +
+                  1
+                  )
+                
+              
+              )
+              (
+              
+                
+                  x
+                
+                
+                  i
+                
+              
+              −
+              
+                
+                  μ
+                
+                
+                  2
+                
+                
+                  (
+                  t
+                  +
+                  1
+                  )
+                
+              
+              
+                )
+                
+                  ⊤
+                
+              
+            
+            
+              
+                ∑
+                
+                  i
+                  =
+                  1
+                
+                
+                  n
+                
+              
+              
+                T
+                
+                  2
+                  ,
+                  i
+                
+                
+                  (
+                  t
+                  )
+                
+              
+            
+          
+        
+        .
+      
+    
+    {\displaystyle \Sigma _{2}^{(t+1)}={\frac {\sum _{i=1}^{n}T_{2,i}^{(t)}(\mathbf {x} _{i}-{\boldsymbol {\mu }}_{2}^{(t+1)})(\mathbf {x} _{i}-{\boldsymbol {\mu }}_{2}^{(t+1)})^{\top }}{\sum _{i=1}^{n}T_{2,i}^{(t)}}}.}
+  
+
+
+==== Termination ====
+Conclude the iterative process if 
+  
+    
+      
+        
+          E
+          
+            Z
+            ∣
+            
+              θ
+              
+                (
+                t
+                )
+              
+            
+            ,
+            
+              x
+            
+          
+        
+        [
+        log
+        ⁡
+        L
+        (
+        
+          θ
+          
+            (
+            t
+            )
+          
+        
+        ;
+        
+          x
+        
+        ,
+        
+          Z
+        
+        )
+        ]
+        ≤
+        
+          E
+          
+            Z
+            ∣
+            
+              θ
+              
+                (
+                t
+                −
+                1
+                )
+              
+            
+            ,
+            
+              x
+            
+          
+        
+        [
+        log
+        ⁡
+        L
+        (
+        
+          θ
+          
+            (
+            t
+            −
+            1
+            )
+          
+        
+        ;
+        
+          x
+        
+        ,
+        
+          Z
+        
+        )
+        ]
+        +
+        ε
+      
+    
+    {\displaystyle E_{Z\mid \theta ^{(t)},\mathbf {x} }[\log L(\theta ^{(t)};\mathbf {x} ,\mathbf {Z} )]\leq E_{Z\mid \theta ^{(t-1)},\mathbf {x} }[\log L(\theta ^{(t-1)};\mathbf {x} ,\mathbf {Z} )]+\varepsilon }
+  
+ for 
+  
+    
+      
+        ε
+      
+    
+    {\displaystyle \varepsilon }
+  
+ below some preset threshold.
+
+
+==== Generalization ====
+The algorithm illustrated above can be generalized for mixtures of more than two multivariate normal distributions.
+
+
+=== Truncated and censored regression ===
+The EM algorithm has been implemented in the case where an underlying linear regression model exists explaining the variation of some quantity, but where the values actually observed are censored or truncated versions of those represented in the model. Special cases of this model include censored or truncated observations from one normal distribution.
+
+
+== Alternatives ==
+EM typically converges to a local optimum, not necessarily the global optimum, with no bound on the convergence rate in general. It is possible that it can be arbitrarily poor in high dimensions and there can be an exponential number of local optima. Hence, a need exists for alternative methods for guaranteed learning, especially in the high-dimensional setting. Alternatives to EM exist with better guarantees for consistency, which are termed moment-based approaches or the so-called spectral techniques. Moment-based approaches to learning the parameters of a probabilistic model enjoy guarantees such as global convergence under certain conditions unlike EM which is often plagued by the issue of getting stuck in local optima. Algorithms with guarantees for learning can be derived for a number of important models such as mixture models, HMMs etc. For these spectral methods, no spurious local optima occur, and the true parameters can be consistently estimated under some regularity conditions.
+
+
+== See also ==
+mixture distribution
+compound distribution
+density estimation
+Principal component analysis
+total absorption spectroscopy
+The EM algorithm can be viewed as a special case of the majorize-minimization (MM) algorithm.
+
+
+== References ==
+
+
+== Further reading ==
+Hogg, Robert; McKean, Joseph; Craig, Allen (2005). Introduction to Mathematical Statistics. Upper Saddle River, NJ: Pearson Prentice Hall. pp. 359–364.
+Dellaert, Frank (February 2002). The Expectation Maximization Algorithm (PDF) (Technical Report number GIT-GVU-02-20). Georgia Tech College of Computing. gives an easier explanation of EM algorithm as to lowerbound maximization.
+Bishop, Christopher M. (2006). Pattern Recognition and Machine Learning. Springer. ISBN 978-0-387-31073-2.
+Gupta, M. R.; Chen, Y. (2010). "Theory and Use of the EM Algorithm". Foundations and Trends in Signal Processing. 4 (3): 223–296. CiteSeerX 10.1.1.219.6830. doi:10.1561/2000000034. A well-written short book on EM, including detailed derivation of EM for GMMs, HMMs, and Dirichlet.
+Bilmes, Jeff (1997). A Gentle Tutorial of the EM Algorithm and its Application to Parameter Estimation for Gaussian Mixture and Hidden Markov Models (Technical Report TR-97-021). International Computer Science Institute. includes a simplified derivation of the EM equations for Gaussian Mixtures and Gaussian Mixture Hidden Markov Models.
+McLachlan, Geoffrey J.; Krishnan, Thriyambakam (2008). The EM Algorithm and Extensions (2nd ed.). Hoboken: Wiley. ISBN 978-0-471-20170-0.
+
+
+== External links ==
+Various 1D, 2D and 3D demonstrations of EM together with Mixture Modeling are provided as part of the paired SOCR activities and applets. These applets and activities show empirically the properties of the EM algorithm for parameter estimation in diverse settings.
+Class hierarchy in C++ (GPL) including Gaussian Mixtures
+The on-line textbook: Information Theory, Inference, and Learning Algorithms, by David J.C. MacKay includes simple examples of the EM algorithm such as clustering using the soft k-means algorithm, and emphasizes the variational view of the EM algorithm, as described in Chapter 33.7 of version 7.2 (fourth edition).
+Variational Algorithms for Approximate Bayesian Inference, by M. J. Beal includes comparisons of EM to Variational Bayesian EM and derivations of several models including Variational Bayesian HMMs (chapters).
+The Expectation Maximization Algorithm: A short tutorial, A self-contained derivation of the EM Algorithm by Sean Borman.
+The EM Algorithm, by Xiaojin Zhu.
+EM algorithm and variants: an informal tutorial by Alexis Roche. A concise and very clear description of EM and many interesting variants.

@@ -1,0 +1,83 @@
+Deterministic Networking (DetNet) is an effort by the IETF DetNet Working Group to study implementation of deterministic data paths for real-time applications with extremely low data loss rates, packet delay variation (jitter), and bounded latency, such as audio and video streaming, industrial automation, and vehicle control. 
+DetNet operates at the IP Layer 3 routed segments using a software-defined networking layer to provide IntServ and DiffServ integration, and delivers service over lower Layer 2 bridged segments using technologies such as MPLS and IEEE 802.1 Time-Sensitive Networking. Deterministic Networking aims to migrate time-critical, high-reliability industrial control and audio-video applications from special-purpose Fieldbus networks (HDMI, CAN bus, PROFIBUS, RS-485, RS-422/RS-232, and I²C) to packet networks and IP in particular. DetNet will support both the new applications and existing IT applications on the same physical network.
+To support real-time applications, DetNet implements reservation of data plane resources in intermediate nodes along the data flow path, calculation of explicit routes that do not depend on network topology, and redistribute data packets over time and/or space to deliver data even with the loss of one path.
+
+
+== Rationale ==
+Standard IT infrastructure cannot efficiently handle latency-sensitive data. Switches and routers use fundamentally uncertain algorithms for processing packet/frames, which may result in sporadic data flow. 
+A common solution for smoothing out these flows is to increase buffer sizes, but this has a negative effect on delivery latency because data has to fill the buffers before transmission to the next switch or router can start.
+IEEE Time-Sensitive Networking (TSN) task group has defined deterministic algorithms for queuing, shaping and scheduling which allow each node to allocate bandwidth and latency according to requirements of each data flow, by computing the buffer size at the network switch. The same algorithms can be employed at higher network layers to improve delivery of IP packets and provide interoperability with TSN hardware when available.
+
+
+== Requirements ==
+Applications from different fields often have fundamentally similar requirements, which may include:
+
+Time synchronization at each node (routers/bridge)across the entire network, with accuracy from nanoseconds to microseconds.
+Deterministic data flow, which shall support:
+unicast or multicast packets;
+guaranteed minimum and maximum latency endpoint-to-endpoint across the entire network, with tight jitter when required;
+Ethernet packet loss ratio from 10−9 to 10−12, wireless mesh networks around 10−5;
+high utilization of the available network bandwidth (no need for massive over-provisioning);
+flow processing without throttling, congestion feedback, or other network-defined transmission delay;
+a fixed transmission schedule, or a maximum bandwidth and packet size.
+Scheduling, shaping, limiting, and controlling transmission at each node.
+Protection against misbehaving nodes (in both the data and the control planes): a flow cannot affect other flows even under high load.
+Reserving resources in nodes that carry the flow.
+
+
+== Operation ==
+
+
+=== Resource allocation ===
+To reduce contention related packet loss, resources such as buffer space or link bandwidth can be assigned to the flow along the path from source to destination. Maintaining adequate buffer storage at each node also limits maximum end-to-end latency.
+The maximum transmission rate and maximum packet size have to be explicitly defined for each flow.
+Each network node along the path shall not exceed these data rates, as any packet sent out of scheduled time requires additional buffering on the next node, which may exceed its allocated resources.
+To limit data rates, traffic policing and shaping functions are applied at the ingress ports. This also protects regular IT traffic from misbehaving DetNet sources.
+Time-of-execution fields in the packets and sub-microsecond time synchronization across all nodes are used to ensure minimum end-to-end latency and eliminate irregular delivery (jitter). Jitter reduces the perceived quality of audiovisual applications, and control network applications built around serial communication protocols cannot handle jitter at all.
+
+
+=== Service protection ===
+Packet loss can also result from media errors and equipment failures. Packet replication and elimination and packet encoding provide service protection from these failures.
+Replication and elimination works by spreading the data across several explicit paths and reassembling them in-order near the destination. Sequence number or timestamp is added to DetNet flow or transport protocol packet, then duplicate packets are eliminated and out-of-order packets are reordered, based on sequencing information and transmission logs,  
+Adhering to the flow latency constraints also imposes constraints on misordering, as out-of-order packets impact the jitter and require additional buffering.
+Different path lengths also require additional buffering to equalize the delays and ensure bandwidth constraints after failure recovery.
+Replication and elimination may be used by multiple DetNet nodes to improve protection against multiple failures.
+Packet encoding uses multiple transmission units for each packet, adding redundancy and error correction information from multiple packets to each transmission unit.
+
+
+=== Explicit routes ===
+In mesh networks, topology events such as failure or recovery can impact data flow even in remote network segments. A side effect of route changes is out-of-order packet delivery.
+Real-time networks are often based on physical rings with a simple control protocol and two ports per device for redundant paths, though at a cost of increased hop count and latency.
+DetNet routes are typically explicitly defined and do not change (at least immediately) in response to network topology events, so there are no interruptions from routing or bridging protocol negotiations.
+Explicit routes can be established with RSVP-TE, Segment Routing, IS-IS, MPLS-TE label-switched path (LSP), or a software-defined networking layer.
+
+
+=== Traffic engineering ===
+IETF Traffic Engineering Architecture and Signaling (TEAS) work group maintains MPLS-TE LSP and RSVP-TE protocols. These traffic Engineering (TE) routing protocols translate DetNet flow specification to IEEE 802.1 TSN controls for queuing, shaping, and scheduling algorithms, such as IEEE 802.1Qav credit-based shaper, IEEE802.1Qbv time-triggered shaper with a rotating time scheduler, IEEE802.1Qch synchronized double and triple buffering, 802.1Qbu/802.3br Ethernet packet pre-emption, and 802.1CB frame replication and elimination for reliability. Protocol interworking defined by IEEE 802.1CB is used to advertise TSN sub-network capabilities to DetNet flows via the Active Destination MAC and VLAN Stream identification functions. DetNet flows are matched by destination MAC address, VLAN ID and priority parameters to Stream ID and QoS requirements for talkers and listeners in the AVB/TSN sub-network.
+
+
+== Use cases ==
+IETF foresees the following use cases:
+
+pro audio and video (Audio Video Bridging);
+electrical generation and distribution;
+building automation systems (BAS);
+wireless industrial mesh networks;
+cellular radio (fronthaul/backhaul);
+industrial machine to machine (M2M) networks;
+mining industry (remote vehicle control);
+private blockchain;
+network slicing.
+
+
+== See also ==
+Audio over Ethernet
+Audio over IP
+Internet standards
+
+
+== References ==
+
+
+== External links ==
+Deterministic Networking (detnet) Working Group

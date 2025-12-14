@@ -1,0 +1,66 @@
+Snappy (previously known as Zippy) is a fast data compression and decompression library written in C++ by Google based on ideas from LZ77 and open-sourced in 2011. It does not aim for maximum compression, or compatibility with any other compression library; instead, it aims for very high speeds and reasonable compression. Compression speed is 250 MB/s and decompression speed is 500 MB/s using a single core of a circa 2011 "Westmere" 2.26 GHz Core i7 processor running in 64-bit mode. The compression ratio is 20–100% lower than gzip.
+Snappy is widely used in Google projects like Bigtable, MapReduce and in compressing data for Google's internal RPC systems. It can be used in open-source projects like MariaDB ColumnStore, Cassandra, Couchbase, Hadoop, LevelDB, MongoDB, RocksDB, Lucene, Spark, Parquet, InfluxDB, and Ceph. Firefox uses Snappy to compress data in localStorage. Decompression is tested to detect any errors in the compressed stream. Snappy does not use inline assembler (except some optimizations) and is portable.
+
+
+== Stream format ==
+Snappy encoding is not bit-oriented, but byte-oriented (only whole bytes are emitted or consumed from a stream). The format uses no entropy encoder, like Huffman coding or arithmetic coding.
+The first bytes of the stream are the length of uncompressed data, stored as a little-endian varint, which allows for use of a variable-length code. The lower seven bits of each byte are used for data and the high bit is a flag to indicate the end of the length field.
+The remaining bytes in the stream are encoded using one of four element types. The element type is encoded in the lower two bits of the first byte (tag byte) of the element:
+
+00 – Literal – uncompressed data; upper 6 bits are used to store length (len-1) of data. Lengths larger than 60 are stored in a 1-4 byte integer indicated by a 6 bit length of 60 (1 byte) to 63 (4 bytes).
+01 – Copy with length stored as 3 bits and offset stored as 11 bits; one byte after tag byte is used for part of offset;
+10 – Copy with length stored as 6 bits of tag byte and offset stored as two-byte integer after the tag byte;
+11 – Copy with length stored as 6 bits of tag byte and offset stored as four-byte little-endian integer after the tag byte;
+The copy refers to the dictionary (just-decompressed data). The offset is the shift from the current position back to the already decompressed stream. The length is the number of bytes to copy from the dictionary. The size of the dictionary was limited by the 1.0 Snappy compressor to 32,768 bytes, and updated to 65,536 in version 1.1.
+The complete official description of the snappy format can be found in the google GitHub repository.
+
+
+== Example of a compressed stream ==
+The text
+
+Wikipedia is a free, web-based, collaborative, multilingual encyclopedia project.
+may be compressed to this, shown as hex data with explanations:
+
+000000 51 f0 42 57 69 6b 69 70 65 64 69 61 20 69 73 20  >Q.BWikipedia is <
+000010 61 20 66 72 65 65 2c 20 77 65 62 2d 62 61 73 65  >a free, web-base<
+000020 64 2c 20 63 6f 6c 6c 61 62 6f 72 61 74 69 76 65  >d, collaborative<
+000030 2c 20 6d 75 6c 74 69 6c 69 6e 67 75 61 6c 20 65  >, multilingual e<
+
+The stream starts with the length of the uncompressed data as a varint, so the first byte, with the high bit clear, corresponds to a length of 5116=81 bytes.
+The first block must be a literal, and f042 corresponds thereto: the first byte is broken down as f016 ⇒ len−1=1111002;type=002; type 0 signifies a literal, and a length−1 of 1111002=60 means the length is read from the following byte, in this case 4216=66. The first 66 bytes of the text ("Wikipedia is a free, web-based, collaborative, multilingual encyclo") follow.
+
+000040 6e 63 79 63 6c 6f 09 3f 1c 70 72 6f 6a 65 63 74  >ncyclo.?.project<
+000050 2e                                               >.<
+
+The next block's header consists of 093f, broken down as 0916 ⇒ offh=0002,len−4=0102;type=012: type 1 indicates a "copy with 1-byte offset": the length to copy works out to 0102+4=6 bytes, and the offset is an 11-bit integer whose top bits are offh and whose low bits are the next byte: 3f, so {offh}{3f16}=000001111112=63.
+This means to copy 6 bytes, starting 63 bytes ago – since 67 bytes have already been copied this evaluates to copying 6 bytes starting at position 4 (from the fifth byte), which produces "pedia ".
+This block has no other content, and thus the following block starts immediately after – 1c16 ⇒ len−1=0001112;type=002, i.e. a literal of length 0001112+1=8. The final part of the text ("project.") follows.
+In this example, all common substrings with four or more characters were eliminated by the compression process. More common compressors can compress this better. Unlike compression methods such as gzip and bzip2, there is no entropy encoding used to pack alphabet into the bit stream.
+
+
+== Framing format ==
+The Snappy stream supports inputs with an overall size of up to 4GiB−1, and may add significant overhead to sections which are not or insufficiently compressed, as well as not being self-identifying, and having no data integrity mechanism beyond a simple output size check.
+To combat these issues, the Snappy framing format "Snappy framed" may be used, which breaks the input into chunks of up to 64KiB, delimited by 4-byte block headers (a one-byte identifier and three-byte length):
+
+the "Stream identifier", with type FF16, must start the stream, and must consist exclusively of "sNaPpY" in ASCII,
+the "Compressed data", with type 0, contains a compressed Snappy stream,
+the "Uncompressed data", with type 1, contains data to copy to the output verbatim.
+Both types of data chunk also contain a CRC-32C checksum of the uncompressed data.
+Chunks of types 2-7F16 are reserved and must result in errors. Those of types 8016-FE16 may be ignored by the decompressors which do not understand them. 
+
+
+== Interfaces ==
+Snappy distributions include C++ and C bindings. Third party-provided bindings and ports include C#, Common Lisp, Crystal (programming language), Erlang, Go, Haskell, Lua, Java, Nim, Node.js, Perl, PHP, Python, R, Ruby, Rust, Smalltalk, and OpenCL.
+A command-line interface program is also available.
+
+
+== See also ==
+
+Zstandard
+
+
+== References ==
+
+
+== External links ==
+Snappy mailing list

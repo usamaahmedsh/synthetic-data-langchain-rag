@@ -1,0 +1,79 @@
+Logical block addressing (LBA) is a common scheme used for specifying the location of blocks of data stored on computer storage devices, generally secondary storage systems such as hard disk drives.  LBA is a particularly simple linear addressing scheme; blocks are located by an integer index, with the first block being LBA 0, the second LBA 1, and so on.
+The IDE standard included 22-bit LBA as an option, which was further extended to 28-bit with the release of ATA-1 (1994) and to 48-bit with the release of ATA-6 (2003), whereas the size of entries in on-disk and in-memory data structures holding the address is typically 32 or 64 bits. Most hard disk drives released after 1996 implement logical block addressing.
+
+
+== Overview ==
+
+In logical block addressing, only one number is used to address data, and each linear base address describes a single block.
+The LBA scheme replaces earlier schemes which exposed the physical details of the storage device to the software of the operating system.   Chief among these was the cylinder-head-sector (CHS) scheme, where blocks were addressed by means of a tuple which defined the cylinder, head, and sector at which they appeared on the hard disk. CHS did not map well to devices other than hard disks (such as tapes and networked storage), and was generally not used for them.  CHS was used in early MFM and RLL drives, and both it and its successor, extended cylinder-head-sector (ECHS), were used in the first ATA drives.  However, current disk drives use zone bit recording, where the number of sectors per track depends on the track number. Even though the disk drive will report some CHS values as sectors per track (SPT) and heads per cylinder (HPC), they have little to do with the disk drive's true geometry.
+LBA was first introduced in 1981 by SASI, the precursor of SCSI, as an abstraction.  While the drive controller still addresses data blocks by their CHS address, this information is generally not used by the SCSI device driver, the OS, filesystem code, or any applications (such as databases) that access the "raw" disk. System calls requiring block-level I/O pass LBA definitions to the storage device driver; for simple cases (where one volume maps to one physical drive), this LBA is then passed directly to the drive controller.
+In redundant array of independent disks (RAID) devices and storage area networks (SANs) and where logical drives (logical unit numbers, LUNs) are composed via LUN virtualization and aggregation, LBA addressing of individual disk should be translated by a software layer to provide uniform LBA addressing for the entire storage device.
+
+
+== Enhanced BIOS ==
+
+The earlier IDE standard from Western Digital introduced 22-bit LBA; in 1994, the ATA-1 standard allowed for 28 bit addresses in both LBA and CHS modes. The CHS scheme used 16 bits for cylinder, 4 bits for head and 8 bits for sector, counting sectors from 1 to 255. This means the reported number of heads never exceeds 16 (0–15), the number of sectors can be 255 (1–255; though 63 is often the largest used) and the number of cylinders can be as large as 65,536 (0–65535), limiting disk size to 128 GiB (≈137.4 GB), assuming 512 byte sectors. These values can be accessed by issuing the ATA command "Identify Device" (ECh) to the drive.
+However, the IBM BIOS implementation defined in the INT 13h disk access routines used quite a different 24-bit scheme for CHS addressing, with 10 bits for cylinder, 8 bits for head, and 6 bits for sector, or 1024 cylinders, 256 heads, and 63 sectors. This INT 13h implementation had pre-dated the ATA standard, as it was introduced when the IBM PC had only floppy disk storage, and when hard disk drives were introduced on the IBM PC/XT, INT 13h interface could not be practically redesigned  due to backward compatibility issues. Overlapping ATA CHS mapping with BIOS CHS mapping produced the lowest common denominator of 10:4:6 bits, or 1024 cylinders, 16 heads, and 63 sectors, which gave the practical limit of 1024×16×63 sectors and 528 MB (504 MiB), assuming 512 byte sectors.
+In order for the BIOS to overcome this limit and successfully work with larger hard drives, a CHS translation scheme had to be implemented in the BIOS disk I/O routines which would convert between 24-bit CHS used by INT 13h and 28-bit CHS numbering used by ATA. The translation scheme was called large or bit shift translation. This method would remap 16:4:8 bit ATA cylinders and heads to 10:8:6 bit scheme used by INT 13h, generating much more "virtual" drive heads than the physical disk reported. This increased the practical limit to 1024×256×63 sectors, or 8.4 GB (7.8 GiB).
+To further overcome this limit, INT 13h Extensions were introduced with the BIOS Enhanced Disk Drive Services, which removed practical limits on disk size for operating systems which are aware of this new interface, such as the DOS 7.0 component in Windows 95. This enhanced BIOS subsystem supports LBA addressing with LBA or LBA-assisted method, which uses native 28-bit LBA for addressing ATA disks and performs CHS conversion as needed.
+The normal or none method reverts to the earlier 10:4:6 bit CHS mode which does not support addressing more than 528 MB.
+
+Until the release of ATA-2 standard in 1996, there were a handful of large hard drives which did not support LBA addressing, so only large or normal methods could be used. However, using the large method also introduced portability problems, as different BIOSes often used different and incompatible translation methods, and hard drives partitioned on a computer with a BIOS from a particular vendor often could not be read on a computer with a different make of BIOS. The solution was to use conversion software such as OnTrack Disk Manager, Micro House EZ-Drive/EZ-BIOS, etc., which installed to the disk's OS loader and replaced INT 13h routines at boot time with custom code. This software could also enable LBA and INT 13h Extensions support for older computers with non LBA-compliant BIOSes.
+
+
+=== LBA-assisted translation ===
+When the BIOS is configured to use a disk in LBA-assisted translation mode, the BIOS accesses the hardware using LBA mode, but also presents a translated CHS geometry via the INT 13h interface.  The number of cylinders, heads, and sectors in the translated geometry depends on the total size of the disk, as shown in the following table.
+
+
+=== LBA48 ===
+The current 48-bit LBA scheme was introduced in 2002 with the ATA-6 standard, raising the addressing limit to 248 × 512 bytes, which is exactly 128 PiB or approximately 144 PB. Current PC-compatible computers support INT 13h Extensions, which use 64-bit structures for LBA addressing and should encompass any future extension of LBA addressing, though modern operating systems implement direct disk access and do not use the BIOS subsystems, except at boot load time. Disks partitioned with MBR use 32-bit logical block addressing LBA to handle the total number of physical or logical sectors, that is, they can handle a total maximum of 4,294,967,296 sectors (2^32). This means that traditionally a maximum data limit of 2 tebibytes could be stored per hard disk, since these have a physical and logical sector size of 512 bytes. This limit can be exceeded up to 16 TiB with a physical and logical sector of 4096 bytes.
+
+
+== CHS conversion ==
+
+In the LBA addressing scheme, sectors are numbered as integer indexes; when mapped to CHS (cylinder-head-sector) tuples, LBA numbering starts with the first cylinder, first head, and track's first sector.  Once the track is exhausted, numbering continues to the second head, while staying inside the first cylinder.  Once all heads inside the first cylinder are exhausted, numbering continues from the second cylinder, etc.  Thus, the lower the LBA value is, the closer the physical sector is to the hard drive's first (that is, outermost) cylinder.
+CHS tuples can be mapped to LBA address with the following formula:
+
+LBA = (C × HPC + H) × SPT + (S − 1)
+where
+
+C, H and S are the cylinder number, the head number, and the sector number
+LBA is the logical block address
+HPC is the maximum number of heads per cylinder (reported by disk drive, typically 16 for 28-bit LBA)
+SPT is the maximum number of sectors per track (reported by disk drive, typically 63 for 28-bit LBA)
+LBA addresses can be mapped to CHS tuples with the following formula ("mod" is the modulo operation, i.e. the remainder, and "÷" is integer division, i.e. the quotient of the division where any fractional part is discarded):
+
+C = LBA ÷ (HPC × SPT)
+H = (LBA ÷ SPT) mod HPC
+S = (LBA mod SPT) + 1
+According to the ATA specifications, "If the content of words (61:60) is greater than or equal to 16,514,064, then the content of word 1 [the number of logical cylinders] shall be equal to 16,383." Therefore, for LBA 16450559, an ATA drive may actually respond with the CHS tuple (16319, 15, 63), and the number of cylinders in this scheme must be much larger than 1024 allowed by INT 13h.
+
+
+=== Operating system dependencies ===
+
+Operating systems that are sensitive to BIOS-reported drive geometry include  Solaris, DOS and Windows NT family, where  NTLDR (NT, 2000, XP, Server 2003) or BOOTMGR (Vista, Server 2008, Windows 7 and Server 2008 R2) use Master boot record which addresses the disk using CHS; x86-64 and Itanium versions of Windows can partition the drive with GUID Partition Table which uses LBA addressing.
+Some operating systems do not require any translation because they do not use geometry reported by BIOS in their boot loaders. Among these operating systems are BSD, Linux, macOS, OS/2 and ReactOS.
+
+
+== See also ==
+Block (data storage)
+Cylinder-head-sector (CHS)
+Disk formatting
+Disk partitioning
+Disk storage
+
+
+== Notes ==
+
+
+== References ==
+
+
+== External links ==
+LBAs explained Archived 2021-02-25 at the Wayback Machine
+LBA and CHS format, LBA mapping
+CHS to LBA Translation Tutorial
+Microsoft article on 7.8 GB limit on NT 4.0
+Hard Drive Size Limitations and Barriers Archived 2021-02-25 at the Wayback Machine
+Upgrading and Repairing PC's, by Scott Mueller. Pages 524–531.
+AT Attachment 8 - ATA/ATAPI Command Set (ATA8-ACS)

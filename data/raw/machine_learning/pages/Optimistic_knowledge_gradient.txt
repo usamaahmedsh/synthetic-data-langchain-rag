@@ -1,0 +1,2516 @@
+In statistics, the optimistic knowledge gradient is a smart decision-making strategy developed by Xi Chen, Qihang Lin and Dengyong Zhou in 2013 to help solve complex problems in crowdsourced data labeling (a form of optimal computing budget allocation problem). In crowdsourcing, multiple people are asked to label or classify data, but each labeling attempt comes with a cost.
+The main challenge is figuring out the most efficient way to allocate resources when you want to get the most accurate labels without spending too much money. Imagine you're running a project where you need to classify thousands of images, and each person you ask to label an image charges a fee. The optimistic knowledge gradient helps you determine the most cost-effective way to get the most reliable labels by strategically choosing which items to have labeled and by whom.
+This approach is particularly useful in machine learning and data science, where getting accurate labeled data is crucial but can be expensive. By using mathematical techniques, the method tries to maximize the information gained while minimizing the overall cost of labeling.
+
+
+== Motivation ==
+The optimal computing budget allocation problem is formulated as a Bayesian Markov decision process(MDP) and is solved by using the dynamic programming (DP) algorithm where the Optimistic knowledge gradient policy is used to solve the computationally intractable of the dynamic programming (DP) algorithm.
+Consider a budget allocation issue in crowdsourcing. The particular crowdsourcing problem we considering is crowd labeling. Crowd labeling is a large amount of labeling tasks which are hard to solve by machine, turn out to easy to solve by human beings, then we just outsourced to an unidentified group of random people in a distributed environment.
+
+
+== Methodology ==
+We want to finish this labeling tasks rely on the power of the crowd hopefully. For example, suppose we want to identify a picture according to the people in a picture is adult or not, this is a Bernoulli labeling problem, and all of us can do in one or two seconds, this is an easy task for human being. However, if we have tens of thousands picture like this, then this is no longer the easy task any more. That's why we need to rely on crowdsourcing framework to make this fast. Crowdsourcing framework of this consists of two steps. Step one, we just dynamically acquire from the crowd for items. On the other sides, this is dynamic procedure. We don't just send out this picture to everyone and we focus every response, instead, we do this in quantity. We are going to decide which picture we send it in the next, and which worker we are going to hire in the crowd in the next. According to his or her historical labeling results. And each picture can be sent to multiple workers and every worker can also work on different pictures. Then after we collect enough number of labels for different picture, we go to the second steps where we want to infer true label of each picture based on the collected labels. So there are multiple ways we can do inference. For instance, the simplest we can do this is just majority vote. The problem is that no free lunch, we have to pays for worker for each label he or she provides and we only have a limited project budget. So the question is how to spend the limited budget in a smart way.
+
+
+== Challenges ==
+Before showing the mathematic model, the paper mentions what kinds of challenges we are facing.
+
+
+=== Challenge 1 ===
+First of all, the items have a different level of difficulty to compute the label, in a previous example, some picture are easy to classify. In this case, you will usually see very consistent labels from the crowd. However, if some pictures are ambiguous, people may disagree with each other resulting in highly inconsistent labelling. So we may allocate more resources on this ambiguous task.
+
+
+=== Challenge 2 ===
+And another difficulty we often have is that the worker are not perfect, sometimes this worker are not responsible, they just provide the random label, therefore, of course, we would not spend our budget on this no reliable workers. Now the problem is both the difficulty of the pictures and the reliability of the worker we completely unknown at the beginning. We can only estimate them during the procedure. Therefore, we are naturally facing to exploration and exploitation, and our goal is to give a reasonable good policy to spend money to the right way–maximize the overall accuracy of final inferred labels.
+
+
+== Mathematical model ==
+For the mathematical model, we have the K items, 
+  
+    
+      
+        i
+        =
+        {
+        1
+        ,
+        2
+        ,
+        …
+        ,
+        k
+        }
+      
+    
+    {\displaystyle i=\{1,2,\ldots ,k\}}
+  
+, and total budget is T and we assume each label cost 1 so we are going to have T labels eventually. We assume each items has true label 
+  
+    
+      
+        
+          Z
+          
+            i
+          
+        
+      
+    
+    {\displaystyle Z_{i}}
+  
+which positive or negative, this binomial cases and we can extended to multiple class, labeling cases, this a singular idea. And the positive set 
+  
+    
+      
+        
+          H
+          
+            ∗
+          
+        
+      
+    
+    {\displaystyle H^{*}}
+  
+ is defined as the set of items whose true label is positive. And 
+  
+    
+      
+        
+          θ
+          
+            i
+          
+        
+      
+    
+    {\displaystyle \theta _{i}}
+  
+ also defined a soft-label, 
+  
+    
+      
+        
+          θ
+          
+            i
+          
+        
+      
+    
+    {\displaystyle \theta _{i}}
+  
+ for each item which number between 0 and 1, and we define 
+  
+    
+      
+        
+          θ
+          
+            i
+          
+        
+      
+    
+    {\displaystyle \theta _{i}}
+  
+ as underlying probability of being labeled as positive by a member randomly picked from a group of perfect workers.
+In this first case, we assume for every worker is perfect, it means they all reliable, but being perfect doesn’t means this worker gives the same answer or right answer. It just means they will try their best to figure out the best answer in their mind, and suppose everyone is perfect worker, just randomly picked one of them, and with 
+  
+    
+      
+        
+          θ
+          
+            i
+          
+        
+      
+    
+    {\displaystyle \theta _{i}}
+  
+ probability, we going to get a guy who believe this one is positive. That is how we explain 
+  
+    
+      
+        
+          θ
+          
+            i
+          
+        
+      
+    
+    {\displaystyle \theta _{i}}
+  
+. So we are assume a label 
+  
+    
+      
+        
+          Y
+          
+            i
+          
+        
+      
+    
+    {\displaystyle Y_{i}}
+  
+ is drawn from Bernoulli(
+  
+    
+      
+        
+          θ
+          
+            i
+          
+        
+      
+    
+    {\displaystyle \theta _{i}}
+  
+), and 
+  
+    
+      
+        
+          θ
+          
+            i
+          
+        
+      
+    
+    {\displaystyle \theta _{i}}
+  
+ must be consistent with the true label, which means 
+  
+    
+      
+        
+          θ
+          
+            i
+          
+        
+      
+    
+    {\displaystyle \theta _{i}}
+  
+ is greater or equal to 0.5 if and only if this item is positive with a true positive label. So our goal is to learn H*, the set of positive items. In other word, we want to make an inferred positive set H based on collected labels to maximize:
+
+  
+    
+      
+        
+          ∑
+          
+            i
+            =
+            1
+          
+          
+            k
+          
+        
+        (
+        
+          
+            
+              1
+            
+          
+          
+            (
+            i
+            ∈
+            H
+            )
+          
+        
+        
+          
+            
+              1
+            
+          
+          
+            (
+            i
+            ∈
+            
+              H
+              
+                ⋆
+              
+            
+            )
+          
+        
+        +
+        
+          
+            
+              1
+            
+          
+          
+            (
+            i
+            ∉
+            H
+            )
+          
+        
+        
+          
+            
+              1
+            
+          
+          
+            (
+            i
+            ∉
+            
+              H
+              
+                ⋆
+              
+            
+            )
+          
+        
+        )
+      
+    
+    {\displaystyle \sum _{i=1}^{k}({\textbf {1}}_{(i\in H)}{\textbf {1}}_{(i\in H^{\star })}+{\textbf {1}}_{(i\notin H)}{\textbf {1}}_{(i\notin H^{\star })})}
+  
+
+It can also be written as:
+
+  
+    
+      
+        
+          |
+        
+        H
+        ∩
+        
+          H
+          
+            ⋆
+          
+        
+        
+          |
+        
+        +
+        
+          |
+        
+        
+          H
+          
+            c
+          
+        
+        ∩
+        
+          H
+          
+            ⋆
+            c
+          
+        
+        
+          |
+        
+      
+    
+    {\displaystyle |H\cap H^{\star }|+|H^{c}\cap H^{\star c}|}
+  
+
+
+=== step1: Bayesian decision process ===
+Before show the Bayesian framework, the paper use an example to mention why we choose Bayesian instead of frequency approach, such that we can propose some posterior of prior distribution on the soft-label 
+  
+    
+      
+        
+          θ
+          
+            i
+          
+        
+      
+    
+    {\displaystyle \theta _{i}}
+  
+. We assume each 
+  
+    
+      
+        
+          θ
+          
+            i
+          
+        
+      
+    
+    {\displaystyle \theta _{i}}
+  
+ is drawn from a known Beta prior:
+
+  
+    
+      
+        
+          θ
+          
+            i
+          
+        
+        ∼
+        
+          B
+          e
+          t
+          a
+        
+        (
+        
+          a
+          
+            i
+          
+          
+            o
+          
+        
+        ,
+        
+          b
+          
+            i
+          
+          
+            o
+          
+        
+        )
+      
+    
+    {\displaystyle \theta _{i}\sim \mathrm {Beta} (a_{i}^{o},b_{i}^{o})}
+  
+
+And the matrix:
+
+  
+    
+      
+        
+          s
+          
+            o
+          
+        
+        =
+        
+          
+            ⟨
+            
+              (
+              
+                a
+                
+                  i
+                
+                
+                  o
+                
+              
+              ,
+              
+                b
+                
+                  i
+                
+                
+                  o
+                
+              
+              )
+            
+            ⟩
+          
+          
+            i
+            =
+            1
+          
+          
+            k
+          
+        
+        ∈
+        
+          
+            
+              R
+            
+          
+          
+            k
+            ×
+            2
+          
+        
+      
+    
+    {\displaystyle s^{o}=\left\langle (a_{i}^{o},b_{i}^{o})\right\rangle _{i=1}^{k}\in {\textbf {R}}^{k\times 2}}
+  
+
+So we know that the Bernoulli conjugate of beta, so once we get a new label for item i, we going to update posterior distribution, the beta distribution by:
+
+  
+    
+      
+        
+          θ
+          
+            i
+          
+        
+        ∼
+        
+          B
+          e
+          t
+          a
+        
+        (
+        
+          a
+          
+            i
+          
+          
+            t
+          
+        
+        ,
+        
+          b
+          
+            i
+          
+          
+            t
+          
+        
+        )
+      
+    
+    {\displaystyle \theta _{i}\sim \mathrm {Beta} (a_{i}^{t},b_{i}^{t})}
+  
+
+  
+    
+      
+        
+          y
+          
+            i
+          
+        
+        ∣
+        
+          θ
+          
+            i
+          
+        
+        ∼
+        
+          B
+          e
+          r
+          n
+          o
+          u
+          l
+          l
+          i
+        
+        (
+        
+          θ
+          
+            i
+          
+        
+        )
+      
+    
+    {\displaystyle y_{i}\mid \theta _{i}\sim \mathrm {Bernoulli} (\theta _{i})}
+  
+
+  
+    
+      
+        
+          θ
+          
+            i
+          
+        
+        ∣
+        
+          y
+          
+            i
+          
+        
+        =
+        1
+        ∼
+        
+          B
+          e
+          t
+          a
+        
+        (
+        
+          a
+          
+            i
+          
+          
+            t
+          
+        
+        +
+        1
+        ,
+        
+          b
+          
+            i
+          
+          
+            t
+          
+        
+        )
+      
+    
+    {\displaystyle \theta _{i}\mid y_{i}=1\sim \mathrm {Beta} (a_{i}^{t}+1,b_{i}^{t})}
+  
+
+  
+    
+      
+        
+          θ
+          
+            i
+          
+        
+        ∣
+        
+          y
+          
+            i
+          
+        
+        =
+        −
+        1
+        ∼
+        
+          B
+          e
+          t
+          a
+        
+        (
+        
+          a
+          
+            i
+          
+          
+            t
+          
+        
+        +
+        1
+        ,
+        
+          b
+          
+            i
+          
+          
+            t
+          
+        
+        )
+      
+    
+    {\displaystyle \theta _{i}\mid y_{i}=-1\sim \mathrm {Beta} (a_{i}^{t}+1,b_{i}^{t})}
+  
+
+Depending on the label is positive or negative.
+Here is the whole procedure in the high level, we have T stage, 
+  
+    
+      
+        0
+        ≤
+        t
+        ≤
+        T
+        −
+        1
+      
+    
+    {\displaystyle 0\leq t\leq T-1}
+  
+. And in current stage we look at matrix S, which summarized the posterior distribution information for all the 
+  
+    
+      
+        
+          θ
+          
+            i
+          
+        
+      
+    
+    {\displaystyle \theta _{i}}
+  
+
+  
+    
+      
+        
+          s
+          
+            t
+          
+        
+        =
+        
+          
+            ⟨
+            
+              (
+              
+                a
+                
+                  i
+                
+                
+                  t
+                
+              
+              ,
+              
+                b
+                
+                  i
+                
+                
+                  t
+                
+              
+              )
+            
+            ⟩
+          
+          
+            i
+            =
+            1
+          
+          
+            k
+          
+        
+        ∈
+        
+          
+            
+              R
+            
+          
+          
+            k
+            ×
+            2
+          
+        
+      
+    
+    {\displaystyle s^{t}=\left\langle (a_{i}^{t},b_{i}^{t})\right\rangle _{i=1}^{k}\in {\textbf {R}}^{k\times 2}}
+  
+
+We are going to make a decision, choose the next item to label 
+  
+    
+      
+        
+          i
+          
+            t
+          
+        
+      
+    
+    {\displaystyle i_{t}}
+  
+, 
+  
+    
+      
+        
+          i
+          
+            t
+          
+        
+        ∈
+        {
+        1
+        ,
+        2
+        ,
+        …
+        ,
+        k
+        }
+      
+    
+    {\displaystyle i_{t}\in \{1,2,\ldots ,k\}}
+  
+.
+And depending what the label is positive or negative, we add a matrix to getting a label:
+
+  
+    
+      
+        
+          θ
+          
+            i
+          
+        
+        ∼
+        
+          B
+          e
+          t
+          a
+        
+        (
+        
+          a
+          
+            i
+          
+          
+            t
+          
+        
+        ,
+        
+          b
+          
+            i
+          
+          
+            t
+          
+        
+        )
+      
+    
+    {\displaystyle \theta _{i}\sim \mathrm {Beta} (a_{i}^{t},b_{i}^{t})}
+  
+
+  
+    
+      
+        
+          y
+          
+            i
+          
+        
+        ∣
+        
+          θ
+          
+            i
+          
+        
+        ∼
+        
+          B
+          e
+          r
+          n
+          o
+          u
+          l
+          l
+          i
+        
+        (
+        
+          θ
+          
+            i
+          
+        
+        )
+      
+    
+    {\displaystyle y_{i}\mid \theta _{i}\sim \mathrm {Bernoulli} (\theta _{i})}
+  
+
+  
+    
+      
+        
+          θ
+          
+            i
+          
+        
+        ∣
+        
+          y
+          
+            i
+          
+        
+        =
+        1
+        ∼
+        
+          B
+          e
+          t
+          a
+        
+        (
+        
+          a
+          
+            i
+          
+          
+            t
+          
+        
+        +
+        1
+        ,
+        
+          b
+          
+            i
+          
+          
+            t
+          
+        
+        )
+      
+    
+    {\displaystyle \theta _{i}\mid y_{i}=1\sim \mathrm {Beta} (a_{i}^{t}+1,b_{i}^{t})}
+  
+
+  
+    
+      
+        
+          θ
+          
+            i
+          
+        
+        ∣
+        
+          y
+          
+            i
+          
+        
+        =
+        −
+        1
+        ∼
+        
+          B
+          e
+          t
+          a
+        
+        (
+        
+          a
+          
+            i
+          
+          
+            t
+          
+        
+        +
+        1
+        ,
+        
+          b
+          
+            i
+          
+          
+            t
+          
+        
+        )
+      
+    
+    {\displaystyle \theta _{i}\mid y_{i}=-1\sim \mathrm {Beta} (a_{i}^{t}+1,b_{i}^{t})}
+  
+
+Above all, this is the whole framework.
+
+
+=== step2: Inference on positive set ===
+When the t labels are collected, we can make an inference about the positive set Ht based on posterior distribution given by St
+
+  
+    
+      
+        
+          
+            
+              
+                
+                  H
+                  
+                    t
+                  
+                
+              
+              
+                
+                =
+                
+                  argmax
+                  
+                    H
+                    ⊂
+                    {
+                    1
+                    ,
+                    2
+                    ,
+                    …
+                    ,
+                    k
+                    }
+                  
+                
+                ⁡
+                E
+                
+                  (
+                  
+                    
+                      ∑
+                      
+                        i
+                        =
+                        1
+                      
+                      
+                        k
+                      
+                    
+                    (
+                    
+                      
+                        1
+                      
+                    
+                    (
+                    i
+                    ∈
+                    H
+                    )
+                    
+                      
+                        1
+                      
+                    
+                    (
+                    i
+                    ∈
+                    
+                      H
+                      
+                        ⋆
+                      
+                    
+                    )
+                    +
+                    
+                      
+                        1
+                      
+                    
+                    (
+                    i
+                    ∉
+                    H
+                    )
+                    
+                      
+                        1
+                      
+                    
+                    
+                      (
+                      i
+                      ∉
+                      
+                        H
+                        
+                          ⋆
+                        
+                      
+                      )
+                    
+                    )
+                    ∣
+                    
+                      S
+                      
+                        ⋆
+                      
+                    
+                  
+                  )
+                
+              
+            
+            
+              
+              
+                
+                =
+                
+                  argmax
+                  
+                    H
+                    ⊂
+                    {
+                    1
+                    ,
+                    2
+                    ,
+                    …
+                    ,
+                    k
+                    }
+                  
+                
+                ⁡
+                
+                  ∑
+                  
+                    i
+                    =
+                    1
+                  
+                  
+                    k
+                  
+                
+                (
+                
+                  
+                    1
+                  
+                
+                (
+                i
+                ∈
+                H
+                )
+                Pr
+                (
+                i
+                ∈
+                
+                  H
+                  
+                    ⋆
+                  
+                
+                ∣
+                
+                  S
+                  
+                    t
+                  
+                
+                )
+                +
+                
+                  
+                    1
+                  
+                
+                (
+                i
+                ∉
+                H
+                )
+                Pr
+                (
+                i
+                ∉
+                
+                  H
+                  
+                    ⋆
+                  
+                
+                ∣
+                
+                  S
+                  
+                    t
+                  
+                
+                )
+                )
+              
+            
+            
+              
+              
+                
+                =
+                {
+                i
+                :
+                Pr
+                (
+                i
+                ∈
+                
+                  H
+                  
+                    ⋆
+                  
+                
+                ∣
+                
+                  S
+                  
+                    t
+                  
+                
+                )
+                ≥
+                0.5
+                }
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{aligned}H_{t}&=\operatorname {argmax} \limits _{H\subset \{1,2,\ldots ,k\}}E\left(\sum _{i=1}^{k}({\textbf {1}}(i\in H){\textbf {1}}(i\in H^{\star })+{\textbf {1}}(i\notin H){\textbf {1}}{(i\notin H^{\star })})\mid S^{\star }\right)\\&=\operatorname {argmax} \limits _{H\subset \{1,2,\ldots ,k\}}\sum _{i=1}^{k}({\textbf {1}}(i\in H)\Pr(i\in H^{\star }\mid S^{t})+{\textbf {1}}(i\notin H)\Pr(i\notin H^{\star }\mid S^{t}))\\&=\{i:\Pr(i\in H^{\star }\mid S^{t})\geq 0.5\}\end{aligned}}}
+  
+
+So here become the Bernoulli selection problem, we just take to look at the probability of being positive or being negative conditional 
+  
+    
+      
+        
+          S
+          
+            t
+          
+        
+      
+    
+    {\displaystyle S_{t}}
+  
+ to see is greater than 0.5 or not, if it is greater than 0.5, then we prove this item into the current infer positive set 
+  
+    
+      
+        
+          H
+          
+            t
+          
+        
+      
+    
+    {\displaystyle H_{t}}
+  
+ so this is a cost form for current optimal solution 
+  
+    
+      
+        
+          H
+          
+            t
+          
+        
+      
+    
+    {\displaystyle H_{t}}
+  
+ based on the information in 
+  
+    
+      
+        
+          S
+          
+            t
+          
+        
+      
+    
+    {\displaystyle S_{t}}
+  
+.
+After know what is optimal solution, then the paper show what is the optimal value. Plug 
+  
+    
+      
+        t
+      
+    
+    {\displaystyle t}
+  
+ in the optimal function,
+
+  
+    
+      
+        h
+        (
+        x
+        )
+        =
+        max
+        (
+        x
+        ,
+        1
+        −
+        x
+        )
+      
+    
+    {\displaystyle h(x)=\max(x,1-x)}
+  
+
+This function is just a single function which choose the larger one between the conditional probability of being positive and being negative. Once we get one more label for item i, we take a difference between this value, before and after we get a new label, we can see this conditional probability can actually simplify as follows:
+
+  
+    
+      
+        
+          
+            
+              
+                R
+                (
+                
+                  s
+                  
+                    t
+                  
+                
+                ,
+                
+                  i
+                  
+                    t
+                  
+                
+                ,
+                
+                  y
+                  
+                    
+                      i
+                      
+                        t
+                      
+                    
+                  
+                
+                )
+              
+              
+                
+                =
+                
+                  ∑
+                  
+                    i
+                    =
+                    1
+                  
+                  
+                    k
+                  
+                
+                h
+                (
+                Pr
+                
+                  (
+                  i
+                  ∈
+                  
+                    H
+                    
+                      ⋆
+                    
+                  
+                  ∣
+                  
+                    s
+                    
+                      t
+                      +
+                      1
+                    
+                  
+                  )
+                
+                )
+                −
+                
+                  ∑
+                  
+                    i
+                    =
+                    1
+                  
+                  
+                    k
+                  
+                
+                h
+                (
+                Pr
+                (
+                i
+                ∈
+                
+                  H
+                  
+                    ⋆
+                  
+                
+                ∣
+                
+                  s
+                  
+                    t
+                  
+                
+                )
+                )
+              
+            
+            
+              
+              
+                
+                =
+                
+                  ∑
+                  
+                    i
+                    =
+                    1
+                  
+                  
+                    k
+                  
+                
+                h
+                (
+                Pr
+                
+                  (
+                  
+                    a
+                    
+                      i
+                    
+                    
+                      t
+                      +
+                      1
+                      ,
+                      
+                        b
+                        
+                          i
+                        
+                        
+                          t
+                          +
+                          1
+                        
+                      
+                    
+                  
+                  )
+                
+                )
+                −
+                
+                  ∑
+                  
+                    i
+                    =
+                    1
+                  
+                  
+                    k
+                  
+                
+                h
+                (
+                Pr
+                (
+                
+                  a
+                  
+                    i
+                  
+                  
+                    t
+                  
+                
+                ,
+                
+                  b
+                  
+                    i
+                  
+                  
+                    t
+                  
+                
+                )
+                )
+                .
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{aligned}R(s^{t},i_{t},y_{i_{t}})&=\sum _{i=1}^{k}h(\Pr {(i\in H^{\star }\mid s^{t+1})})-\sum _{i=1}^{k}h(\Pr(i\in H^{\star }\mid s^{t}))\\&=\sum _{i=1}^{k}h(\Pr {(a_{i}^{t+1,b_{i}^{t+1}})})-\sum _{i=1}^{k}h(\Pr(a_{i}^{t},b_{i}^{t})).\end{aligned}}}
+  
+
+The positive item being positive only depends on the beta posterior, therefore, if only the function of parameter of beta distribution function are a and b, as
+
+  
+    
+      
+        h
+        (
+        Pr
+        (
+        
+          a
+          
+            
+              i
+              
+                t
+              
+            
+          
+          
+            t
+            +
+            1
+          
+        
+        ,
+        
+          b
+          
+            
+              i
+              
+                t
+              
+            
+          
+          
+            t
+            +
+            1
+          
+        
+        )
+        )
+        −
+        h
+        (
+        Pr
+        (
+        
+          a
+          
+            
+              i
+              
+                t
+              
+            
+          
+          
+            t
+          
+        
+        ,
+        
+          b
+          
+            
+              i
+              
+                t
+              
+            
+          
+          
+            t
+          
+        
+        )
+        )
+      
+    
+    {\displaystyle h(\Pr(a_{i_{t}}^{t+1},b_{i_{t}}^{t+1}))-h(\Pr(a_{i_{t}}^{t},b_{i_{t}}^{t}))}
+  
+
+One more label for this particular item, we double change the posterior function, so all of this items can be cancel except 1, so this is the change for whole accuracy and we defined as stage-wise reward: improvement the inference accuracy by one more sample. Of course this label have two positive value, we’ve get positive label or negative label, take average for this two, get expect reward. We just choose item to be label such that the expect reward is maximized using Knowledge Gradient:
+
+  
+    
+      
+        
+          
+            
+              
+                
+                  i
+                  
+                    t
+                  
+                
+              
+              
+                
+                =
+                
+                  argmax
+                  
+                    i
+                    ∈
+                    {
+                    1
+                    ,
+                    2
+                    ,
+                    …
+                    ,
+                    k
+                    }
+                  
+                
+                ⁡
+                E
+                (
+                R
+                (
+                
+                  s
+                  
+                    t
+                  
+                
+                ,
+                i
+                ,
+                
+                  y
+                  
+                    i
+                  
+                
+                )
+                ∣
+                
+                  s
+                  
+                    t
+                  
+                
+                )
+              
+            
+            
+              
+              
+                
+                =
+                
+                  argmax
+                  
+                    i
+                    ∈
+                    {
+                    1
+                    ,
+                    2
+                    ,
+                    …
+                    ,
+                    k
+                    }
+                  
+                
+                ⁡
+                
+                  (
+                  
+                    
+                      
+                        
+                          a
+                          
+                            i
+                          
+                          
+                            t
+                          
+                        
+                        
+                          
+                            a
+                            
+                              i
+                            
+                            
+                              t
+                            
+                          
+                          +
+                          
+                            b
+                            
+                              i
+                            
+                            
+                              t
+                            
+                          
+                        
+                      
+                    
+                    R
+                    (
+                    
+                      s
+                      
+                        t
+                      
+                    
+                    ,
+                    i
+                    ,
+                    1
+                    )
+                    +
+                    
+                      
+                        
+                          b
+                          
+                            i
+                          
+                          
+                            t
+                          
+                        
+                        
+                          
+                            a
+                            
+                              i
+                            
+                            
+                              t
+                            
+                          
+                          +
+                          
+                            b
+                            
+                              i
+                            
+                            
+                              t
+                            
+                          
+                        
+                      
+                    
+                    R
+                    (
+                    
+                      s
+                      
+                        t
+                      
+                    
+                    ,
+                    i
+                    ,
+                    −
+                    1
+                    )
+                  
+                  )
+                
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{aligned}i_{t}&=\operatorname {argmax} \limits _{i\in \{1,2,\ldots ,k\}}E(R(s^{t},i,y_{i})\mid s^{t})\\&=\operatorname {argmax} \limits _{i\in \{1,2,\ldots ,k\}}\left({\frac {a_{i}^{t}}{a_{i}^{t}+b_{i}^{t}}}R(s^{t},i,1)+{\frac {b_{i}^{t}}{a_{i}^{t}+b_{i}^{t}}}R(s^{t},i,-1)\right)\end{aligned}}}
+  
+
+They are multiple items, let us know how do we break the ties. If we break the tie deterministically, which means we choose the smallest index. We are going to have a problem because this is not consistent which means the positive stage 
+  
+    
+      
+        
+          H
+          
+            t
+          
+        
+      
+    
+    {\displaystyle H_{t}}
+  
+ does not converge to the true positive stage 
+  
+    
+      
+        
+          H
+          
+            ∗
+          
+        
+      
+    
+    {\displaystyle H^{*}}
+  
+.
+So we can also try to break the ties randomly, it works, however, we will see the performance is almost like uniform sampling, is the best reward. The writer’s policy is kinds of more greedy, instead of choosing the average in stage once reward, we can actually calculate the larger one, the max of the two stage possible reward, so Optimistic Knowledge Gradient:
+
+  
+    
+      
+        
+          i
+          
+            t
+          
+        
+        =
+        
+          argmax
+          
+            i
+            ∈
+            {
+            1
+            ,
+            …
+            ,
+            k
+            }
+          
+        
+        ⁡
+        (
+        
+          R
+          
+            +
+          
+        
+        (
+        
+          S
+          
+            t
+          
+        
+        ,
+        i
+        )
+        )
+        =
+        max
+        (
+        R
+        (
+        
+          S
+          
+            t
+          
+        
+        ,
+        i
+        ,
+        1
+        )
+        ,
+        R
+        (
+        
+          S
+          
+            t
+          
+        
+        ,
+        i
+        ,
+        −
+        1
+        )
+        )
+      
+    
+    {\displaystyle i_{t}=\operatorname {argmax} \limits _{i\in \{1,\ldots ,k\}}(R^{+}(S^{t},i))=\max(R(S^{t},i,1),R(S^{t},i,-1))}
+  
+
+And we know under optimistic knowledge gradient, the final inference accuracy converge to 100%. Above is based on every worker is perfect, however, in practice, workers are not always responsible. So if in imperfect workers, we assume K items, 
+  
+    
+      
+        1
+        ≤
+        i
+        ≤
+        k
+      
+    
+    {\displaystyle 1\leq i\leq k}
+  
+.
+
+  
+    
+      
+        
+          θ
+          
+            i
+          
+        
+        ∈
+        (
+        0
+        ,
+        1
+        )
+        ∼
+        
+          B
+          e
+          t
+        
+        a
+        (
+        
+          a
+          
+            i
+          
+          
+            o
+          
+        
+        ,
+        
+          b
+          
+            i
+          
+          
+            o
+          
+        
+        )
+      
+    
+    {\displaystyle \theta _{i}\in (0,1)\sim \mathrm {Bet} a(a_{i}^{o},b_{i}^{o})}
+  
+
+The probability of item 
+  
+    
+      
+        i
+      
+    
+    {\displaystyle i}
+  
+ being labeled as positive by a perfect worker.
+M workers, 
+  
+    
+      
+        1
+        ≤
+        j
+        ≤
+        M
+      
+    
+    {\displaystyle 1\leq j\leq M}
+  
+ , 
+  
+    
+      
+        
+          ρ
+          
+            j
+          
+        
+        ∈
+        (
+        0
+        ,
+        1
+        )
+        ∼
+        
+          B
+          e
+          t
+          a
+        
+        (
+        
+          c
+          
+            j
+          
+          
+            o
+          
+        
+        ,
+        
+          d
+          
+            j
+          
+          
+            o
+          
+        
+        )
+      
+    
+    {\displaystyle \rho _{j}\in (0,1)\sim \mathrm {Beta} (c_{j}^{o},d_{j}^{o})}
+  
+
+The probability of worker 
+  
+    
+      
+        j
+      
+    
+    {\displaystyle j}
+  
+ giving the same label as a perfect worker. Distribution of the label 
+  
+    
+      
+        
+          Z
+          
+            i
+            j
+          
+        
+      
+    
+    {\displaystyle Z_{ij}}
+  
+ from worker 
+  
+    
+      
+        j
+      
+    
+    {\displaystyle j}
+  
+ to item 
+  
+    
+      
+        i
+      
+    
+    {\displaystyle i}
+  
+:
+
+  
+    
+      
+        Pr
+        (
+        
+          Z
+          
+            i
+            j
+          
+        
+        =
+        1
+        ∣
+        
+          θ
+          
+            i
+          
+        
+        ,
+        
+          ρ
+          
+            j
+          
+        
+        )
+        =
+        Pr
+        (
+        
+          Z
+          
+            i
+            j
+          
+        
+        =
+        1
+        ∣
+        
+          Y
+          
+            i
+          
+        
+        =
+        1
+        )
+        Pr
+        (
+        
+          Y
+          
+            i
+          
+        
+        =
+        1
+        )
+        +
+        Pr
+        (
+        
+          Z
+          
+            i
+            j
+          
+        
+        =
+        1
+        ∣
+        
+          Y
+          
+            i
+          
+        
+        =
+        −
+        1
+        )
+        Pr
+        (
+        
+          Y
+          
+            i
+          
+        
+        =
+        −
+        1
+        )
+        =
+        
+          ρ
+          
+            j
+          
+        
+        
+          θ
+          
+            i
+          
+        
+        t
+        (
+        1
+        −
+        
+          ρ
+          
+            j
+          
+        
+        )
+        (
+        1
+        −
+        
+          θ
+          
+            i
+          
+        
+        )
+      
+    
+    {\displaystyle \Pr(Z_{ij}=1\mid \theta _{i},\rho _{j})=\Pr(Z_{ij}=1\mid Y_{i}=1)\Pr(Y_{i}=1)+\Pr(Z_{ij}=1\mid Y_{i}=-1)\Pr(Y_{i}=-1)=\rho _{j}\theta _{i}t(1-\rho _{j})(1-\theta _{i})}
+  
+
+And the action space is that
+
+  
+    
+      
+        Pr
+        (
+        
+          Z
+          
+            i
+            j
+          
+        
+        =
+        1
+        ∣
+        
+          θ
+          
+            i
+          
+        
+        ,
+        
+          ρ
+          
+            j
+          
+        
+        )
+        =
+        P
+        r
+        (
+        
+          Z
+          
+            i
+            j
+          
+        
+        =
+        1
+        ∣
+        
+          Y
+          
+            i
+          
+        
+        =
+        1
+        )
+        Pr
+        (
+        
+          Y
+          
+            i
+          
+        
+        =
+        1
+        )
+        +
+        Pr
+        (
+        
+          Z
+          
+            i
+            j
+          
+        
+        =
+        1
+        ∣
+        
+          Y
+          
+            i
+          
+        
+        =
+        −
+        1
+        )
+        Pr
+        (
+        
+          Y
+          
+            i
+          
+        
+        =
+        −
+        1
+        )
+        =
+        
+          ρ
+          
+            j
+          
+        
+        
+          θ
+          
+            i
+          
+        
+        t
+        (
+        1
+        −
+        
+          ρ
+          
+            j
+          
+        
+        )
+        (
+        1
+        −
+        
+          θ
+          
+            i
+          
+        
+        )
+        =
+        
+          ρ
+          
+            j
+          
+        
+        
+          θ
+          
+            i
+          
+        
+        t
+        (
+        1
+        −
+        
+          ρ
+          
+            j
+          
+        
+        )
+        (
+        1
+        −
+        
+          θ
+          
+            i
+          
+        
+        )
+        ,
+      
+    
+    {\displaystyle \Pr(Z_{ij}=1\mid \theta _{i},\rho _{j})=Pr(Z_{ij}=1\mid Y_{i}=1)\Pr(Y_{i}=1)+\Pr(Z_{ij}=1\mid Y_{i}=-1)\Pr(Y_{i}=-1)=\rho _{j}\theta _{i}t(1-\rho _{j})(1-\theta _{i})=\rho _{j}\theta _{i}t(1-\rho _{j})(1-\theta _{i}),}
+  
+
+where 
+  
+    
+      
+        
+        
+        (
+        i
+        ,
+        j
+        )
+        ∈
+        {
+        1
+        ,
+        2
+        ,
+        …
+        ,
+        k
+        }
+        ×
+        {
+        1
+        ,
+        2
+        ,
+        …
+        ,
+        M
+        }
+      
+    
+    {\displaystyle \qquad \qquad (i,j)\in \{1,2,\ldots ,k\}\times \{1,2,\ldots ,M\}}
+  
+, label matrix: 
+  
+    
+      
+        
+          Z
+          
+            i
+            j
+          
+        
+        ∈
+        {
+        −
+        1
+        ,
+        1
+        }
+      
+    
+    {\displaystyle Z_{ij}\in \{-1,1\}}
+  
+
+It is difficult to calculate, so we can use Variational Bayesian methods of 
+  
+    
+      
+        Pr
+        (
+        i
+        ∈
+        
+          H
+          
+            ⋆
+          
+        
+        ∣
+        
+          S
+          
+            t
+          
+        
+        )
+      
+    
+    {\displaystyle \Pr(i\in H^{\star }\mid S^{t})}
+  
+
+
+== References ==

@@ -1,0 +1,2526 @@
+One-shot learning is an object categorization problem, found mostly in computer vision. Whereas most machine learning-based object categorization algorithms require training on hundreds or thousands of examples, one-shot learning aims to classify objects from one, or only a few, examples. The term few-shot learning is also used for these problems, especially when more than one example is needed.
+
+
+== Motivation ==
+The ability to learn object categories from few examples, and at a rapid pace, has been demonstrated in humans. It is estimated that a child learns almost all of the 10 ~ 30 thousand object categories in the world by age six. This is due not only to the human mind's computational power, but also to its ability to synthesize and learn new object categories from existing information about different, previously learned categories. Given two examples from two object categories: one, an unknown object composed of familiar shapes, the second, an unknown, amorphous shape; it is much easier for humans to recognize the former than the latter, suggesting that humans make use of previously learned categories when learning new ones. The key motivation for solving one-shot learning is that systems, like humans, can use knowledge about object categories to classify new objects.
+
+
+== Background ==
+As with most classification schemes, one-shot learning involves three main challenges:
+
+Representation: How should objects and categories be described?
+Learning: How can such descriptions be created?
+Recognition: How can a known object be filtered from enveloping clutter, irrespective of occlusion, viewpoint, and lighting?
+One-shot learning differs from single object recognition and standard category recognition algorithms in its emphasis on knowledge transfer, which makes use of previously learned categories.
+
+Model parameters: Reuses model parameters, based on the similarity between old and new categories. Categories are first learned on numerous training examples, then new categories are learned using transformations of model parameters from those initial categories or selecting relevant parameters for a classifier.
+Feature sharing: Shares parts or features of objects across categories. One algorithm extracts "diagnostic information" in patches from already learned categories by maximizing the patches' mutual information, and then applies these features to the learning of a new category. A dog category, for example, may be learned in one shot from previous knowledge of horse and cow categories, because dog objects may contain similar distinguishing patches.
+Contextual information: Appeals to global knowledge of the scene in which the object appears. Such global information can be used as frequency distributions in a conditional random field framework to recognize objects. Alternatively context can consider camera height and scene geometry. Algorithms of this type have two advantages. First, they learn object categories that are relatively dissimilar; and second, they perform well in ad hoc situations where an image has not been hand-cropped and aligned.
+
+
+== Theory ==
+The Bayesian one-shot learning algorithm represents the foreground and background of images as parametrized by a mixture of constellation models. During the learning phase, the parameters of these models are learned using a conjugate density parameter posterior and Variational Bayesian Expectation–Maximization (VBEM). In this stage the previously learned object categories inform the choice of model parameters via transfer by contextual information. For object recognition on new images, the posterior obtained during the learning phase is used in a Bayesian decision framework to estimate the ratio of p(object | test, train) to p(background clutter | test, train) where p is the probability of the outcome.
+
+
+=== Bayesian framework ===
+Given the task of finding a particular object in a query image, the overall objective of the Bayesian one-shot learning algorithm is to compare the probability that object is present vs the probability that only background clutter is present. If the former probability is higher, the algorithm reports the object's presence, otherwise the algorithm reports its absence. To compute these probabilities, the object class must be modeled from a set of (1 ~ 5) training images containing examples.
+To formalize these ideas, let 
+  
+    
+      
+        I
+      
+    
+    {\displaystyle I}
+  
+ be the query image, which contains either an example of the foreground category 
+  
+    
+      
+        
+          O
+          
+            f
+            g
+          
+        
+      
+    
+    {\displaystyle O_{fg}}
+  
+ or only background clutter of a generic background category 
+  
+    
+      
+        
+          O
+          
+            b
+            g
+          
+        
+      
+    
+    {\displaystyle O_{bg}}
+  
+. Also let 
+  
+    
+      
+        
+          I
+          
+            t
+          
+        
+      
+    
+    {\displaystyle I_{t}}
+  
+ be the set of training images used as the foreground category. The decision of whether 
+  
+    
+      
+        I
+      
+    
+    {\displaystyle I}
+  
+ contains an object from the foreground category, or only clutter from the background category is:
+
+  
+    
+      
+        R
+        =
+        
+          
+            
+              p
+              (
+              
+                O
+                
+                  f
+                  g
+                
+              
+              
+                |
+              
+              I
+              ,
+              
+                I
+                
+                  t
+                
+              
+              )
+            
+            
+              p
+              (
+              
+                O
+                
+                  b
+                  g
+                
+              
+              
+                |
+              
+              I
+              ,
+              
+                I
+                
+                  t
+                
+              
+              )
+            
+          
+        
+        =
+        
+          
+            
+              p
+              (
+              I
+              
+                |
+              
+              
+                I
+                
+                  t
+                
+              
+              ,
+              
+                O
+                
+                  f
+                  g
+                
+              
+              )
+              p
+              (
+              
+                O
+                
+                  f
+                  g
+                
+              
+              )
+            
+            
+              p
+              (
+              I
+              
+                |
+              
+              
+                I
+                
+                  t
+                
+              
+              ,
+              
+                O
+                
+                  b
+                  g
+                
+              
+              )
+              p
+              (
+              
+                O
+                
+                  b
+                  g
+                
+              
+              )
+            
+          
+        
+        ,
+      
+    
+    {\displaystyle R={\frac {p(O_{fg}|I,I_{t})}{p(O_{bg}|I,I_{t})}}={\frac {p(I|I_{t},O_{fg})p(O_{fg})}{p(I|I_{t},O_{bg})p(O_{bg})}},}
+  
+
+where the class posteriors 
+  
+    
+      
+        p
+        (
+        
+          O
+          
+            f
+            g
+          
+        
+        
+          |
+        
+        I
+        ,
+        
+          I
+          
+            t
+          
+        
+        )
+      
+    
+    {\displaystyle p(O_{fg}|I,I_{t})}
+  
+ and 
+  
+    
+      
+        p
+        (
+        
+          O
+          
+            b
+            g
+          
+        
+        
+          |
+        
+        I
+        ,
+        
+          I
+          
+            t
+          
+        
+        )
+      
+    
+    {\displaystyle p(O_{bg}|I,I_{t})}
+  
+ have been expanded by Bayes' Theorem, yielding a ratio of likelihoods and a ratio of object category priors. We decide that the image 
+  
+    
+      
+        I
+      
+    
+    {\displaystyle I}
+  
+ contains an object from the foreground class if 
+  
+    
+      
+        R
+      
+    
+    {\displaystyle R}
+  
+ exceeds a certain threshold 
+  
+    
+      
+        T
+      
+    
+    {\displaystyle T}
+  
+. We next introduce parametric models for the foreground and background categories with parameters 
+  
+    
+      
+        θ
+      
+    
+    {\displaystyle \theta }
+  
+ and 
+  
+    
+      
+        
+          θ
+          
+            b
+            g
+          
+        
+      
+    
+    {\displaystyle \theta _{bg}}
+  
+ respectively. This foreground parametric model is learned during the learning stage from 
+  
+    
+      
+        
+          I
+          
+            t
+          
+        
+      
+    
+    {\displaystyle I_{t}}
+  
+, as well as prior information of learned categories. The background model we assume to be uniform across images. Omitting the constant ratio of category priors, 
+  
+    
+      
+        
+          
+            
+              p
+              (
+              
+                O
+                
+                  f
+                  g
+                
+              
+              )
+            
+            
+              p
+              (
+              
+                O
+                
+                  b
+                  g
+                
+              
+              )
+            
+          
+        
+      
+    
+    {\displaystyle {\frac {p(O_{fg})}{p(O_{bg})}}}
+  
+, and parametrizing over 
+  
+    
+      
+        θ
+      
+    
+    {\displaystyle \theta }
+  
+ and 
+  
+    
+      
+        
+          θ
+          
+            b
+            g
+          
+        
+      
+    
+    {\displaystyle \theta _{bg}}
+  
+ yields
+
+  
+    
+      
+        R
+        ∝
+        
+          
+            
+              ∫
+              
+                p
+                (
+                I
+                
+                  |
+                
+                θ
+                ,
+                
+                  O
+                  
+                    f
+                    g
+                  
+                
+                )
+                p
+                (
+                θ
+                
+                  |
+                
+                
+                  I
+                  
+                    t
+                  
+                
+                ,
+                
+                  O
+                  
+                    f
+                    g
+                  
+                
+                )
+              
+              d
+              θ
+            
+            
+              ∫
+              
+                p
+                (
+                I
+                
+                  |
+                
+                
+                  θ
+                  
+                    b
+                    g
+                  
+                
+                ,
+                
+                  O
+                  
+                    b
+                    g
+                  
+                
+                )
+                p
+                (
+                
+                  θ
+                  
+                    b
+                    g
+                  
+                
+                
+                  |
+                
+                
+                  I
+                  
+                    t
+                  
+                
+                ,
+                
+                  O
+                  
+                    b
+                    g
+                  
+                
+                )
+              
+              d
+              
+                θ
+                
+                  b
+                  g
+                
+              
+            
+          
+        
+        =
+        
+          
+            
+              ∫
+              
+                p
+                (
+                I
+                
+                  |
+                
+                θ
+                )
+                p
+                (
+                θ
+                
+                  |
+                
+                
+                  I
+                  
+                    t
+                  
+                
+                ,
+                
+                  O
+                  
+                    f
+                    g
+                  
+                
+                )
+              
+              d
+              θ
+            
+            
+              ∫
+              
+                p
+                (
+                I
+                
+                  |
+                
+                
+                  θ
+                  
+                    b
+                    g
+                  
+                
+                )
+                p
+                (
+                
+                  θ
+                  
+                    b
+                    g
+                  
+                
+                
+                  |
+                
+                
+                  I
+                  
+                    t
+                  
+                
+                ,
+                
+                  O
+                  
+                    b
+                    g
+                  
+                
+                )
+              
+              d
+              
+                θ
+                
+                  b
+                  g
+                
+              
+            
+          
+        
+      
+    
+    {\displaystyle R\propto {\frac {\int {p(I|\theta ,O_{fg})p(\theta |I_{t},O_{fg})}d\theta }{\int {p(I|\theta _{bg},O_{bg})p(\theta _{bg}|I_{t},O_{bg})}d\theta _{bg}}}={\frac {\int {p(I|\theta )p(\theta |I_{t},O_{fg})}d\theta }{\int {p(I|\theta _{bg})p(\theta _{bg}|I_{t},O_{bg})}d\theta _{bg}}}}
+  
+, having simplified 
+  
+    
+      
+        p
+        (
+        I
+        
+          |
+        
+        θ
+        ,
+        
+          O
+          
+            f
+            g
+          
+        
+        )
+      
+    
+    {\displaystyle p(I|\theta ,O_{fg})}
+  
+ and 
+  
+    
+      
+        p
+        (
+        I
+        
+          |
+        
+        θ
+        ,
+        
+          O
+          
+            b
+            g
+          
+        
+        )
+      
+    
+    {\displaystyle p(I|\theta ,O_{bg})}
+  
+ to 
+  
+    
+      
+        p
+        (
+        I
+        
+          |
+        
+        
+          θ
+          
+            f
+            g
+          
+        
+        )
+      
+    
+    {\displaystyle p(I|\theta _{fg})}
+  
+ and 
+  
+    
+      
+        p
+        (
+        I
+        
+          |
+        
+        
+          θ
+          
+            b
+            g
+          
+        
+        )
+        .
+      
+    
+    {\displaystyle p(I|\theta _{bg}).}
+  
+
+The posterior distribution of model parameters given the training images, 
+  
+    
+      
+        p
+        (
+        θ
+        
+          |
+        
+        
+          I
+          
+            t
+          
+        
+        ,
+        
+          O
+          
+            f
+            g
+          
+        
+        )
+      
+    
+    {\displaystyle p(\theta |I_{t},O_{fg})}
+  
+ is estimated in the learning phase. In this estimation, one-shot learning differs sharply from more traditional Bayesian estimation models that approximate the integral as 
+  
+    
+      
+        δ
+        (
+        
+          θ
+          
+            M
+            L
+          
+        
+        )
+      
+    
+    {\displaystyle \delta (\theta ^{ML})}
+  
+. Instead, it uses a variational approach using prior information from previously learned categories. However, the traditional maximum likelihood estimation of the model parameters is used for the background model and the categories learned in advance through training.
+
+
+=== Object category model ===
+For each query image 
+  
+    
+      
+        I
+      
+    
+    {\displaystyle I}
+  
+ and training images 
+  
+    
+      
+        
+          I
+          
+            t
+          
+        
+      
+    
+    {\displaystyle I_{t}}
+  
+, a constellation model is used for representation. To obtain this model for a given image 
+  
+    
+      
+        I
+      
+    
+    {\displaystyle I}
+  
+, first a set of N interesting regions is detected in the image using the Kadir–Brady saliency detector. Each region selected is represented by a location in the image, 
+  
+    
+      
+        
+          X
+          
+            i
+          
+        
+      
+    
+    {\displaystyle X_{i}}
+  
+ and a description of its appearance, 
+  
+    
+      
+        
+          A
+          
+            i
+          
+        
+      
+    
+    {\displaystyle A_{i}}
+  
+. Letting 
+  
+    
+      
+        X
+        =
+        
+          ∑
+          
+            i
+            =
+            1
+          
+          
+            N
+          
+        
+        
+          X
+          
+            i
+          
+        
+        ,
+        A
+        =
+        
+          ∑
+          
+            i
+            =
+            1
+          
+          
+            N
+          
+        
+        
+          A
+          
+            i
+          
+        
+      
+    
+    {\displaystyle X=\sum _{i=1}^{N}X_{i},A=\sum _{i=1}^{N}A_{i}}
+  
+ and 
+  
+    
+      
+        
+          X
+          
+            t
+          
+        
+      
+    
+    {\displaystyle X_{t}}
+  
+and 
+  
+    
+      
+        
+          A
+          
+            t
+          
+        
+      
+    
+    {\displaystyle A_{t}}
+  
+ the analogous representations for training images, the expression for R becomes:
+
+  
+    
+      
+        R
+        ∝
+        
+          
+            
+              ∫
+              
+                p
+                (
+                X
+                ,
+                A
+                
+                  |
+                
+                θ
+                ,
+                
+                  O
+                  
+                    f
+                    g
+                  
+                
+                )
+                p
+                (
+                θ
+                
+                  |
+                
+                
+                  X
+                  
+                    t
+                  
+                
+                ,
+                
+                  A
+                  
+                    t
+                  
+                
+                ,
+                
+                  O
+                  
+                    f
+                    g
+                  
+                
+                )
+              
+              d
+              θ
+            
+            
+              ∫
+              
+                p
+                (
+                X
+                ,
+                A
+                
+                  |
+                
+                
+                  θ
+                  
+                    b
+                    g
+                  
+                
+                ,
+                
+                  O
+                  
+                    b
+                    g
+                  
+                
+                )
+                p
+                (
+                
+                  θ
+                  
+                    b
+                    g
+                  
+                
+                
+                  |
+                
+                
+                  X
+                  
+                    t
+                  
+                
+                ,
+                
+                  A
+                  
+                    t
+                  
+                
+                ,
+                
+                  O
+                  
+                    b
+                    g
+                  
+                
+                )
+              
+              d
+              
+                θ
+                
+                  b
+                  g
+                
+              
+            
+          
+        
+        =
+        
+          
+            
+              ∫
+              
+                p
+                (
+                X
+                ,
+                A
+                
+                  |
+                
+                θ
+                )
+                p
+                (
+                θ
+                
+                  |
+                
+                
+                  X
+                  
+                    t
+                  
+                
+                ,
+                
+                  A
+                  
+                    t
+                  
+                
+                ,
+                
+                  O
+                  
+                    f
+                    g
+                  
+                
+                )
+              
+              d
+              θ
+            
+            
+              ∫
+              
+                p
+                (
+                X
+                ,
+                A
+                
+                  |
+                
+                
+                  θ
+                  
+                    b
+                    g
+                  
+                
+                )
+                p
+                (
+                
+                  θ
+                  
+                    b
+                    g
+                  
+                
+                
+                  |
+                
+                
+                  X
+                  
+                    t
+                  
+                
+                ,
+                
+                  A
+                  
+                    t
+                  
+                
+                ,
+                
+                  O
+                  
+                    b
+                    g
+                  
+                
+                )
+              
+              
+              d
+              
+                θ
+                
+                  b
+                  g
+                
+              
+            
+          
+        
+      
+    
+    {\displaystyle R\propto {\frac {\int {p(X,A|\theta ,O_{fg})p(\theta |X_{t},A_{t},O_{fg})}d\theta }{\int {p(X,A|\theta _{bg},O_{bg})p(\theta _{bg}|X_{t},A_{t},O_{bg})}d\theta _{bg}}}={\frac {\int {p(X,A|\theta )p(\theta |X_{t},A_{t},O_{fg})}d\theta }{\int {p(X,A|\theta _{bg})p(\theta _{bg}|X_{t},A_{t},O_{bg})}\,d\theta _{bg}}}}
+  
+
+The likelihoods 
+  
+    
+      
+        p
+        (
+        X
+        ,
+        A
+        
+          |
+        
+        θ
+        )
+      
+    
+    {\displaystyle p(X,A|\theta )}
+  
+ and 
+  
+    
+      
+        p
+        (
+        X
+        ,
+        A
+        
+          |
+        
+        
+          θ
+          
+            b
+            g
+          
+        
+        )
+      
+    
+    {\displaystyle p(X,A|\theta _{bg})}
+  
+ are represented as mixtures of constellation models. A typical constellation model has P(3 ~ 7) parts, with N(~100) interest regions. Thus a P-dimensional vector h assigns one region of interest (out of N regions) to each model part (for P parts). Thus h denotes a hypothesis (an assignment of interest regions to model parts) for the model and a full constellation model is represented by summing over all possible hypotheses h in the hypothesis space 
+  
+    
+      
+        H
+      
+    
+    {\displaystyle H}
+  
+. Finally the likelihood is written
+
+  
+    
+      
+        p
+        (
+        X
+        ,
+        A
+        
+          |
+        
+        θ
+        )
+        =
+        
+          ∑
+          
+            ω
+            =
+            1
+          
+          
+            Ω
+          
+        
+        
+          ∑
+          
+            
+              
+                h
+              
+            
+            ∈
+            H
+          
+        
+        p
+        (
+        X
+        ,
+        A
+        ,
+        
+          
+            h
+          
+        
+        ,
+        ω
+        
+          |
+        
+        θ
+        )
+        .
+      
+    
+    {\displaystyle p(X,A|\theta )=\sum _{\omega =1}^{\Omega }\sum _{{\textbf {h}}\in H}p(X,A,{\textbf {h}},\omega |\theta ).}
+  
+
+The different 
+  
+    
+      
+        ω
+      
+    
+    {\displaystyle \omega }
+  
+'s represent different configurations of parts, whereas the different hypotheses h represent different assignations of regions to parts, given a part model 
+  
+    
+      
+        ω
+      
+    
+    {\displaystyle \omega }
+  
+. The assumption that the shape of the model (as represented by 
+  
+    
+      
+        X
+      
+    
+    {\displaystyle X}
+  
+, the collection of part locations) and appearance are independent allows one to consider the likelihood expression 
+  
+    
+      
+        p
+        (
+        X
+        ,
+        A
+        ,
+        
+          
+            h
+          
+        
+        ,
+        ω
+        
+          |
+        
+        θ
+        )
+      
+    
+    {\displaystyle p(X,A,{\textbf {h}},\omega |\theta )}
+  
+ as two separate likelihoods of appearance and shape.
+
+
+==== Appearance ====
+The appearance of each feature is represented by a point in appearance space (discussed below in implementation). "Each part 
+  
+    
+      
+        p
+      
+    
+    {\displaystyle p}
+  
+ in the constellation model has a Gaussian density within this space with mean and precision parameters 
+  
+    
+      
+        
+          θ
+          
+            p
+            ,
+            ω
+          
+          
+            A
+          
+        
+        =
+        
+          
+            μ
+            
+              p
+              ,
+              ω
+            
+            
+              A
+            
+          
+          ,
+          
+            Γ
+            
+              p
+              ,
+              ω
+            
+            
+              A
+            
+          
+        
+      
+    
+    {\displaystyle \theta _{p,\omega }^{A}={\mu _{p,\omega }^{A},\Gamma _{p,\omega }^{A}}}
+  
+." From these the appearance likelihood described above is computed as a product of Gaussians over the model parts for a give hypothesis h and mixture component 
+  
+    
+      
+        ω
+      
+    
+    {\displaystyle \omega }
+  
+.
+
+
+==== Shape ====
+The shape of the model for a given mixture component 
+  
+    
+      
+        ω
+      
+    
+    {\displaystyle \omega }
+  
+ and hypothesis h is represented as a joint Gaussian density of the locations of features. These features are transformed into a scale and translation-invariant space before modelling the relative location of the parts by a 2(P - 1)-dimensional Gaussian. From this, we obtain the shape likelihood, completing our representation of 
+  
+    
+      
+        p
+        (
+        X
+        ,
+        A
+        ,
+        
+          
+            h
+          
+        
+        ,
+        ω
+        
+          |
+        
+        θ
+        )
+      
+    
+    {\displaystyle p(X,A,{\textbf {h}},\omega |\theta )}
+  
+ . In order to reduce the number of hypotheses in the hypothesis space 
+  
+    
+      
+        H
+      
+    
+    {\displaystyle H}
+  
+, only those hypotheses that satisfy the ordering constraint that the x-coordinate of each part is monotonically increasing are considered. This eliminates 
+  
+    
+      
+        P
+        !
+      
+    
+    {\displaystyle P!}
+  
+ hypotheses from 
+  
+    
+      
+        H
+      
+    
+    {\displaystyle H}
+  
+.
+
+
+=== Conjugate densities ===
+In order to compute 
+  
+    
+      
+        R
+      
+    
+    {\displaystyle R}
+  
+, the integral 
+  
+    
+      
+        ∫
+        
+          p
+          (
+          X
+          ,
+          A
+          
+            |
+          
+          θ
+          )
+          p
+          (
+          θ
+          
+            |
+          
+          
+            X
+            
+              t
+            
+          
+          ,
+          
+            A
+            
+              t
+            
+          
+          ,
+          
+            O
+            
+              f
+              g
+            
+          
+          )
+        
+        d
+        θ
+      
+    
+    {\displaystyle \int {p(X,A|\theta )p(\theta |X_{t},A_{t},O_{fg})}d\theta }
+  
+ must be evaluated, but is analytically intractable. The object category model above gives information about 
+  
+    
+      
+        p
+        (
+        X
+        ,
+        A
+        
+          |
+        
+        θ
+        )
+      
+    
+    {\displaystyle p(X,A|\theta )}
+  
+, so what remains is to examine 
+  
+    
+      
+        p
+        (
+        θ
+        
+          |
+        
+        
+          X
+          
+            t
+          
+        
+        ,
+        
+          A
+          
+            t
+          
+        
+        ,
+        O
+        )
+      
+    
+    {\displaystyle p(\theta |X_{t},A_{t},O)}
+  
+, the posterior of 
+  
+    
+      
+        θ
+      
+    
+    {\displaystyle \theta }
+  
+, and find a sufficient approximation to render the integral tractable. Previous work approximates the posterior by a 
+  
+    
+      
+        δ
+      
+    
+    {\displaystyle \delta }
+  
+function centered at 
+  
+    
+      
+        
+          θ
+          
+            ∗
+          
+        
+      
+    
+    {\displaystyle \theta ^{*}}
+  
+, collapsing the integral in question into 
+  
+    
+      
+        p
+        (
+        X
+        ,
+        A
+        
+          |
+        
+        
+          θ
+          
+            ∗
+          
+        
+        )
+      
+    
+    {\displaystyle p(X,A|\theta ^{*})}
+  
+. This 
+  
+    
+      
+        
+          θ
+          
+            ∗
+          
+        
+      
+    
+    {\displaystyle \theta ^{*}}
+  
+ is normally estimated using a Maximum Likelihood (
+  
+    
+      
+        
+          θ
+          
+            ∗
+          
+        
+        =
+        
+          θ
+          
+            M
+            L
+          
+        
+      
+    
+    {\displaystyle \theta ^{*}=\theta ^{ML}}
+  
+) or Maximum A Posteriori (
+  
+    
+      
+        
+          θ
+          
+            ∗
+          
+        
+        =
+        
+          θ
+          
+            M
+            A
+            P
+          
+        
+      
+    
+    {\displaystyle \theta ^{*}=\theta ^{MAP}}
+  
+) procedure. However, because in one-shot learning, few training examples are used, the distribution will not be well-peaked, as is assumed in a 
+  
+    
+      
+        δ
+      
+    
+    {\displaystyle \delta }
+  
+function approximation. Thus instead of this traditional approximation, the Bayesian one-shot learning algorithm seeks to "find a parametric form of 
+  
+    
+      
+        p
+        (
+        θ
+        )
+      
+    
+    {\displaystyle p(\theta )}
+  
+ such that the learning of 
+  
+    
+      
+        p
+        (
+        θ
+        
+          |
+        
+        
+          X
+          
+            t
+          
+        
+        ,
+        
+          A
+          
+            t
+          
+        
+        ,
+        
+          O
+          
+            f
+            g
+          
+        
+        )
+      
+    
+    {\displaystyle p(\theta |X_{t},A_{t},O_{fg})}
+  
+ is feasible". The algorithm employs a Normal-Wishart distribution as the conjugate prior of 
+  
+    
+      
+        p
+        (
+        θ
+        
+          |
+        
+        
+          X
+          
+            t
+          
+        
+        ,
+        
+          A
+          
+            t
+          
+        
+        ,
+        
+          O
+          
+            f
+            g
+          
+        
+        )
+      
+    
+    {\displaystyle p(\theta |X_{t},A_{t},O_{fg})}
+  
+, and in the learning phase, variational Bayesian methods with the same computational complexity as maximum likelihood methods are used to learn the hyperparameters of the distribution. Then, since 
+  
+    
+      
+        p
+        (
+        X
+        ,
+        A
+        
+          |
+        
+        θ
+        )
+      
+    
+    {\displaystyle p(X,A|\theta )}
+  
+ is a product of Gaussians, as chosen in the object category model, the integral reduces to a multivariate Student's T distribution, which can be evaluated.
+
+
+== Implementation ==
+
+
+=== Feature detection and representation ===
+To detect features in an image so that it can be represented by a constellation model, the Kadir–Brady saliency detector is used on grey-scale images, finding salient regions of the image. These regions are then clustered, yielding a number of features (the clusters) and the shape parameter 
+  
+    
+      
+        X
+      
+    
+    {\displaystyle X}
+  
+, composed of the cluster centers. The Kadir–Brady detector was chosen because it produces fewer, more salient regions, as opposed to feature detectors like multiscale Harris, which produces numerous, less significant regions.
+The regions are then taken from the image and rescaled to a small patch of 11 × 11 pixels, allowing each patch to be represented in 121-dimensional space. This dimensionality is reduced using principal component analysis, and 
+  
+    
+      
+        A
+      
+    
+    {\displaystyle A}
+  
+, the appearance parameter, is then formed from the first 10 principal components of each patch.
+
+
+=== Learning ===
+To obtain shape and appearance priors, three categories (spotted cats, faces, and airplanes) are learned using maximum likelihood estimation. These object category model parameters are then used to estimate the hyper-parameters of the desired priors.
+Given a set of training examples, the algorithm runs the feature detector on these images, and determines model parameters from the salient regions. The hypothesis index h assigning features to parts prevents a closed-form solution of the linear model, so the posterior 
+  
+    
+      
+        p
+        (
+        θ
+        
+          |
+        
+        
+          X
+          
+            t
+          
+        
+        ,
+        
+          A
+          
+            t
+          
+        
+        ,
+        
+          O
+          
+            f
+            g
+          
+        
+        )
+      
+    
+    {\displaystyle p(\theta |X_{t},A_{t},O_{fg})}
+  
+ is estimated by variational Bayesian expectation–maximization algorithm, which is run until parameter convergence after ~ 100 iterations. Learning a category in this fashion takes under a minute on a 2.8 GHz machine with a 4-part model and < 10 training images.
+
+
+== Experimental results ==
+
+
+=== Motorbike example ===
+To learn the motorbike category:
+
+Six training images are selected from the motorbike category of the Caltech 4 Data Set and the Kadir–Brady detector is applied, giving 
+  
+    
+      
+        
+          X
+          
+            t
+          
+        
+      
+    
+    {\displaystyle X_{t}}
+  
+ and through PCA, 
+  
+    
+      
+        
+          A
+          
+            t
+          
+        
+      
+    
+    {\displaystyle A_{t}}
+  
+.
+Next, the prior model parameters are computed from 30 models 
+  
+    
+      
+        
+          θ
+          
+            t
+          
+        
+      
+    
+    {\displaystyle \theta _{t}}
+  
+, 10 from each of the three learned categories: spotted cats, faces, and airplanes. This prior encodes the knowledge that "models lacking visual consistency [ie background clutter] occupy a different part of the parameter space [from] coherent models."
+In learning, which is performed next, the prior biases the posterior 
+  
+    
+      
+        p
+        (
+        θ
+        
+          |
+        
+        
+          X
+          
+            t
+          
+        
+        ,
+        
+          A
+          
+            t
+          
+        
+        ,
+        
+          O
+          
+            f
+            g
+          
+        
+        )
+      
+    
+    {\displaystyle p(\theta |X_{t},A_{t},O_{fg})}
+  
+ towards parts of the parameter space corresponding to coherent models. Only one mixture component is used, letting 
+  
+    
+      
+        Ω
+        =
+        1
+      
+    
+    {\displaystyle \Omega =1}
+  
+. The estimation of the posterior is shown below.
+Finally, the figures below show the learned motorbike model with shape and appearance of parts, and the corresponding features.
+For recognition tests, the model above is applied to 50 images which contain motorbikes and 50 which do not. The image below shows an ROC curve, measuring the probability of detection over the probability of false detection, as well as some recognized examples.
+
+
+== Shared densities on transforms ==
+Another algorithm uses knowledge transfer by model parameters to learn a new object category that is similar in appearance to previously learned categories. An image is represented as either a texture and shape, or as a latent image that has been transformed, denoted by 
+  
+    
+      
+        I
+        =
+        T
+        (
+        
+          I
+          
+            L
+          
+        
+        )
+      
+    
+    {\displaystyle I=T(I_{L})}
+  
+.
+A Siamese neural network works in tandem on two different input vectors to compute comparable output vectors.
+
+
+=== Congealing ===
+In this context, congealing is "the simultaneous vectorization of each of a set of images to each other". For a set of training images of a certain category, congealing iteratively transforms each image to minimize the images' joint pixelwise entropies E, where
+
+  
+    
+      
+        E
+        =
+        
+          ∑
+          
+            p
+            =
+            1
+          
+          
+            P
+          
+        
+        H
+        (
+        ν
+        (
+        p
+        )
+        )
+        ,
+      
+    
+    {\displaystyle E=\sum _{p=1}^{P}H(\nu (p)),}
+  
+
+"where 
+  
+    
+      
+        ν
+        (
+        p
+        )
+      
+    
+    {\displaystyle \nu (p)}
+  
+ is the binary random variable defined by the values of a particular pixel p across all of the images, 
+  
+    
+      
+        H
+        (
+        )
+      
+    
+    {\displaystyle H()}
+  
+ is the discrete entropy function of that variable, and 
+  
+    
+      
+        1
+        ≤
+        p
+        ≤
+        P
+      
+    
+    {\displaystyle 1\leq p\leq P}
+  
+ is the set of pixel indices for the image."
+The congealing algorithm begins with a set of images 
+  
+    
+      
+        
+          I
+          
+            i
+          
+        
+      
+    
+    {\displaystyle I_{i}}
+  
+ and a corresponding transform matrix 
+  
+    
+      
+        
+          U
+          
+            i
+          
+        
+      
+    
+    {\displaystyle U_{i}}
+  
+, which at the end of the algorithm will represent the transformation of 
+  
+    
+      
+        
+          I
+          
+            i
+          
+        
+      
+    
+    {\displaystyle I_{i}}
+  
+ into its latent 
+  
+    
+      
+        
+          I
+          
+            
+              L
+              
+                i
+              
+            
+          
+        
+      
+    
+    {\displaystyle I_{L_{i}}}
+  
+. These latents 
+  
+    
+      
+        
+          I
+          
+            
+              L
+              
+                i
+              
+            
+          
+        
+      
+    
+    {\displaystyle I_{L_{i}}}
+  
+ minimize the joint pixel-wise entropies. Thus the task of the congealing algorithm is to estimate the transformations 
+  
+    
+      
+        
+          U
+          
+            i
+          
+        
+      
+    
+    {\displaystyle U_{i}}
+  
+.
+Sketch of algorithm:
+
+Initialize 
+  
+    
+      
+        
+          U
+          
+            I
+          
+        
+      
+    
+    {\displaystyle U_{I}}
+  
+'s to the identity.
+Compute the joint pixelwise entropies of the current set of images.
+For each image 
+  
+    
+      
+        
+          I
+          
+            i
+          
+        
+      
+    
+    {\displaystyle I_{i}}
+  
+, iterate through all possible affine transformations 
+  
+    
+      
+        A
+      
+    
+    {\displaystyle A}
+  
+ (rotation, x-translation, y-translation, x-scale, y-scale, x-shear, y-shear) and test if 
+  
+    
+      
+        A
+        
+          U
+          
+            i
+          
+        
+      
+    
+    {\displaystyle AU_{i}}
+  
+ decreases the joint pixelwise entropies. If so, set 
+  
+    
+      
+        
+          U
+          
+            i
+          
+        
+        =
+        A
+        
+          U
+          
+            i
+          
+        
+      
+    
+    {\displaystyle U_{i}=AU_{i}}
+  
+.
+Repeat previous step until convergence.
+At the end of the algorithm, 
+  
+    
+      
+        
+          U
+          
+            i
+          
+        
+        (
+        I
+        )
+        =
+        
+          I
+          
+            
+              L
+              
+                i
+              
+            
+          
+        
+      
+    
+    {\displaystyle U_{i}(I)=I_{L_{i}}}
+  
+, and 
+  
+    
+      
+        T
+        =
+        
+          U
+          
+            i
+          
+          
+            −
+            1
+          
+        
+      
+    
+    {\displaystyle T=U_{i}^{-1}}
+  
+ transforms the latent image back into the originally observed image.
+
+
+=== Classification ===
+To use this model for classification, it must be estimated with the maximum posterior probability given an observed image 
+  
+    
+      
+        I
+      
+    
+    {\displaystyle I}
+  
+. Applying Bayes' rule to 
+  
+    
+      
+        P
+        (
+        
+          c
+          
+            j
+          
+        
+        
+          |
+        
+        I
+        )
+      
+    
+    {\displaystyle P(c_{j}|I)}
+  
+ and parametrization by the transformation 
+  
+    
+      
+        T
+      
+    
+    {\displaystyle T}
+  
+ gives a difficult integral that must be approximated, and then the best transform 
+  
+    
+      
+        T
+      
+    
+    {\displaystyle T}
+  
+ (that which maps the test image to its latent image) must be found. Once this transformation is found, the test image can be transformed into its latent, and a nearest neighbor classifier based on Hausdorff distance between images can classify the latent (and thus the test image) as belonging to a particular class 
+  
+    
+      
+        
+          c
+          
+            j
+          
+        
+      
+    
+    {\displaystyle c_{j}}
+  
+.
+To find 
+  
+    
+      
+        T
+      
+    
+    {\displaystyle T}
+  
+, the test image I is inserted into the training ensemble for the congealing process. Since the test image is drawn from one of the categories 
+  
+    
+      
+        
+          c
+          
+            j
+          
+        
+      
+    
+    {\displaystyle c_{j}}
+  
+, congealing provides a corresponding 
+  
+    
+      
+        
+          T
+          
+            test
+          
+        
+        =
+        
+          U
+          
+            test
+          
+          
+            −
+            1
+          
+        
+      
+    
+    {\displaystyle T_{\text{test}}=U_{\text{test}}^{-1}}
+  
+ that maps I to its latent. The latent can then be classified.
+
+
+=== Single-example classification ===
+Given a set of transformations 
+  
+    
+      
+        
+          B
+          
+            i
+          
+        
+      
+    
+    {\displaystyle B_{i}}
+  
+ obtained from congealing many images of a certain category, the classifier can be extended to the case where only one training 
+  
+    
+      
+        
+          I
+          
+            t
+          
+        
+      
+    
+    {\displaystyle I_{t}}
+  
+ example of a new category 
+  
+    
+      
+        c
+      
+    
+    {\displaystyle c}
+  
+ is allowed. Applying all the transformations 
+  
+    
+      
+        
+          B
+          
+            i
+          
+        
+      
+    
+    {\displaystyle B_{i}}
+  
+ sequentially to 
+  
+    
+      
+        
+          I
+          
+            t
+          
+        
+      
+    
+    {\displaystyle I_{t}}
+  
+ creates an artificial training set for 
+  
+    
+      
+        c
+      
+    
+    {\displaystyle c}
+  
+. This artificial data set can be made larger by borrowing transformations from many already known categories. Once this data set is obtained, 
+  
+    
+      
+        I
+      
+    
+    {\displaystyle I}
+  
+, a test instance of 
+  
+    
+      
+        c
+      
+    
+    {\displaystyle c}
+  
+, can be classified as in the normal classification procedure. The key assumption is that categories are similar enough that the transforms from one can be applied to another.
+
+
+== See also ==
+Variational Bayesian methods
+Variational message passing
+Expectation–maximization algorithm
+Bayesian inference
+Feature detection
+Association rule learning
+Hopfield network
+Zero-shot learning
+
+
+== Citations ==
+
+
+== References ==
+Li, Fei Fei (2006). "Knowledge transfer in learning to recognize visual object classes" (PDF). International Conference on Development and Learning (ICDL).
+Li, Fei Fei; Fergus, R.; Perona, P. (2006). "One-Shot learning of object categories" (PDF). IEEE Transactions on Pattern Analysis and Machine Intelligence. 28 (4): 594–611. doi:10.1109/TPAMI.2006.79. PMID 16566508. S2CID 6953475.
+Miller; Matsakis; Viola (2000). "Learning from One Example through Shared Densities on Transforms" (PDF). Proc. Computer Vision and Pattern Recognition.
+Li, F.F.; VanRullen, R.; Coch, C.; Perona, P. (2002). "Rapid natural scene categorization in the near absence of attention". PNAS. 99 (14): 9596–9601. Bibcode:2002PNAS...99.9596L. doi:10.1073/pnas.092277599. PMC 123186. PMID 12077298.
+Thorpe, S.; Fize, D.; Marlot, C. (1996). "Speed of processing in the human visual system" (PDF). Nature. 381 (6582): 520–522, 1996. Bibcode:1996Natur.381..520T. doi:10.1038/381520a0. PMID 8632824. S2CID 4303570.
+Biederman, I. (1987). "Recognition-by-Components: a theory of human understanding" (PDF). Psychological Review. 94 (2): 115–147. doi:10.1037/0033-295X.94.2.115. PMID 3575582. Archived from the original (PDF) on 2022-11-29. Retrieved 2021-11-21.
+Fink, M. (2004). "Object classification from a single example utilizing class relevance pseudo-metrics". NIPS. CiteSeerX 10.1.1.91.7461.
+Bart; Ullman (2005). "Cross-generalization: learning novel classes from a single example by feature replacement" (PDF). CVPR. Archived from the original (PDF) on 2022-12-06. Retrieved 2021-11-21.
+Murphy, K.; Torralba, A.; Freeman, W.T. (2004). "Using the forest to see the trees: a graphical model relating features, objects, and scenes" (PDF). NIPS.
+Hoiem, D.; Efros, A.A.; Herbert, M. (2005). "Geometric context from a single image" (PDF). ICCV.
+Attias, H. (1999). "Inferring Parameters and Structure of Latent Variable Models by Variational Bayes". Proc. Of the 15th Conf. In Uncertainty in Artificial Intelligence: 21–30. arXiv:1301.6676.
+Burl, M.; Weber, M.; Perona, P. (1996). "A Probabilistic Approach to Object Recognition Using Local Photometry and Global Geometry" (PDF). Proc. European Conf. Computer Vision. Lecture Notes in Computer Science. 1407: 628–641. doi:10.1007/BFb0054769. ISBN 978-3-540-64613-6.
+Fergus, R.; Perona, P.; Zisserman, A. (2003). "Object Class Recognition by Unsupervised Scale-Invariant Learning" (PDF). Proc. Computer Vision and Pattern Recognition: 264–271.
+Weber, M.; Welling, M.; Perona, P. (2000). "Unsupervised Learning of Models for Recognition" (PDF). Proc. European Conf. Computer Vision. Lecture Notes in Computer Science. 1842: 101–108. doi:10.1007/3-540-45054-8_2. ISBN 978-3-540-67685-0.
+Kadir, T.; Brady, M. (2001). "Scale, Saliency, and Image Description". International Journal of Computer Vision. 45 (2): 83–105. doi:10.1023/A:1012460413855. S2CID 825395.

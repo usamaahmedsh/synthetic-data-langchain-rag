@@ -1,0 +1,100 @@
+BOSH is an open-source software project that offers a toolchain for release engineering, software deployment and application lifecycle management of large-scale distributed services. The toolchain is made up of a server (the BOSH Director) and a command line tool. BOSH is typically used to package, deploy and manage cloud software. While BOSH was initially developed by VMware in 2010 to deploy Cloud Foundry PaaS, it can be used to deploy other software (such as Hadoop, RabbitMQ, or MySQL for instance). BOSH is designed to manage the whole lifecycle of large distributed systems.
+Since March 2016, BOSH can manage deployments on both Microsoft Windows and Linux servers.
+A BOSH Director communicates with a single Infrastructure as a service (IaaS) provider to manage the underlying networking and virtual machines (VMs) (or containers). Several IaaS providers are supported: Amazon Web Services EC2, Apache CloudStack, Google Compute Engine, Microsoft Azure, OpenStack, and VMware vSphere.
+To help support more underlying IaaS providers, BOSH uses the concept of a Cloud Provider Interface (CPI). There is an implementation of the CPI for each of the IaaS providers listed above.  Typically the CPI is used to deploy VMs, but it can be used to deploy containers as well.
+Few CPIs exist for deploying containers with BOSH and only one is actively supported. For this one, BOSH uses a CPI that deploys Pivotal Software's Garden containers (Garden is very similar to Docker) on a single virtual machine, run by VirtualBox or VMware Workstation. In theory, any other container engine could be supported, if the necessary CPIs were developed.
+Due to BOSH indifferently supporting deployments on VMs or containers, BOSH uses the generic term “instances” to designate those. It is up to the CPI to choose whether a BOSH “instance” is actually a VM or a container.
+
+
+== Workflow ==
+Once installed, a BOSH server accepts uploading root filesystems (called “stemcells”) and packages (called “releases”) to it. When a BOSH server has the necessary bits for deploying a given software system, it can be told to proceed, as described by a YAML deployment manifest. BOSH then progressively deploys “instances” (VMs or containers), using canaries to avoid deploying failing configurations.
+Once a software system is deployed, BOSH monitors its instances continuously to allow detecting failing instances, and resurrecting any missing one.
+When a BOSH deployment manifest is changed, BOSH accepts to roll out the implied modifications proceeding progressively, instance by instance. This means that BOSH can upgrade live clusters with possibly no downtime.
+
+
+== Concepts ==
+
+
+=== Release ===
+A BOSH release can either be an archive file or a git repository. In both cases, it describes a software system that can be deployed with BOSH. For this purpose, it packages up all related binary assets, source code, compilation scripts, configurable properties, startup scripts and templates for configuration files.
+BOSH releases are made of “packages” and “jobs”. Roughly, BOSH packages provide something that can be run, and BOSH jobs describe how these things are configured and run.
+A BOSH package details the necessary source code, binary assets (called “blobs”), and compilation scripts for building a given software component. There are two ways to provide binary “blobs”. In a BOSH release that is provided as an archive file, blobs are directly included. But with BOSH releases that are provided as git repositories, doing the same tends to be problematic when blobs get big. That's why a BOSH release provides a concept of “blobstore”, from where referenced blobs can be fetched. Most BOSH releases use blobstores that are backed by public Amazon S3 buckets, but there are other ways to refer to a private or a local “blobstore” in a BOSH release.
+BOSH packages are always subject to a compilation phase, even if this just extracts files from an archive and copies them to the proper target directory. To compile a given package, BOSH spawns an ephemeral compilation instance (VM or container) that only includes any required packages and blobs, as declared by the package specification. In this dedicated instance, BOSH runs the compilation script, and seals the compilation result in its database, so that it can be safely used for reproducible deployments.
+BOSH jobs on the other hand, provide configuration properties (that can possibly be documented), templates for configuration files, and startup scripts. BOSH jobs refer to one or many packages as dependencies. Jobs are also sealed into BOSH database, but the templates for configuration files are rendered at deploy time, where all configuration properties are resolved. These configuration properties are usually IP addresses, port numbers, user names, passwords, domain names, etc.
+
+
+=== Stemcell ===
+A BOSH stemcell packages the basics for creating a new instance (VM or container). Namely, a BOSH stemcell ships an Operating System image along with a BOSH agent and a copy of monit, which is used to manage the services (called “jobs”) that will be hosted by the instance. The BOSH agent helps BOSH communicate with the instance during all its life cycle.
+The stemcell concept in BOSH is similar to Virtual Machine Images like Amazon's AMIs, but BOSH stemcells are not meant to be specialized for any particular usage. Instead, BOSH only provides different stemcells for supporting different Operating Systems (CentOS, Ubuntu or Windows), or different underlying IaaS providers (AWS or OpenStack).
+The name “stemcell” originated from biological term “stem cells”, which refers to the undifferentiated cells that are able to grow into diverse cell types later. Similarly, instances created by a BOSH stemcell are identical at the beginning.
+After inception, instances are configured with different CPU/memory/storage/network, and installed with different software packages. Hence, instances built from the same BOSH stemcell can behave differently.
+
+
+=== BOSH Agent ===
+The BOSH agent is a service that runs on every BOSH-deployed VM. It does the following:
+
+sets up the VM, e.g., configures local disks, configure and format attached (secondary) disks, configures networks
+accepts requests from director, e.g., pings, job management requests
+manages jobs: starting, stopping, and monitoring health
+
+
+=== Deployment ===
+A BOSH deployment is basically a YAML deployment manifest, where the user describes the BOSH releases and BOSH stemcells to use, and how to set up and compose jobs into groups of identical instances (historically misnamed “jobs” and later renamed “instance groups”). Within these “instance groups”, BOSH can spawn identical instances (VMs or containers) across different availability zones, in order to minimise the risk for all instances to go down at the same time. This is particularly useful when deploying highly available databases or applications.
+In most cases, users don't work with deployment manifest as one big YAML file. Instead, deployment manifest are split into smaller files that are easier to maintain. These separate files are merged by tools like spiff or spruce, right before they get uploaded to the BOSH server and deployed.
+In a deployment manifest, all configuration properties, as declared by jobs from all referenced releases, can be customized. Different jobs can refer to configuration properties with same name, in order to share common settings.
+
+
+== Key principles ==
+BOSH was purposefully constructed to address the four principles of modern release engineering in the following ways:
+Identifiability
+Being able to identify all of the source, tools, environment, and other components that make up a particular release. In its concept of “release”, BOSH packages up all related source code, binary assets, configurable properties, compilation scripts, and startup scripts. This allows users to easily track what is actually deployed, and how it is run. Additionally, BOSH provides a way to capture the root filesystems that will be the basis of deployed instances (VMs or containers), as single images called “stemcells”. BOSH releases and BOSH stemcells are identified by UUIDs and sealed by SHA-1 checksums.
+Reproducibility
+The ability to integrate source, third party components, data, and deployment externals of a software system in order to guarantee operational stability. BOSH tool chain provides a centralized server for operating the deployed systems. This server holds software “releases”, Operating System images (called “stemcells”), persistent data, and system configuration. Therefore, a given deployment is guaranteed to reproduce an identical result.
+Consistency
+The mission to provide a stable framework for development, deployment, audit, and accountability for software components. BOSH achieves such consistency with its software “releases”, that bring a consistent framework for developing and deploying the software systems. Moreover, audit and accountability are provided by the BOSH server, which allows users to see and track changes made to the deployed systems.
+Agility
+The ongoing research into what are the repercussions of modern software engineering practices on the productivity in the software cycle, i.e. Continuous Integration. BOSH tool chain integrates well with current best practices of software engineering (including Continuous Delivery) by providing ways to easily create software releases in an automated way and to update complex deployed systems with simple commands.
+
+
+== History ==
+Designed to address shortcomings found in available tools to manage Cloud Foundry. Chef was used originally, but was limited in its ability to package, spin up/down servers, limited in monitoring and self-management capabilities. Originally developed for Cloud Foundry's own needs, but the project has now grown to be completely generic, and can be used for orchestration of other software such as Hadoop, RabbitMQ, MySQL and similar platform or application software.
+
+
+== Architecture ==
+A BOSH installation is made of several separate components that can possibly be split across different VMs or containers:
+
+A Director that is the “brain” of the server
+The director database, made of a PostgreSQL instance, a Redis instance and a Blobstore for storing compiled packages and jobs
+A Health Monitor that keeps track of instances (VMs or containers) status
+Many BOSH agents, one on each deployed instance
+A NATS message bus for connecting the Director, the Health Monitor, and all the deployed BOSH agents
+A CPI (Cloud Provider Interface), which is just an executable binary conforming to some specific API
+A BOSH managed environment usually centers around the Director deployed on a VM.
+
+
+=== Cloud / Platform / OS compatibility ===
+BOSH connects to the underlying IaaS layer through an abstraction called the CPI (Cloud Provider Interface). There are CPIs available for Amazon Web Services, certain OpenStack versions, vSphere, vCloud. Some community maintained CPIs exist for Google Compute Engine, Microsoft Azure and CloudStack.
+
+
+== Deployment ==
+BOSH can be deployed as a BOSH release, which may create a “chicken or egg” surprise for newcomers.
+A BOSH server is not the only software that can deploy BOSH releases. There is a BOSH provisioner project that can deploy BOSH in a VM, a Docker container, or a bare metal server. This component is used by the BOSH packer provisioner, which creates a Vagrant box running BOSH-lite, which is what most users rely on when learning BOSH.
+
+
+== Governance ==
+Once a sub-component of Cloud Foundry, BOSH is now a separate open source project, that aims at deploying any distributed software. BOSH is managed by the Cloud Foundry Foundation. Nearly all contributions to BOSH are made by Pivotal.
+
+
+== Users ==
+Pivotal uses BOSH to orchestrate Cloud Foundry within Pivotal Cloud Foundry (PCF), as well as all of the Pivotal Data Services for Cloud Foundry. Announced public users of BOSH and PCF include Axel Springer, Corelogic, IBM, Monsanto, Philips, SAP, and Swisscom.
+
+
+== Distributions ==
+BOSH is not commercially distributed as a standalone product. It is included as part of Pivotal Cloud Foundry, IBM Bluemix, and HP Helion Developer Platform, and is also used and supported commercially by Cloud Credo, Stark & Wayne, Gstack, and others.
+
+
+== References ==
+
+
+== External links ==
+Official website

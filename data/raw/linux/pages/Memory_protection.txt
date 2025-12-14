@@ -1,0 +1,84 @@
+Memory protection is a way to control memory access rights on a computer, and is a part of most modern instruction set architectures and operating systems.  The main purpose of memory protection is to prevent a process from accessing memory that has not been allocated to it.  This prevents a bug or malware within a process from affecting other processes, or the operating system itself.  Protection may encompass all accesses to a specified area of memory, write accesses, or attempts to execute the contents of the area. An attempt to access unauthorized memory results in a hardware fault, e.g., a segmentation fault, storage violation exception, generally causing abnormal termination of the offending process. Memory protection for computer security includes additional techniques such as address space layout randomization and executable-space protection.
+
+
+== Methods ==
+
+
+=== Segmentation ===
+
+Segmentation refers to dividing a computer's memory into segments.  A reference to a memory location includes a value that identifies a segment and an offset within that segment. A segment descriptor may limit access rights, e.g., read only, only from certain rings.
+The x86 architecture has multiple segmentation features, which are helpful for using protected memory on this architecture. On the x86 architecture, the Global Descriptor Table and Local Descriptor Tables can be used to reference segments in the computer's memory. Pointers to memory segments on x86 processors can also be stored in the processor's segment registers. Initially x86 processors had 4 segment registers, CS (code segment), SS (stack segment), DS (data segment) and ES (extra segment); later another two segment registers were added – FS and GS.
+
+
+=== Paged virtual memory ===
+ 
+In paging the memory address space or segment is divided into equal-sized blocks called pages.  Using virtual memory hardware, each page can reside in any location at a suitable boundary of the computer's physical memory, or be flagged as being protected.  Virtual memory makes it possible to have a linear virtual memory address space and to use it to access blocks fragmented over physical memory address space.
+Most computer architectures which support paging also use pages as the basis for memory protection.
+A page table maps virtual memory to physical memory. There may be a single page table, a page table for each process, a page table for each segment, or a hierarchy of page tables, depending on the architecture and the OS. The page tables are usually invisible to the process.  Page tables make it easier to allocate additional memory, as each new page can be allocated from anywhere in physical memory. On some systems a page table entry can also designate a page as read-only.
+Some operating systems set up a different address space for each process, which provides hard memory protection boundaries.
+It is impossible for an unprivileged application to access a page that has not been explicitly allocated to it, because every memory address either points to a page allocated to that application, or generates an interrupt called a page fault. Unallocated pages, and pages allocated to any other application, do not have any addresses from the application point of view.
+A page fault may not necessarily indicate an error.  Page faults are not only used for memory protection. The operating system may manage the page table in such a way that a reference to a page that has been previously paged out to secondary storage causes a page fault. The operating system intercepts the page fault, loads the required memory page, and the application continues as if no fault had occurred. This scheme, a type of virtual memory, allows in-memory data not currently in use to be moved to secondary storage and back in a way which is transparent to applications, to increase overall memory capacity.
+On some systems, a request for virtual storage may allocate a block of virtual addresses for which no page frames have been assigned, and the system will only assign and initialize page frames when page faults occur. On some systems a guard page may be used, either for error detection or to automatically grow data structures.
+On some systems, the page fault mechanism is also used for executable space protection such as W^X.
+
+
+=== Protection keys ===
+A memory protection key (MPK) mechanism divides physical memory into blocks of a particular size (e.g., 4 KiB), each of which has an associated numerical value called a protection key.  Each process also has a protection key value associated with it.  On a memory access the hardware checks that the current process's protection key matches the value associated with the memory block being accessed; if not, an exception occurs.  This mechanism was introduced in the System/360 architecture. It is available on today's System z mainframes and heavily used by System z operating systems and their subsystems.
+The System/360 protection keys described above are associated with physical addresses.  This is different from the protection key mechanism used by architectures such as the Hewlett-Packard/Intel IA-64 and Hewlett-Packard PA-RISC, which are associated with virtual addresses, and which allow multiple keys per process.
+In the Itanium and PA-RISC architectures, translations (TLB entries) have keys (Itanium) or access ids (PA-RISC) associated with them.  A running process has several protection key registers (16 for Itanium, 4 for PA-RISC). A translation selected by the virtual address has its key compared to each of the protection key registers.  If any of them match (plus other possible checks), the access is permitted.  If none match, a fault or exception is generated.  The software fault handler can, if desired, check the missing key against a larger list of keys maintained by software; thus, the protection key registers inside the processor may be treated as a software-managed cache of a larger list of keys associated with a process.
+PA-RISC has 15–18 bits of key; Itanium mandates at least 18.  Keys are usually associated with protection domains, such as libraries, modules, etc.
+In the x86, the protection keys architecture allows tagging virtual addresses for user pages with any of 16 protection keys. All the pages tagged with the same protection key constitute a protection domain.  A new register contains the permissions associated with each of the protection domain. Load and store operations are checked against both the page table permissions and the protection key permissions associated with the protection domain of the virtual address, and only allowed if both permissions allow the access. The protection key permissions can be set from user space, allowing applications to directly restrict access to the application data without OS intervention. Since the protection keys are associated with a virtual address, the protection domains are per address space, so processes running in different address spaces can each use all 16 domains.
+
+
+=== Protection rings ===
+In Multics and systems derived from it, each segment has a protection ring for reading, writing and execution; an attempt by a process with a higher ring number than the ring number for the segment causes a fault. There is a mechanism for safely calling procedures that run in a lower ring and returning to the higher ring. There are mechanisms for a routine running with a low ring number to access a parameter with the larger of its own ring and the caller's ring.
+
+
+=== Simulated segmentation ===
+Simulation is the use of a monitoring program to interpret the machine code instructions of some computer architectures.  Such an instruction set simulator can provide memory protection by using a segmentation-like scheme and validating the target address and length of each instruction in real time before actually executing them. The simulator must calculate the target address and length and compare this against a list of valid address ranges that it holds concerning the thread's environment, such as any dynamic memory blocks acquired since the thread's inception, plus any valid shared static memory slots. The meaning of "valid" may change throughout the thread's life depending upon context. It may sometimes be allowed to alter a static block of storage, and sometimes not, depending upon the current mode of execution, which may or may not depend on a storage key or supervisor state.
+It is generally not advisable to use this method of memory protection where adequate facilities exist on a CPU, as this takes valuable processing power from the computer. However, it is generally used for debugging and testing purposes to provide an extra fine level of granularity to otherwise generic storage violations and can indicate precisely which instruction is attempting to overwrite the particular section of storage which may have the same storage key as unprotected storage.
+
+
+=== Capability-based addressing ===
+
+Capability-based addressing is a method of memory protection that is unused in modern commercial computers. In this method, pointers are replaced by protected objects (called capabilities) that can only be created using privileged instructions which may only be executed by the kernel, or some other process authorized to do so. This effectively lets the kernel control which processes may access which objects in memory, with no need to use separate address spaces or context switches. Only a few commercial products used capability based security: Plessey System 250, IBM System/38, Intel iAPX 432 architecture and KeyKOS. Capability approaches are widely used in research systems such as EROS and Combex DARPA browser. They are used conceptually as the basis for some virtual machines, most notably Smalltalk and Java. Currently, the DARPA-funded CHERI project at University of Cambridge is working to create a modern capability machine that also supports legacy software.
+
+
+=== Dynamic tainting ===
+Dynamic tainting is a technique for protecting programs from illegal memory accesses. When memory is allocated, at runtime, this technique taints both the memory and the corresponding pointer using the same taint mark. Taint marks are then suitably propagated while the program executes and are checked every time a memory address m is accessed through a pointer p; if the taint marks associated with m and p differ, the execution is stopped and the illegal access is reported.
+SPARC M7 processors (and higher) implement dynamic tainting in hardware. Oracle markets this feature as Silicon Secured Memory (SSM) (previously branded as Application Data Integrity (ADI)).
+The lowRISC CPU design includes dynamic tainting under the name Tagged Memory.
+
+
+== Measures ==
+The protection level of a particular implementation may be measured by how closely it adheres to the principle of minimum privilege.
+
+
+== Memory protection in different operating systems ==
+Different operating systems use different forms of memory protection or separation. Although memory protection was common on most mainframes and many minicomputer systems from the 1960s, true memory separation was not used in home computer operating systems until OS/2 (and in  RISC OS) was released in 1987. On prior systems, such lack of protection was even used as a form of interprocess communication, by sending a pointer between processes. It is possible for processes to access System Memory in the Windows 9x family of operating systems.
+Some operating systems that do implement memory protection include:
+
+Unix-like systems (since the late 1970s), including Solaris, Linux, BSD, Mac OS X (from 2001; now named MacOS), iOS, and GNU Hurd
+Plan9 and Inferno, created at Bell Labs as Unix successors (1992, 1995)
+OS/2 (1987)
+RISC OS (1987) (The OS memory protection is not comprehensive.)
+Microware OS-9, as an optional module (since 1992)
+Microsoft Windows family from Windows NT 3.1 (1993)
+Atari MultiTOS (since 1991)
+Pharos (since 2017)
+On Unix-like systems, the mprotect system call is used to control memory protection.
+
+
+== See also ==
+Storage violation, for violation of memory protection
+Memory management (operating systems)
+
+
+== References ==
+
+
+== Notes ==
+
+
+== External links ==
+Intel Developer Manuals –  in-depth information on memory protection for Intel-based architectures

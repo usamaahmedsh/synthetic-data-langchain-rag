@@ -1,0 +1,48 @@
+In relational databases, a condition (or predicate) in a query is said to be sargable if the DBMS engine can take advantage of an index to speed up the execution of the query. The term is derived from a contraction of Search ARGument ABLE. It was first used by IBM researchers as a contraction of Search ARGument, and has come to mean simply "can be looked up by an index."1
+For database query optimizers, sargable is an important property in OLTP workloads because it suggests a good query plan can be obtained by a simple heuristic2 matching query to indexes instead of a complex, time-consuming cost-based search, thus it is often desired to write sargable queries. A query failing to be sargable is known as a non-sargable query and typically has a negative effect on query time, so one of the steps in query optimization is to convert them to be sargable.  The effect is similar to searching for a specific term in a book that has no index, beginning at page one each time, instead of jumping to a list of specific pages identified in an index.
+The typical situation that will make a SQL query non-sargable is to include in the WHERE clause a function operating on a column value.  The WHERE clause is not the only clause where sargability can matter; it can also have an effect on ORDER BY, GROUP BY and HAVING clauses.  The SELECT list, on the other hand, can contain non-sargable expressions without adversely affecting the performance.
+Some database management systems, for instance PostgreSQL, support functional indices. Conceptually, an index is simply a mapping between a value and one or more locations. With a functional index, the value stored in the index is the output of the function specified when the index is created. This capability expands what is sargable beyond base column expressions.
+
+Sargable operators: =, >, <, >=, <=, BETWEEN, LIKE, IS [NOT] NULL, IN
+Sargable operators that rarely improve performance: <>, NOT, NOT IN, NOT LIKE
+
+
+== Simple example ==
+WHERE clauses that are sargable typically have column values on the left of the operator, and scalar values or expressions on the right side of the operator.
+Not sargable:
+
+This is not sargable because myIntColumn is embedded in a function. If any indexes were available on myIntColumn, they could not be used. In addition, SQRT() would be called on every row in myTable.
+Sargable version:
+
+This is sargable because myIntColumn is NOT contained in a function, making any available indexes on myIntColumn potentially usable. Furthermore, the expression is evaluated only once, rather than for each row in the table.
+
+
+== Text example ==
+WHERE ... LIKE clauses that are sargable have column values on the left of the operator, and LIKE text strings that do not begin with the % on the right.
+Not sargable:
+
+This is not sargable. It must examine every row to find the column containing the substring 'Wales' in any position.
+Sargable version:
+
+This is sargable. It can use an index to find all the myNameColumn values that start with the substring  'Jimmy'.
+
+
+== See also ==
+Block Range Index
+Query optimization
+
+
+== Notes ==
+^1  Gulutzan and Pelzer, (Chapter 2, Simple "Searches")
+^2   gives an example of such simple heuristic.
+
+
+== External links ==
+SQL Shack - How to use sargable expressions in T-SQL queries; performance advantages and examples
+DBA.StackExchange.com - What does the word “SARGable” really mean?
+
+
+== References ==
+
+SQL Performance Tuning by Peter Gulutzan, Trudy Pelzer (Addison Wesley, 2002) ISBN 0-201-79169-2 (Chapter 2, Simple "Searches")
+Microsoft SQL Server 2012 Internals by Kalen Delaney, Connor Cunningham, Jonathan Kehayias, Benjamin Nevarez, Paul S. Randal (O'Reily, 2013) ISBN 978-0-7356-5856-1 (Chapter 11, The Query Optimizer)

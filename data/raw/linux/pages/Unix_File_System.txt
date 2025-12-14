@@ -1,0 +1,56 @@
+The Unix file system (UFS) is a family of file systems supported by many Unix and Unix-like operating systems.  It is a distant descendant of the original filesystem used by Version 7 Unix.
+
+
+== Design ==
+A UFS volume is composed of the following parts:
+
+A few blocks at the beginning of the partition reserved for boot blocks (which must be initialized separately from the filesystem)
+A superblock, containing a magic number identifying this as a UFS filesystem, and some other vital numbers describing this filesystem's geometry and statistics and behavioral tuning parameters
+A collection of cylinder groups. Each cylinder group has the following components:
+A backup copy of the superblock
+A cylinder group header, with statistics, free lists, etc., about this cylinder group, similar to those in the superblock
+A number of inodes, each containing file attributes
+A number of data blocks
+Inodes are numbered sequentially, starting at 0. Inode 0 is reserved for unallocated directory entries, inode 1 was the inode of the bad block file in historical UNIX versions, followed by the inode for the root directory, which is always inode 2 and the inode for the lost+found directory which is inode 3.
+Directory files contain only the list of filenames in the directory and the inode associated with each file.  All file metadata is kept in the inode.
+
+
+== History and evolution ==
+Early Unix filesystems were referred to simply as FS. FS only included the boot block, superblock, a clump of inodes, and the data blocks. This worked well for the small disks early Unixes were designed for, but as technology advanced and disks grew larger, moving the head back and forth between the clump of inodes and the data blocks they referred to caused thrashing. Marshall Kirk McKusick, then a Berkeley graduate student, optimized the V7 FS layout to create BSD 4.2's FFS (Fast File System) by inventing cylinder groups, which break the disk up into smaller chunks, with each group having its own inodes and data blocks.
+The intent of BSD FFS is to try to localize associated data blocks and metadata in the same cylinder group and, ideally, all of the contents of a directory (both data and metadata for all the files) in the same or nearby cylinder group, thus reducing fragmentation caused by scattering a directory's contents over a whole disk.
+Some of the performance parameters in the superblock included number of tracks and sectors, disk rotation speed, head speed, and alignment of the sectors between tracks. In a fully optimized system, the head could be moved between close tracks to read scattered sectors from alternating tracks while waiting for the platter to spin around.
+As disks grew larger and larger, sector-level optimization became obsolete (especially with disks that used linear sector numbering and variable sectors per track). With larger disks and larger files, fragmented reads became more of a problem. To combat this, BSD originally increased the filesystem block size from one sector to 1 K in 4.0 BSD; and, in FFS, increased the filesystem block size from 1 K to 8 K. This has several effects. The chance of a file's sectors being contiguous is much greater. The amount of overhead to list the file's blocks is reduced, while the number of bytes representable by any given number of blocks is increased.
+Larger disk sizes are also possible, since the maximum number of blocks is limited by a fixed bit-width block number. However, with larger block sizes, disks with many small files will waste space, since each file must occupy at least one block. Because of this, BSD added block-level fragmentation, also called block suballocation, tail merging, or tail packing, where the last partial block of data from several files may be stored in a single "fragment" block instead of multiple mostly empty blocks.
+The work on Berkeley FFS was widely adopted by other Unix vendors, and the family of filesystems derived from it are collectively known as UFS.
+
+
+== Implementations ==
+Vendors of some proprietary Unix systems, such as SunOS / Solaris, System V Release 4, HP-UX, and Tru64 UNIX, and open Unix derived systems like illumos, have adopted UFS. Most of them adapted UFS to their own uses, adding proprietary extensions that may not be recognized by other vendors' versions of Unix.  Many have continued to use the original block size and data field widths as the original UFS, so some degree of read compatibility remains across platforms. Compatibility between implementations as a whole is spotty at best.
+As of Solaris 7, Sun Microsystems included UFS Logging, which brought filesystem journaling to UFS, which is still available in current versions of Solaris and illumos. Solaris UFS also has extensions for large files and large disks and other features.
+In 4.4BSD and BSD Unix systems derived from it, such as FreeBSD, NetBSD, OpenBSD, and DragonFly BSD, the implementation of UFS1 and UFS2 is split into two layers: an upper layer that provides the directory structure and supports metadata (permissions, ownership, etc.) in the inode structure, and lower layers that provide data containers implemented as inodes. This was done to support both the traditional FFS and the LFS log-structured file system with shared code for common functions. The upper layer is called "UFS", and the lower layers are called "FFS" and "LFS". In some of those systems, the term "FFS" is used for the combination of the FFS lower layer and the UFS upper layer, and the term "LFS" is used for the combination of the LFS lower layer and the UFS upper layer.
+McKusick implemented block reallocation, a technique that reorders the blocks in the file system just before the writes are done to reduce fragmentation and control file system aging. He also implemented soft updates, a mechanism that maintains the file system consistency without limiting the performance in the way the traditional sync mode did. This has the side effect of reducing the requirement of file system checking after a crash or power failure. To overcome the remaining issues after a failure, a background fsck utility was introduced.
+In UFS2, McKusick and Poul-Henning Kamp extended the FreeBSD FFS and UFS layers to add 64-bit block pointers (allowing volumes to grow up to 8 zebibytes), variable-sized blocks (similar to extents), extended flag fields, additional 'birthtime' stamps, extended attribute support and POSIX1.e ACLs. UFS2 became the supported UFS version starting with FreeBSD 5.0. FreeBSD also introduced soft updates and the ability to make file system snapshots for both UFS1 and UFS2. These have since been ported to NetBSD, but eventually soft updates (called soft dependencies in NetBSD) was removed from NetBSD 6.0 in favor of the less complex file system journaling mechanism called WAPBL (also referred as logging), which was added to FFS in NetBSD 5.0. OpenBSD supported soft updates from version 2.9 until support was dropped in version 7.4, and it has had UFS2 (FFS2) support (no ACLs) since version 4.2.  OpenBSD has now made UFS2 the default UFS version and will be included with the 6.7 release. Since FreeBSD 7.0, UFS also supports filesystem journaling using the gjournal GEOM provider. FreeBSD 9.0 adds support for lightweight journaling on top of soft updates (SU+J), which greatly reduces the need for background fsck, and NFSv4 ACLs.
+FreeBSD, NetBSD, OpenBSD, and DragonFly BSD also include the Dirhash system, developed by Ian Dowse. This system maintains an in-memory hash table to speed up directory lookups. Dirhash alleviates a number of performance problems associated with large directories in UFS.
+Linux includes a UFS implementation for binary compatibility at the read level with other Unixes, but since there is no standard implementation for the vendor extensions to UFS, Linux does not have full support for writing to UFS. The native Linux ext2 filesystem was inspired by UFS1 but does not support fragments and there are no plans to implement soft updates. (In some 4.4BSD-derived systems, the UFS layer can use an ext2 layer as a container layer, just as it can use FFS and LFS.)
+NeXTStep, which was BSD-derived, also used a version of UFS. In Apple's Mac OS X, it was available as an alternative to HFS+, their proprietary filesystem. However, as of Mac OS X Leopard, it was no longer possible to install Mac OS X on a UFS-formatted volume. In addition, one cannot upgrade older versions of Mac OS X installed on UFS-formatted volumes to Leopard; upgrading requires reformatting the startup volume. There was a 4 GB file limit for disks formatted as UFS in Mac OS X. As of Mac OS X Lion, UFS support was completely dropped.
+
+
+== See also ==
+Comparison of file systems
+
+
+== References ==
+
+
+=== Citations ===
+
+
+=== Bibliography ===
+
+
+== External links ==
+Jeroen C. van Gelderen (2003-04-23). "Little UFS2 FAQ". FreeBSD. Retrieved 2013-04-08.
+"Filesystems HOWTO: Other filesystems". The Linux Documentation Project. 2007-01-27.
+The Solaris UFS File System, see also [1]
+USF(sic)/UFS2 format
+Locality and The Fast File System

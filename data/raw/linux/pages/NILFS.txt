@@ -1,0 +1,143 @@
+NILFS or NILFS2 (New Implementation of a Log-structured File System) is a log-structured file system implementation for the Linux kernel. It was developed by Nippon Telegraph and Telephone Corporation (NTT) CyberSpace Laboratories and a community from all over the world. NILFS was released under the terms of the GNU General Public License (GPL).
+
+
+== Design ==
+"NILFS is a log-structured file system, in that the storage medium is treated like a circular buffer and new blocks are always written to the end.[…]Log-structured file systems are often used for flash media since they will naturally perform wear-leveling;[…]NILFS emphasizes snapshots. The log-structured approach is a specific form of copy-on-write behavior, so it naturally lends itself to the creation of file system snapshots. The NILFS developers talk about the creation of "continuous snapshots" which can be used to recover from user-initiated file system problems[…]."
+Using a copy-on-write technique known as a log-structured file system, NILFS records all data in a continuous log-like format that is only appended to, never overwritten, an approach that is designed to reduce seek times, as well as minimize the kind of data loss that occurs after a crash with conventional file systems. For example, data loss occurs on ext3 file systems when the system crashes during a write operation. When the system reboots, the journal notes that the write did not complete, and any partial data writes are lost.
+Some file systems, like UFS-derived file systems used by the Solaris operating system and BSDs, provide a snapshot feature that prevents such data loss, but the snapshot configuration can be lengthy on large file systems. NILFS, in contrast, can "continuously and automatically [save] instantaneous states of the file system without interrupting service", according to NTT Labs.
+The "instantaneous states" that NILFS continuously saves can actually be mounted, read-only, at the same time that the actual file system is mounted read-write — a capability useful for data recovery after hardware failures and other system crashes. The "lscp" (list checkpoint) command of an interactive NILFS "inspect" utility is first used to find the checkpoint's address, in this case "2048":
+
+# inspect /dev/sda2
+...
+nilfs> listcp
+   1     6 Tue Jul 12 14:55:57 2005 MajorCP|LogiBegin|LogiEnd
+2048  2352 Tue Jul 12 14:55:58 2005 MajorCP|LogiEnd
+...
+nilfs> quit
+
+The checkpoint address is then used to mount the checkpoint:
+
+# mount -t nilfs -r -o cp=2048 /dev/sda2 /nilfs-cp
+# df
+Filesystem           1K-blocks      Used Available Use% Mounted on
+/dev/sda2             70332412   8044540  62283776  12% /nilfs
+/dev/sda2             70332412   8044540  62283776  12% /nilfs-cp
+
+
+== Features ==
+NILFS provides continuous snapshotting. In addition to the versioning capability of the entire file system, users can even restore files mistakenly overwritten or deleted at any recent time. Since NILFS can keep consistency like conventional LFS, it achieves quick recovery after system crashes.
+Continuous snapshotting is not provided by most file systems, including those supporting point-in-time snapshotting (e.g. Btrfs).
+NILFS creates a number of checkpoints every few seconds or per synchronous write basis (unless there is no change). Users can select significant versions among continuously created checkpoints, and can change them into snapshots which will be preserved until they are changed back to checkpoints.
+There is no limit on the number of snapshots until the volume gets full. Each snapshot is mountable as a read-only file system. It is mountable concurrently with a writable mount and other snapshots, and this feature is convenient for making consistent backups during use.
+Possible uses of NILFS include versioning, tamper detection, SOX compliance logging, data loss recovery.
+The current major version of NILFS is version 2, referred to as NILFS2. NILFS2 implements online garbage collection to reclaim disk space while keeping multiple snapshots.
+Other NILFS features include:
+
+B-tree based file and inode management.
+Immediate recovery after system crash.
+64-bit data structures; support many files, large files and disks.
+64-bit on-disk timestamps which are free of the year 2038 problem.
+
+
+=== Current status ===
+
+
+=== Issues ===
+As of 2023, NILFS lacks a dedicated consistency checking utility (fsck), and thus can't recover from severe errors that cause it to fail to find a valid checkpoint.
+
+
+==== Supported features ====
+Basic POSIX file system features
+Snapshots
+Automatically and continuously taken
+No limit on the number of snapshots until the volume gets full
+Mountable as read-only file systems
+Mountable concurrently with the writable mount (convenient to make consistent backups during use)
+Quick listing
+Background garbage collection (GC)
+Can maintain multiple snapshots
+Selectable GC Policy, which is given by a userland daemon.
+Quick crash recovery on-mount
+Read-ahead for meta data files as well as data files
+Block sizes smaller than page size (e.g. 1 KB or 2 KB)
+Online resizing (since Linux-3.x and nilfs-utils 2.1)
+Related utilities (by contribution of Jiro SEKIBA)
+grub2
+util-linux (blkid, libblkid, uuid mount)
+udisks, palimpsest
+File system label (nilfs-tune)
+
+
+=== Additional features ===
+Fast write and recovery times
+Minimal damage to file data and system consistency on hardware failure
+32-bit checksums (CRC-32) on data and metadata for integrity assurance (per block group, in segment summary)
+Correctly ordered data and meta-data writes
+Redundant superblock
+Internal data is processed in 64-bit wide word size
+Can create and store huge files (8 EiB)
+
+
+== Compatibility ==
+NILFS is available in various GNU/Linux distributions like Arch Linux, Debian (since version 5.0), Fedora, Gentoo, Linux Mint, NixOS, Ubuntu (since version  9.10), etc. To use it, users typically need to install the nilfs-utils or nilfs-tools package. A boot-cd with NILFS is also available on PrRescue.
+It is also supported by partition-editing applications like GParted.
+A separate, BSD licensed implementation, currently with read-only support, is included in NetBSD.
+
+
+== Relative performance ==
+In the January 2015 presentation SD cards and file systems for embedded systems at Linux.conf.au, it was stated:
+
+If you've got a workload that's latency sensitive, you might want to use NILFS. If you've got one that's throughput sensitive, you might want to use F2FS.
+NILFS2 works much better for the lots of small files case than F2FS or EXT4.
+
+
+== License ==
+The NILFS2 file system utilities are made available under the GNU General Public License version 2, with the exception of the lib/nilfs libraries and their header files, which are made available under the GNU Lesser General Public License Version 2.1.
+
+
+== Developers ==
+The Japanese primary authors and major contributors to the nilfs-utils who worked or are working at labs of NTT Corporation are: 
+
+Ryusuke Konishi (Primary maintainer, 02/2008–Present)
+Koji Sato
+Naruhiko Kamimura
+Seiji Kihara
+Yoshiji Amagai
+Hisashi Hifumi and
+Satoshi Moriai.
+Other major contributors are:
+
+Andreas Rohner
+Dan McGee
+David Arendt
+David Smid
+dexen deVries
+Dmitry Smirnov
+Eric Sandeen
+Jiro SEKIBA
+Matteo Frigo
+Hitoshi Mitake
+Takashi Iwai
+Vyacheslav Dubeyko
+
+
+== See also ==
+
+ZFS
+Btrfs
+F2FS, another log-structured file system implementation
+List of file systems
+Comparison of file systems
+Log-structured File System (BSD)
+Sprite operating system
+
+
+== References ==
+
+
+== External links ==
+Official website
+"An Article Describing High-level Features". Archived from the original on 2013-01-03.
+"World's Largest TELCO Joins Open Source Development Labs". Archived from the original on 2013-01-27.
+NILFS: A File System to Make SSDs Scream
+Manjaro tutorial NILFS: A filesystem designed to minimize the likelyhood [sic] of data loss  Archived 2017-01-06 at the Wayback Machine

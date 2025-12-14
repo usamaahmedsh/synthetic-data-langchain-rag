@@ -1,0 +1,95 @@
+A trusted execution environment (TEE) is a secure area of a main processor. It helps the code and data loaded inside it be protected with respect to confidentiality and integrity. Data confidentiality prevents unauthorized entities from outside the TEE from reading data, while code integrity prevents code in the TEE from being replaced or modified by unauthorized entities, which may also be the computer owner itself as in certain DRM schemes described in Intel SGX.
+This is done by implementing unique, immutable, and confidential architectural security, which offers hardware-based memory encryption that isolates specific application code and data in memory. This allows user-level code to allocate private regions of memory, called enclaves, which are designed to be protected from processes running at higher privilege levels. A TEE as an isolated execution environment provides security features such as isolated execution, integrity of applications executing with the TEE, and confidentiality of their assets. In general terms, the TEE offers an execution space that provides a higher level of security for trusted applications running on the device than a rich operating system (OS) and more functionality than a 'secure element' (SE).
+
+
+== History ==
+The Open Mobile Terminal Platform (OMTP) first defined TEE in their "Advanced Trusted Environment:OMTP TR1" standard, defining it as a "set of hardware and software components providing facilities necessary to support applications," which had to meet the requirements of one of two defined security levels. The first security level, Profile 1, was targeted against only software attacks, while Profile 2, was targeted against both software and hardware attacks.
+Commercial TEE solutions based on ARM TrustZone technology, conforming to the TR1 standard, were later launched, such as Trusted Foundations developed by Trusted Logic.
+Work on the OMTP standards ended in mid-2010 when the group transitioned into the Wholesale Applications Community (WAC).
+The OMTP standards, including those defining a TEE, are hosted by GSMA.
+
+
+== Details ==
+The TEE typically consists of a hardware isolation mechanism plus a secure operating system running on top of that isolation mechanism, although the term has been used more generally to mean a protected solution. Whilst a GlobalPlatform TEE requires hardware isolation, others, such as EMVCo, use the term TEE to refer to both hardware and software-based solutions. FIDO uses the concept of TEE in the restricted operating environment for TEEs based on hardware isolation. Only trusted applications running in a TEE have access to the full power of a device's main processor, peripherals, and memory, while hardware isolation protects these from user-installed apps running in a main operating system. Software and cryptography inside the TEE protects the trusted applications contained within from each other.
+Service providers, mobile network operators (MNO), operating system developers, application developers, device manufacturers, platform providers, and silicon vendors are the main stakeholders contributing to the standardization efforts around the TEE.
+To prevent the simulation of hardware with user-controlled software, a so-called "hardware root of trust" is used. This is a set of private keys that are embedded directly into the chip during manufacturing; one-time programmable memory such as eFuses is usually used on mobile devices. These cannot be changed, even after the device resets, and whose public counterparts reside in a manufacturer database, together with a non-secret hash of a public key belonging to the trusted party (usually a chip vendor) which is used to sign trusted firmware alongside the circuits doing cryptographic operations and controlling access.
+The hardware is designed in a way that prevents all software not signed by the trusted party's key from accessing the privileged features. The public key of the vendor is provided at runtime and hashed; this hash is then compared to the one embedded in the chip. If the hash matches, the public key is used to verify a digital signature of trusted vendor-controlled firmware (such as a chain of bootloaders on Android devices or 'architectural enclaves' in SGX). The trusted firmware is then used to implement remote attestation.
+When an application is attested, its untrusted components loads its trusted component into memory; the trusted application is protected from modification by untrusted components with hardware. A nonce is requested by the untrusted party from the verifier's server and is used as part of a cryptographic authentication protocol, proving integrity of the trusted application. The proof is passed to the verifier, which verifies it. A valid proof cannot be computed in simulated hardware (i.e. QEMU) because in order to construct it, access to the keys baked into hardware is required; only trusted firmware has access to these keys and/or the keys derived from them or obtained using them. Because only the platform owner is meant to have access to the data recorded in the foundry, the verifying party must interact with the service set up by the vendor. If the scheme is implemented improperly, the chip vendor can track which applications are used on which chip and selectively deny service by returning a message indicating that authentication has not passed.
+To simulate hardware in a way that enables it to pass remote authentication, an attacker would have to extract keys from the hardware, which is costly because of the equipment and technical skill required to execute it. For example, using focused ion beams, scanning electron microscopes, microprobing, and chip decapsulation is difficult, or even impossible, if the hardware is designed in such a way that reverse-engineering destroys the keys. In most cases, the keys are unique for each piece of hardware, so that a key extracted from one chip cannot be used by others (for example physically unclonable functions).
+Though deprivation of ownership is not an inherent property of TEEs (it is possible to design the system in a way that allows only the user who has obtained ownership of the device first to control the system by burning a hash of their own key into e-fuses), in practice all such systems in consumer electronics are intentionally designed so as to allow chip manufacturers to control access to attestation and its algorithms. It allows manufacturers to grant access to TEEs only to software developers who have a (usually commercial) business agreement with the manufacturer, monetizing the user base of the hardware, to enable such use cases as tivoization and DRM and to allow certain hardware features to be used only with vendor-supplied software, forcing users to use it despite its antifeatures, like ads, tracking and use case restriction for market segmentation.
+
+
+== Uses ==
+
+
+=== Premium Content Protection/Digital Rights Management ===
+Note: Much TEE literature covers this topic under the definition "premium content protection," which is the preferred nomenclature of many copyright holders. Premium content protection is a specific use case of digital rights management (DRM) and is controversial among some communities, such as the Free Software Foundation. It is widely used by copyright holders to restrict the ways in which end users can consume content such as 4K high-definition films.
+The TEE is a suitable environment for protecting digitally encoded information (for example, HD films or audio) on connected devices such as smartphones, tablets, and HD televisions. This suitability comes from the ability of the TEE to deprive the owner of the device of access stored secrets, and the fact that there is often a protected hardware path between the TEE and the display and/or subsystems on devices.
+The TEE is used to protect the content once it is on the device. While the content is protected during transmission or streaming by the use of encryption, the TEE protects the content once it has been decrypted on the device by ensuring that decrypted content is not exposed to the environment not approved by the app developer or platform vendor.
+
+
+=== Mobile financial services ===
+Mobile commerce applications such as: mobile wallets, peer-to-peer payments, contactless payments or using a mobile device as a point of sale (POS) terminal often have well-defined security requirements. TEEs can be used, often in conjunction with near-field communication (NFC), secure element, and trusted backend systems to provide the security required to enable financial transactions to take place
+In some scenarios, interaction with the end user is required, and this may require the user to expose sensitive information such as a PIN, password, or biometric identifier to the mobile OS as a means of authenticating the user. The TEE optionally offers a trusted user interface which can be used to construct user authentication on a mobile device.
+With the rise of cryptocurrency, TEEs are increasingly used to implement crypto-wallets, as they offer the ability to store tokens more securely than regular operating systems, and can provide the necessary computation and authentication applications.
+
+
+=== Authentication ===
+The TEE is well-suited for supporting biometric identification methods (facial recognition, fingerprint sensor, and voice authorization), which may be easier to use and harder to steal than PINs and passwords. The authentication process is generally split into three main stages:
+
+Storing a reference "template" identifier on the device for comparison with the "image" extracted in the next stage.
+Extracting an "image" (scanning the fingerprint or capturing a voice sample).
+Using a matching engine to compare the "image" and the "template".
+A TEE is a good area within a mobile device to house the matching engine and the associated processing required to authenticate the user. The environment is designed to protect the data and establish a buffer against the non-secure apps located in mobile OSes. This additional security may help to satisfy the security needs of service providers in addition to keeping the costs low for handset developers.
+
+
+=== Enterprise, government, and cloud ===
+The TEE can be used by governments, enterprises, and cloud service providers to enable the secure handling of confidential information on mobile devices and on server infrastructure. The TEE offers a level of protection against software attacks generated in the mobile OS and assists in the control of access rights. It achieves this by housing sensitive, ‘trusted’ applications that need to be isolated and protected from the mobile OS and any malicious malware that may be present. Through utilizing the functionality and security levels offered by the TEE, governments, and enterprises can be assured that employees using their own devices are doing so in a secure and trusted manner. Likewise, server-based TEEs help defend against internal and external attacks against backend infrastructure.
+
+
+=== Secure modular programming ===
+With the rise of software assets and reuses, modular programming is the most productive process to design software architecture, by decoupling the functionalities into small independent modules. As each module contains everything necessary to execute its desired functionality, the TEE allows the organization of the complete system featuring a high level of reliability and security, while preventing each module from vulnerabilities of the others.
+In order for the modules to communicate and share data, TEE provides means to securely have payloads sent/received between the modules, using mechanisms such as object serialization, in conjunction with proxies.
+See Component-based software engineering
+
+
+== TEE operating systems ==
+
+
+== Hardware support ==
+The following hardware technologies can be used to support TEE implementations:
+
+AMD:
+Platform Security Processor (PSP)
+AMD Secure Encrypted Virtualization (SEV) and the Secure Nested Paging extension
+ARM:
+TrustZone
+Realm Management Extension / Confidential Compute Architecture (CCA)
+IBM:
+IBM Secure Service Container, formerly zACI, first introduced in IBM z13 generation machines (including all LinuxONE machines) in driver level 27.
+IBM Secure Execution, introduced in IBM z15 and LinuxONE III generation machines on April 14, 2020.
+Intel:
+Intel Management Engine
+Trusted Execution Technology (TXT)
+Software Guard Extensions (SGX)
+"Silent Lake" (available on Atom processors)
+RISC-V:
+Keystone Customizable TEE Framework
+
+
+== See also ==
+Open Mobile Terminal Platform
+Trusted Computing Group
+FIDO Alliance
+Java Card
+Intel Management Engine
+Intel LaGrande
+Software Guard Extensions
+AMD Platform Security Processor
+Trusted Platform Module
+ARM TrustZone
+NFC Secure Element
+Next-Generation Secure Computing Base
+
+
+== References ==

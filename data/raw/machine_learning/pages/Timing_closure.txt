@@ -1,0 +1,596 @@
+Timing closure in VLSI design and electronics engineering is the iterative design process of assuring all electromagnetic signals satisfy the timing requirements of logic gates in a clocked synchronous circuit, such as timing constraints, clock period, relative to the system clock. The goal is to guarantee correct data transfer and reliable operation at the target clock frequency.  
+A synchronous circuit is composed of two types of primitive elements: combinatorial logic gates (NOT, AND, OR, NAND, NOR, XOR etc.), which process logic functions without memory, and sequential elements (flip-flops, latches, registers), which can store data and are triggered by clock signals. Through timing closure, the circuit can be adjusted through layout improvement and netlist restructuring to reduce path delays and make sure the signals of logic gates function before the required timing of clock signal. 
+As integrated circuit (IC) designs become increasingly complicated, with billions of transistors and highly interconnected logic. The mission of ensuring all critical timing paths satisfy their constraints has become more difficult. Failed to meet these timing requirements can cause functional faults, unpredictable consequence, or system-level failures. 
+For this reason, timing closure is not a simple final validation step, but rather an iterative and comprehensive optimization process. It involves continuous improvement of both the logical structure of the design and its physical implementation, such as adjusting gate's logical structure and refining placement and routing, in order to reliably meet all timing constraints across the entire chip.
+
+
+== Overview ==
+In simple cases, the user can compute the path delay between elements manually. If the design is more than a dozen or so elements this is impractical. For example, the time delay along a path from the output of a D flip-flop, through combinatorial logic gates, then into the next D flip-flop input must satisfy (be less than) the time period between synchronizing clock pulses to the two flip flops. When the delay through the elements is greater than the clock period, the circuit will not function. Therefore, modifying the circuit to remove the timing failure (and eliminate the critical path) is an important part of the logic design engineer's task. Critical path refers to the longest path (in terms of delay) between two sequential elements in a design. It also defines the maximum delay in all the multiple register-to-register paths, and it must not be greater than the clock cycle time.
+
+
+== Timing constraints ==
+
+In the process of IC design, the IC layout should satisfy geometric constraints and timing constraints. Geometric constraints refer to physical design regulations and rules imposed by the assembly process, such as correct cell alignment and minimum wire spacing. Timing constraints refer to the timing requirements that all signal paths should satisfy. Usually, before the output of the signal from flip-flop at the clock edge, the signal should also remain stable in the element for a period, which is called setup time. After the electromagnetic signal reaches the next flip-flop at the clock edge, the signal should remain stable in the storage element for some time, which is called hold time. The timing constraints have two types:
+Setup constraints (long-path constraints):
+These constraints specify the time length before the clock edge of flip-flop where the data input signal should stay steady, so that the data has enough time to propagate through a logic path and reach the next flip-flop before the next clock edge. If the path delay is too long, it may violate setup time constraints and cause problematic data to be latched.
+Hold constraints (short-path constraints):
+These constraints specify the time length after the clock edge of flip-flop where the data input signal should stay stable. Violating a hold constraint can result in metastability or unwanted behaviors.
+Hold time constraint: 
+  
+    
+      
+        
+          t
+          
+            l
+            o
+            g
+            i
+            c
+          
+        
+        >
+        
+          t
+          
+            h
+          
+        
+        −
+        
+          t
+          
+            c
+            
+              −
+            
+            q
+          
+        
+      
+    
+    {\displaystyle t_{logic}>t_{h}-t_{c{-}q}}
+  
+
+Setup time constraint: 
+  
+    
+      
+        
+          t
+          
+            l
+            o
+            g
+            i
+            c
+          
+        
+        <
+        
+          t
+          
+            C
+            L
+            K
+          
+        
+        −
+        
+          t
+          
+            c
+            
+              −
+            
+            q
+          
+        
+        −
+        
+          t
+          
+            s
+            u
+          
+        
+      
+    
+    {\displaystyle t_{logic}<t_{CLK}-t_{c{-}q}-t_{su}}
+  
+
+Where:
+
+  
+    
+      
+        
+          t
+          
+            l
+            o
+            g
+            i
+            c
+          
+        
+      
+    
+    {\displaystyle t_{logic}}
+  
+ = combinational logic delay
+
+  
+    
+      
+        
+          t
+          
+            C
+            L
+            K
+          
+        
+      
+    
+    {\displaystyle t_{CLK}}
+  
+ = clock period
+
+  
+    
+      
+        
+          t
+          
+            s
+            u
+          
+        
+      
+    
+    {\displaystyle t_{su}}
+  
+ = setup time
+
+  
+    
+      
+        
+          t
+          
+            h
+          
+        
+      
+    
+    {\displaystyle t_{h}}
+  
+ = hold time
+
+  
+    
+      
+        
+          t
+          
+            c
+            
+              −
+            
+            q
+          
+        
+      
+    
+    {\displaystyle t_{c{-}q}}
+  
+ = clock-to-Q delay of the flip-flop
+
+
+== Timing closure iterative process ==
+Timing closure is a vital step that ensures that all signals achieve their destinations in the required time, and then the circuit works reliably. Designers start with the register-transfer level (RTL) abstraction and Verilog or VHDL code that describes the circuit. This is turned into a netlist, which is a collection of logic gates and connections, and used to configure the FPGA hardware.
+Because FPGAs have flexible logic and wiring, signal delays can vary. If signals arrive too late, the design may fail timing. The timing constraints designers begin to define accurate and realistic timing constraints that reflect the system's performance goals in the SDC (synopsys design constraint) format. These constraints may include clock period, input/output delays, multi-cycle paths, and setup/hold requirements. It's critical to analyze whether they are achievable, based on the logic architecture and path delays within the design. These constraints guide all downstream timing analysis and optimization processes.
+
+
+== Problems in timing closure and static timing analysis ==
+There are three main delays in the clocked synchronous circuit that are primarily considered: 
+Gate delays is the length of time it takes for a change in a gate's input to propagate to the output. It's often calculated as the time between a change at the input and the resulting change at the output.
+Wire delays is also known as interconnect delay, meaning the time that takes for a data signal to propagate through metal wires (interconnect) between circuit element in a synchronous circuit. The delay is mostly caused by the resistance and capacitance of the wire.
+Clock skew is the difference in arrival time of the same sourced clock signal at different parts of a synchronous circuit. When the clock signal propagates from its source, such as oscillator or clock generator, through many different paths in the circuit, the signal experience propagation delay, which caused the clock skew. In the graph below, the clock skew between points i and j is on a chip: 
+  
+    
+      
+        δ
+        (
+        i
+        ,
+        j
+        )
+        =
+        
+          t
+          
+            i
+          
+        
+        −
+        
+          t
+          
+            j
+          
+        
+      
+    
+    {\displaystyle \delta (i,j)=t_{i}-t_{j}}
+  
+ While position i and j can vary. The diagram illustrates the concept of clock skew, which refers to the difference in clock arrival times at different flip-flops on a chip. Ideally, all clock signals should reach their destinations simultaneously; however, due to variations in routing, load, and physical placement, this is rarely achieved.
+
+After logic synthesis and constraints analysis, the design undergoes static timing analysis (STA), which is a fundamental, iterative process in validating whether the circuit meets its defined timing constraints in FGPA. (In STA, assume the clock skew is negligible, and postpone it to clock tree synthesis) STA tools(such as Cadence Tempus, Synopsys, PrimeTime, and Intel Timing Analyzer) can evaluate all timing paths in the design without requiring simulation, making them ideal for scalable and exhaustive analysis. In STA, the combinational circuit can represent as directed acyclic graph (DAG) which emphasizes that every node has weight is the same as the wire (gate) delay. 
+During this process, the STA engine computes: 
+
+Path delays: Total delay from one register to another through combinational logic.
+Slack: The difference between required arrival time and actual arrival time.
+Critical paths: The longest paths with the smallest (or zero) slack.
+Violations: Paths with negative slack, meaning they fail to meet timing.
+
+Especially for slack, STA supposes the worst-case scenario where every gate transitions, we can compute the slack for each node. 
+
+  
+    
+      
+        
+          S
+          l
+          a
+          c
+          k
+        
+        =
+        
+          R
+          A
+          T
+        
+        −
+        
+          A
+          A
+          T
+        
+      
+    
+    {\displaystyle \mathrm {Slack} =\mathrm {RAT} -\mathrm {AAT} }
+  
+
+Where:
+
+RAT = required arrival time
+AAT = actual arrival time
+RAT is the required arrival time, meaning the latest time can transit in the required timing. While AAT is the actual arrival time, meaning the latest actual transition time. (AAT is defined at the output of every node) The negative slack at any output means the circuit doesn't meet timing, while the positive slack at all output means the circuit meets timing.
+
+
+== Physical design ==
+Once the STA reports are generated, engineers can utilize timing optimization techniques, or design automation tools, to examine them to identify the critical or failing paths that need attention. They also optimize the physical layout by adjusting placement and routing. This loop repeats until all timing constraints are met.
+Through logic synthesis and initial timing optimization, the physical layout of the chip should be mapped. Through placement, clock tree synthesis, and routing of these key steps, the physical designs are altered so that the timing behaviors can change significantly, and therefore reduce the path delays and enhance the timing in circuit.
+
+
+=== 1. Placement ===
+The EDA tool assigns physical locations to each standard cell (logic gates, flip-flops, etc.) and wire on the silicon circuit board. It can reduce path delays by placing interconnected cells close to each other.
+
+
+=== 2. Clock tree synthesis (CTS) ===
+A balanced clock distribution network is built to deliver the clock signal to all sequential elements (flip-flops) evenly and synchronously. The CTS can minimize clock skew (difference in arrival time of the clock signal at different points) and can precisely control the clock latency (enhance the delivery time of clock signal to all sequential elements), while satisfying the maximum transition and maximum capacitance to ensure the clock network meet design constraints. The clock skew usually affects hold time and setup time, and the clock skew is usually composed of local clock skew and global clock skew. 
+Commonly there are three types of CTS:
+2.1.Single point CTS
+
+A single point clock tree starts off from a single clock source and delivers the clock signal to all sequential elements in a tree structure. This method is easy to implement and is appropriate for low-frequency or multi-clock designs. Nevertheless, it will be unsuitable for high-frequency or large-scale designs because path asymmetry can lead to larger clock skew.
+2.2.Clock mesh
+
+A clock mesh dispatches the clock signal through a grid-like structure, providing enhanced clock balance and lesser skew, which is good for high-frequency designs. However, constructing a clock mesh means higher power and area overhead, and the design complexity will be increased.
+2.3.Multi-source CTS
+
+A Multi-source clock tree integrates the advantages of single-point trees and clock meshes. The design is partitioned into multiple components, each with its own local clock source. This clock tree achieves low skew while reducing power and area consumption, making it well-suited for large-scale designs.
+
+
+=== 3. Routing ===
+
+After placement, the design automation tool creates wires to physically connect cells. The real routing introduces actual parasitic Resistance-Capacitance effects, which can reduce signal delay. Besides, final routing enables more precise timing analysis because the wire lengths and congestion are given.
+
+
+== Timing optimization techniques ==
+One common way to improve the circuit performance is to use timing optimization techniques, such as inserting a register in between the combinational path of the critical path. This might improve the performance but increases the total latency (maximum number of registers from input to output path) of the circuit.
+The actual timing optimization techniques usually include physical synthesis, which can eliminate negative slack by using a set of timing optimizations. The physical synthesis includes creating timing budgets and implementing timing corrections. Usually, the timing budgets contain allocating target delays along paths or nets during placement, routing stages, and timing correction operations. The timing corrections include:
+
+Gate sizing:
+Gate sizing involves replacing logic gates with equivalent versions of different drive strengths. Larger gates can drive larger loads faster, reducing delays in critical paths. This technique balances speed against area and power.
+There are 3 logic gates that have 3 sizes where 
+  
+    
+      
+        S
+        i
+        z
+        e
+        (
+        V
+        c
+        )
+        >
+        S
+        i
+        z
+        e
+        (
+        V
+        b
+        )
+        >
+        S
+        i
+        z
+        e
+        (
+        V
+        a
+        )
+      
+    
+    {\displaystyle Size(Vc)>Size(Vb)>Size(Va)}
+  
+. The gates with larger sizes have smaller output resistance. Then 
+  
+    
+      
+        
+          R
+          
+            o
+            u
+            t
+          
+        
+        (
+        
+          V
+          
+            c
+          
+        
+        )
+        <
+        
+          R
+          
+            o
+            u
+            t
+          
+        
+        (
+        
+          V
+          
+            b
+          
+        
+        )
+        <
+        
+          R
+          
+            o
+            u
+            t
+          
+        
+        (
+        
+          V
+          
+            a
+          
+        
+        )
+      
+    
+    {\displaystyle R_{out}(V_{c})<R_{out}(V_{b})<R_{out}(V_{a})}
+  
+. According to the RC delay formula, 
+  
+    
+      
+        t
+        =
+        
+          R
+          
+            o
+            u
+            t
+          
+        
+        ×
+        
+          C
+          
+            l
+            o
+            a
+            d
+          
+        
+      
+    
+    {\displaystyle t=R_{out}\times C_{load}}
+  
+. 
+t represents propagation delay, 
+  
+    
+      
+        
+          R
+          
+            o
+            u
+            t
+          
+        
+      
+    
+    {\displaystyle R_{out}}
+  
+ represents output resistance, and 
+  
+    
+      
+        
+          C
+          
+            l
+            o
+            a
+            d
+          
+        
+      
+    
+    {\displaystyle C_{load}}
+  
+ represents load capacitances
+Therefore when load capacitances are large, larger logic gates can easily drive larger load capacitances: 
+  
+    
+      
+        t
+        (
+        
+          V
+          
+            c
+          
+        
+        )
+        <
+        t
+        (
+        
+          V
+          
+            b
+          
+        
+        )
+        <
+        t
+        (
+        
+          V
+          
+            a
+          
+        
+        )
+      
+    
+    {\displaystyle t(V_{c})<t(V_{b})<t(V_{a})}
+  
+.
+When load capacitances are small, smaller logic gates can easily drive smaller load capacitances: 
+  
+    
+      
+        t
+        (
+        
+          V
+          
+            c
+          
+        
+        )
+        >
+        t
+        (
+        
+          V
+          
+            b
+          
+        
+        )
+        >
+        t
+        (
+        
+          V
+          
+            a
+          
+        
+        )
+      
+    
+    {\displaystyle t(V_{c})>t(V_{b})>t(V_{a})}
+  
+.
+
+Buffer insertion:
+Used to break long wires and reduce RC (resistance-capacitance) delays, especially in high fan-out or physically distant connections. Buffers can also help in adjusting path timing to fix hold violations. The buffer is a series of two serially connected inverters, where each inverter is composed of a triangle and a circle in a graph. The triangle in the graph means a logic gate, and the circle behind means logic inversion. 
+Improvements:
+1: Speeding up the circuit or serving as delay elements
+Buffers can reduce path delay by easily driving signals through long wires and on large load capacitances. In critical paths, inserting a buffer helps reduce resistance and improve signal propagation. Alternatively, buffers can also be intentionally placed to introduce a fixed delay for timing alignment.
+
+
+=== 2. Changing transition times ===
+A signal with a slow rise/fall time can cause unreliable switching and timing violations. Buffers sharpen the signal edges, improving the slope of the transitions and resulting in more stable digital behavior. This helps prevent glitches, short-circuit current, and false logic triggering.
+
+
+=== 3. Shielding capacitive load ===
+If a logic gate drives many other gates or long wires, the total load capacitances become large. This large load slows down the gate’s output response. Inserting a buffer between the gate and its heavy load offloads the burden, allowing the original gate to drive only the buffer and not the full load directly.
+However, the drawbacks may include increased area usage and increased power consumption.
+Netlist restructuring:
+Netlist restructuring refers to the process of modifying the structure of an existing gate-level circuit without changing its logical functionality. It focuses on optimizing timing, area, or power by reorganizing or transforming how existing gates are connected or represented. The transformations include:
+
+Cloning: Duplicating gates to reduce load capacitances or balance load across multiple paths.
+Redesigning the input/output tree: Changing how signals are distributed or received to improve timing or reduce congestion.
+Swapping commutative pins: Reordering inputs of commutative gates (like AND, OR) to optimize critical paths and change connections.
+Gate decomposition: Breaking complex gates into simpler forms, such as converting AND-OR logic into NAND-NAND logic by using CMOS inverters to simplify the logic gates and reduce path delay.
+Boolean restructuring: Applying Boolean algebra rules to simplify or re-express logic equations, often minimizes path delay or leads to smaller implementations.
+
+
+=== Reverse transformations are also possible ===
+Operations such as gate downsizing, merging, or simplifying previously expanded logic structures can also be performed if it benefits overall design metrics (e.g., area or power).
+These techniques are often applied automatically by physical synthesis and place-and-route tools (such as Synopsys IC compiler, Cadence Innovus, or Intel Quartus), but can also be manually guided by designers through constraints and optimization directives.
+
+
+== Design flow ==
+
+Utilize STA in iterative verification and validation:
+After the routing steps are completed, the physical details of the design including wire lengths, capacitances, and resistance will be examined and determined. Conduct thorough functional verification and validation of the design such as STA to guarantee the integrity of function of timing optimizations, help to identify the timing violations and delay, and verify the effectiveness of the recent timing closure and optimization. Also, the designers can use simulation, verification, and hardware testing to validate the design's functionality and performance. If the circuit fails to meet the timing then the whole circuit will be placed at the STA process from the start iteratively.
+Post-implementation timing analysis: 
+When the design is completed on the FPGA, post-implementation timing analysis validates that all timing goals are met. This analysis acts as a final examination of timing closure confirms the successful timing closure process and accounts for any implementation-specific factors.
+
+
+== Tools and techniques recommended in timing closure ==
+
+Many times logic circuit changes, such as timing optimization techniques, are automatically handled by the user's EDA tools guided by timing constraint directives prepared by a designer. The term timing closure is also used for the goal that is achieved: when such a design has reached the end of the flow and its timing requirements are satisfied.
+With present technologies all of them need to be timing-aware for a design to meet its timing requirements properly, but with technologies in the range of the micrometer only logic synthesis EDA tools had such a prerequisite.
+Even though timing awareness was extended to all these steps starting from well-established principles used for logic synthesis, the logic phase and the physical phase of the timing closure process are still handled by different design teams and different EDA tools. Design Compiler by Synopsys, Encounter RTL Compiler by Cadence Design Systems, and BlastCreate by Magma Design Automation are examples of logic synthesis tools. IC Compiler by Synopsys, SoC Encounter by Cadence Design Systems, and Blast Fusion by Magma Design Automation are examples of tools capable of timing-aware placement, clock tree synthesis, and routing and therefore used for physical timing closure.
+When the user requires the circuit to meet exceptionally difficult timing constraints, it may be necessary to utilize machine learning programs, such as InTime by Plunify, to find an optimum set of FPGA synthesis, map, place and route tool configuration parameters that ensures the circuit will close timing. A timing requirement needs to be translated into a static timing constraint for an EDA tool to be able to handle it.
+Recently, the timing closure process has gradually integrated logic synthesis and physical implementation under unified platforms to process optimization. Tools such as Fusion Compiler by Synopsys and the Genus-Innovus flow by Cadence offer end-to-end solutions combining logic synthesis, placement, clock tree synthesis, and routing within a single environment. Additionally, open-source toolchains like OpenROAD and OpenSTA have gained traction in academia and startup prototyping for their ability to support timing-aware design closure workflows. These modern tools are designed to encounter the growing complexity of nanometer-scale circuits by automating trade-offs between performance, area, and power (PPA), and enabling earlier detection and resolution of timing violations in the RTL-to-GDSII design flow.
+
+
+== See also ==
+Design closure
+Electronic design automation
+Design flow (EDA)
+Integrated circuit design
+Physical timing closure
+Static timing analysis
+Asynchronous circuit
+
+
+== References ==

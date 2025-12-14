@@ -1,0 +1,54 @@
+One-key MAC (OMAC) is a family of message authentication codes constructed from a block cipher much like the CBC-MAC algorithm. It may be used to provide assurance of the authenticity and, hence, the integrity of data. Two versions are defined:
+
+The original OMAC of February 2003, which is rarely used. The preferred name is now "OMAC2".
+The OMAC1 refinement, which became an NIST recommendation in May 2005 under the name CMAC.
+OMAC is free for all uses: it is not covered by any patents.
+
+
+== History ==
+The core of the CMAC algorithm is a variation of CBC-MAC that Black and Rogaway proposed and analyzed under the name "XCBC" and submitted to NIST. The XCBC algorithm efficiently addresses the security deficiencies of CBC-MAC, but requires three keys.
+Iwata and Kurosawa proposed an improvement of XCBC that requires less key material (just one key) and named the resulting algorithm One-Key CBC-MAC (OMAC) in their papers. They later submitted the OMAC1 (= CMAC), a refinement of OMAC, and additional security analysis.
+
+
+== Algorithm ==
+
+To generate an ℓ-bit CMAC tag (t) of a message (m) using a b-bit block cipher (E) and a secret key (k), one first generates two b-bit sub-keys (k1 and k2) using the following algorithm (this is equivalent to multiplication by x and x2 in a finite field GF(2b)). Let ≪ denote the standard left-shift operator and ⊕ denote bit-wise exclusive or:
+
+Calculate a temporary value k0 = Ek(0).
+If msb(k0) = 0, then k1 = k0 ≪ 1, else k1 = (k0 ≪ 1) ⊕ C; where C is a certain constant that depends only on b. (Specifically, C is the non-leading coefficients of the lexicographically first irreducible degree-b binary polynomial with the minimal number of ones: 0x1B for 64-bit, 0x87 for 128-bit, and 0x425 for 256-bit blocks.)
+If msb(k1) = 0, then k2 = k1 ≪ 1, else k2 = (k1 ≪ 1) ⊕ C.
+Return keys (k1, k2) for the MAC generation process.
+As a small example, suppose b = 4, C = 00112, and k0 = Ek(0) = 01012. Then k1 = 10102 and k2 = 0100 ⊕ 0011 = 01112.
+The CMAC tag generation process is as follows:
+
+Divide message into b-bit blocks m = m1 ∥ ... ∥ mn−1 ∥ mn, where m1, ..., mn−1 are complete blocks. (The empty message is treated as one incomplete block.)
+If mn is a complete block then mn′ = k1 ⊕ mn else mn′ = k2 ⊕ (mn ∥ 10...02).
+Let c0 = 00...02.
+For i = 1, ..., n − 1, calculate ci = Ek(ci−1 ⊕ mi).
+cn = Ek(cn−1 ⊕ mn′)
+Output t = msbℓ(cn).
+The verification process is as follows:
+
+Use the above algorithm to generate the tag.
+Check that the generated tag is equal to the received tag.
+
+
+== Variants ==
+CMAC-C1 is a variant of CMAC that provides additional commitment and context-discovery security guarantees.
+
+
+== Implementations ==
+Python implementation: see the usage of the AES_CMAC() function in "impacket/blob/master/tests/misc/test_crypto.py", and its definition in "impacket/blob/master/impacket/crypto.py"
+Ruby implementation
+
+
+== References ==
+
+
+== External links ==
+RFC 4493 The AES-CMAC Algorithm
+RFC 4494 The AES-CMAC-96 Algorithm and Its Use with IPsec
+RFC 4615 The Advanced Encryption Standard-Cipher-based Message Authentication Code-Pseudo-Random Function-128 (AES-CMAC-PRF-128)
+OMAC Online Test
+More information on OMAC
+Rust implementation

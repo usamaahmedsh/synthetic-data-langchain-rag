@@ -1,0 +1,41 @@
+binfmt_misc (Miscellaneous Binary Format) is a capability of the Linux kernel which allows arbitrary executable file formats to be recognized and passed to certain user space applications, such as emulators and virtual machines. It is one of a number of binary format handlers in the kernel that are involved in preparing a user-space program to run. 
+The executable formats are registered through the special purpose file system binfmt_misc file-system interface (usually mounted under part of /proc). This is either done directly by sending special sequences to the register procfs file or using a wrapper like Debian-based distributions binfmt-support package or systemd's systemd-binfmt.service.
+
+
+== Registration ==
+According to the kernel docs a executable file type can be added by writing a line to the register file, of the form:
+:name:type:offset:magic:mask:interpreter:flags
+
+name is the name of the binary format.
+type is either E or M
+If it is E, the executable file format is identified by its filename extension: magic is the file extension to be associated with the binary format; offset and mask are ignored.
+If it is M, the format is identified by magic number at an absolute offset (defaults to 0) in the file and mask is a bitmask (defaults to all  0xFF) indicating which bits in the number are significant.
+interpreter is a program that is to be run with the matching file as an argument.
+flags (optional) is a string of letters, each controlling a certain aspect of interpreter invocation:
+P to preserve the original program name typed by user in command line — by adding that name to  argv; the interpreter has to be aware of this so it can correctly pass that additional parameter to the interpreted program as its argv[0].
+O to open the program file and pass its file descriptor to the interpreter so it could read an otherwise unreadable file (for which the user does not have the "Read" permission).
+C to determine new process credentials based on program file rather than interpreter file (see setuid); implies O flag.
+F to make the kernel open the binary at configuration time instead of lazily at startup time, so that it is available inside other mount namespaces and chroots as well.
+Each format has a corresponding file entry in the /proc/sys/fs/binfmt_misc directory which can be read to get information about a given file format, or written to disable, enable or deregister it.
+
+
+== Deregistration ==
+
+
+== Common usage ==
+binfmt_misc allows Java programs to be passed directly to the Java virtual machine.
+binfmt_misc allows identification of PE executables  using the magic number "MZ". Examples:
+:DOSWin:M::MZ::/usr/bin/wine: will hand all such files to Wine (thus assuming they are ordinary MS-DOS or Microsoft Windows executable)
+:CLR:M::MZ::/usr/bin/mono: will hand such files to  Mono (thus assuming they are .NET executables)
+Microsoft's WSL1 uses binfmt to allow for calling Windows programs from Linux. The line is equivalent to :WSLInterOP:M::MZ::/init:P.
+binfmt_misc can also be combined with QEMU's user-mode emulation or Box86 to execute programs for other processor architectures as if they were native binaries.
+binfmt can be used to turn some compiled languages such as Go into scripting languages, acting as a substitute for the shebang line.
+binfmt_misc can be used on NixOS to run AppImage files with an interpreter.
+
+
+== References ==
+
+
+== External links ==
+
+Project home page Archived on archive.org

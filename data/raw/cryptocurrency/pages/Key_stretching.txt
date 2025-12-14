@@ -1,0 +1,54 @@
+In cryptography, key stretching techniques are used to make a possibly weak key, typically a password or passphrase, more secure against a brute-force attack by increasing the resources (time and possibly space) it takes to test each possible key.  Passwords or passphrases created by humans are often short or predictable enough to allow password cracking, and key stretching is intended to make such attacks more difficult by complicating a basic step of trying a single password candidate.  Key stretching also improves security in some real-world applications where the key length has been constrained, by mimicking a longer key length from the perspective of a brute-force attacker.
+There are several ways to perform key stretching. One way is to apply a cryptographic hash function or a block cipher repeatedly in a loop. For example, in applications where the key is used for a cipher, the key schedule in the cipher may be modified so that it takes a specific length of time to perform. Another way is to use cryptographic hash functions that have large memory requirements – these can be effective in frustrating attacks by memory-bound adversaries.
+
+
+== Process ==
+Key stretching algorithms depend on an algorithm which receives an input key and then expends considerable effort to generate a stretched cipher (called an enhanced key) mimicking randomness and longer key length.  The algorithm must have no known shortcut, so the most efficient way to relate the input and cipher is to repeat the key stretching algorithm itself.  This compels brute-force attackers to expend the same effort for each attempt.  If this added effort compares to a brute-force key search of all keys with a certain key length, then the input key may be described as stretched by that same length.
+Key stretching leaves an attacker with two options: 
+
+Attempt possible combinations of the enhanced key, but this is infeasible if the enhanced key is sufficiently long and unpredictable ( ⁠i.e., the algorithm mimics randomness well enough that the attacker must trial the entire stretched key space)
+Attempt possible combinations of the weaker initial key, potentially commencing with a dictionary attack if the initial key is a password or passphrase, but the attacker's added effort for each trial could render the attack uneconomic should the costlier computation and memory consumption outweigh the expected profit
+If the attacker uses the same class of hardware as the user, each guess will take the similar amount of time to process as it took the user (for example, one second). Even if the attacker has much greater computing resources than the user, the key stretching will still slow the attacker down while not seriously affecting the usability of the system for any legitimate user. This is because the user's computer only has to compute the stretching function once upon the user entering their password, whereas the attacker must compute it for every guess in the attack.
+This process does not alter the original key-space entropy.  The key stretching algorithm is deterministic, allowing a weak input to always generate the same enhanced key, but therefore limiting the enhanced key to no more possible combinations than the input key space.  Consequently, this attack remains vulnerable if unprotected against certain time-memory tradeoffs such as developing rainbow tables to target multiple instances of the enhanced key space in parallel (effectively a shortcut to repeating the algorithm).  For this reason, key stretching is often combined with salting.
+
+
+== Hash-based ==
+Many libraries provide functions which perform key stretching as part of their function; see crypt(3) for an example. PBKDF2 is for generating an encryption key from a password, and not necessarily for password authentication. PBKDF2 can be used for both if the number of output bits is less than or equal to the internal hashing algorithm used in PBKDF2, which is usually SHA-2 (up to 512 bits), or used as an encryption key to encrypt static data.
+
+
+== Strength and time ==
+These examples assume that a consumer CPU can do about 65,000 SHA-1 hashes in one second. Thus, a program that uses key stretching can use 65,000 rounds of hashes and delay the user for at most one second.
+Testing a trial password or passphrase typically requires one hash operation. But if key stretching was used, the attacker must compute a strengthened key for each key they test, meaning there are 65,000 hashes to compute per test. This increases the attacker's workload by a factor of 65,000, approximately 216, which means the enhanced key is worth about 16 additional bits in key strength.
+Moore's law asserts that computer speed doubles roughly every 2 years. Under this assumption, every 2 years one more bit of key strength is plausibly brute-forcible. This implies that 16 extra bits of strength is worth about 16×2 = 32 years later cracking, but it also means that the number of key stretching rounds a system uses should be doubled about every 2 years to maintain the same level of security (since most keys are more secure than necessary, systems that require consistent deterministic key generation will likely not update the number of iterations used in key stretching. In such a case, the designer should take into consideration how long they wish for the key derivation system to go unaltered and should choose an appropriate number of hashes for the lifespan of the system).
+CPU-bound hash functions are still vulnerable to hardware implementations. Such implementations of SHA-1 exist using as few as 5,000 gates, and 400 clock cycles. With multi-million gate FPGAs costing less than $100, an attacker can build a fully unrolled hardware cracker for about $5,000. Such a design, clocked at 100 MHz can test about 300,000 keys/second. The attacker is free to choose a good price/speed compromise, for example a 150,000 keys/second design for $2,500. The key stretching still slows down the attacker in such a situation; a $5,000 design attacking a straight SHA-1 hash would be able to try 300,000÷216 ≈ 4.578 keys/second.
+Similarly, modern consumer GPUs can speed up hashing considerably. For example, in a benchmark, a Nvidia RTX 2080 SUPER FE computes over 10 billion SHA1 hashes per second.
+To defend against the hardware approach, memory-bound cryptographic functions have been developed. These functions access a lot of memory in a way that makes caching ineffective. Since large amounts of low latency memory are expensive, potential attackers are discouraged from pursuing such attacks.
+
+
+== History ==
+The first deliberately slow password-based key derivation function  "CRYPT" was described in 1978 by Robert Morris for encrypting Unix passwords. It used an iteration count of 25, a 12-bit salt and a variant of DES as the sub-function. (DES proper was avoided in an attempt to frustrate attacks using standard DES hardware.) Passwords were limited to a maximum of eight ASCII characters. While it was a great advancement for its time, CRYPT(3) is now considered inadequate. The iteration count, designed for the PDP-11 era, is too low, 12 bits of salt is an inconvenience but does not stop precomputed dictionary attacks, and the eight-character limit prevents the use of stronger passphrases.
+Modern password-based key derivation functions, such as PBKDF2, use a cryptographic hash, such as SHA-2, a longer salt (e.g. 64 bits) and a high iteration count. The U.S. National Institute of Standards and Technology (NIST) recommends a minimum iteration count of 10,000. 
+"For especially critical keys, or for very powerful systems or systems where user-perceived performance is not critical, an iteration count of 10,000,000 may be appropriate.”
+
+In 2009, a memory-intensive key strengthening algorithm, scrypt, was introduced with the intention of limiting the use of custom, highly parallel hardware to speed up key testing.
+In 2013, a Password Hashing Competition was held to select an improved key stretching standard that would resist attacks from graphics processors and special purpose hardware. The winner, Argon2, was selected on July 1, 2015.
+
+
+== Some systems that use key stretching ==
+Some but not all disk encryption software (see comparison of disk encryption software)
+7-Zip
+Apache .htpasswd "APR1" and OpenSSL "passwd" use 1000 rounds of MD5 key stretching.
+KeePass and KeePassXC, open-source password manager utilities. As of 2020, the latest version uses Argon2d with default 1 second key stretching delay.
+Linux and some other Unix-like systems offer SHAcrypt modes that perform 5000 SHA256 or SHA512 hash iterations by default, with a minimum of 1000, and a maximum of 999,999,999.
+Password Safe open-source password manager.
+PGP, GPG encryption software. GPG by default iterates a hash 65536 times.
+Wi-Fi Protected Access (WPA and WPA2) wireless encryption protocol in personal mode used PBKDF2 with 4096 iterations. (WPA3 uses Simultaneous Authentication of Equals which claims to not expose password hashes.)
+
+
+== See also ==
+Key derivation function – often uses key stretching
+PBKDF2, bcrypt, scrypt, Argon2 – widely used key stretching algorithms
+Hash chain
+
+
+== References ==

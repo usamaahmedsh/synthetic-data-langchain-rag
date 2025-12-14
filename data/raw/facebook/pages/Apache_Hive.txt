@@ -1,0 +1,73 @@
+Apache Hive is a data warehouse software project. It is built on top of Apache Hadoop for providing data query and analysis. Hive gives an SQL-like interface to query data stored in various databases and file systems that integrate with Hadoop. Traditional SQL queries must be implemented in the MapReduce Java API to execute SQL applications and queries over distributed data.
+Hive provides the necessary SQL abstraction to integrate SQL-like queries (HiveQL) into the underlying Java without the need to implement queries in the low-level Java API. Hive facilitates the integration of SQL-based querying languages with Hadoop, which is commonly used in data warehousing applications. While initially developed by Facebook, Apache Hive is used and developed by other companies such as Netflix and the Financial Industry Regulatory Authority (FINRA). Amazon maintains a software fork of Apache Hive included in Amazon Elastic MapReduce on Amazon Web Services.
+
+
+== Features ==
+Apache Hive supports the analysis of large datasets stored in Hadoop's HDFS and compatible file systems such as Amazon S3 filesystem and Alluxio. It provides a SQL-like query language called HiveQL with schema on read and transparently converts queries to MapReduce, Apache Tez and Spark jobs. All three execution engines can run in Hadoop's resource negotiator, YARN (Yet Another Resource Negotiator). To accelerate queries, it provided indexes, but this feature was removed in version 3.0
+Other features of Hive include:
+
+Different storage types such as plain text, RCFile, HBase, ORC, and others.
+Metadata storage in a relational database management system, significantly reduces the time to perform semantic checks during query execution.
+Operating on compressed data stored in the Hadoop ecosystem using algorithms including DEFLATE, BWT, Snappy, etc.
+Built-in user-defined functions (UDFs) to manipulate dates, strings, and other data-mining tools. Hive supports extending the UDF set to handle use cases not supported by built-in functions.
+SQL-like queries (HiveQL), which are implicitly converted into MapReduce or Tez, or Spark jobs.
+By default, Hive stores metadata in an embedded Apache Derby database, and other client/server databases like MySQL can optionally be used.
+The first four file formats supported in Hive were plain text, sequence file, optimized row columnar (ORC) format and RCFile. Apache Parquet can be read via plugin in versions later than 0.10 and natively starting at 0.13.
+
+
+== Architecture ==
+
+Major components of the Hive architecture are:
+
+Metastore: Stores metadata for each of the tables such as their schema and location. It also includes the partition metadata which helps the driver to track the progress of various data sets distributed over the cluster. The data is stored in a traditional RDBMS format. The metadata helps the driver to keep track of the data and it is crucial. Hence, a backup server regularly replicates the data which can be retrieved in case of data loss.
+Driver: Acts like a controller which receives the HiveQL statements. It starts the execution of the statement by creating sessions and monitors the life cycle and progress of the execution. It stores the necessary metadata generated during the execution of a HiveQL statement. The driver also acts as a collection point of data or query results obtained after the Reduce operation.
+Compiler: Performs compilation of the HiveQL query, which converts the query to an execution plan. This plan contains the tasks and steps needed to be performed by the Hadoop MapReduce to get the output as translated by the query. The compiler converts the query to an abstract syntax tree (AST). After checking for compatibility and compile time errors, it converts the AST to a directed acyclic graph (DAG). The DAG divides operators to MapReduce stages and tasks based on the input query and data.
+Optimizer: Performs various transformations on the execution plan to get an optimized DAG. Transformations can be aggregated together, such as converting a pipeline of joins to a single join, for better performance. It can also split the tasks, such as applying a transformation on data before a reduced operation, to provide better performance and scalability. However, the logic of transformation used for optimization can be modified or pipelined using another optimizer. An optimizer called YSmart is a part of Apache Hive. This correlated optimizer merges correlated MapReduce jobs into a single MapReduce job, significantly reducing the execution time.
+Executor: After compilation and optimization, the executor executes the tasks. It interacts with the job tracker of Hadoop to schedule tasks to be run. It takes care of pipelining the tasks by making sure that a task with dependency gets executed only if all other prerequisites are run.
+CLI, UI, and Thrift Server: A  command-line interface (CLI) provides a user interface for an external user to interact with Hive by submitting queries, and instructions and monitoring the process status. Thrift server allows external clients to interact with Hive over a network, similar to the JDBC or ODBC protocols.
+
+
+== HiveQL ==
+While based on SQL, HiveQL does not strictly follow the full SQL-92 standard. HiveQL offers extensions not in SQL, including multi-table inserts, and creates tables as select. 
+HiveQL lacked support for transactions and materialized views, and only limited subquery support. Support for insert, update, and delete with full ACID functionality was made available with release 0.14.
+Internally, a compiler translates HiveQL statements into a directed acyclic graph of MapReduce, Tez, or Spark jobs, which are submitted to Hadoop for execution.
+
+
+=== Example ===
+The word count program counts the number of times each word occurs in the input. The word count can be written in HiveQL as:
+
+A brief explanation of each of the statements is as follows:
+
+Checks if table docs exists and drops it if it does. Creates a new table called docs with a single column of type STRING called line.
+
+Loads the specified file or directory (In this case “input_file”) into the table. OVERWRITE specifies that the target table to which the data is being loaded into is to be re-written; Otherwise, the data would be appended.
+
+The query CREATE TABLE word_counts AS SELECT word, count(1) AS count creates a table called word_counts with two columns: word and  count. This query draws its input from the inner query (SELECT explode(split(line, '\s')) AS word FROM docs) temp. This query serves to split the input words into different rows of a temporary table aliased as temp. The GROUP BY WORD groups the results based on their keys. This results in the count column holding the number of occurrences for each word of the word column. The ORDER BY WORDS sorts the words alphabetically.
+
+
+== Comparison with traditional databases ==
+The storage and querying operations of Hive closely resemble those of traditional databases. While Hive is a SQL dialect, there are a lot of differences in structure and working of Hive in comparison to relational databases. The differences are mainly because Hive is built on top of the Hadoop ecosystem, and has to comply with the restrictions of Hadoop and MapReduce.
+A schema is applied to a table in traditional databases. In such traditional databases, the table typically enforces the schema when the data is loaded into the table. This enables the database to make sure that the data entered follows the representation of the table as specified by the table definition. This design is called schema on write. In comparison, Hive does not verify the data against the table schema on write. Instead, it subsequently does run time checks when the data is read. This model is called schema on read. The two approaches have their own advantages and drawbacks.
+Checking data against table schema during the load time adds extra overhead, which is why traditional databases take a longer time to load data. Quality checks are performed against the data at the load time to ensure that the data is not corrupt. Early detection of corrupt data ensures early exception handling. Since the tables are forced to match the schema after/during the data load, it has better query time performance. Hive, on the other hand, can load data dynamically without any schema check, ensuring a fast initial load, but with the drawback of comparatively slower performance at query time. Hive does have an advantage when the schema is not available at the load time, but is instead generated later dynamically.
+Transactions are key operations in traditional databases. As any typical RDBMS, Hive supports all four properties of transactions (ACID): Atomicity, Consistency, Isolation, and Durability. Transactions in Hive were introduced in Hive 0.13 but were only limited to the partition level.  The recent version of Hive 0.14 had these functions fully added to support complete ACID properties. Hive 0.14 and later provides different row level transactions such as INSERT, DELETE and UPDATE. Enabling INSERT, UPDATE, and DELETE transactions require setting appropriate values for configuration properties such as hive.support.concurrency, hive.enforce.bucketing, and hive.exec.dynamic.partition.mode.
+
+
+== Security ==
+Hive v0.7.0 added integration with Hadoop security. Hadoop began using Kerberos authorization support to provide security. Kerberos allows for mutual authentication between client and server. In this system, the client's request for a ticket is passed along with the request. The previous versions of Hadoop had several issues such as users being able to spoof their username by setting the hadoop.job.ugi property and also MapReduce operations being run under the same user: Hadoop or mapred. With Hive v0.7.0's integration with Hadoop security, these issues have largely been fixed. TaskTracker jobs are run by the user who launched it and the username can no longer be spoofed by setting the hadoop.job.ugi property. Permissions for newly created files in Hive are dictated by the HDFS. The Hadoop distributed file system authorization model uses three entities: user, group and others with three permissions: read, write and execute. The default permissions for newly created files can be set by changing the unmask value for the Hive configuration variable hive.files.umask.value.
+
+
+== See also ==
+Apache Pig
+Sqoop
+Apache Impala
+Apache Drill
+Apache Flume
+Apache HBase
+Trino (SQL query engine)
+
+
+== References ==
+
+
+== External links ==
+Official website

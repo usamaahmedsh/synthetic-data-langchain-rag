@@ -1,0 +1,199 @@
+In computer operating systems, memory paging is a memory management scheme that allows the physical memory used by a program to be non-contiguous. This also helps avoid the problem of memory fragmentation and requiring compaction to reduce fragmentation. 
+Paging is often combined with the related technique of allocating and freeing page frames and storing pages on and retrieving them from secondary storage in order to allow the aggregate size of the address spaces to exceed the physical memory of the system. For historical reasons, this technique is sometimes referred to as swapping.
+When combined with virtual memory, it is known as paged virtual memory.
+In this scheme, the operating system retrieves data from secondary storage in blocks of the same size (pages).
+Paging is an important part of virtual memory implementations in modern operating systems, using secondary storage to let programs exceed the size of available physical memory.
+Hardware support is necessary for efficient translation of logical addresses to physical addresses. As such, paged memory functionality is usually hardwired into a CPU through its Memory Management Unit (MMU) or Memory Protection Unit (MPU), and separately enabled by privileged system code in the operating system's kernel. In CPUs implementing the x86 instruction set architecture (ISA) for instance, the memory paging is enabled via the CR0 control register.
+
+
+== History ==
+In the 1960s, swapping was an early memory management technique. An entire program or entire segment would be "swapped out" (or "rolled out") from Random-access memory (RAM) to disk or drum, and another one would be swapped in (or rolled in). A swapped-out program would be current but its execution would be suspended while the RAM was in use by another program; a program with a swapped-out segment could continue running until it needed that segment, at which point it would be suspended until the segment was swapped in.
+A program might include multiple overlays that occupy the same memory at different times. Overlays are not a method of paging RAM to secondary storage but merely of minimizing the program's RAM use. Subsequent architectures used memory segmentation, and individual program segments became the units exchanged between secondary storage and RAM. A segment was the program's entire code segment or data segment, or sometimes other large data structures. These segments had to be contiguous when resident in RAM, requiring additional computation and movement to remedy fragmentation.
+Ferranti's Atlas, and the Atlas Supervisor developed at the University of Manchester (1962), was the first system to implement memory paging. Subsequent early machines, and their operating systems, supporting paging include the IBM M44/44X and its MOS operating system (1964), the SDS 940 and the Berkeley Timesharing System (1966), a modified IBM System/360 Model 40 and the CP-40 operating system (1967), the IBM System/360 Model 67 and operating systems such as TSS/360, CP/CMS and the Michigan Terminal System (MTS) (1967), the RCA 70/46 and the Time Sharing Operating System (TSOS) (1967), the GE 645 and Multics (1969), and the DEC PDP-10 with added BBN-designed paging hardware and the TENEX operating system (1969).
+Those machines, and subsequent machines supporting memory paging, use either a set of page address registers or in-memory page tables to allow the processor to operate on arbitrary pages anywhere in RAM as a seemingly contiguous logical address space. These pages became the units exchanged between secondary storage and RAM.
+
+
+== Page faults ==
+
+When a process tries to reference a page not currently mapped to a page frame in RAM, the processor treats this invalid memory reference as a page fault and transfers control from the program to the operating system. The operating system must:
+
+Determine whether a stolen page frame still contains an unmodified copy of the page; if so, use that page frame.
+Otherwise, obtain an empty page frame in RAM to use as a container for the data, and:
+Determine whether the page was ever initialized
+If so determine the location of the data on secondary storage.
+Load the required data into the available page frame.
+Update the page table to refer to the new page frame.
+Return control to the program, transparently retrying the instruction that caused the page fault.
+When all page frames are in use, the operating system must select a page frame to reuse for the page the program now needs. If the evicted page frame was dynamically allocated by a program to hold data, or if a program modified it since it was read into RAM (in other words, if it has become "dirty"), it must be written out to secondary storage before being freed. If a program later references the evicted page, another page fault occurs and the page must be read back into RAM.
+The method the operating system uses to select the page frame to reuse, which is its page replacement algorithm, affects efficiency.
+The operating system predicts the page frame least likely to be needed soon, often through the least recently used (LRU) algorithm or an algorithm based on the program's working set. To further increase responsiveness, paging systems may predict which pages will be needed soon, preemptively loading them into RAM before a program references them, and may steal page frames from pages that have been unreferenced for a long time, making them available. Some systems clear new pages to avoid data leaks that compromise security; some set them to installation defined or random values to aid debugging.
+
+
+== Page fetching techniques ==
+
+
+=== Demand paging ===
+
+When pure demand paging is used, pages are loaded only when they are referenced. A program from a memory mapped file begins execution with none of its pages in RAM. As the program commits page faults, the operating system copies the needed pages from a file, e.g., memory-mapped file, paging file, or a swap partition containing the page data into RAM.
+
+
+=== Anticipatory paging ===
+Some systems use only demand paging—waiting until a page is actually requested before loading it into RAM.
+Other systems attempt to reduce latency by guessing which pages not in RAM are likely to be needed soon, and pre-loading such pages into RAM, before that page is requested. (This is often in combination with pre-cleaning, which guesses which pages currently in RAM are not likely to be needed soon, and pre-writing them out to storage).
+When a page fault occurs, anticipatory paging systems will not only bring in the referenced page, but also other pages that are likely to be referenced soon.  A simple anticipatory paging algorithm will bring in the next few consecutive pages even though they are not yet needed (a prediction using locality of reference); this is analogous to a prefetch input queue in a CPU.  Swap prefetching will prefetch recently swapped-out pages if there are enough free pages for them.
+If a program ends, the operating system may delay freeing its pages, in case the user runs the same program again.
+Some systems allow application hints; the application may request that a page be made available and continue without delay.
+
+
+== Page replacement techniques ==
+
+
+=== Free page queue, stealing, and reclamation ===
+The free page queue is a list of page frames that are available for assignment. Preventing this queue from being empty minimizes the computing necessary to service a page fault. Some operating systems periodically look for pages that have not been recently referenced and then free the page frame and add it to the free page queue, a process known as "page stealing". Some operating systems support page reclamation; if a program commits a page fault by referencing a page that was stolen, the operating system detects this and restores the page frame without having to read the contents back into RAM.
+
+
+=== Pre-cleaning ===
+The operating system may periodically pre-clean dirty pages: write modified pages back to secondary storage even though they might be further modified. This minimizes the amount of cleaning needed to obtain new page frames at the moment a new program starts or a new data file is opened, and improves responsiveness. (Unix operating systems periodically use sync to pre-clean all dirty pages; Windows operating systems use "modified page writer" threads.)
+Some systems allow application hints; the application may request that a page be cleared or paged out and continue without delay.
+
+
+== Thrashing ==
+
+After completing initialization, most programs operate on a small number of code and data pages compared to the total memory the program requires.  The pages most frequently accessed are called the working set.
+When the working set is a small percentage of the system's total number of pages, virtual memory systems work most efficiently and an insignificant amount of computing is spent resolving page faults. As the working set grows, resolving page faults remains manageable until the growth reaches a critical point. Then faults go up dramatically and the time spent resolving them overwhelms time spent on the computing the program was written to do. This condition is referred to as thrashing. Thrashing occurs on a program that works with huge data structures, as its large working set causes continual page faults that drastically slow down the system. Satisfying page faults may require freeing pages that will soon have to be re-read from secondary storage. "Thrashing" is also used in contexts other than virtual memory systems; for example, to describe cache issues in computing or silly window syndrome in networking.
+A worst case might occur on VAX processors. A single MOVL crossing a page boundary could have a source operand using a displacement deferred addressing mode, where the longword containing the operand address crosses a page boundary, and a destination operand using a displacement deferred addressing mode, where the longword containing the operand address crosses a page boundary, and the source and destination could both cross page boundaries. This single instruction references ten pages; if not all are in RAM, each will cause a page fault. As each fault occurs the operating system needs to go through the extensive memory management routines perhaps causing multiple I/Os which might include writing other process pages to disk and reading pages of the active process from disk.  If the operating system could not allocate ten pages to this program, then remedying the page fault would discard another page the instruction needs, and any restart of the instruction would fault again.
+To decrease excessive paging and resolve thrashing problems, a user can increase the number of pages available per program, either by running fewer programs concurrently or increasing the amount of RAM in the computer.
+
+
+== Sharing ==
+In multi-programming or in a multi-user environment, many users may execute the same program, written so that its code and data are in separate pages. To minimize RAM use, all users share a single copy of the program. Each process's page table is set up so that the pages that address code point to the single shared copy, while the pages that address data point to different physical pages for each process.
+Different programs might also use the same libraries. To save space, only one copy of the shared library is loaded into physical memory. Programs which use the same library have virtual addresses that map to the same pages (which contain the library's code and data). When programs want to modify the library's code, they use copy-on-write, so memory is only allocated when needed.
+Shared memory is an efficient means of communication between programs. Programs can share pages in memory, and then write and read to exchange data.
+
+
+== Implementations ==
+
+
+=== Ferranti Atlas ===
+The first computer to support paging was the supercomputer Atlas, jointly developed by Ferranti, the University of Manchester and Plessey in 1963. The machine had an associative (content-addressable) memory with one entry for each 512 word page. The Supervisor handled non-equivalence interruptions and managed the transfer of pages between core and drum in order to provide a one-level store to programs.
+
+
+=== Microsoft Windows ===
+
+
+==== Windows 3.x and Windows 9x ====
+Paging has been a feature of Microsoft Windows since Windows 3.0 in 1990.  Windows 3.x creates a hidden file named 386SPART.PAR or WIN386.SWP for use as a swap file. It is generally found in the root directory, but it may appear elsewhere (typically in the WINDOWS directory). Its size depends on how much swap space the system has (a setting selected by the user under Control Panel → Enhanced under "Virtual Memory"). If the user moves or deletes this file, a blue screen will appear the next time Windows is started, with the error message "The permanent swap file is corrupt". The user will be prompted to choose whether or not to delete the file (even if it does not exist).
+Windows 95, Windows 98 and Windows Me use a similar file, and the settings for it are located under Control Panel → System → Performance tab → Virtual Memory. Windows automatically sets the size of the page file to start at 1.5× the size of physical memory, and expand up to 3× physical memory if necessary. If a user runs memory-intensive applications on a system with low physical memory, it is preferable to manually set these sizes to a value higher than default.
+
+
+==== Windows NT ====
+The file used for paging in the Windows NT family is pagefile.sys. The default location of the page file is in the root directory of the partition where Windows is installed. Windows can be configured to use free space on any available drives for page files.  It is required, however, for the boot partition (i.e., the drive containing the Windows directory) to have a page file on it if the system is configured to write either kernel or full memory dumps after a Blue Screen of Death. Windows uses the paging file as temporary storage for the memory dump. When the system is rebooted, Windows copies the memory dump from the page file to a separate file and frees the space that was used in the page file.
+
+
+==== Fragmentation ====
+
+In the default configuration of Windows, the page file is allowed to expand beyond its initial allocation when necessary. If this happens gradually, it can become heavily fragmented which can potentially cause performance problems. The common advice given to avoid this is to set a single "locked" page file size so that Windows will not expand it.  However, the page file only expands when it has been filled, which, in its default configuration, is 150% of the total amount of physical memory. Thus the total demand for page file-backed virtual memory must exceed 250% of the computer's physical memory before the page file will expand.
+The fragmentation of the page file that occurs when it expands is temporary. As soon as the expanded regions are no longer in use (at the next reboot, if not sooner) the additional disk space allocations are freed and the page file is back to its original state.
+Locking a page file size can be problematic if a Windows application requests more memory than the total size of physical memory and the page file, leading to failed requests to allocate memory that may cause applications and system processes to fail. Also, the page file is rarely read or written in sequential order, so the performance advantage of having a completely sequential page file is minimal. However, a large page file generally allows the use of memory-heavy applications, with no penalties besides using more disk space. While a fragmented page file may not be an issue by itself, fragmentation of a variable size page file will over time create several fragmented blocks on the drive, causing other files to become fragmented. For this reason, a fixed-size contiguous page file is better, providing that the size allocated is large enough to accommodate the needs of all applications.
+The required disk space may be easily allocated on systems with more recent specifications (i.e. a system with 3 GB of memory having a 6 GB fixed-size page file on a 750 GB disk drive, or a system with 6 GB of memory and a 16 GB fixed-size page file and 2 TB of disk space). In both examples, the system uses about 0.8% of the disk space with the page file pre-extended to its maximum.
+Defragmenting the page file is also occasionally recommended to improve performance when a Windows system is chronically using much more memory than its total physical memory. This view ignores the fact that, aside from the temporary results of expansion, the page file does not become fragmented over time. In general, performance concerns related to page file access are much more effectively dealt with by adding more physical memory.
+
+
+=== Unix and Unix-like systems ===
+Unix systems, and other Unix-like operating systems, use the term "swap" to describe the act of substituting disk space for RAM when physical RAM is full. In some of those systems, it is common to dedicate an entire partition of a hard disk to swapping. These partitions are called swap partitions. Many systems have an entire hard drive dedicated to swapping, separate from the data drive(s), containing only a swap partition. A hard drive dedicated to swapping is called a "swap drive" or a "scratch drive" or a "scratch disk".  Some of those systems only support swapping to a swap partition; others also support swapping to files.
+
+
+==== Linux ====
+
+The Linux kernel supports a virtually unlimited number of swap backends (devices or files), and also supports assignment of backend priorities. When the kernel swaps pages out of physical memory, it uses the highest-priority backend with available free space. If multiple swap backends are assigned the same priority, they are used in a round-robin fashion (which is somewhat similar to RAID 0 storage layouts), providing improved performance as long as the underlying devices can be efficiently accessed in parallel.
+
+
+===== Swap files and partitions =====
+From the end-user perspective, swap files in versions 2.6.x and later of the Linux kernel are virtually as fast as swap partitions; the limitation is that swap files should be contiguously allocated on their underlying file systems.  To increase performance of swap files, the kernel keeps a map of where they are placed on underlying devices and accesses them directly, thus bypassing the cache and avoiding filesystem overhead. When residing on HDDs, which are rotational magnetic media devices, one benefit of using swap partitions is the ability to place them on contiguous HDD areas that provide higher data throughput or faster seek time. However, the administrative flexibility of swap files can outweigh certain advantages of swap partitions. For example, a swap file can be placed on any mounted file system, can be set to any desired size, and can be added or changed as needed. Swap partitions are not as flexible; they cannot be enlarged without using partitioning or volume management tools, which introduce various complexities and potential downtimes.
+
+
+===== Swappiness =====
+Swappiness is a Linux kernel parameter that controls the relative weight given to swapping out of runtime memory, as opposed to dropping pages from the system page cache, whenever a memory allocation request cannot be met from free memory. Swappiness can be set to a value from 0 to 200. A low value causes the kernel to prefer to evict pages from the page cache while a higher value causes the kernel to prefer to swap out "cold" memory pages. The default value is 60; setting it higher can cause high latency if cold pages need to be swapped back in (when interacting with a program that had been idle for example), while setting it lower (even 0) may cause high latency when files that had been evicted from the cache need to be read again, but will make interactive programs more responsive as they will be less likely to need to swap back cold pages. Swapping can also slow down HDDs further because it involves a lot of random writes, while SSDs do not have this problem. Certainly the default values work well in most workloads, but desktops and interactive systems for any expected task may want to lower the setting while batch processing and less interactive systems may want to increase it.
+
+
+===== Swap death =====
+When the system memory is highly insufficient for the current tasks and a large portion of memory activity goes through a slow swap, the system can become practically unable to execute any task, even if the CPU is idle. When every process is waiting on the swap, the system is considered to be in swap death.
+Swap death can happen due to incorrectly configured memory overcommitment.
+The original description of the "swapping to death" problem relates to the X server. If code or data used by the X server to respond to a keystroke is not in main memory, then if the user enters a keystroke, the server will take one or more page faults, requiring those pages to read from swap before the keystroke can be processed, slowing the response to it.  If those pages do not remain in memory, they will have to be faulted in again to handle the next keystroke, making the system practically unresponsive even if it's actually executing other tasks normally.
+
+
+==== macOS ====
+macOS uses multiple swap files. The default (and Apple-recommended) installation places them on the root partition, though it is possible to place them instead on a separate partition or device.
+
+
+=== AmigaOS 4 ===
+AmigaOS 4.0 introduced a new system for allocating RAM and defragmenting physical memory. It still uses flat shared address space that cannot be defragmented.
+It is based on slab allocation and paging memory that allows swapping.
+Paging was implemented in AmigaOS 4.1.
+It can lock up the system if all physical memory is used up.
+Swap memory could be activated and deactivated, allowing the user to choose to use only physical RAM.
+
+
+== Performance ==
+The backing store for a virtual memory operating system is typically many orders of magnitude slower than RAM. Hard disks, for instance, introduce several milliseconds delay before the reading or writing begins. Therefore, it is desirable to reduce or eliminate swapping, where practical. Some operating systems offer settings to influence the kernel's decisions.
+
+Linux offers the /proc/sys/vm/swappiness parameter, which changes the balance between swapping out runtime memory, as opposed to dropping pages from the system page cache.
+Windows 2000, XP, and Vista offer the DisablePagingExecutive registry setting, which controls whether kernel-mode code and data can be eligible for paging out.
+Mainframe computers frequently used head-per-track disk drives or drums for page and swap storage to eliminate seek time, and several technologies to have multiple concurrent requests to the same device in order to reduce rotational latency.
+Flash memory has a finite number of erase-write cycles (see limitations of flash memory), and the smallest amount of data that can be erased at once might be very large, seldom coinciding with pagesize. Therefore, flash memory may wear out quickly if used as swap space under tight memory conditions. For this reason, mobile and embedded operating systems (such as Android) may not use swap space. On the attractive side, flash memory is practically delayless compared to hard disks, and not volatile as RAM chips. Schemes like ReadyBoost and Intel Turbo Memory are made to exploit these characteristics.
+Many Unix-like operating systems (for example AIX, Linux, and Solaris) allow using multiple storage devices for swap space in parallel, to increase performance.
+
+
+=== Swap space size ===
+In some older virtual memory operating systems, space in swap backing store is reserved when programs allocate memory for runtime data.  Operating system vendors typically issue guidelines about how much swap space should be allocated.
+
+
+== Physical and virtual address space sizes ==
+Paging is one way of allowing the size of the addresses used by a process, which is the process's "virtual address space" or "logical address space", to be different from the amount of main memory actually installed on a particular computer, which is the physical address space.
+
+
+=== Main memory smaller than virtual memory ===
+In most systems, the size of a process's virtual address space is much larger than the available main memory. For example:
+
+The address bus that connects the CPU to main memory may be limited. The i386SX CPU's 32-bit internal addresses can address 4 GB, but it has only 24 pins connected to the address bus, limiting installed physical memory to 16 MB. There may be other hardware restrictions on the maximum amount of RAM that can be installed.
+The maximum memory might not be installed because of cost, because the model's standard configuration omits it, or because the buyer did not believe it would be advantageous.
+Sometimes not all internal addresses can be used for memory anyway, because the hardware architecture may reserve large regions for I/O or other features.
+
+
+=== Main memory the same size as virtual memory ===
+A computer with true n-bit addressing may have 2n addressable units of RAM installed. An example is a 32-bit x86 processor with 4 GB and without Physical Address Extension (PAE). In this case, the processor is able to address all the RAM installed and no more.
+However, even in this case, paging can be used to support more virtual memory than physical memory. For instance, many programs may be running concurrently. Together, they may require more physical memory than can be installed on the system, but not all of it will have to be in RAM at once. A paging system makes efficient decisions on which memory to relegate to secondary storage, leading to the best use of the installed RAM.
+In addition the operating system may provide services to programs that envision a larger memory, such as files that can grow beyond the limit of installed RAM.
+Not all of the file can be concurrently mapped into the address space of a process, but the operating system might allow regions of the file to be mapped into the address space, and unmapped if another region needs to be mapped in.
+
+
+=== Main memory larger than virtual address space ===
+A few computers have a main memory larger than the virtual address space of a process, such as the Magic-1, some PDP-11 machines, and some systems using 32-bit x86 processors with Physical Address Extension. This nullifies a significant advantage of paging, since a single process cannot use more main memory than the amount of its virtual address space. Such systems often use paging techniques to obtain secondary benefits:
+
+The "extra memory" can be used in the page cache to cache frequently used files and metadata, such as directory information, from secondary storage.
+If the processor and operating system support multiple virtual address spaces, the "extra memory" can be used to run more processes. Paging allows the cumulative total of virtual address spaces to exceed physical main memory.
+A process can store data in memory-mapped files on memory-backed file systems, such as the tmpfs file system or file systems on a RAM drive, and map files into and out of the address space as needed.
+A set of processes may still depend upon the enhanced security features page-based isolation may bring to a multitasking environment.
+The size of the cumulative total of virtual address spaces is still limited by the amount of secondary storage available.
+
+
+== See also ==
+
+
+== Notes ==
+
+
+== References ==
+
+
+== External links ==
+"Time-Sharing Supervisor Programs" (PDF). Archived from the original (PDF) on 2012-11-01. by Michael T. Alexander in Advanced Topics in Systems Programming, University of Michigan Engineering Summer Conference 1970 (revised May 1971), compares the scheduling and resource allocation approaches, including virtual memory and paging, used in four mainframe operating systems: CP-67, TSS/360, MTS, and Multics.
+Swap Facts and questions in the Ubuntu documentation
+Windows Server - Moving Pagefile to another partition or disk by David Nudelman
+How Virtual Memory Works from HowStuffWorks.com (in fact explains only swapping concept, and not virtual memory concept)
+Linux swap space management (outdated, as the author admits)
+Guide On Optimizing Virtual Memory Speed (outdated)
+Virtual Memory Page Replacement Algorithms
+Windows XP: How to manually change the size of the virtual memory paging file
+Windows XP: Factors that may deplete the supply of paged pool memory
+SwapFs driver that can be used to save the paging file of Windows on a swap partition of Linux

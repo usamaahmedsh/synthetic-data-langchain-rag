@@ -1,0 +1,925 @@
+Probabilistic Soft Logic (PSL) is a  statistical relational learning (SRL) framework for modeling probabilistic and relational domains.
+
+It is applicable to a variety of machine learning problems, such as collective classification,  entity resolution, link prediction, and ontology alignment.
+PSL combines two tools: first-order logic, with its ability to succinctly represent complex phenomena, and  probabilistic graphical models, which capture the uncertainty and incompleteness inherent in real-world knowledge.
+More specifically, PSL uses  "soft" logic as its logical component and Markov random fields as its statistical model.
+PSL provides sophisticated inference techniques for finding the most likely answer (i.e. the maximum a posteriori (MAP) state).
+The "softening" of the logical formulas makes inference a polynomial time operation rather than an  NP-hard operation.
+
+
+== Description ==
+The  SRL community has introduced multiple approaches that combine graphical models and first-order logic to allow the development of complex probabilistic models with relational structures.
+A notable example of such approaches is Markov logic networks (MLNs).
+
+Like MLNs, PSL is a modelling language (with an accompanying implementation) for learning and predicting in relational domains.
+Unlike MLNs, PSL uses soft truth values for predicates in an interval between [0,1].
+This allows for the underlying inference to be solved quickly as a convex optimization problem.
+This is useful in problems such as collective classification, link prediction, social network modelling, and object identification/entity resolution/record linkage.
+Probabilistic Soft Logic was first released in 2009 by Lise Getoor and Matthias Broecheler.
+
+This first version focused heavily on reasoning about similarities between entities.
+Later versions of PSL would still keep the ability to reason about similarities, but generalize the language to be more expressive.
+In 2017, a Journal of Machine Learning Research article detailing PSL and the underlying graphical model was published along with the release of a new major version of PSL (2.0.0).
+
+The major new features in PSL 2.0.0 was a new type of rule mainly used in specifying constraints and a command-line interface.
+
+
+== Syntax and Semantics ==
+
+
+=== Terminology ===
+PSL Program — A collection of rules, each of which is a template for a potential in a graphical model.
+Rule — An expression relating atoms. Rules will typically take the form of either a  first-order logical implication or a  linear combination.
+Constant — A string or number that represents a real element in the universe over which a PSL program represents. Constants can represent attributes or entire entities.
+Variable — An identifier for which constants can be substituted.
+Term — Either a constant or a variable.
+Predicate — A relation defined by a unique name and a number of arguments it accepts.
+Atom — A predicate along with its term arguments.
+Ground Atom — An atom where all arguments are constants.
+
+
+=== Syntax ===
+A PSL model is composed of a series of weighted rules and constraints.
+PSL supports two types of rules: Logical and Arithmetic.
+
+Logical rules are composed of an implication with only a single atom or a conjunction of atoms in the body and a single atom or a disjunction of atoms in the head.
+Since PSL uses soft logic, hard logic operators are replaced with  Łukasiewicz soft logical operators.
+An example of a logical rule expression is:
+
+This rule can be interpreted to mean: If A and B are similar and A has the label X, then there is evidence that B also has the label X.
+Arithmetic rules are relations of two  linear combinations of atoms.
+Restricting each side to a linear combination ensures that the resulting potential is  convex.
+The following relational operators are supported: =, <=, and >=.
+
+This rule encodes the notion that similarity is symmetric in this model.
+A commonly used feature of arithmetic rules is the summation operation.
+The summation operation can be used to aggregate multiple atoms.
+When used, the atom is replaced with the sum of all possible atoms where the non-summation variables are fixed.
+Summation variables are made by prefixing a variable with a +.
+Fox example:
+
+If the possible values for X are label1, label2, and label3, then the above rule is equivalent to:
+
+Both of these rules force the sum of all possible labels for an entity to sum to 1.0.
+This type of rule is especially useful for collective classification problems, where only one class can be selected.
+
+
+=== Semantics ===
+
+
+==== HL-MRF ====
+A PSL program defines a family of probabilistic graphical models that are parameterized by data. 
+More specifically, the family of graphical models it defines belongs to a special class of Markov random field known as a Hinge-Loss Markov Field (HL-MRF).
+An HL-MRF determines a density function over a set of continuous variables 
+  
+    
+      
+        
+          y
+        
+        =
+        (
+        
+          y
+          
+            1
+          
+        
+        ,
+        ⋯
+        ,
+        
+          y
+          
+            n
+          
+        
+        )
+      
+    
+    {\displaystyle \mathbf {y} =(y_{1},\cdots ,y_{n})}
+  
+ with joint domain 
+  
+    
+      
+        [
+        0
+        ,
+        1
+        
+          ]
+          
+            n
+          
+        
+      
+    
+    {\displaystyle [0,1]^{n}}
+  
+ using set of evidence 
+  
+    
+      
+        
+          x
+        
+        =
+        (
+        
+          x
+          
+            1
+          
+        
+        ,
+        ⋯
+        ,
+        
+          x
+          
+            m
+          
+        
+        )
+      
+    
+    {\displaystyle \mathbf {x} =(x_{1},\cdots ,x_{m})}
+  
+, weights 
+  
+    
+      
+        
+          w
+        
+        =
+        (
+        
+          w
+          
+            1
+          
+        
+        ,
+        ⋯
+        ,
+        
+          w
+          
+            k
+          
+        
+        )
+      
+    
+    {\displaystyle \mathbf {w} =(w_{1},\cdots ,w_{k})}
+  
+, and potential functions 
+  
+    
+      
+        
+          ϕ
+        
+        =
+        (
+        
+          ϕ
+          
+            1
+          
+        
+        ,
+        ⋯
+        ,
+        
+          ϕ
+          
+            k
+          
+        
+        )
+      
+    
+    {\displaystyle \mathbf {\phi } =(\phi _{1},\cdots ,\phi _{k})}
+  
+ of the form 
+  
+    
+      
+        
+          
+            ϕ
+            
+              i
+            
+          
+          (
+          
+            x
+          
+          ,
+          
+            y
+          
+          )
+        
+        =
+        max
+        (
+        
+          ℓ
+          
+            i
+          
+        
+        (
+        
+          x
+        
+        ,
+        
+          y
+        
+        )
+        ,
+        0
+        
+          )
+          
+            
+              d
+              
+                i
+              
+            
+          
+        
+      
+    
+    {\displaystyle \mathbf {\phi _{i}(\mathbf {x} ,\mathbf {y} )} =\max(\ell _{i}(\mathbf {x} ,\mathbf {y} ),0)^{d_{i}}}
+  
+ where 
+  
+    
+      
+        
+          ℓ
+          
+            i
+          
+        
+      
+    
+    {\displaystyle \ell _{i}}
+  
+ is a linear function and 
+  
+    
+      
+        
+          d
+          
+            i
+          
+        
+        ∈
+        {
+        1
+        ,
+        2
+        }
+      
+    
+    {\displaystyle d_{i}\in \{1,2\}}
+  
+.
+The conditional distribution of 
+  
+    
+      
+        
+          y
+        
+      
+    
+    {\displaystyle \mathbf {y} }
+  
+ given the observed data 
+  
+    
+      
+        
+          x
+        
+      
+    
+    {\displaystyle \mathbf {x} }
+  
+ is defined as
+
+  
+    
+      
+        P
+        (
+        
+          y
+        
+        
+          |
+        
+        
+          x
+        
+        )
+        =
+        
+          
+            1
+            
+              Z
+              (
+              
+                y
+              
+              )
+            
+          
+        
+        exp
+        ⁡
+        (
+        
+          ∑
+          
+            i
+            =
+            1
+          
+          
+            k
+          
+        
+        
+          w
+          
+            i
+          
+        
+        
+          ϕ
+          
+            i
+          
+        
+        (
+        
+          x
+        
+        ,
+        
+          y
+        
+        )
+        )
+      
+    
+    {\displaystyle P(\mathbf {y} |\mathbf {x} )={\frac {1}{Z(\mathbf {y} )}}\exp(\sum _{i=1}^{k}w_{i}\phi _{i}(\mathbf {x} ,\mathbf {y} ))}
+  
+
+Where 
+  
+    
+      
+        Z
+        (
+        
+          y
+        
+        )
+        =
+        
+          ∫
+          
+            
+              y
+            
+          
+        
+        exp
+        ⁡
+        (
+        
+          ∑
+          
+            i
+            =
+            1
+          
+          
+            k
+          
+        
+        
+          w
+          
+            i
+          
+        
+        
+          ϕ
+          
+            i
+          
+        
+        (
+        
+          x
+        
+        ,
+        
+          y
+        
+        )
+        )
+      
+    
+    {\displaystyle Z(\mathbf {y} )=\int _{\mathbf {y} }\exp(\sum _{i=1}^{k}w_{i}\phi _{i}(\mathbf {x} ,\mathbf {y} ))}
+  
+ is the partition function. 
+This density is a logarithmically convex function, and thus the common inference task in PSL of finding a maximum a posteriori estimation of the joint state of 
+  
+    
+      
+        
+          y
+        
+      
+    
+    {\displaystyle \mathbf {y} }
+  
+ is a convex problem. 
+This allows inference in PSL to be achievable in polynomial-time.
+
+
+==== Open/Closed Predicates -- Closed World Assumption ====
+Predicates in PSL can be labeled as open or closed.
+When a predicate is labeled closed, PSL makes the closed-world assumption: any predicates that are not explicitly provided to PSL are assumed to be false.
+In other words, the closed world assumption presumes that a predicate that is partially true is also known to be partially true.
+For example, if we had the following constants in the data for representing people: 
+  
+    
+      
+        {
+        A
+        l
+        i
+        c
+        e
+        ,
+        B
+        o
+        b
+        }
+      
+    
+    {\displaystyle \{Alice,Bob\}}
+  
+ and the following constant for movies: 
+  
+    
+      
+        {
+        A
+        v
+        a
+        t
+        a
+        r
+        }
+      
+    
+    {\displaystyle \{Avatar\}}
+  
+, and we provided PSL with the predicate data 
+  
+    
+      
+        {
+        r
+        a
+        t
+        i
+        n
+        g
+        (
+        A
+        l
+        i
+        c
+        e
+        ,
+        A
+        v
+        a
+        t
+        a
+        r
+        )
+        =
+        0.8
+        }
+      
+    
+    {\displaystyle \{rating(Alice,Avatar)=0.8\}}
+  
+ and 
+  
+    
+      
+        r
+        a
+        t
+        i
+        n
+        g
+        (
+        ⋅
+        )
+      
+    
+    {\displaystyle rating(\cdot )}
+  
+ was labeled closed, then PSL would assume that 
+  
+    
+      
+        {
+        r
+        a
+        t
+        i
+        n
+        g
+        (
+        B
+        o
+        b
+        ,
+        A
+        v
+        a
+        t
+        a
+        r
+        )
+        =
+        0
+        }
+      
+    
+    {\displaystyle \{rating(Bob,Avatar)=0\}}
+  
+ even though this data was never explicitly provided to the system.
+If a predicate is labeled as open, then PSL does not make the closed-world assumption. Instead, PSL will attempt to collectively infer the unobserved instances.
+
+
+==== Grounding ====
+Data is used to instantiate several potential functions in a process called grounding.
+The resulting potential functions are then used to define the HL-MRF.
+Grounding predicates in PSL is the process of making all possible substitutions of the variables in each predicate with the existing constants in the data, resulting in a collection of ground atoms, 
+  
+    
+      
+        
+          y
+        
+        =
+        {
+        
+          y
+          
+            1
+          
+        
+        ,
+        ⋯
+        ,
+        
+          y
+          
+            n
+          
+        
+        }
+      
+    
+    {\displaystyle \mathbf {y} =\{y_{1},\cdots ,y_{n}\}}
+  
+.
+Then, all possible substitutions of the ground atoms for the predicates in the rules are made to create ground rules.
+Each of the ground rules are interpreted as either potentials or hard constraints in the induced HL-MRF.
+A logical rule is translated as a continuous relaxation of Boolean connectives using Łukasiewicz logic.
+A ground logical rule is transformed into its disjunctive normal form.
+Let 
+  
+    
+      
+        
+          I
+          
+            +
+          
+        
+      
+    
+    {\displaystyle I^{+}}
+  
+ be the set of indices of the variables that correspond to atoms that are not negated, and, likewise 
+  
+    
+      
+        
+          I
+          
+            −
+          
+        
+      
+    
+    {\displaystyle I^{-}}
+  
+ the set of indices corresponding to atoms that are negated, in the disjunctive clause. 
+Then the logical rule maps to the inequality:
+
+  
+    
+      
+        1
+        −
+        
+          ∑
+          
+            i
+            ∈
+            
+              I
+              
+                +
+              
+            
+          
+        
+        
+          y
+          
+            i
+          
+        
+        −
+        
+          ∑
+          
+            i
+            ∈
+            
+              I
+              
+                −
+              
+            
+          
+        
+        (
+        1
+        −
+        
+          y
+          
+            i
+          
+        
+        )
+        ≤
+        0
+      
+    
+    {\displaystyle 1-\sum _{i\in I^{+}}y_{i}-\sum _{i\in I^{-}}(1-y_{i})\leq 0}
+  
+
+If the logical rule is weighted with a weight 
+  
+    
+      
+        w
+      
+    
+    {\displaystyle w}
+  
+ and exponentiated with 
+  
+    
+      
+        d
+        ∈
+        {
+        1
+        ,
+        2
+        }
+      
+    
+    {\displaystyle d\in \{1,2\}}
+  
+, then the potential
+
+  
+    
+      
+        ϕ
+        (
+        
+          y
+        
+        )
+        =
+        
+          
+            (
+          
+        
+        max
+        
+          
+            {
+          
+        
+        1
+        −
+        
+          ∑
+          
+            i
+            ∈
+            
+              I
+              
+                +
+              
+            
+          
+        
+        
+          y
+          
+            i
+          
+        
+        −
+        
+          ∑
+          
+            i
+            ∈
+            
+              I
+              
+                −
+              
+            
+          
+        
+        (
+        1
+        −
+        
+          y
+          
+            i
+          
+        
+        )
+        ,
+        0
+        
+          
+            }
+          
+        
+        
+          
+            
+              )
+            
+          
+          
+            d
+          
+        
+      
+    
+    {\displaystyle \phi (\mathbf {y} )={\Big (}\max {\Big \{}1-\sum _{i\in I^{+}}y_{i}-\sum _{i\in I^{-}}(1-y_{i}),0{\Big \}}{\Big )}^{d}}
+  
+
+is added to the HL-MRF with a weight parameter of 
+  
+    
+      
+        w
+      
+    
+    {\displaystyle w}
+  
+.
+An arithmetic rule is manipulated to 
+  
+    
+      
+        ℓ
+        (
+        
+          y
+        
+        )
+        ≤
+        0
+      
+    
+    {\displaystyle \ell (\mathbf {y} )\leq 0}
+  
+ and the resulting potential takes the form 
+  
+    
+      
+        ϕ
+        (
+        
+          y
+        
+        )
+        =
+        (
+        max
+        {
+        ℓ
+        (
+        
+          y
+        
+        )
+        ,
+        0
+        }
+        
+          )
+          
+            d
+          
+        
+      
+    
+    {\displaystyle \phi (\mathbf {y} )=(\max\{\ell (\mathbf {y} ),0\})^{d}}
+  
+.
+
+
+== Interfaces ==
+PSL is available via three different language  interfaces:  CLI,  Java, and  Python.
+PSL's command line interface (CLI) is the recommended way to use PSL.
+
+It supports all the features commonly used in a reproducible form that does not require compilation.
+Since PSL is written in Java, the PSL Java interface is the most expansive and users can call directly into the core of PSL.
+
+The Java interface is available through the  Maven central repository.
+
+The PSL Python interface is available through  PyPi
+
+and uses  pandas DataFrames to pass data between PSL and the user.
+
+PSL previously provided a Groovy interface.
+
+It has been deprecated in 2.2.1 release of PSL, and is scheduled to be removed in the 2.3.0 release.
+
+
+== Examples ==
+The LINQS lab, developers of the official PSL implementation, maintain a collection of PSL examples.
+
+These examples cover both synthetic and real-world datasets and include examples from academic publications using PSL.
+Below is a toy example from this repository that can be used to infer relations in a social network.
+Along with each rule is a comment describing the motivating intuition behind the statements.
+
+
+== See also ==
+Statistical relational learning
+Probabilistic logic network
+Markov logic network
+Fuzzy logic
+
+
+== References ==
+
+
+== External links ==
+Video lectures about PSL on Youtube

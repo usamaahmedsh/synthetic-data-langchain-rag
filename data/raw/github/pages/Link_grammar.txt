@@ -1,0 +1,188 @@
+Link grammar (LG) is a theory of syntax by Davy Temperley and Daniel Sleator which builds relations between pairs of words, rather than constructing constituents in a phrase structure hierarchy.  Link grammar is similar to dependency grammar, but dependency grammar includes a head-dependent relationship, whereas link grammar makes the head-dependent relationship optional (links need not indicate direction).  Colored Multiplanar Link Grammar (CMLG) is an extension of LG allowing crossing relations between pairs of words. The relationship between words is indicated with link types, thus making the Link grammar closely related to certain categorial grammars.
+For example, in a subject–verb–object language like English, the verb would look left to form a subject link, and right to form an object link.  Nouns would look right to complete the subject link, or left to complete the object link.
+In a subject–object–verb language like Persian, the verb would look left to form an object link, and a more distant left to form a subject link.  Nouns would look to the right for both subject and object links.
+
+
+== Overview ==
+Link grammar connects the words in a sentence with links, similar in form to a catena. Unlike the catena or a traditional dependency grammar, the marking of the head-dependent relationship is optional for most languages, becoming mandatory only in free-word-order languages (such as Turkish, Finnish, Hungarian).  That is, in English, the subject-verb relationship is "obvious", in that the subject is almost always to the left of the verb, and thus no specific indication of dependency needs to be made.  In the case of subject-verb inversion, a distinct link type is employed.  For free word-order languages, this can no longer hold, and a link between the subject and verb must contain an explicit directional arrow to indicate which of the two words is which.
+Link grammar also differs from traditional dependency grammars by allowing cyclic relations between words.  Thus, for example, there can be links indicating both the head verb of a sentence, the head subject of the sentence, as well as a link between the subject and the verb. These three links thus form a cycle (a triangle, in this case). Cycles are useful in constraining what might otherwise be ambiguous parses; cycles help "tighten up" the set of allowable parses of a sentence.
+For example, in the parse
+
+    +---->WV--->+       
+    +--Wd--+-Ss-+--Pa--+
+    |      |    |      |
+LEFT-WALL he  runs   fast
+
+the LEFT-WALL indicates the start of the sentence, or the root node. The directional WV link (with arrows) points at the head verb of the sentence; it is the Wall-Verb link. The Wd link (drawn here without arrows) indicates the head noun (the subject) of the sentence. The link type Wd indicates both that it connects to the wall (W) and that the sentence is a declarative sentence (the lower-case "d" subtype).  The Ss link indicates the subject-verb relationship; the lower-case "s" indicating that the subject is singular. Note that the WV, Wd and Ss links for a cycle. The Pa link connects the verb to a complement; the lower-case "a" indicating that it is a predicative adjective in this case.
+
+
+== Parsing algorithm ==
+Parsing is performed in analogy to assembling a jigsaw puzzle (representing the parsed sentence) from puzzle pieces (representing individual words).  A language is represented by means of a dictionary or lexis, which consists of words and the set of allowed "jigsaw puzzle shapes" that each word can have. The shape is indicated by a "connector", which is a link-type, and a direction indicator + or - indicating right or left. Thus for example, a transitive verb may have the connectors S- & O+ indicating that the verb may form a Subject ("S") connection to its left ("-") and an object connection ("O") to its right ("+").   Similarly, a common noun may have the connectors D- & S+ indicating that it may connect to a determiner on the left ("D-") and act as a subject, when connecting to a verb on the right ("S+").  The act of parsing is then to identify that the S+ connector can attach to the S- connector, forming an "S" link between the two words. Parsing completes when all connectors have been connected.
+A given word may have dozens or even hundreds of allowed puzzle-shapes (termed "disjuncts"): for example, many verbs may be optionally transitive, thus making the O+ connector optional; such verbs might also take adverbial modifiers (E connectors) which are inherently optional. More complex verbs may have additional connectors for indirect objects, or for particles or prepositions.  Thus, a part of parsing also involves picking one single unique disjunct for a word; the final parse must satisfy (connect) all connectors for that disjunct.
+
+
+=== Dependency ===
+Connectors may also include head-dependent indicators h and d. In this case, a connector containing a head indicator is only allowed to connect to a connector containing the dependent indicator (or to a connector without any h-d indicators on it).  When these indicators are used, the link is decorated with arrows to indicate the link direction.
+A recent extension simplifies the specification of connectors for languages that have little or no restrictions on word-order, such as Lithuanian.  There are also extensions to make it easier to support languages with concatenative morphologies.
+
+
+=== Planarity ===
+The parsing algorithm also requires that the final graph is a planar graph, i.e. that no links cross. This constraint is based on empirical psycho-linguistic evidence that, indeed, for most languages, in nearly all situations, dependency links really do not cross. There are rare exceptions, e.g. in Finnish, and even in English; they can be parsed by link-grammar only by introducing more complex and selective connector types to capture these situations.
+
+
+=== Costs and selection ===
+Connectors can have an optional floating-point cost markup, so that some are "cheaper" to use than others, thus giving preference to certain parses over others.  That is, the total cost of parse is the sum of the individual costs of the connectors that were used; the cheapest parse indicates the most likely parse.  This is used for parse-ranking multiple ambiguous parses.  The fact that the costs are local to the connectors, and are not a global property of the algorithm makes them essentially Markovian in nature.
+The assignment of a log-likelihood to linkages allows link grammar to implement the semantic selection of predicate-argument relationships.  That is, certain constructions, although syntactically valid, are extremely unlikely. In this way, link grammar embodies some of the ideas present in operator grammar.
+Because the costs are additive, they behave like the logarithm of the probability (since log-likelihoods are additive), or equivalently, somewhat like the entropy (since entropies are additive). This makes link grammar compatible with machine learning techniques such as hidden Markov models and the Viterbi algorithm, because the link costs correspond to the link weights in Markov networks or Bayesian networks.
+
+
+=== Type theory ===
+The link grammar link types can be understood to be the types in the sense of type theory.  In effect, the link grammar can be used to model the internal language of certain (non-symmetric) compact closed categories, such as pregroup grammars.  In this sense, link grammar appears to be isomorphic or homomorphic to some categorial grammars.  Thus, for example, in a categorial grammar the noun phrase "the bad boy" may be written as
+
+  
+    
+      
+        
+          
+            
+              the
+            
+            
+              NP/N,
+            
+          
+        
+        
+          
+            
+              bad
+            
+            
+              N/N,
+            
+          
+        
+        
+          
+            
+              boy
+            
+            
+              N
+            
+          
+        
+      
+    
+    {\displaystyle {{\text{the}} \atop {\text{NP/N,}}}{{\text{bad}} \atop {\text{N/N,}}}{{\text{boy}} \atop {\text{N}}}}
+  
+
+whereas the corresponding disjuncts in link grammar would be
+
+the: D+;
+bad: A+;
+boy: D- & A-;
+
+The contraction rules (inference rules) of the Lambek calculus can be mapped to the connecting of connectors in link grammar. The + and - directional indicators correspond the forward and backward-slashes of the categorical grammar.  Finally, the single-letter names A and D can be understood as labels or "easy-to-read" mnemonic names for the rather more verbose types NP/N, etc.
+The primary distinction here  is then that the categorical grammars have two type constructors, the forward and backward slashes, that can be used to create new types (such as NP/N) from base types (such as NP and N). Link-grammar omits the use of type constructors, opting instead to define a much larger set of base types having compact, easy-to-remember mnemonics.
+
+
+== Examples ==
+
+
+=== Example 1 ===
+A basic rule file for an SVO language might look like:
+
+<determiner>     D+;
+<noun-subject>  {D−} &  S+;
+<noun-object>   {D−} &  O−;
+<verb>           S−  & {O+};
+
+Thus the English sentence, "The boy painted a picture" would appear as:
+
+           +-----O-----+
+ +-D-+--S--+     +--D--+
+ |   |     |     |     |
+The boy painted  a  picture
+
+Similar parses apply for Chinese.
+
+
+=== Example 2 ===
+Conversely, a rule file for a null subject SOV language might consist of the following links:
+
+<noun-subject>   S+;
+<noun-object>    O+;
+<verb>          {O−} & {S−};
+
+And a simple Persian sentence, man nAn xordam (من نان خوردم) 'I ate bread'  would look like:
+
+ +-----S-----+
+ |     +--O--+
+ |     |     |
+man   nAn xordam
+
+VSO order can be likewise accommodated, such as for Arabic.
+
+
+=== Example 3 (morphology) ===
+In many languages with a concatenative morphology, the stem plays no grammatical role; the grammar is determined by the suffixes.  Thus, in Russian, the sentence 'вверху плыли редкие облачка' might have the parse:
+
+    +------------Wd-----------+---------------SIp---------------+
+    |         +-------EI------+              +--------Api-------+
+    |         |      +--LLCZD-+       +-LLAQZ+         +--LLCAO-+
+    |         |      |        |       |      |         |        |
+LEFT-WALL вверху.e плы.= =ли.vnndpp ре.= =дкие.api облачк.= =а.ndnpi
+
+The subscripts, such as '.vnndpp', are used to indicate the grammatical category.  The primary links: Wd, EI, SIp and Api connect together the suffixes, as, in principle, other stems could appear here, without altering the structure of the sentence. The Api link indicates the adjective; SIp denotes subject-verb inversion; EI is a modifier. The Wd link is used to indicate the head noun; the head verb is not indicated in this sentence.  The LLXXX links serve only to attach stems to suffixes.
+
+
+=== Example 4 (phonology) ===
+The link-grammar can also indicate phonological agreement between neighboring words. For example:
+
+                     +---------Ost--------+
+    +------>WV------>+   +------Ds**x-----+
+    +----Wd---+-Ss*b-+   +--PHv-+----A----+
+    |         |      |   |      |         |
+LEFT-WALL that.j-p is.v an abstract.a concept.n
+
+Here, the connector 'PH' is used to constrain the determiners that can appear before the word 'abstract'. It effectively blocks (makes it costly) to use the determiner 'a' in this sentence, while the link to 'an' becomes cheap.  The other links are roughly as in previous examples: S denoting subject, O denoting object, D denoting determiner. The 'WV' link indicates the head verb, and the 'W' link indicates the head noun.  The lower-case letters following the upper-case link types serve to refine the type; so for example, Ds can only connect to a singular noun; Ss only to a singular subject, Os to a singular object.  The lower-case v in PHv denotes 'vowel'; the lower-case d in Wd denotes a declarative sentence.
+
+
+=== Example 5 (Vietnamese) ===
+The Vietnamese language sentence "Bữa tiệc hôm qua là một thành công lớn" - "The party yesterday was a great success" may be parsed as follows:
+
+
+== Implementations ==
+ 
+The link grammar syntax parser is a library for natural language processing written in C.  It is available under the LGPL license. The parser is an ongoing project. Recent versions include improved sentence coverage, Russian, Persian and Arabic language support, prototypes for German, Hebrew, Lithuanian, Vietnamese and Turkish, and programming API's for Python, Java, Common LISP, AutoIt and OCaml, with 3rd-party bindings for Perl, Ruby and JavaScript node.js.
+A current major undertaking is a project to learn the grammar and morphology of new languages, using unsupervised learning algorithms.
+The link-parser program along with rules and word lists for English may be found in standard Linux distributions, e.g., as a Debian package, although many of these are years out of date.
+
+
+== Applications ==
+ 
+AbiWord, a free word processor, uses link grammar for on-the-fly grammar checking. Words that cannot be linked anywhere are underlined in green.
+The semantic relationship extractor RelEx, layered on top of the link grammar library, generates a dependency grammar output by making explicit the semantic relationships between words in a sentence. Its output can be classified as being at a level between that of SSyntR and DSyntR of Meaning-Text Theory. It also provides framing/grounding, anaphora resolution, head-word identification, lexical chunking, part-of-speech identification, and tagging, including entity, date, money, gender, etc. tagging. It includes a compatibility mode to generate dependency output compatible with the Stanford parser, and Penn Treebank-compatible POS tagging.
+Link grammar has also been employed for information extraction of 
+biomedical texts and 
+events described in news articles, as well as experimental machine translation systems from English to German, Turkish, Indonesian. and Persian.
+The link grammar link dictionary is used to generate and verify the syntactic correctness of three different natural language generation systems: NLGen, NLGen2 and microplanner/surreal. It is also used as a part of the NLP pipeline in the OpenCog AI project.
+
+
+== Notes ==
+
+
+== External links ==
+
+The original Link Grammar homepage (which has been replaced by the current project. Archived from the original)
+Online English demonstration (for an older, out-of-date version; many bugs have been fixed since this version.)
+BioLG, a modification of the Link Grammar Parser adapted for the biomedical domain (many, but not all, BioLG enhancements have been folded back into the main link-grammar distribution).
+Parsing sentences with Link Grammar and Python by Jeff Elmore at PyCon 2012
+
+
+=== Language extensions ===
+Arabic Link Grammar extension (Source package)
+Persian Link Grammar extension
+Online Persian demonstration
+Russian Link Grammar demonstration

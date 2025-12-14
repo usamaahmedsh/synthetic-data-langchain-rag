@@ -1,0 +1,6919 @@
+In natural language processing, latent Dirichlet allocation (LDA) is a generative statistical model that explains how a collection of text documents can be described by a set of unobserved "topics." For example, given a set of news articles, LDA might discover that one topic is characterized by words like "president", "government", and "election", while another is characterized by "team", "game", and "score". It is one of the most common topic models.
+The LDA model was first presented as a graphical model for population genetics by J. K. Pritchard, M. Stephens and P. Donnelly in 2000. The model was subsequently applied to machine learning by David Blei, Andrew Ng, and Michael I. Jordan in 2003. Although its most frequent application is in modeling text corpora, it has also been used for other problems, such as in clinical psychology, social science, and computational musicology.
+The core assumption of LDA is that documents are represented as a random mixture of latent topics, and each topic is characterized by a probability distribution over words. The model is a generalization of probabilistic latent semantic analysis (pLSA), differing primarily in that LDA treats the topic mixture as a Dirichlet prior, leading to more reasonable mixtures and less susceptibility to overfitting. Learning the latent topics and their associated probabilities from a corpus is typically done using Bayesian inference, often with methods like Gibbs sampling or variational Bayes.
+
+
+== History ==
+In the context of population genetics, LDA was proposed by J. K. Pritchard, M. Stephens and P. Donnelly in 2000.
+LDA was applied in machine learning by David Blei, Andrew Ng and Michael I. Jordan in 2003.
+
+
+== Overview ==
+
+
+=== Population genetics ===
+In population genetics, the model is used to detect the presence of structured genetic variation in a group of individuals. The model assumes that alleles carried by individuals under study have origin in various extant or past populations. The model and various inference algorithms allow scientists to estimate the allele frequencies in those source populations and the origin of alleles carried by individuals under study. The source populations can be interpreted ex-post in terms of various evolutionary scenarios. 
+In association studies, detecting the presence of genetic structure is considered a necessary preliminary step to avoid confounding.
+
+
+=== Clinical psychology, mental health, and social science ===
+In clinical psychology research, LDA has been used to identify common themes of self-images experienced by young people in social situations. Other social scientists have used LDA to examine large sets of topical data from discussions on social media (e.g., tweets about prescription drugs).
+Additionally, supervised Latent Dirichlet Allocation with covariates (SLDAX) has been specifically developed to combine latent topics identified in texts with other manifest variables. This approach allows for the integration of text data as predictors in statistical regression analyses, improving the accuracy of mental health predictions. One of the main advantages of SLDAX over traditional two-stage approaches is its ability to avoid biased estimates and incorrect standard errors, allowing for a more accurate analysis of psychological texts.
+In the field of social sciences, LDA has proven to be useful for analyzing large datasets, such as social media discussions. For instance, researchers have used LDA to investigate tweets discussing socially relevant topics, like the use of prescription drugs and cultural differences in China. By analyzing these large text corpora, it is possible to uncover patterns and themes that might otherwise go unnoticed, offering valuable insights into public discourse and perception in real time.
+
+
+=== Musicology ===
+In the context of computational musicology, LDA has been used to discover tonal structures in different corpora.
+
+
+=== Machine learning ===
+One application of LDA in machine learning – specifically, topic discovery, a subproblem in natural language processing – is to discover topics in a collection of documents, and then automatically classify any individual document within the collection in terms of how "relevant" it is to each of the discovered topics. A topic is considered to be a set of terms (i.e., individual words or phrases) that, taken together, suggest a shared theme.
+For example, in a document collection related to pet animals, the terms dog, spaniel, beagle, golden retriever, puppy, bark, and woof would suggest a DOG_related theme, while the terms cat, siamese, Maine coon, tabby, manx, meow, purr, and kitten would suggest a CAT_related theme. There may be many more topics in the collection – e.g., related to diet, grooming, healthcare, behavior, etc. that we do not discuss for simplicity's sake. (Very common, so called stop words in a language  – e.g., "the", "an", "that", "are", "is", etc., – would not discriminate between topics and are usually filtered out by pre-processing before LDA is performed. Pre-processing also converts terms to their "root" lexical forms – e.g., "barks", "barking", and "barked" would be converted to "bark".)
+If the document collection is sufficiently large, LDA will discover such sets of terms (i.e., topics) based upon the co-occurrence of individual terms, though the task of assigning a meaningful label to an individual topic (i.e., that all the terms are DOG_related) is up to the user, and often requires specialized knowledge (e.g., for collection of technical documents). The LDA approach assumes that:
+
+The semantic content of a document is composed by combining one or more terms from one or more topics.
+Certain terms are ambiguous, belonging to more than one topic, with different probability. (For example, the term training can apply to both dogs and cats, but are more likely to refer to dogs, which are used as work animals or participate in obedience or skill competitions.) However, in a document, the accompanying presence of specific neighboring terms (which belong to only one topic) will disambiguate their usage.
+Most documents will contain only a relatively small number of topics. In the collection, e.g., individual topics will occur with differing frequencies. That is, they have a probability distribution, so that a given document is more likely to contain some topics than others.
+Within a topic, certain terms will be used much more frequently than others. In other words, the terms within a topic will also have their own probability distribution.
+When LDA machine learning is employed, both sets of probabilities are computed during the training phase, using Bayesian methods and an expectation–maximization algorithm.
+LDA is a generalization of older approach of probabilistic latent semantic analysis (pLSA), The pLSA model is equivalent to LDA under a uniform Dirichlet prior distribution.
+pLSA relies on only the first two assumptions above and does not care about the remainder. 
+While both methods are similar in principle and require the user to specify the number of topics to be discovered before the start of training (as with k-means clustering) LDA has the following advantages over pLSA:
+
+LDA yields better disambiguation of words and a more precise assignment of documents to topics.
+Computing probabilities allows a "generative" process by which a collection of new "synthetic documents" can be generated that would closely reflect the statistical characteristics of the original collection.
+Unlike LDA, pLSA is vulnerable to overfitting especially when the size of corpus increases.
+The LDA algorithm is more readily amenable to scaling up for large data sets using the MapReduce approach on a computing cluster.
+
+
+== Model ==
+  With plate notation, which is often used to represent probabilistic graphical models (PGMs), the dependencies among the many variables can be captured concisely. The boxes are "plates" representing replicates, which are repeated entities. The outer plate represents documents, while the inner plate represents the repeated word positions in a given document; each position is associated with a choice of topic and word. The variable names are defined as follows:
+M denotes the number of documents
+N is number of words in a given document (document i has 
+  
+    
+      
+        
+          N
+          
+            i
+          
+        
+      
+    
+    {\displaystyle N_{i}}
+  
+ words)
+α is the parameter of the Dirichlet prior on the per-document topic distributions
+β is the parameter of the Dirichlet prior on the per-topic word distribution
+
+  
+    
+      
+        
+          θ
+          
+            i
+          
+        
+      
+    
+    {\displaystyle \theta _{i}}
+  
+ is the topic distribution for document i
+
+  
+    
+      
+        
+          φ
+          
+            k
+          
+        
+      
+    
+    {\displaystyle \varphi _{k}}
+  
+ is the word distribution for topic k
+
+  
+    
+      
+        
+          z
+          
+            i
+            j
+          
+        
+      
+    
+    {\displaystyle z_{ij}}
+  
+ is the topic for the j-th word in document i
+
+  
+    
+      
+        
+          w
+          
+            i
+            j
+          
+        
+      
+    
+    {\displaystyle w_{ij}}
+  
+ is the specific word.
+
+The fact that W is grayed out means that words 
+  
+    
+      
+        
+          w
+          
+            i
+            j
+          
+        
+      
+    
+    {\displaystyle w_{ij}}
+  
+ are the only observable variables, and the other variables are latent variables.
+As proposed in the original paper, a sparse Dirichlet prior can be used to model the topic-word distribution, following the intuition that the probability distribution over words in a topic is skewed, so that only a small set of words have high probability. The resulting model is the most widely applied variant of LDA today. The plate notation for this model is shown on the right, where 
+  
+    
+      
+        K
+      
+    
+    {\displaystyle K}
+  
+ denotes the number of topics and 
+  
+    
+      
+        
+          φ
+          
+            1
+          
+        
+        ,
+        …
+        ,
+        
+          φ
+          
+            K
+          
+        
+      
+    
+    {\displaystyle \varphi _{1},\dots ,\varphi _{K}}
+  
+ are 
+  
+    
+      
+        V
+      
+    
+    {\displaystyle V}
+  
+-dimensional vectors storing the parameters of the Dirichlet-distributed topic-word distributions (
+  
+    
+      
+        V
+      
+    
+    {\displaystyle V}
+  
+ is the number of words in the vocabulary).
+It is helpful to think of the entities represented by 
+  
+    
+      
+        θ
+      
+    
+    {\displaystyle \theta }
+  
+ and 
+  
+    
+      
+        φ
+      
+    
+    {\displaystyle \varphi }
+  
+ as matrices created by decomposing the original document-word matrix that represents the corpus of documents being modeled. In this view, 
+  
+    
+      
+        θ
+      
+    
+    {\displaystyle \theta }
+  
+ consists of rows defined by documents and columns defined by topics, while 
+  
+    
+      
+        φ
+      
+    
+    {\displaystyle \varphi }
+  
+ consists of rows defined by topics and columns defined by words. Thus, 
+  
+    
+      
+        
+          φ
+          
+            1
+          
+        
+        ,
+        …
+        ,
+        
+          φ
+          
+            K
+          
+        
+      
+    
+    {\displaystyle \varphi _{1},\dots ,\varphi _{K}}
+  
+  refers to a set of rows, or vectors, each of which is a distribution over words, and 
+  
+    
+      
+        
+          θ
+          
+            1
+          
+        
+        ,
+        …
+        ,
+        
+          θ
+          
+            M
+          
+        
+      
+    
+    {\displaystyle \theta _{1},\dots ,\theta _{M}}
+  
+refers to a set of rows, each of which is a distribution over topics.
+
+
+=== Generative process ===
+To actually infer the topics in a corpus, we imagine a generative process whereby the documents are created, so that we may infer, or reverse engineer, it. We imagine the generative process as follows. Documents are represented as random mixtures over latent topics, where each topic is characterized by a distribution over all the words. LDA assumes the following generative process for a corpus 
+  
+    
+      
+        D
+      
+    
+    {\displaystyle D}
+  
+ consisting of 
+  
+    
+      
+        M
+      
+    
+    {\displaystyle M}
+  
+ documents each of length 
+  
+    
+      
+        
+          N
+          
+            i
+          
+        
+      
+    
+    {\displaystyle N_{i}}
+  
+:
+1. Choose 
+  
+    
+      
+        
+          θ
+          
+            i
+          
+        
+        ∼
+        Dir
+        ⁡
+        (
+        α
+        )
+      
+    
+    {\displaystyle \theta _{i}\sim \operatorname {Dir} (\alpha )}
+  
+, where 
+  
+    
+      
+        i
+        ∈
+        {
+        1
+        ,
+        …
+        ,
+        M
+        }
+      
+    
+    {\displaystyle i\in \{1,\dots ,M\}}
+  
+ and
+
+  
+    
+      
+        
+          D
+          i
+          r
+        
+        (
+        α
+        )
+      
+    
+    {\displaystyle \mathrm {Dir} (\alpha )}
+  
+ is a Dirichlet distribution with a symmetric parameter 
+  
+    
+      
+        α
+      
+    
+    {\displaystyle \alpha }
+  
+ which typically is sparse (
+  
+    
+      
+        α
+        <
+        1
+      
+    
+    {\displaystyle \alpha <1}
+  
+)
+2. Choose 
+  
+    
+      
+        
+          φ
+          
+            k
+          
+        
+        ∼
+        Dir
+        ⁡
+        (
+        β
+        )
+      
+    
+    {\displaystyle \varphi _{k}\sim \operatorname {Dir} (\beta )}
+  
+, where 
+  
+    
+      
+        k
+        ∈
+        {
+        1
+        ,
+        …
+        ,
+        K
+        }
+      
+    
+    {\displaystyle k\in \{1,\dots ,K\}}
+  
+ and 
+  
+    
+      
+        β
+      
+    
+    {\displaystyle \beta }
+  
+ typically is sparse
+3. For each of the word positions 
+  
+    
+      
+        i
+        ,
+        j
+      
+    
+    {\displaystyle i,j}
+  
+, where 
+  
+    
+      
+        i
+        ∈
+        {
+        1
+        ,
+        …
+        ,
+        M
+        }
+      
+    
+    {\displaystyle i\in \{1,\dots ,M\}}
+  
+, and 
+  
+    
+      
+        j
+        ∈
+        {
+        1
+        ,
+        …
+        ,
+        
+          N
+          
+            i
+          
+        
+        }
+      
+    
+    {\displaystyle j\in \{1,\dots ,N_{i}\}}
+  
+
+(a) Choose a topic 
+  
+    
+      
+        
+          z
+          
+            i
+            ,
+            j
+          
+        
+        ∼
+        Multinomial
+        ⁡
+        (
+        
+          θ
+          
+            i
+          
+        
+        )
+        .
+      
+    
+    {\displaystyle z_{i,j}\sim \operatorname {Multinomial} (\theta _{i}).}
+  
+
+(b) Choose a word 
+  
+    
+      
+        
+          w
+          
+            i
+            ,
+            j
+          
+        
+        ∼
+        Multinomial
+        ⁡
+        (
+        
+          φ
+          
+            
+              z
+              
+                i
+                ,
+                j
+              
+            
+          
+        
+        )
+        .
+      
+    
+    {\displaystyle w_{i,j}\sim \operatorname {Multinomial} (\varphi _{z_{i,j}}).}
+  
+
+(Note that multinomial distribution here refers to the multinomial with only one trial, which is also known as the categorical distribution.)
+The lengths 
+  
+    
+      
+        
+          N
+          
+            i
+          
+        
+      
+    
+    {\displaystyle N_{i}}
+  
+ are treated as independent of all the other data generating variables (
+  
+    
+      
+        w
+      
+    
+    {\displaystyle w}
+  
+ and 
+  
+    
+      
+        z
+      
+    
+    {\displaystyle z}
+  
+). The subscript is often dropped, as in the plate diagrams shown here.
+
+
+=== Definition ===
+A formal description of LDA is as follows:
+
+We can then mathematically describe the random variables as follows:
+
+  
+    
+      
+        
+          
+            
+              
+                
+                  
+                    φ
+                  
+                  
+                    k
+                    =
+                    1
+                    …
+                    K
+                  
+                
+              
+              
+                
+                ∼
+                
+                  Dirichlet
+                  
+                    V
+                  
+                
+                ⁡
+                (
+                
+                  β
+                
+                )
+              
+            
+            
+              
+                
+                  
+                    θ
+                  
+                  
+                    d
+                    =
+                    1
+                    …
+                    M
+                  
+                
+              
+              
+                
+                ∼
+                
+                  Dirichlet
+                  
+                    K
+                  
+                
+                ⁡
+                (
+                
+                  α
+                
+                )
+              
+            
+            
+              
+                
+                  z
+                  
+                    d
+                    =
+                    1
+                    …
+                    M
+                    ,
+                    w
+                    =
+                    1
+                    …
+                    
+                      N
+                      
+                        d
+                      
+                    
+                  
+                
+              
+              
+                
+                ∼
+                
+                  Categorical
+                  
+                    K
+                  
+                
+                ⁡
+                (
+                
+                  
+                    θ
+                  
+                  
+                    d
+                  
+                
+                )
+              
+            
+            
+              
+                
+                  w
+                  
+                    d
+                    =
+                    1
+                    …
+                    M
+                    ,
+                    w
+                    =
+                    1
+                    …
+                    
+                      N
+                      
+                        d
+                      
+                    
+                  
+                
+              
+              
+                
+                ∼
+                
+                  Categorical
+                  
+                    V
+                  
+                
+                ⁡
+                (
+                
+                  
+                    φ
+                  
+                  
+                    
+                      z
+                      
+                        d
+                        w
+                      
+                    
+                  
+                
+                )
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{aligned}{\boldsymbol {\varphi }}_{k=1\dots K}&\sim \operatorname {Dirichlet} _{V}({\boldsymbol {\beta }})\\{\boldsymbol {\theta }}_{d=1\dots M}&\sim \operatorname {Dirichlet} _{K}({\boldsymbol {\alpha }})\\z_{d=1\dots M,w=1\dots N_{d}}&\sim \operatorname {Categorical} _{K}({\boldsymbol {\theta }}_{d})\\w_{d=1\dots M,w=1\dots N_{d}}&\sim \operatorname {Categorical} _{V}({\boldsymbol {\varphi }}_{z_{dw}})\end{aligned}}}
+  
+
+
+== Inference ==
+
+Learning the various distributions (the set of topics, their associated word probabilities, the topic of each word, and the particular topic mixture of each document) is a problem of statistical inference.
+
+
+=== Monte Carlo simulation ===
+The original paper by Pritchard et al. used approximation of the posterior distribution by Monte Carlo simulation. 
+Alternative proposal of inference techniques include Gibbs sampling.
+
+
+=== Variational Bayes ===
+The original ML paper used a variational Bayes approximation of the posterior distribution.
+
+
+=== Likelihood maximization ===
+A direct optimization of the likelihood with a block relaxation algorithm proves to be a fast alternative to MCMC.
+
+
+=== Unknown number of populations/topics ===
+In practice, the optimal number of populations or topics is not known beforehand. It can be estimated by approximation of the posterior distribution with reversible-jump Markov chain Monte Carlo.
+
+
+=== Alternative approaches ===
+Alternative approaches include  expectation propagation.
+Recent research has been focused on speeding up the inference of latent Dirichlet allocation to support the capture of a massive number of topics in a large number of documents. The update equation of the collapsed Gibbs sampler mentioned in the earlier section has a natural sparsity within it that can be taken advantage of. Intuitively, since each document only contains a subset of topics 
+  
+    
+      
+        
+          K
+          
+            d
+          
+        
+      
+    
+    {\displaystyle K_{d}}
+  
+, and a word also only appears in a subset of topics 
+  
+    
+      
+        
+          K
+          
+            w
+          
+        
+      
+    
+    {\displaystyle K_{w}}
+  
+, the above update equation could be rewritten to take advantage of this sparsity.
+
+  
+    
+      
+        p
+        (
+        
+          Z
+          
+            d
+            ,
+            n
+          
+        
+        =
+        k
+        )
+        ∝
+        
+          
+            
+              α
+              β
+            
+            
+              
+                C
+                
+                  k
+                
+                
+                  ¬
+                  n
+                
+              
+              +
+              V
+              β
+            
+          
+        
+        +
+        
+          
+            
+              
+                C
+                
+                  k
+                
+                
+                  d
+                
+              
+              β
+            
+            
+              
+                C
+                
+                  k
+                
+                
+                  ¬
+                  n
+                
+              
+              +
+              V
+              β
+            
+          
+        
+        +
+        
+          
+            
+              
+                C
+                
+                  k
+                
+                
+                  w
+                
+              
+              (
+              α
+              +
+              
+                C
+                
+                  k
+                
+                
+                  d
+                
+              
+              )
+            
+            
+              
+                C
+                
+                  k
+                
+                
+                  ¬
+                  n
+                
+              
+              +
+              V
+              β
+            
+          
+        
+      
+    
+    {\displaystyle p(Z_{d,n}=k)\propto {\frac {\alpha \beta }{C_{k}^{\neg n}+V\beta }}+{\frac {C_{k}^{d}\beta }{C_{k}^{\neg n}+V\beta }}+{\frac {C_{k}^{w}(\alpha +C_{k}^{d})}{C_{k}^{\neg n}+V\beta }}}
+  
+
+In this equation, we have three terms, out of which two are sparse, and the other is small. We call these terms 
+  
+    
+      
+        a
+        ,
+        b
+      
+    
+    {\displaystyle a,b}
+  
+ and 
+  
+    
+      
+        c
+      
+    
+    {\displaystyle c}
+  
+ respectively. Now, if we normalize each term by summing over all the topics, we get:
+
+  
+    
+      
+        A
+        =
+        
+          ∑
+          
+            k
+            =
+            1
+          
+          
+            K
+          
+        
+        
+          
+            
+              α
+              β
+            
+            
+              
+                C
+                
+                  k
+                
+                
+                  ¬
+                  n
+                
+              
+              +
+              V
+              β
+            
+          
+        
+      
+    
+    {\displaystyle A=\sum _{k=1}^{K}{\frac {\alpha \beta }{C_{k}^{\neg n}+V\beta }}}
+  
+
+  
+    
+      
+        B
+        =
+        
+          ∑
+          
+            k
+            =
+            1
+          
+          
+            K
+          
+        
+        
+          
+            
+              
+                C
+                
+                  k
+                
+                
+                  d
+                
+              
+              β
+            
+            
+              
+                C
+                
+                  k
+                
+                
+                  ¬
+                  n
+                
+              
+              +
+              V
+              β
+            
+          
+        
+      
+    
+    {\displaystyle B=\sum _{k=1}^{K}{\frac {C_{k}^{d}\beta }{C_{k}^{\neg n}+V\beta }}}
+  
+
+  
+    
+      
+        C
+        =
+        
+          ∑
+          
+            k
+            =
+            1
+          
+          
+            K
+          
+        
+        
+          
+            
+              
+                C
+                
+                  k
+                
+                
+                  w
+                
+              
+              (
+              α
+              +
+              
+                C
+                
+                  k
+                
+                
+                  d
+                
+              
+              )
+            
+            
+              
+                C
+                
+                  k
+                
+                
+                  ¬
+                  n
+                
+              
+              +
+              V
+              β
+            
+          
+        
+      
+    
+    {\displaystyle C=\sum _{k=1}^{K}{\frac {C_{k}^{w}(\alpha +C_{k}^{d})}{C_{k}^{\neg n}+V\beta }}}
+  
+
+Here, we can see that 
+  
+    
+      
+        B
+      
+    
+    {\displaystyle B}
+  
+ is a summation of the topics that appear in document 
+  
+    
+      
+        d
+      
+    
+    {\displaystyle d}
+  
+, and 
+  
+    
+      
+        C
+      
+    
+    {\displaystyle C}
+  
+ is also a sparse summation of the topics that a word 
+  
+    
+      
+        w
+      
+    
+    {\displaystyle w}
+  
+ is assigned to across the whole corpus. 
+  
+    
+      
+        A
+      
+    
+    {\displaystyle A}
+  
+ on the other hand, is dense but because of the small values of 
+  
+    
+      
+        α
+      
+    
+    {\displaystyle \alpha }
+  
+ & 
+  
+    
+      
+        β
+      
+    
+    {\displaystyle \beta }
+  
+, the value is very small compared to the two other terms.
+Now, while sampling a topic, if we sample a random variable uniformly from 
+  
+    
+      
+        s
+        ∼
+        U
+        (
+        s
+        
+          |
+        
+        ∣
+        A
+        +
+        B
+        +
+        C
+        )
+      
+    
+    {\displaystyle s\sim U(s|\mid A+B+C)}
+  
+, we can check which bucket our sample lands in. Since 
+  
+    
+      
+        A
+      
+    
+    {\displaystyle A}
+  
+ is small, we are very unlikely to fall into this bucket; however, if we do fall into this bucket, sampling a topic takes 
+  
+    
+      
+        O
+        (
+        K
+        )
+      
+    
+    {\displaystyle O(K)}
+  
+ time (same as the original Collapsed Gibbs Sampler). However, if we fall into the other two buckets, we only need to check a subset of topics if we keep a record of the sparse topics. A topic can be sampled from the 
+  
+    
+      
+        B
+      
+    
+    {\displaystyle B}
+  
+ bucket in 
+  
+    
+      
+        O
+        (
+        
+          K
+          
+            d
+          
+        
+        )
+      
+    
+    {\displaystyle O(K_{d})}
+  
+ time, and a topic can be sampled from the 
+  
+    
+      
+        C
+      
+    
+    {\displaystyle C}
+  
+ bucket in 
+  
+    
+      
+        O
+        (
+        
+          K
+          
+            w
+          
+        
+        )
+      
+    
+    {\displaystyle O(K_{w})}
+  
+ time where 
+  
+    
+      
+        
+          K
+          
+            d
+          
+        
+      
+    
+    {\displaystyle K_{d}}
+  
+ and 
+  
+    
+      
+        
+          K
+          
+            w
+          
+        
+      
+    
+    {\displaystyle K_{w}}
+  
+ denotes the number of topics assigned to the current document and current word type respectively.
+Notice that after sampling each topic, updating these buckets is all basic 
+  
+    
+      
+        O
+        (
+        1
+        )
+      
+    
+    {\displaystyle O(1)}
+  
+ arithmetic operations.
+
+
+=== Aspects of computational details ===
+Following is the derivation of the equations for collapsed Gibbs sampling, which means 
+  
+    
+      
+        φ
+      
+    
+    {\displaystyle \varphi }
+  
+s and 
+  
+    
+      
+        θ
+      
+    
+    {\displaystyle \theta }
+  
+s will be integrated out. For simplicity, in this derivation the documents are all assumed to have the same length 
+  
+    
+      
+        
+          N
+          
+
+          
+        
+      
+    
+    {\displaystyle N_{}}
+  
+. The derivation is equally valid if the document lengths vary.
+According to the model, the total probability of the model is:
+
+  
+    
+      
+        P
+        (
+        
+          W
+        
+        ,
+        
+          Z
+        
+        ,
+        
+          θ
+        
+        ,
+        
+          φ
+        
+        ;
+        α
+        ,
+        β
+        )
+        =
+        
+          ∏
+          
+            i
+            =
+            1
+          
+          
+            K
+          
+        
+        P
+        (
+        
+          φ
+          
+            i
+          
+        
+        ;
+        β
+        )
+        
+          ∏
+          
+            j
+            =
+            1
+          
+          
+            M
+          
+        
+        P
+        (
+        
+          θ
+          
+            j
+          
+        
+        ;
+        α
+        )
+        
+          ∏
+          
+            t
+            =
+            1
+          
+          
+            N
+          
+        
+        P
+        (
+        
+          Z
+          
+            j
+            ,
+            t
+          
+        
+        ∣
+        
+          θ
+          
+            j
+          
+        
+        )
+        P
+        (
+        
+          W
+          
+            j
+            ,
+            t
+          
+        
+        ∣
+        
+          φ
+          
+            
+              Z
+              
+                j
+                ,
+                t
+              
+            
+          
+        
+        )
+        ,
+      
+    
+    {\displaystyle P({\boldsymbol {W}},{\boldsymbol {Z}},{\boldsymbol {\theta }},{\boldsymbol {\varphi }};\alpha ,\beta )=\prod _{i=1}^{K}P(\varphi _{i};\beta )\prod _{j=1}^{M}P(\theta _{j};\alpha )\prod _{t=1}^{N}P(Z_{j,t}\mid \theta _{j})P(W_{j,t}\mid \varphi _{Z_{j,t}}),}
+  
+
+where the bold-font variables denote the vector version of the variables. First, 
+  
+    
+      
+        
+          φ
+        
+      
+    
+    {\displaystyle {\boldsymbol {\varphi }}}
+  
+ and 
+  
+    
+      
+        
+          θ
+        
+      
+    
+    {\displaystyle {\boldsymbol {\theta }}}
+  
+ need to be integrated out.
+
+  
+    
+      
+        
+          
+            
+              
+              
+                P
+                (
+                
+                  Z
+                
+                ,
+                
+                  W
+                
+                ;
+                α
+                ,
+                β
+                )
+                =
+                
+                  ∫
+                  
+                    θ
+                  
+                
+                
+                  ∫
+                  
+                    φ
+                  
+                
+                P
+                (
+                
+                  W
+                
+                ,
+                
+                  Z
+                
+                ,
+                
+                  θ
+                
+                ,
+                
+                  φ
+                
+                ;
+                α
+                ,
+                β
+                )
+                
+                d
+                
+                  φ
+                
+                
+                d
+                
+                  θ
+                
+              
+            
+            
+              
+                =
+                
+
+                
+              
+              
+                
+                
+                  ∫
+                  
+                    φ
+                  
+                
+                
+                  ∏
+                  
+                    i
+                    =
+                    1
+                  
+                  
+                    K
+                  
+                
+                P
+                (
+                
+                  φ
+                  
+                    i
+                  
+                
+                ;
+                β
+                )
+                
+                  ∏
+                  
+                    j
+                    =
+                    1
+                  
+                  
+                    M
+                  
+                
+                
+                  ∏
+                  
+                    t
+                    =
+                    1
+                  
+                  
+                    N
+                  
+                
+                P
+                (
+                
+                  W
+                  
+                    j
+                    ,
+                    t
+                  
+                
+                ∣
+                
+                  φ
+                  
+                    
+                      Z
+                      
+                        j
+                        ,
+                        t
+                      
+                    
+                  
+                
+                )
+                
+                d
+                
+                  φ
+                
+                
+                  ∫
+                  
+                    θ
+                  
+                
+                
+                  ∏
+                  
+                    j
+                    =
+                    1
+                  
+                  
+                    M
+                  
+                
+                P
+                (
+                
+                  θ
+                  
+                    j
+                  
+                
+                ;
+                α
+                )
+                
+                  ∏
+                  
+                    t
+                    =
+                    1
+                  
+                  
+                    N
+                  
+                
+                P
+                (
+                
+                  Z
+                  
+                    j
+                    ,
+                    t
+                  
+                
+                ∣
+                
+                  θ
+                  
+                    j
+                  
+                
+                )
+                
+                d
+                
+                  θ
+                
+                .
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{aligned}&P({\boldsymbol {Z}},{\boldsymbol {W}};\alpha ,\beta )=\int _{\boldsymbol {\theta }}\int _{\boldsymbol {\varphi }}P({\boldsymbol {W}},{\boldsymbol {Z}},{\boldsymbol {\theta }},{\boldsymbol {\varphi }};\alpha ,\beta )\,d{\boldsymbol {\varphi }}\,d{\boldsymbol {\theta }}\\={}&\int _{\boldsymbol {\varphi }}\prod _{i=1}^{K}P(\varphi _{i};\beta )\prod _{j=1}^{M}\prod _{t=1}^{N}P(W_{j,t}\mid \varphi _{Z_{j,t}})\,d{\boldsymbol {\varphi }}\int _{\boldsymbol {\theta }}\prod _{j=1}^{M}P(\theta _{j};\alpha )\prod _{t=1}^{N}P(Z_{j,t}\mid \theta _{j})\,d{\boldsymbol {\theta }}.\end{aligned}}}
+  
+
+All the 
+  
+    
+      
+        θ
+      
+    
+    {\displaystyle \theta }
+  
+s are independent to each other and the same to all the 
+  
+    
+      
+        φ
+      
+    
+    {\displaystyle \varphi }
+  
+s. So we can treat each 
+  
+    
+      
+        θ
+      
+    
+    {\displaystyle \theta }
+  
+ and each 
+  
+    
+      
+        φ
+      
+    
+    {\displaystyle \varphi }
+  
+ separately. We now focus only on the 
+  
+    
+      
+        θ
+      
+    
+    {\displaystyle \theta }
+  
+ part.
+
+  
+    
+      
+        
+          ∫
+          
+            θ
+          
+        
+        
+          ∏
+          
+            j
+            =
+            1
+          
+          
+            M
+          
+        
+        P
+        (
+        
+          θ
+          
+            j
+          
+        
+        ;
+        α
+        )
+        
+          ∏
+          
+            t
+            =
+            1
+          
+          
+            N
+          
+        
+        P
+        (
+        
+          Z
+          
+            j
+            ,
+            t
+          
+        
+        ∣
+        
+          θ
+          
+            j
+          
+        
+        )
+        
+        d
+        
+          θ
+        
+        =
+        
+          ∏
+          
+            j
+            =
+            1
+          
+          
+            M
+          
+        
+        
+          ∫
+          
+            
+              θ
+              
+                j
+              
+            
+          
+        
+        P
+        (
+        
+          θ
+          
+            j
+          
+        
+        ;
+        α
+        )
+        
+          ∏
+          
+            t
+            =
+            1
+          
+          
+            N
+          
+        
+        P
+        (
+        
+          Z
+          
+            j
+            ,
+            t
+          
+        
+        ∣
+        
+          θ
+          
+            j
+          
+        
+        )
+        
+        d
+        
+          θ
+          
+            j
+          
+        
+        .
+      
+    
+    {\displaystyle \int _{\boldsymbol {\theta }}\prod _{j=1}^{M}P(\theta _{j};\alpha )\prod _{t=1}^{N}P(Z_{j,t}\mid \theta _{j})\,d{\boldsymbol {\theta }}=\prod _{j=1}^{M}\int _{\theta _{j}}P(\theta _{j};\alpha )\prod _{t=1}^{N}P(Z_{j,t}\mid \theta _{j})\,d\theta _{j}.}
+  
+
+We can further focus on only one 
+  
+    
+      
+        θ
+      
+    
+    {\displaystyle \theta }
+  
+ as the following:
+
+  
+    
+      
+        
+          ∫
+          
+            
+              θ
+              
+                j
+              
+            
+          
+        
+        P
+        (
+        
+          θ
+          
+            j
+          
+        
+        ;
+        α
+        )
+        
+          ∏
+          
+            t
+            =
+            1
+          
+          
+            N
+          
+        
+        P
+        (
+        
+          Z
+          
+            j
+            ,
+            t
+          
+        
+        ∣
+        
+          θ
+          
+            j
+          
+        
+        )
+        
+        d
+        
+          θ
+          
+            j
+          
+        
+        .
+      
+    
+    {\displaystyle \int _{\theta _{j}}P(\theta _{j};\alpha )\prod _{t=1}^{N}P(Z_{j,t}\mid \theta _{j})\,d\theta _{j}.}
+  
+
+Actually, it is the hidden part of the model for the 
+  
+    
+      
+        
+          j
+          
+            t
+            h
+          
+        
+      
+    
+    {\displaystyle j^{th}}
+  
+ document. Now we replace the probabilities in the above equation by the true distribution expression to write out the explicit equation.
+
+  
+    
+      
+        
+          ∫
+          
+            
+              θ
+              
+                j
+              
+            
+          
+        
+        P
+        (
+        
+          θ
+          
+            j
+          
+        
+        ;
+        α
+        )
+        
+          ∏
+          
+            t
+            =
+            1
+          
+          
+            N
+          
+        
+        P
+        (
+        
+          Z
+          
+            j
+            ,
+            t
+          
+        
+        ∣
+        
+          θ
+          
+            j
+          
+        
+        )
+        
+        d
+        
+          θ
+          
+            j
+          
+        
+        =
+        
+          ∫
+          
+            
+              θ
+              
+                j
+              
+            
+          
+        
+        
+          
+            
+              Γ
+              
+                (
+                
+                  
+                    ∑
+                    
+                      i
+                      =
+                      1
+                    
+                    
+                      K
+                    
+                  
+                  
+                    α
+                    
+                      i
+                    
+                  
+                
+                )
+              
+            
+            
+              
+                ∏
+                
+                  i
+                  =
+                  1
+                
+                
+                  K
+                
+              
+              Γ
+              (
+              
+                α
+                
+                  i
+                
+              
+              )
+            
+          
+        
+        
+          ∏
+          
+            i
+            =
+            1
+          
+          
+            K
+          
+        
+        
+          θ
+          
+            j
+            ,
+            i
+          
+          
+            
+              α
+              
+                i
+              
+            
+            −
+            1
+          
+        
+        
+          ∏
+          
+            t
+            =
+            1
+          
+          
+            N
+          
+        
+        P
+        (
+        
+          Z
+          
+            j
+            ,
+            t
+          
+        
+        ∣
+        
+          θ
+          
+            j
+          
+        
+        )
+        
+        d
+        
+          θ
+          
+            j
+          
+        
+        .
+      
+    
+    {\displaystyle \int _{\theta _{j}}P(\theta _{j};\alpha )\prod _{t=1}^{N}P(Z_{j,t}\mid \theta _{j})\,d\theta _{j}=\int _{\theta _{j}}{\frac {\Gamma \left(\sum _{i=1}^{K}\alpha _{i}\right)}{\prod _{i=1}^{K}\Gamma (\alpha _{i})}}\prod _{i=1}^{K}\theta _{j,i}^{\alpha _{i}-1}\prod _{t=1}^{N}P(Z_{j,t}\mid \theta _{j})\,d\theta _{j}.}
+  
+
+Let 
+  
+    
+      
+        
+          n
+          
+            j
+            ,
+            r
+          
+          
+            i
+          
+        
+      
+    
+    {\displaystyle n_{j,r}^{i}}
+  
+ be the number of word tokens in the 
+  
+    
+      
+        
+          j
+          
+            t
+            h
+          
+        
+      
+    
+    {\displaystyle j^{th}}
+  
+ document with the same word symbol (the 
+  
+    
+      
+        
+          r
+          
+            t
+            h
+          
+        
+      
+    
+    {\displaystyle r^{th}}
+  
+ word in the vocabulary) assigned to the 
+  
+    
+      
+        
+          i
+          
+            t
+            h
+          
+        
+      
+    
+    {\displaystyle i^{th}}
+  
+ topic. So, 
+  
+    
+      
+        
+          n
+          
+            j
+            ,
+            r
+          
+          
+            i
+          
+        
+      
+    
+    {\displaystyle n_{j,r}^{i}}
+  
+ is three dimensional. If any of the three dimensions is not limited to a specific value, we use a parenthesized point 
+  
+    
+      
+        (
+        ⋅
+        )
+      
+    
+    {\displaystyle (\cdot )}
+  
+ to
+denote. For example, 
+  
+    
+      
+        
+          n
+          
+            j
+            ,
+            (
+            ⋅
+            )
+          
+          
+            i
+          
+        
+      
+    
+    {\displaystyle n_{j,(\cdot )}^{i}}
+  
+ denotes the number of word tokens in the 
+  
+    
+      
+        
+          j
+          
+            t
+            h
+          
+        
+      
+    
+    {\displaystyle j^{th}}
+  
+ document assigned to the 
+  
+    
+      
+        
+          i
+          
+            t
+            h
+          
+        
+      
+    
+    {\displaystyle i^{th}}
+  
+ topic. Thus, the right most part of the above equation can be rewritten as:
+
+  
+    
+      
+        
+          ∏
+          
+            t
+            =
+            1
+          
+          
+            N
+          
+        
+        P
+        (
+        
+          Z
+          
+            j
+            ,
+            t
+          
+        
+        ∣
+        
+          θ
+          
+            j
+          
+        
+        )
+        =
+        
+          ∏
+          
+            i
+            =
+            1
+          
+          
+            K
+          
+        
+        
+          θ
+          
+            j
+            ,
+            i
+          
+          
+            
+              n
+              
+                j
+                ,
+                (
+                ⋅
+                )
+              
+              
+                i
+              
+            
+          
+        
+        .
+      
+    
+    {\displaystyle \prod _{t=1}^{N}P(Z_{j,t}\mid \theta _{j})=\prod _{i=1}^{K}\theta _{j,i}^{n_{j,(\cdot )}^{i}}.}
+  
+
+So the 
+  
+    
+      
+        
+          θ
+          
+            j
+          
+        
+      
+    
+    {\displaystyle \theta _{j}}
+  
+ integration formula can be changed to:
+
+  
+    
+      
+        
+          ∫
+          
+            
+              θ
+              
+                j
+              
+            
+          
+        
+        
+          
+            
+              Γ
+              
+                (
+                
+                  
+                    ∑
+                    
+                      i
+                      =
+                      1
+                    
+                    
+                      K
+                    
+                  
+                  
+                    α
+                    
+                      i
+                    
+                  
+                
+                )
+              
+            
+            
+              
+                ∏
+                
+                  i
+                  =
+                  1
+                
+                
+                  K
+                
+              
+              Γ
+              (
+              
+                α
+                
+                  i
+                
+              
+              )
+            
+          
+        
+        
+          ∏
+          
+            i
+            =
+            1
+          
+          
+            K
+          
+        
+        
+          θ
+          
+            j
+            ,
+            i
+          
+          
+            
+              α
+              
+                i
+              
+            
+            −
+            1
+          
+        
+        
+          ∏
+          
+            i
+            =
+            1
+          
+          
+            K
+          
+        
+        
+          θ
+          
+            j
+            ,
+            i
+          
+          
+            
+              n
+              
+                j
+                ,
+                (
+                ⋅
+                )
+              
+              
+                i
+              
+            
+          
+        
+        
+        d
+        
+          θ
+          
+            j
+          
+        
+        =
+        
+          ∫
+          
+            
+              θ
+              
+                j
+              
+            
+          
+        
+        
+          
+            
+              Γ
+              
+                (
+                
+                  
+                    ∑
+                    
+                      i
+                      =
+                      1
+                    
+                    
+                      K
+                    
+                  
+                  
+                    α
+                    
+                      i
+                    
+                  
+                
+                )
+              
+            
+            
+              
+                ∏
+                
+                  i
+                  =
+                  1
+                
+                
+                  K
+                
+              
+              Γ
+              (
+              
+                α
+                
+                  i
+                
+              
+              )
+            
+          
+        
+        
+          ∏
+          
+            i
+            =
+            1
+          
+          
+            K
+          
+        
+        
+          θ
+          
+            j
+            ,
+            i
+          
+          
+            
+              n
+              
+                j
+                ,
+                (
+                ⋅
+                )
+              
+              
+                i
+              
+            
+            +
+            
+              α
+              
+                i
+              
+            
+            −
+            1
+          
+        
+        
+        d
+        
+          θ
+          
+            j
+          
+        
+        .
+      
+    
+    {\displaystyle \int _{\theta _{j}}{\frac {\Gamma \left(\sum _{i=1}^{K}\alpha _{i}\right)}{\prod _{i=1}^{K}\Gamma (\alpha _{i})}}\prod _{i=1}^{K}\theta _{j,i}^{\alpha _{i}-1}\prod _{i=1}^{K}\theta _{j,i}^{n_{j,(\cdot )}^{i}}\,d\theta _{j}=\int _{\theta _{j}}{\frac {\Gamma \left(\sum _{i=1}^{K}\alpha _{i}\right)}{\prod _{i=1}^{K}\Gamma (\alpha _{i})}}\prod _{i=1}^{K}\theta _{j,i}^{n_{j,(\cdot )}^{i}+\alpha _{i}-1}\,d\theta _{j}.}
+  
+
+The equation inside the integration has the same form as the Dirichlet distribution. According to the Dirichlet distribution,
+
+  
+    
+      
+        
+          ∫
+          
+            
+              θ
+              
+                j
+              
+            
+          
+        
+        
+          
+            
+              Γ
+              
+                (
+                
+                  
+                    ∑
+                    
+                      i
+                      =
+                      1
+                    
+                    
+                      K
+                    
+                  
+                  
+                    n
+                    
+                      j
+                      ,
+                      (
+                      ⋅
+                      )
+                    
+                    
+                      i
+                    
+                  
+                  +
+                  
+                    α
+                    
+                      i
+                    
+                  
+                
+                )
+              
+            
+            
+              
+                ∏
+                
+                  i
+                  =
+                  1
+                
+                
+                  K
+                
+              
+              Γ
+              (
+              
+                n
+                
+                  j
+                  ,
+                  (
+                  ⋅
+                  )
+                
+                
+                  i
+                
+              
+              +
+              
+                α
+                
+                  i
+                
+              
+              )
+            
+          
+        
+        
+          ∏
+          
+            i
+            =
+            1
+          
+          
+            K
+          
+        
+        
+          θ
+          
+            j
+            ,
+            i
+          
+          
+            
+              n
+              
+                j
+                ,
+                (
+                ⋅
+                )
+              
+              
+                i
+              
+            
+            +
+            
+              α
+              
+                i
+              
+            
+            −
+            1
+          
+        
+        
+        d
+        
+          θ
+          
+            j
+          
+        
+        =
+        1.
+      
+    
+    {\displaystyle \int _{\theta _{j}}{\frac {\Gamma \left(\sum _{i=1}^{K}n_{j,(\cdot )}^{i}+\alpha _{i}\right)}{\prod _{i=1}^{K}\Gamma (n_{j,(\cdot )}^{i}+\alpha _{i})}}\prod _{i=1}^{K}\theta _{j,i}^{n_{j,(\cdot )}^{i}+\alpha _{i}-1}\,d\theta _{j}=1.}
+  
+
+Thus,
+
+  
+    
+      
+        
+          
+            
+              
+              
+                
+                
+                  ∫
+                  
+                    
+                      θ
+                      
+                        j
+                      
+                    
+                  
+                
+                P
+                (
+                
+                  θ
+                  
+                    j
+                  
+                
+                ;
+                α
+                )
+                
+                  ∏
+                  
+                    t
+                    =
+                    1
+                  
+                  
+                    N
+                  
+                
+                P
+                (
+                
+                  Z
+                  
+                    j
+                    ,
+                    t
+                  
+                
+                ∣
+                
+                  θ
+                  
+                    j
+                  
+                
+                )
+                
+                d
+                
+                  θ
+                  
+                    j
+                  
+                
+                =
+                
+                  ∫
+                  
+                    
+                      θ
+                      
+                        j
+                      
+                    
+                  
+                
+                
+                  
+                    
+                      Γ
+                      
+                        (
+                        
+                          
+                            ∑
+                            
+                              i
+                              =
+                              1
+                            
+                            
+                              K
+                            
+                          
+                          
+                            α
+                            
+                              i
+                            
+                          
+                        
+                        )
+                      
+                    
+                    
+                      
+                        ∏
+                        
+                          i
+                          =
+                          1
+                        
+                        
+                          K
+                        
+                      
+                      Γ
+                      (
+                      
+                        α
+                        
+                          i
+                        
+                      
+                      )
+                    
+                  
+                
+                
+                  ∏
+                  
+                    i
+                    =
+                    1
+                  
+                  
+                    K
+                  
+                
+                
+                  θ
+                  
+                    j
+                    ,
+                    i
+                  
+                  
+                    
+                      n
+                      
+                        j
+                        ,
+                        (
+                        ⋅
+                        )
+                      
+                      
+                        i
+                      
+                    
+                    +
+                    
+                      α
+                      
+                        i
+                      
+                    
+                    −
+                    1
+                  
+                
+                
+                d
+                
+                  θ
+                  
+                    j
+                  
+                
+              
+            
+            
+              
+                =
+                
+
+                
+              
+              
+                
+                  
+                    
+                      Γ
+                      
+                        (
+                        
+                          
+                            ∑
+                            
+                              i
+                              =
+                              1
+                            
+                            
+                              K
+                            
+                          
+                          
+                            α
+                            
+                              i
+                            
+                          
+                        
+                        )
+                      
+                    
+                    
+                      
+                        ∏
+                        
+                          i
+                          =
+                          1
+                        
+                        
+                          K
+                        
+                      
+                      Γ
+                      (
+                      
+                        α
+                        
+                          i
+                        
+                      
+                      )
+                    
+                  
+                
+                
+                  
+                    
+                      
+                        ∏
+                        
+                          i
+                          =
+                          1
+                        
+                        
+                          K
+                        
+                      
+                      Γ
+                      (
+                      
+                        n
+                        
+                          j
+                          ,
+                          (
+                          ⋅
+                          )
+                        
+                        
+                          i
+                        
+                      
+                      +
+                      
+                        α
+                        
+                          i
+                        
+                      
+                      )
+                    
+                    
+                      Γ
+                      
+                        (
+                        
+                          
+                            ∑
+                            
+                              i
+                              =
+                              1
+                            
+                            
+                              K
+                            
+                          
+                          
+                            n
+                            
+                              j
+                              ,
+                              (
+                              ⋅
+                              )
+                            
+                            
+                              i
+                            
+                          
+                          +
+                          
+                            α
+                            
+                              i
+                            
+                          
+                        
+                        )
+                      
+                    
+                  
+                
+                
+                  ∫
+                  
+                    
+                      θ
+                      
+                        j
+                      
+                    
+                  
+                
+                
+                  
+                    
+                      Γ
+                      
+                        (
+                        
+                          
+                            ∑
+                            
+                              i
+                              =
+                              1
+                            
+                            
+                              K
+                            
+                          
+                          
+                            n
+                            
+                              j
+                              ,
+                              (
+                              ⋅
+                              )
+                            
+                            
+                              i
+                            
+                          
+                          +
+                          
+                            α
+                            
+                              i
+                            
+                          
+                        
+                        )
+                      
+                    
+                    
+                      
+                        ∏
+                        
+                          i
+                          =
+                          1
+                        
+                        
+                          K
+                        
+                      
+                      Γ
+                      (
+                      
+                        n
+                        
+                          j
+                          ,
+                          (
+                          ⋅
+                          )
+                        
+                        
+                          i
+                        
+                      
+                      +
+                      
+                        α
+                        
+                          i
+                        
+                      
+                      )
+                    
+                  
+                
+                
+                  ∏
+                  
+                    i
+                    =
+                    1
+                  
+                  
+                    K
+                  
+                
+                
+                  θ
+                  
+                    j
+                    ,
+                    i
+                  
+                  
+                    
+                      n
+                      
+                        j
+                        ,
+                        (
+                        ⋅
+                        )
+                      
+                      
+                        i
+                      
+                    
+                    +
+                    
+                      α
+                      
+                        i
+                      
+                    
+                    −
+                    1
+                  
+                
+                
+                d
+                
+                  θ
+                  
+                    j
+                  
+                
+              
+            
+            
+              
+                =
+                
+
+                
+              
+              
+                
+                  
+                    
+                      Γ
+                      
+                        (
+                        
+                          
+                            ∑
+                            
+                              i
+                              =
+                              1
+                            
+                            
+                              K
+                            
+                          
+                          
+                            α
+                            
+                              i
+                            
+                          
+                        
+                        )
+                      
+                    
+                    
+                      
+                        ∏
+                        
+                          i
+                          =
+                          1
+                        
+                        
+                          K
+                        
+                      
+                      Γ
+                      (
+                      
+                        α
+                        
+                          i
+                        
+                      
+                      )
+                    
+                  
+                
+                
+                  
+                    
+                      
+                        ∏
+                        
+                          i
+                          =
+                          1
+                        
+                        
+                          K
+                        
+                      
+                      Γ
+                      (
+                      
+                        n
+                        
+                          j
+                          ,
+                          (
+                          ⋅
+                          )
+                        
+                        
+                          i
+                        
+                      
+                      +
+                      
+                        α
+                        
+                          i
+                        
+                      
+                      )
+                    
+                    
+                      Γ
+                      
+                        (
+                        
+                          
+                            ∑
+                            
+                              i
+                              =
+                              1
+                            
+                            
+                              K
+                            
+                          
+                          
+                            n
+                            
+                              j
+                              ,
+                              (
+                              ⋅
+                              )
+                            
+                            
+                              i
+                            
+                          
+                          +
+                          
+                            α
+                            
+                              i
+                            
+                          
+                        
+                        )
+                      
+                    
+                  
+                
+                .
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{aligned}&\int _{\theta _{j}}P(\theta _{j};\alpha )\prod _{t=1}^{N}P(Z_{j,t}\mid \theta _{j})\,d\theta _{j}=\int _{\theta _{j}}{\frac {\Gamma \left(\sum _{i=1}^{K}\alpha _{i}\right)}{\prod _{i=1}^{K}\Gamma (\alpha _{i})}}\prod _{i=1}^{K}\theta _{j,i}^{n_{j,(\cdot )}^{i}+\alpha _{i}-1}\,d\theta _{j}\\[8pt]={}&{\frac {\Gamma \left(\sum _{i=1}^{K}\alpha _{i}\right)}{\prod _{i=1}^{K}\Gamma (\alpha _{i})}}{\frac {\prod _{i=1}^{K}\Gamma (n_{j,(\cdot )}^{i}+\alpha _{i})}{\Gamma \left(\sum _{i=1}^{K}n_{j,(\cdot )}^{i}+\alpha _{i}\right)}}\int _{\theta _{j}}{\frac {\Gamma \left(\sum _{i=1}^{K}n_{j,(\cdot )}^{i}+\alpha _{i}\right)}{\prod _{i=1}^{K}\Gamma (n_{j,(\cdot )}^{i}+\alpha _{i})}}\prod _{i=1}^{K}\theta _{j,i}^{n_{j,(\cdot )}^{i}+\alpha _{i}-1}\,d\theta _{j}\\[8pt]={}&{\frac {\Gamma \left(\sum _{i=1}^{K}\alpha _{i}\right)}{\prod _{i=1}^{K}\Gamma (\alpha _{i})}}{\frac {\prod _{i=1}^{K}\Gamma (n_{j,(\cdot )}^{i}+\alpha _{i})}{\Gamma \left(\sum _{i=1}^{K}n_{j,(\cdot )}^{i}+\alpha _{i}\right)}}.\end{aligned}}}
+  
+
+Now we turn our attention to the 
+  
+    
+      
+        
+          φ
+        
+      
+    
+    {\displaystyle {\boldsymbol {\varphi }}}
+  
+ part. Actually, the derivation of the 
+  
+    
+      
+        
+          φ
+        
+      
+    
+    {\displaystyle {\boldsymbol {\varphi }}}
+  
+ part is very similar to the 
+  
+    
+      
+        
+          θ
+        
+      
+    
+    {\displaystyle {\boldsymbol {\theta }}}
+  
+ part. Here we only list the steps of the derivation:
+
+  
+    
+      
+        
+          
+            
+              
+              
+                
+                
+                  ∫
+                  
+                    φ
+                  
+                
+                
+                  ∏
+                  
+                    i
+                    =
+                    1
+                  
+                  
+                    K
+                  
+                
+                P
+                (
+                
+                  φ
+                  
+                    i
+                  
+                
+                ;
+                β
+                )
+                
+                  ∏
+                  
+                    j
+                    =
+                    1
+                  
+                  
+                    M
+                  
+                
+                
+                  ∏
+                  
+                    t
+                    =
+                    1
+                  
+                  
+                    N
+                  
+                
+                P
+                (
+                
+                  W
+                  
+                    j
+                    ,
+                    t
+                  
+                
+                ∣
+                
+                  φ
+                  
+                    
+                      Z
+                      
+                        j
+                        ,
+                        t
+                      
+                    
+                  
+                
+                )
+                
+                d
+                
+                  φ
+                
+              
+            
+            
+              
+                =
+                
+
+                
+              
+              
+                
+                
+                  ∏
+                  
+                    i
+                    =
+                    1
+                  
+                  
+                    K
+                  
+                
+                
+                  ∫
+                  
+                    
+                      φ
+                      
+                        i
+                      
+                    
+                  
+                
+                P
+                (
+                
+                  φ
+                  
+                    i
+                  
+                
+                ;
+                β
+                )
+                
+                  ∏
+                  
+                    j
+                    =
+                    1
+                  
+                  
+                    M
+                  
+                
+                
+                  ∏
+                  
+                    t
+                    =
+                    1
+                  
+                  
+                    N
+                  
+                
+                P
+                (
+                
+                  W
+                  
+                    j
+                    ,
+                    t
+                  
+                
+                ∣
+                
+                  φ
+                  
+                    
+                      Z
+                      
+                        j
+                        ,
+                        t
+                      
+                    
+                  
+                
+                )
+                
+                d
+                
+                  φ
+                  
+                    i
+                  
+                
+              
+            
+            
+              
+                =
+                
+
+                
+              
+              
+                
+                
+                  ∏
+                  
+                    i
+                    =
+                    1
+                  
+                  
+                    K
+                  
+                
+                
+                  ∫
+                  
+                    
+                      φ
+                      
+                        i
+                      
+                    
+                  
+                
+                
+                  
+                    
+                      Γ
+                      
+                        (
+                        
+                          
+                            ∑
+                            
+                              r
+                              =
+                              1
+                            
+                            
+                              V
+                            
+                          
+                          
+                            β
+                            
+                              r
+                            
+                          
+                        
+                        )
+                      
+                    
+                    
+                      
+                        ∏
+                        
+                          r
+                          =
+                          1
+                        
+                        
+                          V
+                        
+                      
+                      Γ
+                      (
+                      
+                        β
+                        
+                          r
+                        
+                      
+                      )
+                    
+                  
+                
+                
+                  ∏
+                  
+                    r
+                    =
+                    1
+                  
+                  
+                    V
+                  
+                
+                
+                  φ
+                  
+                    i
+                    ,
+                    r
+                  
+                  
+                    
+                      β
+                      
+                        r
+                      
+                    
+                    −
+                    1
+                  
+                
+                
+                  ∏
+                  
+                    r
+                    =
+                    1
+                  
+                  
+                    V
+                  
+                
+                
+                  φ
+                  
+                    i
+                    ,
+                    r
+                  
+                  
+                    
+                      n
+                      
+                        (
+                        ⋅
+                        )
+                        ,
+                        r
+                      
+                      
+                        i
+                      
+                    
+                  
+                
+                
+                d
+                
+                  φ
+                  
+                    i
+                  
+                
+              
+            
+            
+              
+                =
+                
+
+                
+              
+              
+                
+                
+                  ∏
+                  
+                    i
+                    =
+                    1
+                  
+                  
+                    K
+                  
+                
+                
+                  ∫
+                  
+                    
+                      φ
+                      
+                        i
+                      
+                    
+                  
+                
+                
+                  
+                    
+                      Γ
+                      
+                        (
+                        
+                          
+                            ∑
+                            
+                              r
+                              =
+                              1
+                            
+                            
+                              V
+                            
+                          
+                          
+                            β
+                            
+                              r
+                            
+                          
+                        
+                        )
+                      
+                    
+                    
+                      
+                        ∏
+                        
+                          r
+                          =
+                          1
+                        
+                        
+                          V
+                        
+                      
+                      Γ
+                      (
+                      
+                        β
+                        
+                          r
+                        
+                      
+                      )
+                    
+                  
+                
+                
+                  ∏
+                  
+                    r
+                    =
+                    1
+                  
+                  
+                    V
+                  
+                
+                
+                  φ
+                  
+                    i
+                    ,
+                    r
+                  
+                  
+                    
+                      n
+                      
+                        (
+                        ⋅
+                        )
+                        ,
+                        r
+                      
+                      
+                        i
+                      
+                    
+                    +
+                    
+                      β
+                      
+                        r
+                      
+                    
+                    −
+                    1
+                  
+                
+                
+                d
+                
+                  φ
+                  
+                    i
+                  
+                
+              
+            
+            
+              
+                =
+                
+
+                
+              
+              
+                
+                
+                  ∏
+                  
+                    i
+                    =
+                    1
+                  
+                  
+                    K
+                  
+                
+                
+                  
+                    
+                      Γ
+                      
+                        (
+                        
+                          
+                            ∑
+                            
+                              r
+                              =
+                              1
+                            
+                            
+                              V
+                            
+                          
+                          
+                            β
+                            
+                              r
+                            
+                          
+                        
+                        )
+                      
+                    
+                    
+                      
+                        ∏
+                        
+                          r
+                          =
+                          1
+                        
+                        
+                          V
+                        
+                      
+                      Γ
+                      (
+                      
+                        β
+                        
+                          r
+                        
+                      
+                      )
+                    
+                  
+                
+                
+                  
+                    
+                      
+                        ∏
+                        
+                          r
+                          =
+                          1
+                        
+                        
+                          V
+                        
+                      
+                      Γ
+                      (
+                      
+                        n
+                        
+                          (
+                          ⋅
+                          )
+                          ,
+                          r
+                        
+                        
+                          i
+                        
+                      
+                      +
+                      
+                        β
+                        
+                          r
+                        
+                      
+                      )
+                    
+                    
+                      Γ
+                      
+                        (
+                        
+                          
+                            ∑
+                            
+                              r
+                              =
+                              1
+                            
+                            
+                              V
+                            
+                          
+                          
+                            n
+                            
+                              (
+                              ⋅
+                              )
+                              ,
+                              r
+                            
+                            
+                              i
+                            
+                          
+                          +
+                          
+                            β
+                            
+                              r
+                            
+                          
+                        
+                        )
+                      
+                    
+                  
+                
+                .
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{aligned}&\int _{\boldsymbol {\varphi }}\prod _{i=1}^{K}P(\varphi _{i};\beta )\prod _{j=1}^{M}\prod _{t=1}^{N}P(W_{j,t}\mid \varphi _{Z_{j,t}})\,d{\boldsymbol {\varphi }}\\[8pt]={}&\prod _{i=1}^{K}\int _{\varphi _{i}}P(\varphi _{i};\beta )\prod _{j=1}^{M}\prod _{t=1}^{N}P(W_{j,t}\mid \varphi _{Z_{j,t}})\,d\varphi _{i}\\[8pt]={}&\prod _{i=1}^{K}\int _{\varphi _{i}}{\frac {\Gamma \left(\sum _{r=1}^{V}\beta _{r}\right)}{\prod _{r=1}^{V}\Gamma (\beta _{r})}}\prod _{r=1}^{V}\varphi _{i,r}^{\beta _{r}-1}\prod _{r=1}^{V}\varphi _{i,r}^{n_{(\cdot ),r}^{i}}\,d\varphi _{i}\\[8pt]={}&\prod _{i=1}^{K}\int _{\varphi _{i}}{\frac {\Gamma \left(\sum _{r=1}^{V}\beta _{r}\right)}{\prod _{r=1}^{V}\Gamma (\beta _{r})}}\prod _{r=1}^{V}\varphi _{i,r}^{n_{(\cdot ),r}^{i}+\beta _{r}-1}\,d\varphi _{i}\\[8pt]={}&\prod _{i=1}^{K}{\frac {\Gamma \left(\sum _{r=1}^{V}\beta _{r}\right)}{\prod _{r=1}^{V}\Gamma (\beta _{r})}}{\frac {\prod _{r=1}^{V}\Gamma (n_{(\cdot ),r}^{i}+\beta _{r})}{\Gamma \left(\sum _{r=1}^{V}n_{(\cdot ),r}^{i}+\beta _{r}\right)}}.\end{aligned}}}
+  
+
+For clarity, here we write down the final equation with both 
+  
+    
+      
+        
+          ϕ
+        
+      
+    
+    {\displaystyle {\boldsymbol {\phi }}}
+  
+ and 
+  
+    
+      
+        
+          θ
+        
+      
+    
+    {\displaystyle {\boldsymbol {\theta }}}
+  
+ integrated out:
+
+  
+    
+      
+        P
+        (
+        
+          Z
+        
+        ,
+        
+          W
+        
+        ;
+        α
+        ,
+        β
+        )
+        =
+        
+          ∏
+          
+            j
+            =
+            1
+          
+          
+            M
+          
+        
+        
+          
+            
+              Γ
+              
+                (
+                
+                  
+                    ∑
+                    
+                      i
+                      =
+                      1
+                    
+                    
+                      K
+                    
+                  
+                  
+                    α
+                    
+                      i
+                    
+                  
+                
+                )
+              
+            
+            
+              
+                ∏
+                
+                  i
+                  =
+                  1
+                
+                
+                  K
+                
+              
+              Γ
+              (
+              
+                α
+                
+                  i
+                
+              
+              )
+            
+          
+        
+        
+          
+            
+              
+                ∏
+                
+                  i
+                  =
+                  1
+                
+                
+                  K
+                
+              
+              Γ
+              (
+              
+                n
+                
+                  j
+                  ,
+                  (
+                  ⋅
+                  )
+                
+                
+                  i
+                
+              
+              +
+              
+                α
+                
+                  i
+                
+              
+              )
+            
+            
+              Γ
+              
+                (
+                
+                  
+                    ∑
+                    
+                      i
+                      =
+                      1
+                    
+                    
+                      K
+                    
+                  
+                  
+                    n
+                    
+                      j
+                      ,
+                      (
+                      ⋅
+                      )
+                    
+                    
+                      i
+                    
+                  
+                  +
+                  
+                    α
+                    
+                      i
+                    
+                  
+                
+                )
+              
+            
+          
+        
+        ×
+        
+          ∏
+          
+            i
+            =
+            1
+          
+          
+            K
+          
+        
+        
+          
+            
+              Γ
+              
+                (
+                
+                  
+                    ∑
+                    
+                      r
+                      =
+                      1
+                    
+                    
+                      V
+                    
+                  
+                  
+                    β
+                    
+                      r
+                    
+                  
+                
+                )
+              
+            
+            
+              
+                ∏
+                
+                  r
+                  =
+                  1
+                
+                
+                  V
+                
+              
+              Γ
+              (
+              
+                β
+                
+                  r
+                
+              
+              )
+            
+          
+        
+        
+          
+            
+              
+                ∏
+                
+                  r
+                  =
+                  1
+                
+                
+                  V
+                
+              
+              Γ
+              (
+              
+                n
+                
+                  (
+                  ⋅
+                  )
+                  ,
+                  r
+                
+                
+                  i
+                
+              
+              +
+              
+                β
+                
+                  r
+                
+              
+              )
+            
+            
+              Γ
+              
+                (
+                
+                  
+                    ∑
+                    
+                      r
+                      =
+                      1
+                    
+                    
+                      V
+                    
+                  
+                  
+                    n
+                    
+                      (
+                      ⋅
+                      )
+                      ,
+                      r
+                    
+                    
+                      i
+                    
+                  
+                  +
+                  
+                    β
+                    
+                      r
+                    
+                  
+                
+                )
+              
+            
+          
+        
+        .
+      
+    
+    {\displaystyle P({\boldsymbol {Z}},{\boldsymbol {W}};\alpha ,\beta )=\prod _{j=1}^{M}{\frac {\Gamma \left(\sum _{i=1}^{K}\alpha _{i}\right)}{\prod _{i=1}^{K}\Gamma (\alpha _{i})}}{\frac {\prod _{i=1}^{K}\Gamma (n_{j,(\cdot )}^{i}+\alpha _{i})}{\Gamma \left(\sum _{i=1}^{K}n_{j,(\cdot )}^{i}+\alpha _{i}\right)}}\times \prod _{i=1}^{K}{\frac {\Gamma \left(\sum _{r=1}^{V}\beta _{r}\right)}{\prod _{r=1}^{V}\Gamma (\beta _{r})}}{\frac {\prod _{r=1}^{V}\Gamma (n_{(\cdot ),r}^{i}+\beta _{r})}{\Gamma \left(\sum _{r=1}^{V}n_{(\cdot ),r}^{i}+\beta _{r}\right)}}.}
+  
+
+The goal of Gibbs Sampling here is to approximate the distribution of 
+  
+    
+      
+        P
+        (
+        
+          Z
+        
+        ∣
+        
+          W
+        
+        ;
+        α
+        ,
+        β
+        )
+      
+    
+    {\displaystyle P({\boldsymbol {Z}}\mid {\boldsymbol {W}};\alpha ,\beta )}
+  
+. Since 
+  
+    
+      
+        P
+        (
+        
+          W
+        
+        ;
+        α
+        ,
+        β
+        )
+      
+    
+    {\displaystyle P({\boldsymbol {W}};\alpha ,\beta )}
+  
+ is invariable for any of Z, Gibbs Sampling equations can be derived from 
+  
+    
+      
+        P
+        (
+        
+          Z
+        
+        ,
+        
+          W
+        
+        ;
+        α
+        ,
+        β
+        )
+      
+    
+    {\displaystyle P({\boldsymbol {Z}},{\boldsymbol {W}};\alpha ,\beta )}
+  
+ directly. The key point is to derive the following conditional probability:
+
+  
+    
+      
+        P
+        (
+        
+          Z
+          
+            (
+            m
+            ,
+            n
+            )
+          
+        
+        ∣
+        
+          
+            Z
+            
+              −
+              (
+              m
+              ,
+              n
+              )
+            
+          
+        
+        ,
+        
+          W
+        
+        ;
+        α
+        ,
+        β
+        )
+        =
+        
+          
+            
+              P
+              (
+              
+                Z
+                
+                  (
+                  m
+                  ,
+                  n
+                  )
+                
+              
+              ,
+              
+                
+                  Z
+                  
+                    −
+                    (
+                    m
+                    ,
+                    n
+                    )
+                  
+                
+              
+              ,
+              
+                W
+              
+              ;
+              α
+              ,
+              β
+              )
+            
+            
+              P
+              (
+              
+                
+                  Z
+                  
+                    −
+                    (
+                    m
+                    ,
+                    n
+                    )
+                  
+                
+              
+              ,
+              
+                W
+              
+              ;
+              α
+              ,
+              β
+              )
+            
+          
+        
+        ,
+      
+    
+    {\displaystyle P(Z_{(m,n)}\mid {\boldsymbol {Z_{-(m,n)}}},{\boldsymbol {W}};\alpha ,\beta )={\frac {P(Z_{(m,n)},{\boldsymbol {Z_{-(m,n)}}},{\boldsymbol {W}};\alpha ,\beta )}{P({\boldsymbol {Z_{-(m,n)}}},{\boldsymbol {W}};\alpha ,\beta )}},}
+  
+
+where 
+  
+    
+      
+        
+          Z
+          
+            (
+            m
+            ,
+            n
+            )
+          
+        
+      
+    
+    {\displaystyle Z_{(m,n)}}
+  
+ denotes the 
+  
+    
+      
+        Z
+      
+    
+    {\displaystyle Z}
+  
+ hidden variable of the 
+  
+    
+      
+        
+          n
+          
+            t
+            h
+          
+        
+      
+    
+    {\displaystyle n^{th}}
+  
+ word token in the 
+  
+    
+      
+        
+          m
+          
+            t
+            h
+          
+        
+      
+    
+    {\displaystyle m^{th}}
+  
+ document. And further we assume that the word
+symbol of it is the 
+  
+    
+      
+        
+          v
+          
+            t
+            h
+          
+        
+      
+    
+    {\displaystyle v^{th}}
+  
+ word in the vocabulary, i.e. 
+  
+    
+      
+        
+          W
+          
+            (
+            m
+            ,
+            n
+            )
+          
+        
+        =
+        v
+      
+    
+    {\displaystyle W_{(m,n)}=v}
+  
+. 
+  
+    
+      
+        
+          
+            Z
+            
+              −
+              (
+              m
+              ,
+              n
+              )
+            
+          
+        
+      
+    
+    {\displaystyle {\boldsymbol {Z_{-(m,n)}}}}
+  
+ denotes all the 
+  
+    
+      
+        Z
+      
+    
+    {\displaystyle Z}
+  
+s but 
+  
+    
+      
+        
+          Z
+          
+            (
+            m
+            ,
+            n
+            )
+          
+        
+      
+    
+    {\displaystyle Z_{(m,n)}}
+  
+. Note that Gibbs Sampling needs only to sample a value for 
+  
+    
+      
+        
+          Z
+          
+            (
+            m
+            ,
+            n
+            )
+          
+        
+      
+    
+    {\displaystyle Z_{(m,n)}}
+  
+, according to the above probability, we do not need the exact value of
+
+  
+    
+      
+        P
+        
+          (
+          
+            
+              Z
+              
+                m
+                ,
+                n
+              
+            
+            ∣
+            
+              
+                Z
+                
+                  −
+                  (
+                  m
+                  ,
+                  n
+                  )
+                
+              
+            
+            ,
+            
+              W
+            
+            ;
+            α
+            ,
+            β
+          
+          )
+        
+      
+    
+    {\displaystyle P\left(Z_{m,n}\mid {\boldsymbol {Z_{-(m,n)}}},{\boldsymbol {W}};\alpha ,\beta \right)}
+  
+
+but the ratios among the probabilities that 
+  
+    
+      
+        
+          Z
+          
+            (
+            m
+            ,
+            n
+            )
+          
+        
+      
+    
+    {\displaystyle Z_{(m,n)}}
+  
+ can take value. So, the above equation can be simplified as:
+
+  
+    
+      
+        
+          
+            
+              
+                P
+                (
+              
+              
+                
+                  Z
+                  
+                    (
+                    m
+                    ,
+                    n
+                    )
+                  
+                
+                =
+                k
+                ∣
+                
+                  
+                    Z
+                    
+                      −
+                      (
+                      m
+                      ,
+                      n
+                      )
+                    
+                  
+                
+                ,
+                
+                  W
+                
+                ;
+                α
+                ,
+                β
+                )
+              
+            
+            
+              
+              
+                
+                ∝
+                P
+                (
+                
+                  Z
+                  
+                    (
+                    m
+                    ,
+                    n
+                    )
+                  
+                
+                =
+                k
+                ,
+                
+                  
+                    Z
+                    
+                      −
+                      (
+                      m
+                      ,
+                      n
+                      )
+                    
+                  
+                
+                ,
+                
+                  W
+                
+                ;
+                α
+                ,
+                β
+                )
+              
+            
+            
+              
+              
+                
+                =
+                
+                  
+                    (
+                    
+                      
+                        
+                          Γ
+                          
+                            (
+                            
+                              
+                                ∑
+                                
+                                  i
+                                  =
+                                  1
+                                
+                                
+                                  K
+                                
+                              
+                              
+                                α
+                                
+                                  i
+                                
+                              
+                            
+                            )
+                          
+                        
+                        
+                          
+                            ∏
+                            
+                              i
+                              =
+                              1
+                            
+                            
+                              K
+                            
+                          
+                          Γ
+                          (
+                          
+                            α
+                            
+                              i
+                            
+                          
+                          )
+                        
+                      
+                    
+                    )
+                  
+                  
+                    M
+                  
+                
+                
+                  ∏
+                  
+                    j
+                    ≠
+                    m
+                  
+                
+                
+                  
+                    
+                      
+                        ∏
+                        
+                          i
+                          =
+                          1
+                        
+                        
+                          K
+                        
+                      
+                      Γ
+                      
+                        (
+                        
+                          
+                            n
+                            
+                              j
+                              ,
+                              (
+                              ⋅
+                              )
+                            
+                            
+                              i
+                            
+                          
+                          +
+                          
+                            α
+                            
+                              i
+                            
+                          
+                        
+                        )
+                      
+                    
+                    
+                      Γ
+                      
+                        (
+                        
+                          
+                            ∑
+                            
+                              i
+                              =
+                              1
+                            
+                            
+                              K
+                            
+                          
+                          
+                            n
+                            
+                              j
+                              ,
+                              (
+                              ⋅
+                              )
+                            
+                            
+                              i
+                            
+                          
+                          +
+                          
+                            α
+                            
+                              i
+                            
+                          
+                        
+                        )
+                      
+                    
+                  
+                
+                
+                  
+                    (
+                    
+                      
+                        
+                          Γ
+                          
+                            (
+                            
+                              
+                                ∑
+                                
+                                  r
+                                  =
+                                  1
+                                
+                                
+                                  V
+                                
+                              
+                              
+                                β
+                                
+                                  r
+                                
+                              
+                            
+                            )
+                          
+                        
+                        
+                          
+                            ∏
+                            
+                              r
+                              =
+                              1
+                            
+                            
+                              V
+                            
+                          
+                          Γ
+                          (
+                          
+                            β
+                            
+                              r
+                            
+                          
+                          )
+                        
+                      
+                    
+                    )
+                  
+                  
+                    K
+                  
+                
+                
+                  ∏
+                  
+                    i
+                    =
+                    1
+                  
+                  
+                    K
+                  
+                
+                
+                  ∏
+                  
+                    r
+                    ≠
+                    v
+                  
+                
+                Γ
+                
+                  (
+                  
+                    
+                      n
+                      
+                        (
+                        ⋅
+                        )
+                        ,
+                        r
+                      
+                      
+                        i
+                      
+                    
+                    +
+                    
+                      β
+                      
+                        r
+                      
+                    
+                  
+                  )
+                
+                
+                  
+                    
+                      
+                        ∏
+                        
+                          i
+                          =
+                          1
+                        
+                        
+                          K
+                        
+                      
+                      Γ
+                      
+                        (
+                        
+                          
+                            n
+                            
+                              m
+                              ,
+                              (
+                              ⋅
+                              )
+                            
+                            
+                              i
+                            
+                          
+                          +
+                          
+                            α
+                            
+                              i
+                            
+                          
+                        
+                        )
+                      
+                    
+                    
+                      Γ
+                      
+                        (
+                        
+                          
+                            ∑
+                            
+                              i
+                              =
+                              1
+                            
+                            
+                              K
+                            
+                          
+                          
+                            n
+                            
+                              m
+                              ,
+                              (
+                              ⋅
+                              )
+                            
+                            
+                              i
+                            
+                          
+                          +
+                          
+                            α
+                            
+                              i
+                            
+                          
+                        
+                        )
+                      
+                    
+                  
+                
+                
+                  ∏
+                  
+                    i
+                    =
+                    1
+                  
+                  
+                    K
+                  
+                
+                
+                  
+                    
+                      Γ
+                      
+                        (
+                        
+                          
+                            n
+                            
+                              (
+                              ⋅
+                              )
+                              ,
+                              v
+                            
+                            
+                              i
+                            
+                          
+                          +
+                          
+                            β
+                            
+                              v
+                            
+                          
+                        
+                        )
+                      
+                    
+                    
+                      Γ
+                      
+                        (
+                        
+                          
+                            ∑
+                            
+                              r
+                              =
+                              1
+                            
+                            
+                              V
+                            
+                          
+                          
+                            n
+                            
+                              (
+                              ⋅
+                              )
+                              ,
+                              r
+                            
+                            
+                              i
+                            
+                          
+                          +
+                          
+                            β
+                            
+                              r
+                            
+                          
+                        
+                        )
+                      
+                    
+                  
+                
+              
+            
+            
+              
+              
+                
+                ∝
+                
+                  
+                    
+                      
+                        ∏
+                        
+                          i
+                          =
+                          1
+                        
+                        
+                          K
+                        
+                      
+                      Γ
+                      
+                        (
+                        
+                          
+                            n
+                            
+                              m
+                              ,
+                              (
+                              ⋅
+                              )
+                            
+                            
+                              i
+                            
+                          
+                          +
+                          
+                            α
+                            
+                              i
+                            
+                          
+                        
+                        )
+                      
+                    
+                    
+                      Γ
+                      
+                        (
+                        
+                          
+                            ∑
+                            
+                              i
+                              =
+                              1
+                            
+                            
+                              K
+                            
+                          
+                          
+                            n
+                            
+                              m
+                              ,
+                              (
+                              ⋅
+                              )
+                            
+                            
+                              i
+                            
+                          
+                          +
+                          
+                            α
+                            
+                              i
+                            
+                          
+                        
+                        )
+                      
+                    
+                  
+                
+                
+                  ∏
+                  
+                    i
+                    =
+                    1
+                  
+                  
+                    K
+                  
+                
+                
+                  
+                    
+                      Γ
+                      
+                        (
+                        
+                          
+                            n
+                            
+                              (
+                              ⋅
+                              )
+                              ,
+                              v
+                            
+                            
+                              i
+                            
+                          
+                          +
+                          
+                            β
+                            
+                              v
+                            
+                          
+                        
+                        )
+                      
+                    
+                    
+                      Γ
+                      
+                        (
+                        
+                          
+                            ∑
+                            
+                              r
+                              =
+                              1
+                            
+                            
+                              V
+                            
+                          
+                          
+                            n
+                            
+                              (
+                              ⋅
+                              )
+                              ,
+                              r
+                            
+                            
+                              i
+                            
+                          
+                          +
+                          
+                            β
+                            
+                              r
+                            
+                          
+                        
+                        )
+                      
+                    
+                  
+                
+              
+            
+            
+              
+              
+                
+                ∝
+                
+                  ∏
+                  
+                    i
+                    =
+                    1
+                  
+                  
+                    K
+                  
+                
+                Γ
+                
+                  (
+                  
+                    
+                      n
+                      
+                        m
+                        ,
+                        (
+                        ⋅
+                        )
+                      
+                      
+                        i
+                      
+                    
+                    +
+                    
+                      α
+                      
+                        i
+                      
+                    
+                  
+                  )
+                
+                
+                  ∏
+                  
+                    i
+                    =
+                    1
+                  
+                  
+                    K
+                  
+                
+                
+                  
+                    
+                      Γ
+                      
+                        (
+                        
+                          
+                            n
+                            
+                              (
+                              ⋅
+                              )
+                              ,
+                              v
+                            
+                            
+                              i
+                            
+                          
+                          +
+                          
+                            β
+                            
+                              v
+                            
+                          
+                        
+                        )
+                      
+                    
+                    
+                      Γ
+                      
+                        (
+                        
+                          
+                            ∑
+                            
+                              r
+                              =
+                              1
+                            
+                            
+                              V
+                            
+                          
+                          
+                            n
+                            
+                              (
+                              ⋅
+                              )
+                              ,
+                              r
+                            
+                            
+                              i
+                            
+                          
+                          +
+                          
+                            β
+                            
+                              r
+                            
+                          
+                        
+                        )
+                      
+                    
+                  
+                
+                .
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{aligned}P(&Z_{(m,n)}=k\mid {\boldsymbol {Z_{-(m,n)}}},{\boldsymbol {W}};\alpha ,\beta )\\[8pt]&\propto P(Z_{(m,n)}=k,{\boldsymbol {Z_{-(m,n)}}},{\boldsymbol {W}};\alpha ,\beta )\\[8pt]&=\left({\frac {\Gamma \left(\sum _{i=1}^{K}\alpha _{i}\right)}{\prod _{i=1}^{K}\Gamma (\alpha _{i})}}\right)^{M}\prod _{j\neq m}{\frac {\prod _{i=1}^{K}\Gamma \left(n_{j,(\cdot )}^{i}+\alpha _{i}\right)}{\Gamma \left(\sum _{i=1}^{K}n_{j,(\cdot )}^{i}+\alpha _{i}\right)}}\left({\frac {\Gamma \left(\sum _{r=1}^{V}\beta _{r}\right)}{\prod _{r=1}^{V}\Gamma (\beta _{r})}}\right)^{K}\prod _{i=1}^{K}\prod _{r\neq v}\Gamma \left(n_{(\cdot ),r}^{i}+\beta _{r}\right){\frac {\prod _{i=1}^{K}\Gamma \left(n_{m,(\cdot )}^{i}+\alpha _{i}\right)}{\Gamma \left(\sum _{i=1}^{K}n_{m,(\cdot )}^{i}+\alpha _{i}\right)}}\prod _{i=1}^{K}{\frac {\Gamma \left(n_{(\cdot ),v}^{i}+\beta _{v}\right)}{\Gamma \left(\sum _{r=1}^{V}n_{(\cdot ),r}^{i}+\beta _{r}\right)}}\\[8pt]&\propto {\frac {\prod _{i=1}^{K}\Gamma \left(n_{m,(\cdot )}^{i}+\alpha _{i}\right)}{\Gamma \left(\sum _{i=1}^{K}n_{m,(\cdot )}^{i}+\alpha _{i}\right)}}\prod _{i=1}^{K}{\frac {\Gamma \left(n_{(\cdot ),v}^{i}+\beta _{v}\right)}{\Gamma \left(\sum _{r=1}^{V}n_{(\cdot ),r}^{i}+\beta _{r}\right)}}\\[8pt]&\propto \prod _{i=1}^{K}\Gamma \left(n_{m,(\cdot )}^{i}+\alpha _{i}\right)\prod _{i=1}^{K}{\frac {\Gamma \left(n_{(\cdot ),v}^{i}+\beta _{v}\right)}{\Gamma \left(\sum _{r=1}^{V}n_{(\cdot ),r}^{i}+\beta _{r}\right)}}.\end{aligned}}}
+  
+
+Finally, let 
+  
+    
+      
+        
+          n
+          
+            j
+            ,
+            r
+          
+          
+            i
+            ,
+            −
+            (
+            m
+            ,
+            n
+            )
+          
+        
+      
+    
+    {\displaystyle n_{j,r}^{i,-(m,n)}}
+  
+ be the same meaning as 
+  
+    
+      
+        
+          n
+          
+            j
+            ,
+            r
+          
+          
+            i
+          
+        
+      
+    
+    {\displaystyle n_{j,r}^{i}}
+  
+ but with the 
+  
+    
+      
+        
+          Z
+          
+            (
+            m
+            ,
+            n
+            )
+          
+        
+      
+    
+    {\displaystyle Z_{(m,n)}}
+  
+ excluded. The above equation can be further simplified leveraging the property of gamma function. We first split the summation and then merge it back to obtain a 
+  
+    
+      
+        k
+      
+    
+    {\displaystyle k}
+  
+-independent summation, which could be dropped:
+
+  
+    
+      
+        
+          
+            
+              
+              
+                
+                ∝
+                
+                  ∏
+                  
+                    i
+                    ≠
+                    k
+                  
+                
+                Γ
+                
+                  (
+                  
+                    
+                      n
+                      
+                        m
+                        ,
+                        (
+                        ⋅
+                        )
+                      
+                      
+                        i
+                        ,
+                        −
+                        (
+                        m
+                        ,
+                        n
+                        )
+                      
+                    
+                    +
+                    
+                      α
+                      
+                        i
+                      
+                    
+                  
+                  )
+                
+                
+                  ∏
+                  
+                    i
+                    ≠
+                    k
+                  
+                
+                
+                  
+                    
+                      Γ
+                      
+                        (
+                        
+                          
+                            n
+                            
+                              (
+                              ⋅
+                              )
+                              ,
+                              v
+                            
+                            
+                              i
+                              ,
+                              −
+                              (
+                              m
+                              ,
+                              n
+                              )
+                            
+                          
+                          +
+                          
+                            β
+                            
+                              v
+                            
+                          
+                        
+                        )
+                      
+                    
+                    
+                      Γ
+                      
+                        (
+                        
+                          
+                            ∑
+                            
+                              r
+                              =
+                              1
+                            
+                            
+                              V
+                            
+                          
+                          
+                            n
+                            
+                              (
+                              ⋅
+                              )
+                              ,
+                              r
+                            
+                            
+                              i
+                              ,
+                              −
+                              (
+                              m
+                              ,
+                              n
+                              )
+                            
+                          
+                          +
+                          
+                            β
+                            
+                              r
+                            
+                          
+                        
+                        )
+                      
+                    
+                  
+                
+                Γ
+                
+                  (
+                  
+                    
+                      n
+                      
+                        m
+                        ,
+                        (
+                        ⋅
+                        )
+                      
+                      
+                        k
+                        ,
+                        −
+                        (
+                        m
+                        ,
+                        n
+                        )
+                      
+                    
+                    +
+                    
+                      α
+                      
+                        k
+                      
+                    
+                    +
+                    1
+                  
+                  )
+                
+                
+                  
+                    
+                      Γ
+                      
+                        (
+                        
+                          
+                            n
+                            
+                              (
+                              ⋅
+                              )
+                              ,
+                              v
+                            
+                            
+                              k
+                              ,
+                              −
+                              (
+                              m
+                              ,
+                              n
+                              )
+                            
+                          
+                          +
+                          
+                            β
+                            
+                              v
+                            
+                          
+                          +
+                          1
+                        
+                        )
+                      
+                    
+                    
+                      Γ
+                      
+                        (
+                        
+                          
+                            ∑
+                            
+                              r
+                              =
+                              1
+                            
+                            
+                              V
+                            
+                          
+                          
+                            n
+                            
+                              (
+                              ⋅
+                              )
+                              ,
+                              r
+                            
+                            
+                              k
+                              ,
+                              −
+                              (
+                              m
+                              ,
+                              n
+                              )
+                            
+                          
+                          +
+                          
+                            β
+                            
+                              r
+                            
+                          
+                          +
+                          1
+                        
+                        )
+                      
+                    
+                  
+                
+              
+            
+            
+              
+              
+                
+                =
+                
+                  ∏
+                  
+                    i
+                    ≠
+                    k
+                  
+                
+                Γ
+                
+                  (
+                  
+                    
+                      n
+                      
+                        m
+                        ,
+                        (
+                        ⋅
+                        )
+                      
+                      
+                        i
+                        ,
+                        −
+                        (
+                        m
+                        ,
+                        n
+                        )
+                      
+                    
+                    +
+                    
+                      α
+                      
+                        i
+                      
+                    
+                  
+                  )
+                
+                
+                  ∏
+                  
+                    i
+                    ≠
+                    k
+                  
+                
+                
+                  
+                    
+                      Γ
+                      
+                        (
+                        
+                          
+                            n
+                            
+                              (
+                              ⋅
+                              )
+                              ,
+                              v
+                            
+                            
+                              i
+                              ,
+                              −
+                              (
+                              m
+                              ,
+                              n
+                              )
+                            
+                          
+                          +
+                          
+                            β
+                            
+                              v
+                            
+                          
+                        
+                        )
+                      
+                    
+                    
+                      Γ
+                      
+                        (
+                        
+                          
+                            ∑
+                            
+                              r
+                              =
+                              1
+                            
+                            
+                              V
+                            
+                          
+                          
+                            n
+                            
+                              (
+                              ⋅
+                              )
+                              ,
+                              r
+                            
+                            
+                              i
+                              ,
+                              −
+                              (
+                              m
+                              ,
+                              n
+                              )
+                            
+                          
+                          +
+                          
+                            β
+                            
+                              r
+                            
+                          
+                        
+                        )
+                      
+                    
+                  
+                
+                Γ
+                
+                  (
+                  
+                    
+                      n
+                      
+                        m
+                        ,
+                        (
+                        ⋅
+                        )
+                      
+                      
+                        k
+                        ,
+                        −
+                        (
+                        m
+                        ,
+                        n
+                        )
+                      
+                    
+                    +
+                    
+                      α
+                      
+                        k
+                      
+                    
+                  
+                  )
+                
+                
+                  
+                    
+                      Γ
+                      
+                        (
+                        
+                          
+                            n
+                            
+                              (
+                              ⋅
+                              )
+                              ,
+                              v
+                            
+                            
+                              k
+                              ,
+                              −
+                              (
+                              m
+                              ,
+                              n
+                              )
+                            
+                          
+                          +
+                          
+                            β
+                            
+                              v
+                            
+                          
+                        
+                        )
+                      
+                    
+                    
+                      Γ
+                      
+                        (
+                        
+                          
+                            ∑
+                            
+                              r
+                              =
+                              1
+                            
+                            
+                              V
+                            
+                          
+                          
+                            n
+                            
+                              (
+                              ⋅
+                              )
+                              ,
+                              r
+                            
+                            
+                              k
+                              ,
+                              −
+                              (
+                              m
+                              ,
+                              n
+                              )
+                            
+                          
+                          +
+                          
+                            β
+                            
+                              r
+                            
+                          
+                        
+                        )
+                      
+                    
+                  
+                
+                
+                  (
+                  
+                    
+                      n
+                      
+                        m
+                        ,
+                        (
+                        ⋅
+                        )
+                      
+                      
+                        k
+                        ,
+                        −
+                        (
+                        m
+                        ,
+                        n
+                        )
+                      
+                    
+                    +
+                    
+                      α
+                      
+                        k
+                      
+                    
+                  
+                  )
+                
+                
+                  
+                    
+                      
+                        n
+                        
+                          (
+                          ⋅
+                          )
+                          ,
+                          v
+                        
+                        
+                          k
+                          ,
+                          −
+                          (
+                          m
+                          ,
+                          n
+                          )
+                        
+                      
+                      +
+                      
+                        β
+                        
+                          v
+                        
+                      
+                    
+                    
+                      
+                        ∑
+                        
+                          r
+                          =
+                          1
+                        
+                        
+                          V
+                        
+                      
+                      
+                        n
+                        
+                          (
+                          ⋅
+                          )
+                          ,
+                          r
+                        
+                        
+                          k
+                          ,
+                          −
+                          (
+                          m
+                          ,
+                          n
+                          )
+                        
+                      
+                      +
+                      
+                        β
+                        
+                          r
+                        
+                      
+                    
+                  
+                
+              
+            
+            
+              
+              
+                
+                =
+                
+                  ∏
+                  
+                    i
+                  
+                
+                Γ
+                
+                  (
+                  
+                    
+                      n
+                      
+                        m
+                        ,
+                        (
+                        ⋅
+                        )
+                      
+                      
+                        i
+                        ,
+                        −
+                        (
+                        m
+                        ,
+                        n
+                        )
+                      
+                    
+                    +
+                    
+                      α
+                      
+                        i
+                      
+                    
+                  
+                  )
+                
+                
+                  ∏
+                  
+                    i
+                  
+                
+                
+                  
+                    
+                      Γ
+                      
+                        (
+                        
+                          
+                            n
+                            
+                              (
+                              ⋅
+                              )
+                              ,
+                              v
+                            
+                            
+                              i
+                              ,
+                              −
+                              (
+                              m
+                              ,
+                              n
+                              )
+                            
+                          
+                          +
+                          
+                            β
+                            
+                              v
+                            
+                          
+                        
+                        )
+                      
+                    
+                    
+                      Γ
+                      
+                        (
+                        
+                          
+                            ∑
+                            
+                              r
+                              =
+                              1
+                            
+                            
+                              V
+                            
+                          
+                          
+                            n
+                            
+                              (
+                              ⋅
+                              )
+                              ,
+                              r
+                            
+                            
+                              i
+                              ,
+                              −
+                              (
+                              m
+                              ,
+                              n
+                              )
+                            
+                          
+                          +
+                          
+                            β
+                            
+                              r
+                            
+                          
+                        
+                        )
+                      
+                    
+                  
+                
+                
+                  (
+                  
+                    
+                      n
+                      
+                        m
+                        ,
+                        (
+                        ⋅
+                        )
+                      
+                      
+                        k
+                        ,
+                        −
+                        (
+                        m
+                        ,
+                        n
+                        )
+                      
+                    
+                    +
+                    
+                      α
+                      
+                        k
+                      
+                    
+                  
+                  )
+                
+                
+                  
+                    
+                      
+                        n
+                        
+                          (
+                          ⋅
+                          )
+                          ,
+                          v
+                        
+                        
+                          k
+                          ,
+                          −
+                          (
+                          m
+                          ,
+                          n
+                          )
+                        
+                      
+                      +
+                      
+                        β
+                        
+                          v
+                        
+                      
+                    
+                    
+                      
+                        ∑
+                        
+                          r
+                          =
+                          1
+                        
+                        
+                          V
+                        
+                      
+                      
+                        n
+                        
+                          (
+                          ⋅
+                          )
+                          ,
+                          r
+                        
+                        
+                          k
+                          ,
+                          −
+                          (
+                          m
+                          ,
+                          n
+                          )
+                        
+                      
+                      +
+                      
+                        β
+                        
+                          r
+                        
+                      
+                    
+                  
+                
+              
+            
+            
+              
+              
+                
+                ∝
+                
+                  (
+                  
+                    
+                      n
+                      
+                        m
+                        ,
+                        (
+                        ⋅
+                        )
+                      
+                      
+                        k
+                        ,
+                        −
+                        (
+                        m
+                        ,
+                        n
+                        )
+                      
+                    
+                    +
+                    
+                      α
+                      
+                        k
+                      
+                    
+                  
+                  )
+                
+                
+                  
+                    
+                      
+                        n
+                        
+                          (
+                          ⋅
+                          )
+                          ,
+                          v
+                        
+                        
+                          k
+                          ,
+                          −
+                          (
+                          m
+                          ,
+                          n
+                          )
+                        
+                      
+                      +
+                      
+                        β
+                        
+                          v
+                        
+                      
+                    
+                    
+                      
+                        ∑
+                        
+                          r
+                          =
+                          1
+                        
+                        
+                          V
+                        
+                      
+                      
+                        n
+                        
+                          (
+                          ⋅
+                          )
+                          ,
+                          r
+                        
+                        
+                          k
+                          ,
+                          −
+                          (
+                          m
+                          ,
+                          n
+                          )
+                        
+                      
+                      +
+                      
+                        β
+                        
+                          r
+                        
+                      
+                    
+                  
+                
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{aligned}&\propto \prod _{i\neq k}\Gamma \left(n_{m,(\cdot )}^{i,-(m,n)}+\alpha _{i}\right)\prod _{i\neq k}{\frac {\Gamma \left(n_{(\cdot ),v}^{i,-(m,n)}+\beta _{v}\right)}{\Gamma \left(\sum _{r=1}^{V}n_{(\cdot ),r}^{i,-(m,n)}+\beta _{r}\right)}}\Gamma \left(n_{m,(\cdot )}^{k,-(m,n)}+\alpha _{k}+1\right){\frac {\Gamma \left(n_{(\cdot ),v}^{k,-(m,n)}+\beta _{v}+1\right)}{\Gamma \left(\sum _{r=1}^{V}n_{(\cdot ),r}^{k,-(m,n)}+\beta _{r}+1\right)}}\\[8pt]&=\prod _{i\neq k}\Gamma \left(n_{m,(\cdot )}^{i,-(m,n)}+\alpha _{i}\right)\prod _{i\neq k}{\frac {\Gamma \left(n_{(\cdot ),v}^{i,-(m,n)}+\beta _{v}\right)}{\Gamma \left(\sum _{r=1}^{V}n_{(\cdot ),r}^{i,-(m,n)}+\beta _{r}\right)}}\Gamma \left(n_{m,(\cdot )}^{k,-(m,n)}+\alpha _{k}\right){\frac {\Gamma \left(n_{(\cdot ),v}^{k,-(m,n)}+\beta _{v}\right)}{\Gamma \left(\sum _{r=1}^{V}n_{(\cdot ),r}^{k,-(m,n)}+\beta _{r}\right)}}\left(n_{m,(\cdot )}^{k,-(m,n)}+\alpha _{k}\right){\frac {n_{(\cdot ),v}^{k,-(m,n)}+\beta _{v}}{\sum _{r=1}^{V}n_{(\cdot ),r}^{k,-(m,n)}+\beta _{r}}}\\[8pt]&=\prod _{i}\Gamma \left(n_{m,(\cdot )}^{i,-(m,n)}+\alpha _{i}\right)\prod _{i}{\frac {\Gamma \left(n_{(\cdot ),v}^{i,-(m,n)}+\beta _{v}\right)}{\Gamma \left(\sum _{r=1}^{V}n_{(\cdot ),r}^{i,-(m,n)}+\beta _{r}\right)}}\left(n_{m,(\cdot )}^{k,-(m,n)}+\alpha _{k}\right){\frac {n_{(\cdot ),v}^{k,-(m,n)}+\beta _{v}}{\sum _{r=1}^{V}n_{(\cdot ),r}^{k,-(m,n)}+\beta _{r}}}\\[8pt]&\propto \left(n_{m,(\cdot )}^{k,-(m,n)}+\alpha _{k}\right){\frac {n_{(\cdot ),v}^{k,-(m,n)}+\beta _{v}}{\sum _{r=1}^{V}n_{(\cdot ),r}^{k,-(m,n)}+\beta _{r}}}\end{aligned}}}
+  
+
+Note that the same formula is derived in the article on the Dirichlet-multinomial distribution, as part of a more general discussion of integrating Dirichlet distribution priors out of a Bayesian network.
+
+
+== Related problems ==
+
+
+=== Related models ===
+Topic modeling is a classic solution to the problem of information retrieval using linked data and semantic web technology. Related models and techniques are, among others, latent semantic indexing, independent component analysis, probabilistic latent semantic indexing, non-negative matrix factorization, and Gamma-Poisson distribution.
+The LDA model is highly modular and can therefore be easily extended. The main field of interest is modeling relations between topics. This is achieved by using another distribution on the simplex instead of the Dirichlet. The Correlated Topic Model follows this approach, inducing a correlation structure between topics by using the logistic normal distribution instead of the Dirichlet. Another extension is the hierarchical LDA (hLDA), where topics are joined together in a hierarchy by using the nested Chinese restaurant process, whose structure is learnt from data. LDA can also be extended to a corpus in which a document includes two types of information (e.g., words and names), as in the LDA-dual model.
+Nonparametric extensions of LDA include the hierarchical Dirichlet process mixture model, which allows the number of topics to be unbounded and learnt from data.
+As noted earlier, pLSA is similar to LDA. The LDA model is essentially the Bayesian version of pLSA model. The Bayesian formulation tends to perform better on small datasets because Bayesian methods can avoid overfitting the data. For very large datasets, the results of the two models tend to converge. One difference is that pLSA uses a variable 
+  
+    
+      
+        d
+      
+    
+    {\displaystyle d}
+  
+ to represent a document in the training set. So in pLSA, when presented with a document the model has not seen before, we fix 
+  
+    
+      
+        Pr
+        (
+        w
+        ∣
+        z
+        )
+      
+    
+    {\displaystyle \Pr(w\mid z)}
+  
+—the probability of words under topics—to be that learned from the training set and use the same EM algorithm to infer 
+  
+    
+      
+        Pr
+        (
+        z
+        ∣
+        d
+        )
+      
+    
+    {\displaystyle \Pr(z\mid d)}
+  
+—the topic distribution under 
+  
+    
+      
+        d
+      
+    
+    {\displaystyle d}
+  
+. Blei argues that this step is cheating because you are essentially refitting the model to the new data.
+
+
+=== Spatial models ===
+In evolutionary biology, it is often natural to assume that the geographic locations of the individuals observed bring some information about their ancestry. This is the rational of various models for geo-referenced genetic data.
+Variations on LDA have been used to automatically put natural images into categories, such as "bedroom" or "forest", by treating an image as a document, and small patches of the image as words; one of the variations is called spatial latent Dirichlet allocation.
+
+
+== See also ==
+Variational Bayesian methods
+Pachinko allocation
+tf-idf
+Infer.NET
+
+
+== References ==

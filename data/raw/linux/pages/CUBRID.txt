@@ -1,0 +1,191 @@
+CUBRID ( "cube-rid") is an open-source SQL-based relational database management system (RDBMS) with object extensions developed by CUBRID Corp. for OLTP. The name CUBRID is a combination of the two words cube and bridge, cube standing for a space for data and bridge standing for data bridge.
+
+
+== License policy ==
+CUBRID has a separate license for its server engine and its interfaces. The server engine adopts the Apache License 2.0, which allows distribution, modification, and acquisition of the source code. CUBRID APIs and GUI tools have the Berkeley Software Distribution license in which there is no obligation of opening derivative works. The reason of adopting two separate license systems is to provide complete freedom to Independent software vendors (ISV) to develop and distribute CUBRID-based applications.
+
+
+== Architecture ==
+The feature that distinguishes CUBRID database from other relational database systems is its 3-tier client-server architecture which consists of the database server, the connection broker and the application layer.
+
+
+=== Connection broker ===
+The CUBRID connection broker's main roles are:
+
+management of client application connections
+caching and relaying information (e.g. query results)
+query syntax analysis, optimization and execution plan generation
+To further improve performance, the connection broker uses a local object pool, which allows certain operations—such as tuple insertion, deletion, and DDL statements—to be deferred from the database server. This reduces server load and enhances responsiveness.
+Unlike traditional database systems where the connection broker and database server are on the same machine, CUBRID’s broker can run on separate machines. This distributed architecture enables better resource utilization, scalability, and high availability by allowing multiple machines to process queries on a single database. By offloading tasks and distributing processing power, the connection broker significantly improves database efficiency and performance.
+
+
+== Features ==
+
+
+=== High Availability ===
+CUBRID High Availability provides load-balanced, fault-tolerant and continuous service availability through its shared-nothing clustering, automated fail-over and manual fail-back mechanisms.
+CUBRID's 3-tier architecture allows native support for High-Availability with two-level auto failover: the broker failover and server failover.
+
+
+==== Broker failover ====
+When connecting to a broker via a client API, users can specify, in the connection URL, a list of alternative hosts where brokers are listening for incoming requests. In case of a hardware, network, operating system or software failure on one of the hosts, the underlying client API automatically fails over to the next host that a user has provided.
+
+
+==== Server failover ====
+The High Availability environment can be built with 1:N master-slave server nodes. Each slave node communicates with the master via CUBRID Heartbeat protocol. When a master node is unresponsive, the first of the slave nodes will get promoted to a master role. Replication between nodes can be achieved in one of two modes: synchronous and asynchronous.
+Administrators can specify a list of server hosts each broker can connect to and, in the event of a failure of the master node, another will be used.
+
+
+=== Scalability and Maintainability ===
+
+
+==== Backup ====
+CUBRID supports online, offline and incremental backup.
+
+
+=== Performance ===
+
+
+==== API-level load balancing ====
+Because a connection broker can be configured in four different modes (read-write, read-only, slave-only, preferred host read only), the list of alternative hosts which a user has provided via the connection URL can be used as a method to balance the load. When Load Balancing is used, the client API will randomly choose a host among those specified in the connection URL except the one which was used to connect to last time. If the chosen host is not available, the selection will continue until all the hosts are determined as unavailable. In such case, the driver will report an error.
+
+
+==== Query plan caching ====
+A query execution plan cache is implemented on the broker in order to skip most of the compilation steps on often used queries. Because the queries are parametrized during parsing, two queries that differ only by the values of literal constants share the same cache entry.
+
+
+=== Storage ===
+
+
+==== Indexes ====
+CUBRID has support for B+-tree indexes, both single-column and multi-column. The following types of indexes can be created:
+
+Indexes and reversed indexes
+Unique indexes and reverse unique indexes
+Function-based indexes
+Filtered indexes
+The query optimizer can use indexes to produce faster execution plans using methods such as:
+
+Identifying covering indexes
+Descending index scans
+ORDER BY skip
+GROUP BY skip
+Multi-range limit optimizations
+Index Loose Scan
+Index Skip Scan
+
+
+==== Table partitioning ====
+CUBRID supports horizontal partitioning by range, hash and value lists, with a maximum of 1024 partitions per table. Partitions can be accessed independently and support most operations that are valid on a normal table.
+As of version 9.0, CUBRID implements execution-time partition pruning.
+
+
+=== SQL support ===
+CUBRID implements a large subset of the ANSI SQL:1999 standard, extended with features from later SQL standards and custom features.
+
+
+==== Window functions ====
+CUBRID provides support for window functions as defined in the SQL:2003 standard. The implemented functions are ROW_NUMBER, COUNT, MIN, MAX, SUM, AVG, STDDEV_POP, STDDEV_SAMP, VAR_POP, VAR_SAMP, RANK, DENSE_RANK, LEAD, LAG and NTILE.
+
+
+==== Hierarchical queries ====
+Hierarchical queries using the non-standard START WITH ... CONNECT BY Oracle syntax are supported in CUBRID. A number of specialized pseudocolumns and operators are provided for controlling the behavior of the query execution.
+
+
+==== Built in click-counter ====
+CUBRID optimizes the common scenario in web applications where database fields need to be incremented on certain events (e.g. page views). In contrast to the usual approach of using a SELECT/UPDATE statement combination, CUBRID can increment fields from within the SELECT statement execution, bypassing some expensive compiling, execution and locking overhead associated with an UPDATE statement.
+
+
+==== Java stored procedures ====
+The only stored procedure language supported in CUBRID is Java, requiring a Java virtual machine to be installed on the system.
+The virtual machine is started and managed by the server and is used for code execution.
+Stored procedure code that requires database access must use the JDBC driver, either using the parent transaction or issuing a new one.
+
+
+==== Regular expression ====
+In addition to the LIKE operator, CUBRID provides the REGEXP operator for regular expression pattern matching. By default, the operator does a case insensitive matching on the input string, but the modifier BINARY can be used for case sensitive scenarios. An optional alias of REGEXP is RLIKE.
+In the prior version of CUBRID 11, CUBRID does not support REGEXP on Unicode strings.
+From the CUBRID 11, CUBRID adds the following regular expression functions and supports them on Unicode strings.
+
+REGEXP_COUNT, REGEXP_INSTR, REGEXP_LIKE, REGEXP_REPLACE, REGEXP_SUBSTR
+
+
+==== Data types ====
+A variety of data types are supported by CUBRID:
+
+For numeric values:
+integer numerics: SMALLINT (16 bit), INTEGER (32 bit), BIGINT (64 bit)
+floating point numerics: FLOAT (32 bit), DOUBLE (64 bit)
+arbitrary precision numerics: NUMERIC
+monetary values: MONETARY (double precision floating point)
+For string values:
+fixed-length character and bit strings: CHAR, BIT
+variable-length character and bit strings: CHAR VARYING, BIT VARYING
+For date and time values:
+date values: DATE
+time values: TIME
+date and time values: DATETIME, TIMESTAMP (internally stored as a Unix timestamp)
+For collections: SET, MULTISET, LIST
+User-defined enumerations: ENUM
+For large objects: BLOB, CLOB
+For JavaScript Object Notation: JSON
+
+
+== Supported platforms ==
+CUBRID is available for Microsoft Windows and Linux (most distributions), for 32- and 64-bit architectures.
+
+
+== Interfaces ==
+
+
+=== Command line ===
+CUBRID comes with a built-in command-line interface named csql that can be used to execute SQL statements on the CUBRID server.
+The tool can be used in one of two modes:
+
+CS (client/server) mode, which can connect to local or remote CUBRID servers
+SA (stand alone) mode, used mainly for administration purposes, which mounts a local database by emulating a server instance
+CUBRID's csql also implements some internal commands related to schema information, plan generation, debugging, transaction control, query timing and more.
+
+
+=== Programming ===
+CUBRID provides a number of language-specific application programming interfaces: C driver (also called CCI, CUBRID's native driver), JDBC, PHP/PDO driver, ODBC, OLEDB, ADO.NET, Ruby driver, Python driver, Node.js driver and Perl driver.
+
+
+=== Graphical ===
+Several graphical user interface tools have been developed for CUBRID:
+
+CUBRID Manager is a query browser and database administration tool distributed under the BSD license on macOS and Linux.
+CUBRID Admin is an administration tool distributed under the BSD license on Windows.
+SQLGate is a query browser tool developed by CHEQUER on Windows using the Delphi programming language..
+CUBRID Migration Toolkit is a tool which allows data migration from Oracle, MS-SQL, MySQL and previous versions of CUBRID databases to the latest CUBRID database server.
+
+
+== Release history ==
+
+
+== Applications ==
+Some applications and websites that have added CUBRID support or are powered by CUBRID:
+
+jOOQ
+SOFA Statistics
+SIDU
+ART
+Scriptella
+JWhoisServer
+Yii2 PHP Framework
+RedBeanPHP
+DBeaver
+
+
+== See also ==
+
+Comparison of relational database management systems
+Comparison of object-relational database management systems
+List of relational database management systems
+
+
+== References ==
+
+
+== External links ==
+Official website

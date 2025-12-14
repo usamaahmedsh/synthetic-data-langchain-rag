@@ -1,0 +1,49 @@
+Application Layer Transport Optimization (ALTO) is a protocol that allows internet clients to obtain information that compares the network properties of paths to other endpoints. Typically, this would be used to identify the lowest-cost location to access a copy of some sort of content.
+The ALTO base protocol is specified in RFC 7285. It requires "ALTO servers" to be deployed in the network with knowledge of network properties, often simply the routing cost to various endpoints. An "ALTO client," typically tied to a user agent attempting to obtain a resource, queries the ALTO server over HTTP to obtain the optimal location from which to retrieve the resource.
+
+
+== History ==
+Starting around 2005, the widespread use of peer-to-peer applications such as BitTorrent was a serious concern to many network operators, as the massive amounts of network traffic caused by these applications
+had a significant impact on traffic engineering and revenues. Some network operators tried to throttle this traffic.
+In May 2008, in an IETF Workshop on Peer-to-Peer Infrastructure, several areas of work were identified:
+
+A standardized interface for the exchange of information between the underlying IP network and an overlay network, such as a peer-to-peer network. The basic idea is, that if the overlay network was aware of the topology and the cost for sending traffic through the underlying IP network, it could optimize decisions with respect to the overlay network's topology (e.g., peer selection) and routing of traffic through the overlay network. The result would be better performance or Quality of Experience in the application while reducing the utilization of the underlying network infrastructure. This work item led to the establishment of the IETF ALTO working group.
+Content caches in the network. This has been studied in the IETF DECADE working group. However, no new protocol has been developed and standardized.
+A new congestion control mechanism in the transport layer for background traffic, which "yields" to standard TCP. This was worked on in the IETF LEDBAT working group and has been standardized in RFC 6817.
+A new DiffServ code point to mark IP packets to have a lower priority than the default "best effort" category has been standardized in RFC 8622.
+The IETF ALTO working group was established in November 2008. The first deliverables were the problem statement, the requirements document, the specification of the core ALTO protocol and an ALTO server discovery mechanism. Since then, various extensions have been specified (see below) or are still work in progress (see IETF ALTO Datatracker).
+Originally designed to support peer-to-peer file sharing, the concept is broadly applicable to many network problems. However, as of 2021 it has not achieved widespread deployment in the internet. Nevertheless, there have been experiments in Internet service provider (ISP) networks and a deployment to support large data transfers for the Large Hadron Collider at CERN.
+
+
+== Protocol overview ==
+ALTO servers typically operate inside an ISP and collect information about the topology of the ISP network. The means of collecting this information are out of scope for the ALTO design, but typically this would involve participating in the routing protocol's information exchange, accepting policy inputs from network management, and data from various network monitoring systems.
+The ALTO server uses this information to provide services to the client.
+The first step in retrieving ALTO information is to locate the ALTO server. If the ALTO client is located on the host that is also the endpoint of the data transmissions to be optimized, the ALTO server discovery procedure specified in RFC 7286 may be used. In contrast, when the ALTO client is located on a different host (e.g., when a BitTorrent tracker with an embedded ALTO client wants to optimize peer selection on behalf of a peer that might be in a different network domain), the cross-domain server discovery procedure specified in RFC 8686 should be used. A client might have the service discovery domain name directly configured, but usually it will obtain the name via DHCP when joining a network. It then composes a DDDS query to that service discovery host for the "ALTO:https" or "ALTO:http" Application Service tag, which in turn returns the URL for any available ALTO Server Information Resource Directories (IRD).
+A client would then retrieve the IRD from one of the ALTO servers, which lists the specifics of what services are available, supported parameters, and the locations of those services.
+There are four service types in the base protocol:
+The Map Service provides a file that lists all the endpoints or PIDs that the server tracks. A "network map" serves as a "table of contents" that the client can use to construct more specific queries. These endpoints are identified by IPv4 or IPv6 address and are grouped with other endpoints with similar properties into Provider-Defined Identifiers (PIDs) to reduce the size of future queries and responses. A "cost map" lists the routing cost for each pair of PIDs.
+The Map-Filtering Service provides a subset of the network map or cost map based on client-provided parameters.
+The Endpoint Property Service allows the client to query properties, such as the connectivity type or encapsulating PID, of a specific endpoint.
+The Endpoint Cost Service gives clients the routing cost to specific endpoints, which might be expressed as the absolute cost metric or a ranking of the relative cost of each.
+Later specifications specify additional services:
+The Update Stream Service, specified in RFC 8895, leaves the connection open for the server to provide a stream of update messages as information changes. The same RFC also specifies the Stream Control Service, allowing the client to change its request for update messages.
+All ALTO client messages are REST HTTP requests that elicit HTTP responses from the ALTO server. The payloads of these requests and responses consist of JSON text that contain hierarchical key-value pairs.
+
+
+== Protocol syntax ==
+Clients obtain the IRD via the HTTP GET message. The following example from RFC 7285 depicts a request for the IRD. The requested target (/directory) came from the DDDS service discovery process described above. This IRD provides targets for the services available on this server, as well as acceptable parameters.
+
+Clients obtain the Map Service via the HTTP GET message. The following example from RFC 7285 depicts a request for a network map and a response that groups five endpoints into 3 PIDs:
+
+The other three services rely on additional information the client provides in the request payload. As HTTP GET does not have a request payload, clients access these services with the HTTP POST method. The following example from RFC 7285 shows a request for the cost from one source to three potential destinations, and the response.
+
+
+== Other extensions ==
+Numerous additional standards have extended the protocol's usability and feature set.
+
+RFC 8189 allows clients to request multiple cost types (for example, routing cost and hop count) in a single request.
+RFC 8896 introduces the concept of a "cost calendar", where the server can express how the cost to reach an endpoints evolves over time.
+The IETF Datatracker for the ALTO working group shows documents that are still work in progress.
+
+
+== References ==

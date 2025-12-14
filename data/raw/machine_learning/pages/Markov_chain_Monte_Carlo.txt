@@ -1,0 +1,4142 @@
+In statistics, Markov chain Monte Carlo (MCMC) is a class of algorithms used to draw samples from a probability distribution. Given a probability distribution, one can construct a Markov chain whose elements' distribution approximates it – that is, the Markov chain's equilibrium distribution matches the target distribution. The more steps that are included, the more closely the distribution of the sample matches the actual desired distribution.
+Markov chain Monte Carlo methods are used to study probability distributions that are too complex or too high dimensional to study with analytic techniques alone. Various algorithms exist for constructing such Markov chains, including the Metropolis–Hastings algorithm.
+
+
+== General explanation ==
+
+Markov chain Monte Carlo methods create samples from a continuous random variable, with probability density proportional to a known function. These samples can be used to evaluate an integral over that variable, as its expected value or variance.
+Practically, an ensemble of chains is generally developed, starting from a set of points arbitrarily chosen and sufficiently distant from each other. These chains are stochastic processes of "walkers" which move around randomly according to an algorithm that looks for places with a reasonably high contribution to the integral to move into next, assigning them higher probabilities.
+Random walk Monte Carlo methods are a kind of random simulation or Monte Carlo method. However, whereas the random samples of the integrand used in a conventional Monte Carlo integration are statistically independent, those used in MCMC are autocorrelated. Correlations of samples introduces the need to use the Markov chain central limit theorem when estimating the error of mean values.
+These algorithms create Markov chains such that they have an equilibrium distribution which is proportional to the function given.
+
+
+== History ==
+The development of MCMC methods is deeply rooted in the early exploration of Monte Carlo (MC) techniques in the mid-20th century, particularly in physics. These developments were marked by the Metropolis algorithm proposed by Nicholas Metropolis, Arianna W. Rosenbluth, Marshall Rosenbluth, Augusta H. Teller, and Edward Teller in 1953, which was designed to tackle high-dimensional integration problems using early computers. Then in 1970, W. K. Hastings generalized this algorithm and inadvertently introduced the component-wise updating idea, later known as Gibbs sampling. Simultaneously, the theoretical foundations for Gibbs sampling were being developed, such as the Hammersley–Clifford theorem from Julian Besag's 1974 paper. Although the seeds of MCMC were sown earlier, including the formal naming of Gibbs sampling in image processing by Stuart Geman and Donald Geman (1984) and the data augmentation method by Martin A. Tanner and Wing Hung Wong (1987), its "revolution" in mainstream statistics largely followed demonstrations of the universality and ease of implementation of sampling methods (especially Gibbs sampling) for complex statistical (particularly Bayesian) problems, spurred by increasing computational power and software like BUGS. This transformation was accompanied by significant theoretical advancements, such as Luke Tierney's (1994) rigorous treatment of MCMC convergence, and Jun S. Liu, Wong, and Augustine Kong's (1994, 1995) analysis of Gibbs sampler structure. Subsequent developments further expanded the MCMC toolkit, including particle filters (Sequential Monte Carlo) for sequential problems, Perfect sampling aiming for exact simulation (Jim Propp and David B. Wilson, 1996), RJMCMC (Peter J. Green, 1995) for handling variable-dimension models, and deeper investigations into convergence diagnostics and the central limit theorem. Overall, the evolution of MCMC represents a paradigm shift in statistical computation, enabling the analysis of numerous previously intractable complex models and continually expanding the scope and impact of statistics.
+
+
+== Mathematical setting ==
+Suppose (Xn) is a Markov Chain in the general state space 
+  
+    
+      
+        
+          
+            X
+          
+        
+      
+    
+    {\displaystyle {\mathcal {X}}}
+  
+ with specific properties. We are interested in the limiting behavior of the partial sums:
+
+  
+    
+      
+        
+          S
+          
+            n
+          
+        
+        (
+        h
+        )
+        =
+        
+          
+            
+              1
+              n
+            
+          
+        
+        
+          ∑
+          
+            i
+            =
+            1
+          
+          
+            n
+          
+        
+        h
+        (
+        
+          X
+          
+            i
+          
+        
+        )
+      
+    
+    {\displaystyle S_{n}(h)={\dfrac {1}{n}}\sum _{i=1}^{n}h(X_{i})}
+  
+
+as n goes to infinity. Particularly, we hope to establish the Law of Large Numbers and the Central Limit Theorem for MCMC. In the following, we state some definitions and theorems necessary for the important convergence results. In short, we need the existence of invariant measure and Harris recurrent to establish the Law of Large Numbers of MCMC (Ergodic Theorem). And we need aperiodicity, irreducibility and extra conditions such as reversibility to ensure the Central Limit Theorem holds in MCMC.
+
+
+=== Irreducibility and aperiodicity ===
+Recall that in the discrete setting, a Markov chain is said to be irreducible if it is possible to reach any state from any other state in a finite number of steps with positive probability. However, in the continuous setting, point-to-point transitions have zero probability. In this case, φ-irreducibility generalizes irreducibility by using a reference measure φ on the measurable space 
+  
+    
+      
+        (
+        
+          
+            X
+          
+        
+        ,
+        
+          
+            B
+          
+        
+        (
+        
+          
+            X
+          
+        
+        )
+        )
+      
+    
+    {\displaystyle ({\mathcal {X}},{\mathcal {B}}({\mathcal {X}}))}
+  
+.
+
+Definition (φ-irreducibility)
+Given a measure 
+  
+    
+      
+        φ
+      
+    
+    {\displaystyle \varphi }
+  
+ defined on 
+  
+    
+      
+        (
+        
+          
+            X
+          
+        
+        ,
+        
+          
+            B
+          
+        
+        (
+        
+          
+            X
+          
+        
+        )
+        )
+      
+    
+    {\displaystyle ({\mathcal {X}},{\mathcal {B}}({\mathcal {X}}))}
+  
+, the Markov chain 
+  
+    
+      
+        (
+        
+          X
+          
+            n
+          
+        
+        )
+      
+    
+    {\displaystyle (X_{n})}
+  
+ with transition kernel 
+  
+    
+      
+        K
+        (
+        x
+        ,
+        y
+        )
+      
+    
+    {\displaystyle K(x,y)}
+  
+ is φ-irreducible if, for every 
+  
+    
+      
+        A
+        ∈
+        
+          
+            B
+          
+        
+        (
+        
+          
+            X
+          
+        
+        )
+      
+    
+    {\displaystyle A\in {\mathcal {B}}({\mathcal {X}})}
+  
+ with 
+  
+    
+      
+        φ
+        (
+        A
+        )
+        >
+        0
+      
+    
+    {\displaystyle \varphi (A)>0}
+  
+, there exists 
+  
+    
+      
+        n
+      
+    
+    {\displaystyle n}
+  
+ such that 
+  
+    
+      
+        
+          K
+          
+            n
+          
+        
+        (
+        x
+        ,
+        A
+        )
+        >
+        0
+      
+    
+    {\displaystyle K^{n}(x,A)>0}
+  
+ for all 
+  
+    
+      
+        x
+        ∈
+        
+          
+            X
+          
+        
+      
+    
+    {\displaystyle x\in {\mathcal {X}}}
+  
+ (Equivalently, 
+  
+    
+      
+        
+          P
+          
+            x
+          
+        
+        (
+        
+          τ
+          
+            A
+          
+        
+        <
+        ∞
+        )
+        >
+        0
+      
+    
+    {\displaystyle P_{x}(\tau _{A}<\infty )>0}
+  
+, here 
+  
+    
+      
+        
+          τ
+          
+            A
+          
+        
+        =
+        inf
+        {
+        n
+        ≥
+        1
+        ;
+        
+          X
+          
+            n
+          
+        
+        ∈
+        A
+        }
+      
+    
+    {\displaystyle \tau _{A}=\inf\{n\geq 1;X_{n}\in A\}}
+  
+ is the first 
+  
+    
+      
+        n
+      
+    
+    {\displaystyle n}
+  
+ for which the chain enters the set 
+  
+    
+      
+        A
+      
+    
+    {\displaystyle A}
+  
+). 
+This is a more general definition for irreducibility of a Markov chain in non-discrete state space. In the discrete case, an irreducible Markov chain is said to be aperiodic if it has period 1. Formally, the period of a state 
+  
+    
+      
+        ω
+        ∈
+        
+          
+            X
+          
+        
+      
+    
+    {\displaystyle \omega \in {\mathcal {X}}}
+  
+ is defined as:
+
+  
+    
+      
+        d
+        (
+        ω
+        )
+        :=
+        
+          g
+          c
+          d
+        
+        {
+        m
+        ≥
+        1
+        
+        ;
+        
+        
+          K
+          
+            m
+          
+        
+        (
+        ω
+        ,
+        ω
+        )
+        >
+        0
+        }
+      
+    
+    {\displaystyle d(\omega ):=\mathrm {gcd} \{m\geq 1\,;\,K^{m}(\omega ,\omega )>0\}}
+  
+
+For the general (non-discrete) case, we define aperiodicity in terms of small sets:
+
+Definition (Cycle length and small sets)
+A φ-irreducible Markov chain 
+  
+    
+      
+        (
+        
+          X
+          
+            n
+          
+        
+        )
+      
+    
+    {\displaystyle (X_{n})}
+  
+ has a cycle of length d if there exists a small set 
+  
+    
+      
+        C
+      
+    
+    {\displaystyle C}
+  
+, an associated integer 
+  
+    
+      
+        M
+      
+    
+    {\displaystyle M}
+  
+, and a probability distribution 
+  
+    
+      
+        
+          ν
+          
+            M
+          
+        
+      
+    
+    {\displaystyle \nu _{M}}
+  
+ such that d is the greatest common divisor of:
+
+  
+    
+      
+        {
+        m
+        ≥
+        1
+        
+        ;
+        
+        ∃
+        
+        
+          δ
+          
+            m
+          
+        
+        >
+        0
+        
+           such that 
+        
+        C
+        
+           is small for 
+        
+        
+          ν
+          
+            m
+          
+        
+        ≥
+        
+          δ
+          
+            m
+          
+        
+        
+          ν
+          
+            M
+          
+        
+        }
+        .
+      
+    
+    {\displaystyle \{m\geq 1\,;\,\exists \,\delta _{m}>0{\text{ such that }}C{\text{ is small for }}\nu _{m}\geq \delta _{m}\nu _{M}\}.}
+  
+
+A set 
+  
+    
+      
+        C
+      
+    
+    {\displaystyle C}
+  
+ is called small if there exists 
+  
+    
+      
+        m
+        ∈
+        
+          
+            N
+          
+          
+            ∗
+          
+        
+      
+    
+    {\displaystyle m\in \mathbb {N} ^{*}}
+  
+ and a nonzero measure 
+  
+    
+      
+        
+          ν
+          
+            m
+          
+        
+      
+    
+    {\displaystyle \nu _{m}}
+  
+ such that:
+
+  
+    
+      
+        
+          K
+          
+            m
+          
+        
+        (
+        x
+        ,
+        A
+        )
+        ≥
+        
+          ν
+          
+            m
+          
+        
+        (
+        A
+        )
+        ,
+        
+        ∀
+        x
+        ∈
+        C
+        ,
+        
+        ∀
+        A
+        ∈
+        
+          
+            B
+          
+        
+        (
+        
+          
+            X
+          
+        
+        )
+        .
+      
+    
+    {\displaystyle K^{m}(x,A)\geq \nu _{m}(A),\quad \forall x\in C,\,\forall A\in {\mathcal {B}}({\mathcal {X}}).}
+  
+
+
+=== Harris recurrent ===
+Definition (Harris recurrence)
+A set 
+  
+    
+      
+        A
+      
+    
+    {\displaystyle A}
+  
+ is Harris recurrent if 
+  
+    
+      
+        
+          P
+          
+            x
+          
+        
+        (
+        
+          η
+          
+            A
+          
+        
+        =
+        ∞
+        )
+        =
+        1
+      
+    
+    {\displaystyle P_{x}(\eta _{A}=\infty )=1}
+  
+ for all 
+  
+    
+      
+        x
+        ∈
+        A
+      
+    
+    {\displaystyle x\in A}
+  
+, where 
+  
+    
+      
+        
+          η
+          
+            A
+          
+        
+        =
+        
+          ∑
+          
+            n
+            =
+            1
+          
+          
+            ∞
+          
+        
+        
+          
+            I
+          
+          
+            A
+          
+        
+        (
+        
+          X
+          
+            n
+          
+        
+        )
+      
+    
+    {\displaystyle \eta _{A}=\sum _{n=1}^{\infty }\mathbb {I} _{A}(X_{n})}
+  
+ is the number of visits of the chain 
+  
+    
+      
+        (
+        
+          X
+          
+            n
+          
+        
+        )
+      
+    
+    {\displaystyle (X_{n})}
+  
+ to the set 
+  
+    
+      
+        A
+      
+    
+    {\displaystyle A}
+  
+.
+The chain 
+  
+    
+      
+        (
+        
+          X
+          
+            n
+          
+        
+        )
+      
+    
+    {\displaystyle (X_{n})}
+  
+ is said to be Harris recurrent if there exists a measure 
+  
+    
+      
+        ψ
+      
+    
+    {\displaystyle \psi }
+  
+ such that the chain is 
+  
+    
+      
+        ψ
+      
+    
+    {\displaystyle \psi }
+  
+-irreducible and every measurable set 
+  
+    
+      
+        A
+      
+    
+    {\displaystyle A}
+  
+ with 
+  
+    
+      
+        ψ
+        (
+        A
+        )
+        >
+        0
+      
+    
+    {\displaystyle \psi (A)>0}
+  
+ is Harris recurrent.
+A useful criterion for verifying Harris recurrence is the following:
+
+Proposition
+If for every 
+  
+    
+      
+        A
+        ∈
+        
+          
+            B
+          
+        
+        (
+        
+          
+            X
+          
+        
+        )
+      
+    
+    {\displaystyle A\in {\mathcal {B}}({\mathcal {X}})}
+  
+, we have 
+  
+    
+      
+        
+          P
+          
+            x
+          
+        
+        (
+        
+          τ
+          
+            A
+          
+        
+        <
+        ∞
+        )
+        =
+        1
+      
+    
+    {\displaystyle P_{x}(\tau _{A}<\infty )=1}
+  
+ for every 
+  
+    
+      
+        x
+        ∈
+        A
+      
+    
+    {\displaystyle x\in A}
+  
+, then 
+  
+    
+      
+        
+          P
+          
+            x
+          
+        
+        (
+        
+          η
+          
+            A
+          
+        
+        =
+        ∞
+        )
+        =
+        1
+      
+    
+    {\displaystyle P_{x}(\eta _{A}=\infty )=1}
+  
+ for all 
+  
+    
+      
+        x
+        ∈
+        
+          
+            X
+          
+        
+      
+    
+    {\displaystyle x\in {\mathcal {X}}}
+  
+, and the chain 
+  
+    
+      
+        (
+        
+          X
+          
+            n
+          
+        
+        )
+      
+    
+    {\displaystyle (X_{n})}
+  
+ is Harris recurrent. 
+This definition is only needed when the state space 
+  
+    
+      
+        
+          
+            X
+          
+        
+      
+    
+    {\displaystyle {\mathcal {X}}}
+  
+ is uncountable. In the countable case, recurrence corresponds to 
+  
+    
+      
+        
+          
+            E
+          
+          
+            x
+          
+        
+        [
+        
+          η
+          
+            x
+          
+        
+        ]
+        =
+        ∞
+      
+    
+    {\displaystyle \mathbb {E} _{x}[\eta _{x}]=\infty }
+  
+, which is equivalent to 
+  
+    
+      
+        
+          P
+          
+            x
+          
+        
+        (
+        
+          τ
+          
+            x
+          
+        
+        <
+        ∞
+        )
+        =
+        1
+      
+    
+    {\displaystyle P_{x}(\tau _{x}<\infty )=1}
+  
+ for all 
+  
+    
+      
+        x
+        ∈
+        
+          
+            X
+          
+        
+      
+    
+    {\displaystyle x\in {\mathcal {X}}}
+  
+.
+
+Definition (Invariant measure)
+A 
+  
+    
+      
+        σ
+      
+    
+    {\displaystyle \sigma }
+  
+-finite measure 
+  
+    
+      
+        π
+      
+    
+    {\displaystyle \pi }
+  
+ is said to be invariant for the transition kernel 
+  
+    
+      
+        K
+        (
+        ⋅
+        ,
+        ⋅
+        )
+      
+    
+    {\displaystyle K(\cdot ,\cdot )}
+  
+ (and the associated chain) if:
+
+  
+    
+      
+        π
+        (
+        B
+        )
+        =
+        
+          ∫
+          
+            
+              X
+            
+          
+        
+        K
+        (
+        x
+        ,
+        B
+        )
+        
+        π
+        (
+        d
+        x
+        )
+        ,
+        
+        ∀
+        B
+        ∈
+        
+          
+            B
+          
+        
+        (
+        
+          
+            X
+          
+        
+        )
+        .
+      
+    
+    {\displaystyle \pi (B)=\int _{\mathcal {X}}K(x,B)\,\pi (dx),\qquad \forall B\in {\mathcal {B}}({\mathcal {X}}).}
+  
+
+When there exists an invariant probability measure for a ψ-irreducible (hence recurrent) chain, the chain is said to be positive recurrent.  
+Recurrent chains that do not allow for a finite invariant measure are called null recurrent.
+In applications of Markov Chain Monte Carlo (MCMC), a very useful criterion for Harris recurrence involves the use of bounded harmonic functions.
+
+Definition (Harmonic function)
+A measurable function 
+  
+    
+      
+        h
+      
+    
+    {\displaystyle h}
+  
+ is said to be harmonic for the chain 
+  
+    
+      
+        (
+        
+          X
+          
+            n
+          
+        
+        )
+      
+    
+    {\displaystyle (X_{n})}
+  
+ if:
+
+  
+    
+      
+        
+          E
+        
+        [
+        h
+        (
+        
+          X
+          
+            n
+            +
+            1
+          
+        
+        )
+        ∣
+        
+          x
+          
+            n
+          
+        
+        ]
+        =
+        h
+        (
+        
+          x
+          
+            n
+          
+        
+        )
+      
+    
+    {\displaystyle \mathbb {E} [h(X_{n+1})\mid x_{n}]=h(x_{n})}
+  
+
+These functions are invariant under the transition kernel in the functional sense, and they help characterize Harris recurrence.
+
+Proposition
+For a positive Markov chain, if the only bounded harmonic functions are the constant functions, then the chain is Harris recurrent.
+
+
+=== Law of Large Numbers for MCMC ===
+Theorem (Ergodic Theorem for MCMC)
+If 
+  
+    
+      
+        (
+        
+          X
+          
+            n
+          
+        
+        )
+      
+    
+    {\displaystyle (X_{n})}
+  
+ has a 
+  
+    
+      
+        σ
+      
+    
+    {\displaystyle \sigma }
+  
+-finite invariant measure 
+  
+    
+      
+        π
+      
+    
+    {\displaystyle \pi }
+  
+, then the following two statements are equivalent:
+
+The Markov chain 
+  
+    
+      
+        (
+        
+          X
+          
+            n
+          
+        
+        )
+      
+    
+    {\displaystyle (X_{n})}
+  
+ is Harris recurrent.
+If 
+  
+    
+      
+        f
+        ,
+        g
+        ∈
+        
+          L
+          
+            1
+          
+        
+        (
+        π
+        )
+      
+    
+    {\displaystyle f,g\in L^{1}(\pi )}
+  
+ with 
+  
+    
+      
+        ∫
+        g
+        (
+        x
+        )
+        
+        d
+        π
+        (
+        x
+        )
+        ≠
+        0
+      
+    
+    {\displaystyle \int g(x)\,d\pi (x)\neq 0}
+  
+, then
+  
+    
+      
+        
+          lim
+          
+            n
+            →
+            ∞
+          
+        
+        
+          
+            
+              
+                S
+                
+                  n
+                
+              
+              (
+              f
+              )
+            
+            
+              
+                S
+                
+                  n
+                
+              
+              (
+              g
+              )
+            
+          
+        
+        =
+        
+          
+            
+              ∫
+              f
+              (
+              x
+              )
+              
+              d
+              π
+              (
+              x
+              )
+            
+            
+              ∫
+              g
+              (
+              x
+              )
+              
+              d
+              π
+              (
+              x
+              )
+            
+          
+        
+        .
+      
+    
+    {\displaystyle \lim _{n\to \infty }{\frac {S_{n}(f)}{S_{n}(g)}}={\frac {\int f(x)\,d\pi (x)}{\int g(x)\,d\pi (x)}}.}
+  
+
+This theorem provides a fundamental justification for the use of Markov Chain Monte Carlo (MCMC) methods, and it serves as the counterpart of the Law of Large Numbers (LLN) in classical Monte Carlo. 
+An important aspect of this result is that 
+  
+    
+      
+        π
+      
+    
+    {\displaystyle \pi }
+  
+ does not need to be a probability measure. Therefore, there can be some type of strong stability even if the chain is null recurrent. Moreover, the Markov chain can be started from arbitrary state.
+If 
+  
+    
+      
+        π
+      
+    
+    {\displaystyle \pi }
+  
+ is a probability measure, we can let 
+  
+    
+      
+        g
+        ≡
+        1
+      
+    
+    {\displaystyle g\equiv 1}
+  
+ and get
+
+  
+    
+      
+        
+          lim
+          
+            n
+            →
+            ∞
+          
+        
+        
+          S
+          
+            n
+          
+        
+        (
+        f
+        )
+        =
+        ∫
+        f
+        (
+        x
+        )
+        
+        d
+        π
+        (
+        x
+        )
+        .
+      
+    
+    {\displaystyle \lim _{n\to \infty }S_{n}(f)=\int f(x)\,d\pi (x).}
+  
+
+This is the Ergodic Theorem that we are more familiar with.
+
+
+=== Central Limit Theorem for MCMC ===
+There are several conditions under which the Central Limit Theorem (CLT) holds for Markov chain Monte Carlo (MCMC) methods. One of the most commonly used is the condition of reversibility.
+
+Definition (Reversibility)
+A stationary Markov chain 
+  
+    
+      
+        (
+        
+          X
+          
+            n
+          
+        
+        )
+      
+    
+    {\displaystyle (X_{n})}
+  
+ is said to be reversible if the distribution of 
+  
+    
+      
+        
+          X
+          
+            n
+            +
+            1
+          
+        
+      
+    
+    {\displaystyle X_{n+1}}
+  
+ given 
+  
+    
+      
+        
+          X
+          
+            n
+            +
+            2
+          
+        
+        =
+        x
+      
+    
+    {\displaystyle X_{n+2}=x}
+  
+ is the same as the distribution of 
+  
+    
+      
+        
+          X
+          
+            n
+            +
+            1
+          
+        
+      
+    
+    {\displaystyle X_{n+1}}
+  
+ given 
+  
+    
+      
+        
+          X
+          
+            n
+          
+        
+        =
+        x
+      
+    
+    {\displaystyle X_{n}=x}
+  
+.
+This is equivalent to the detailed balance condition, which is defined as follows:
+
+Definition (Detailed balance)
+A Markov chain with transition kernel 
+  
+    
+      
+        K
+      
+    
+    {\displaystyle K}
+  
+ satisfies the detailed balance condition if there exists a function 
+  
+    
+      
+        f
+      
+    
+    {\displaystyle f}
+  
+ such that:
+
+  
+    
+      
+        K
+        (
+        y
+        ,
+        x
+        )
+        f
+        (
+        y
+        )
+        =
+        K
+        (
+        x
+        ,
+        y
+        )
+        f
+        (
+        x
+        )
+      
+    
+    {\displaystyle K(y,x)f(y)=K(x,y)f(x)}
+  
+
+for every pair 
+  
+    
+      
+        (
+        x
+        ,
+        y
+        )
+      
+    
+    {\displaystyle (x,y)}
+  
+ in the state space.
+
+Theorem (CLT under reversibility)
+If 
+  
+    
+      
+        (
+        
+          X
+          
+            n
+          
+        
+        )
+      
+    
+    {\displaystyle (X_{n})}
+  
+ is aperiodic, irreducible, and reversible with invariant distribution 
+  
+    
+      
+        π
+      
+    
+    {\displaystyle \pi }
+  
+, then:
+
+  
+    
+      
+        
+          
+            1
+            
+              N
+            
+          
+        
+        
+          (
+          
+            
+              ∑
+              
+                n
+                =
+                1
+              
+              
+                N
+              
+            
+            
+              (
+              
+                h
+                (
+                
+                  X
+                  
+                    n
+                  
+                
+                )
+                −
+                
+                  
+                    E
+                  
+                  
+                    π
+                  
+                
+                [
+                h
+                ]
+              
+              )
+            
+          
+          )
+        
+        
+          
+            ⟶
+            
+              L
+            
+          
+        
+        
+          
+            N
+          
+        
+        (
+        0
+        ,
+        
+          γ
+          
+            h
+          
+          
+            2
+          
+        
+        )
+      
+    
+    {\displaystyle {\frac {1}{\sqrt {N}}}\left(\sum _{n=1}^{N}\left(h(X_{n})-\mathbb {E} ^{\pi }[h]\right)\right){\overset {\mathcal {L}}{\longrightarrow }}{\mathcal {N}}(0,\gamma _{h}^{2})}
+  
+
+where
+
+  
+    
+      
+        0
+        <
+        
+          γ
+          
+            h
+          
+          
+            2
+          
+        
+        =
+        
+          
+            E
+          
+          
+            π
+          
+        
+        
+          [
+          
+            
+              
+                
+                  
+                    h
+                    ¯
+                  
+                
+              
+              
+                2
+              
+            
+            (
+            
+              X
+              
+                0
+              
+            
+            )
+          
+          ]
+        
+        +
+        2
+        
+          ∑
+          
+            k
+            =
+            1
+          
+          
+            ∞
+          
+        
+        
+          
+            E
+          
+          
+            π
+          
+        
+        
+          [
+          
+            
+              
+                
+                  h
+                  ¯
+                
+              
+            
+            (
+            
+              X
+              
+                0
+              
+            
+            )
+            
+              
+                
+                  h
+                  ¯
+                
+              
+            
+            (
+            
+              X
+              
+                k
+              
+            
+            )
+          
+          ]
+        
+        <
+        +
+        ∞
+      
+    
+    {\displaystyle 0<\gamma _{h}^{2}=\mathbb {E} _{\pi }\left[{\bar {h}}^{2}(X_{0})\right]+2\sum _{k=1}^{\infty }\mathbb {E} _{\pi }\left[{\bar {h}}(X_{0}){\bar {h}}(X_{k})\right]<+\infty }
+  
+
+and 
+
+  
+    
+      
+        
+          
+            
+              h
+              ¯
+            
+          
+        
+        (
+        ⋅
+        )
+        =
+        h
+        (
+        ⋅
+        )
+        −
+        E
+        [
+        h
+        (
+        ⋅
+        )
+        ]
+      
+    
+    {\displaystyle {\bar {h}}(\cdot )=h(\cdot )-E[h(\cdot )]}
+  
+.
+Even though reversibility is a restrictive assumption in theory, it is often easily satisfied in practical MCMC algorithms by introducing auxiliary variables or using symmetric proposal mechanisms. There are many other conditions that can be used to establish CLT for MCMC such as geometric ergodicity and the discrete state space.
+
+
+== Autocorrelation ==
+MCMC methods produce autocorrelated samples, in contrast to standard Monte Carlo techniques that draw independent samples. Autocorrelation means successive draws from the Markov chain are statistically dependent, so each new sample adds less fresh information than an independent draw would. As a result, one must account for this correlation when assessing the accuracy of estimates from the chain. In particular, positive autocorrelation in the chain increases the variance of estimators and slows the convergence of sample averages toward the true expectation.
+
+
+=== Autocorrelation and efficiency ===
+The effect of correlation on estimation can be quantified through the Markov chain central limit theorem. For a chain targeting a distribution with variance 
+  
+    
+      
+        
+          σ
+          
+            2
+          
+        
+      
+    
+    {\displaystyle \sigma ^{2}}
+  
+, the variance of the sample mean after 
+  
+    
+      
+        N
+      
+    
+    {\displaystyle N}
+  
+ steps is approximately 
+  
+    
+      
+        
+          
+            σ
+            
+              2
+            
+          
+        
+        
+          
+            /
+          
+        
+        
+          N
+          
+            eff
+          
+        
+      
+    
+    {\displaystyle {\sigma ^{2}}{\big /}N_{\text{eff}}}
+  
+, where 
+  
+    
+      
+        
+          N
+          
+            eff
+          
+        
+      
+    
+    {\displaystyle N_{\text{eff}}}
+  
+ is an effective sample size smaller than 
+  
+    
+      
+        N
+      
+    
+    {\displaystyle N}
+  
+. Equivalently, one can express this as: 
+
+  
+    
+      
+        
+          V
+          a
+          r
+        
+        (
+        
+          
+            
+              
+                X
+                ¯
+              
+            
+          
+          
+            N
+          
+        
+        )
+        ≈
+        
+          
+            
+              σ
+              
+                2
+              
+            
+            N
+          
+        
+        
+          (
+          
+            1
+            +
+            2
+            
+              ∑
+              
+                k
+                =
+                1
+              
+              
+                ∞
+              
+            
+            
+              ρ
+              
+                k
+              
+            
+          
+          )
+        
+      
+    
+    {\displaystyle \mathrm {Var} ({\bar {X}}_{N})\approx {\frac {\sigma ^{2}}{N}}\left(1+2\sum _{k=1}^{\infty }\rho _{k}\right)}
+  
+
+where 
+  
+    
+      
+        
+          
+            
+              
+                X
+                ¯
+              
+            
+          
+          
+            N
+          
+        
+      
+    
+    {\displaystyle {\bar {X}}_{N}}
+  
+ is the sample mean and 
+  
+    
+      
+        
+          ρ
+          
+            k
+          
+        
+      
+    
+    {\displaystyle \rho _{k}}
+  
+ is the autocorrelation of the chain at lag 
+  
+    
+      
+        k
+      
+    
+    {\displaystyle k}
+  
+, defined as 
+  
+    
+      
+        
+          ρ
+          
+            k
+          
+        
+        =
+        
+          
+            
+              
+                C
+                o
+                v
+              
+              (
+              
+                X
+                
+                  0
+                
+              
+              ,
+              
+                X
+                
+                  k
+                
+              
+              )
+            
+            
+              
+                V
+                a
+                r
+              
+              (
+              
+                X
+                
+                  0
+                
+              
+              )
+              
+                V
+                a
+                r
+              
+              (
+              
+                X
+                
+                  k
+                
+              
+              )
+            
+          
+        
+      
+    
+    {\displaystyle \rho _{k}={\frac {\mathrm {Cov} (X_{0},X_{k})}{\sqrt {\mathrm {Var} (X_{0})\mathrm {Var} (X_{k})}}}}
+  
+. The term in parentheses, 
+  
+    
+      
+        1
+        +
+        2
+        
+          ∑
+          
+            k
+            =
+            1
+          
+          
+            ∞
+          
+        
+        
+          ρ
+          
+            k
+          
+        
+      
+    
+    {\displaystyle 1+2\sum _{k=1}^{\infty }\rho _{k}}
+  
+, is often called the integrated autocorrelation. When the chain has no autocorrelation (
+  
+    
+      
+        
+          ρ
+          
+            k
+          
+        
+        =
+        0
+      
+    
+    {\displaystyle \rho _{k}=0}
+  
+ for all 
+  
+    
+      
+        k
+        ≥
+        1
+      
+    
+    {\displaystyle k\geq 1}
+  
+), this factor equals 1, and one recovers the usual 
+  
+    
+      
+        
+          σ
+          
+            2
+          
+        
+        
+          /
+        
+        N
+      
+    
+    {\displaystyle \sigma ^{2}/N}
+  
+ variance for independent samples. If the chain's samples are highly correlated, the sum of autocorrelations is large, leading to a much bigger variance for 
+  
+    
+      
+        
+          
+            
+              
+                X
+                ¯
+              
+            
+          
+          
+            N
+          
+        
+      
+    
+    {\displaystyle {\bar {X}}_{N}}
+  
+ than in the independent case.
+
+
+=== Effective sample size (ESS) ===
+The effective sample size 
+  
+    
+      
+        
+          N
+          
+            eff
+          
+        
+      
+    
+    {\displaystyle N_{\text{eff}}}
+  
+ is a useful diagnostic that translates the autocorrelation in a chain into an equivalent number of independent samples. It is defined by the formula: 
+
+  
+    
+      
+        
+          N
+          
+            eff
+          
+        
+        =
+        
+          
+            N
+            
+              1
+              +
+              2
+              
+                ∑
+                
+                  k
+                  =
+                  1
+                
+                
+                  ∞
+                
+              
+              
+                ρ
+                
+                  k
+                
+              
+            
+          
+        
+      
+    
+    {\displaystyle N_{\text{eff}}={\frac {N}{1+2\sum _{k=1}^{\infty }\rho _{k}}}}
+  
+
+so that 
+  
+    
+      
+        
+          N
+          
+            eff
+          
+        
+      
+    
+    {\displaystyle N_{\text{eff}}}
+  
+ is the number of independent draws that would yield the same estimation precision as the 
+  
+    
+      
+        N
+      
+    
+    {\displaystyle N}
+  
+ dependent draws from the Markov chain. For example, if 
+  
+    
+      
+        1
+        +
+        2
+        
+          ∑
+          
+            k
+            =
+            1
+          
+          
+            ∞
+          
+        
+        
+          ρ
+          
+            k
+          
+        
+        =
+        5
+      
+    
+    {\displaystyle 1+2\sum _{k=1}^{\infty }\rho _{k}=5}
+  
+, then 
+  
+    
+      
+        
+          N
+          
+            eff
+          
+        
+        =
+        N
+        
+          /
+        
+        5
+      
+    
+    {\displaystyle N_{\text{eff}}=N/5}
+  
+, meaning the chain of length 
+  
+    
+      
+        N
+      
+    
+    {\displaystyle N}
+  
+ carries information equivalent to 
+  
+    
+      
+        N
+        
+          /
+        
+        5
+      
+    
+    {\displaystyle N/5}
+  
+ independent samples. In an ideal scenario with no correlation, 
+  
+    
+      
+        
+          ρ
+          
+            k
+          
+        
+        =
+        0
+      
+    
+    {\displaystyle \rho _{k}=0}
+  
+ and thus 
+  
+    
+      
+        
+          N
+          
+            eff
+          
+        
+        ≈
+        N
+      
+    
+    {\displaystyle N_{\text{eff}}\approx N}
+  
+. But in a poorly mixing chain with strong autocorrelation, 
+  
+    
+      
+        
+          N
+          
+            eff
+          
+        
+      
+    
+    {\displaystyle N_{\text{eff}}}
+  
+ can be much smaller than 
+  
+    
+      
+        N
+      
+    
+    {\displaystyle N}
+  
+. In practice, monitoring the ESS for each parameter is a way to gauge how much correlation is present: a low ESS indicates that many more iterations may be needed to achieve a desired effective sample of independent draws.
+
+
+=== Reducing correlation ===
+While MCMC methods were created to address multi-dimensional problems better than generic Monte Carlo algorithms, when the number of dimensions rises they too tend to suffer the curse of dimensionality: regions of higher probability tend to stretch and get lost in an increasing volume of space that contributes little to the integral. One way to address this problem could be shortening the steps of the walker, so that it does not continuously try to exit the highest probability region, though this way the process would be highly autocorrelated and expensive (i.e. many steps would be required for an accurate result). More sophisticated methods such as Hamiltonian Monte Carlo and the Wang and Landau algorithm use various ways of reducing this autocorrelation, while managing to keep the process in the regions that give a higher contribution to the integral. These algorithms usually rely on a more complicated theory and are harder to implement, but they usually converge faster.
+We outline several general strategies such as reparameterization, adaptive proposal tuning, parameter blocking, and overrelaxation that help reduce correlation and improve sampling efficiency within the standard MCMC framework.
+
+
+==== Reparameterization ====
+One way to reduce autocorrelation is to reformulate or reparameterize the statistical model so that the posterior geometry leads to more efficient sampling. By changing the coordinate system or using alternative variable definitions, one can often lessen correlations. For example, in Bayesian hierarchical modeling, a non-centered parameterization can be used in place of the standard (centered) formulation to avoid extreme posterior correlations between latent and higher-level parameters. This involves expressing latent variables in terms of independent auxiliary variables, dramatically improving mixing. Such reparameterization strategies are commonly employed in both Gibbs sampling and Metropolis–Hastings algorithm to enhance convergence and reduce autocorrelation.
+
+
+==== Proposal tuning and adaptation ====
+Another approach to reducing correlation is to improve the MCMC proposal mechanism. In Metropolis–Hastings algorithm, step size tuning is critical: if the proposed steps are too small, the sampler moves slowly and produces highly correlated samples; if the steps are too large, many proposals are rejected, resulting in repeated values. Adjusting the proposal step size during an initial testing phase helps find a balance where the sampler explores the space efficiently without too many rejections. 
+Adaptive MCMC methods modify proposal distributions based on the chain's past samples. For instance, the adaptive Metropolis algorithm updates the Gaussian proposal distribution using the full information accumulated from the chain so far, allowing the proposal to adapt over time.
+
+
+==== Parameter blocking ====
+Parameter blocking is a technique that reduces autocorrelation in MCMC by updating parameters jointly rather than one at a time. When parameters exhibit strong posterior correlations, one-by-one updates can lead to poor mixing and slow exploration of the target distribution. By identifying and sampling blocks of correlated parameters together, the sampler can more effectively traverse high-density regions of the posterior.
+Parameter blocking is commonly used in both Gibbs sampling and Metropolis–Hastings algorithms. In blocked Gibbs sampling, entire groups of variables are updated conditionally at each step. In Metropolis–Hastings, multivariate proposals enable joint updates (i.e., updates of multiple parameters at once using a vector-valued proposal distribution, typically a multivariate Gaussian), though they often require careful tuning of the proposal covariance matrix.
+
+
+==== Overrelaxation ====
+Overrelaxation is a technique to reduce autocorrelation between successive samples by proposing new samples that are negatively correlated with the current state. This helps the chain explore the posterior more efficiently, especially in high-dimensional Gaussian models or when using Gibbs sampling. The basic idea is to reflect the current sample across the conditional mean, producing proposals that retain the correct stationary distribution but with reduced serial dependence. Overrelaxation is particularly effective when combined with Gaussian conditional distributions, where exact reflection or partial overrelaxation can be analytically implemented.
+
+
+== Examples ==
+
+
+=== Random walk Monte Carlo methods ===
+Metropolis–Hastings algorithm: This method generates a Markov chain using a proposal density for new steps and a method for rejecting some of the proposed moves. It is actually a general framework which includes as special cases the very first and simpler MCMC (Metropolis algorithm) and many more recent variants listed below.
+Gibbs sampling: When target distribution is multi-dimensional, Gibbs sampling algorithm updates each coordinate from its full conditional distribution given other coordinates. Gibbs sampling can be viewed as a special case of Metropolis–Hastings algorithm with acceptance rate uniformly equal to 1. When drawing from the full conditional distributions is not straightforward other samplers-within-Gibbs are used (e.g., see ). Gibbs sampling is popular partly because it does not require any 'tuning'. Algorithm structure of the Gibbs sampling highly resembles that of the coordinate ascent variational inference in that both algorithms utilize the full-conditional distributions in the updating procedure.
+Metropolis-adjusted Langevin algorithm and other methods that rely on the gradient (and possibly second derivative) of the log target density to propose steps that are more likely to be in the direction of higher probability density.
+Hamiltonian (or hybrid) Monte Carlo (HMC): Tries to avoid random walk behaviour by introducing an auxiliary momentum vector and implementing Hamiltonian dynamics, so the potential energy function is the target density. The momentum samples are discarded after sampling. The result of hybrid Monte Carlo is that proposals move across the sample space in larger steps; they are therefore less correlated and converge to the target distribution more rapidly.
+Pseudo-marginal Metropolis–Hastings: This method replaces the evaluation of the density of the target distribution with an unbiased estimate and is useful when the target density is not available analytically, e.g. latent variable models.
+Slice sampling: This method depends on the principle that one can sample from a distribution by sampling uniformly from the region under the plot of its density function. It alternates uniform sampling in the vertical direction with uniform sampling from the horizontal 'slice' defined by the current vertical position.
+Multiple-try Metropolis: This method is a variation of the Metropolis–Hastings algorithm that allows multiple trials at each point. By making it possible to take larger steps at each iteration, it helps address the curse of dimensionality.
+Reversible-jump: This method is a variant of the Metropolis–Hastings algorithm that allows proposals that change the dimensionality of the space. Markov chain Monte Carlo methods that change dimensionality have long been used in statistical physics applications, where for some problems a distribution that is a grand canonical ensemble is used (e.g., when the number of molecules in a box is variable). But the reversible-jump variant is useful when doing Markov chain Monte Carlo or Gibbs sampling over nonparametric Bayesian models such as those involving the Dirichlet process or Chinese restaurant process, where the number of mixing components/clusters/etc. is automatically inferred from the data.
+
+
+=== Interacting particle methods ===
+Interacting MCMC methodologies are a class of mean-field particle methods for obtaining random samples from a sequence of probability distributions with an increasing level of sampling complexity. These probabilistic models include path space state models with increasing time horizon, posterior distributions w.r.t. sequence of partial observations, increasing constraint level sets for conditional distributions, decreasing temperature schedules associated with some Boltzmann–Gibbs distributions, and many others. In principle, any Markov chain Monte Carlo sampler can be turned into an interacting Markov chain Monte Carlo sampler. These interacting Markov chain Monte Carlo samplers can be interpreted as a way to run in parallel a sequence of Markov chain Monte Carlo samplers. For instance, interacting simulated annealing algorithms are based on independent Metropolis–Hastings moves interacting sequentially with a selection-resampling type mechanism. In contrast to traditional Markov chain Monte Carlo methods, the precision parameter of this class of interacting Markov chain Monte Carlo samplers is only related to the number of interacting Markov chain Monte Carlo samplers. These advanced particle methodologies belong to the class of Feynman–Kac particle models, also called Sequential Monte Carlo or particle filter methods in Bayesian inference and signal processing communities. Interacting Markov chain Monte Carlo methods can also be interpreted as a mutation-selection genetic particle algorithm with Markov chain Monte Carlo mutations.
+
+
+=== Quasi-Monte Carlo ===
+The quasi-Monte Carlo method is an analog to the normal Monte Carlo method that uses low-discrepancy sequences instead of random numbers. It yields an integration error that decays faster than that of true random sampling, as quantified by the Koksma–Hlawka inequality. Empirically it allows the reduction of both estimation error and convergence time by an order of magnitude. Markov chain quasi-Monte Carlo methods such as the Array–RQMC method combine randomized quasi–Monte Carlo and Markov chain simulation by simulating 
+  
+    
+      
+        n
+      
+    
+    {\displaystyle n}
+  
+ chains simultaneously in a way that better approximates the true distribution of the chain than with ordinary MCMC. In empirical experiments, the variance of the average of a function of the state sometimes converges at rate 
+  
+    
+      
+        O
+        (
+        
+          n
+          
+            −
+            2
+          
+        
+        )
+      
+    
+    {\displaystyle O(n^{-2})}
+  
+ or even faster, instead of the 
+  
+    
+      
+        O
+        (
+        
+          n
+          
+            −
+            1
+          
+        
+        )
+      
+    
+    {\displaystyle O(n^{-1})}
+  
+ Monte Carlo rate.
+
+
+== Applications ==
+MCMC methods are primarily used for calculating numerical approximations of multi-dimensional integrals, for example in Bayesian statistics, computational physics, computational biology and computational linguistics.
+
+
+=== Bayesian statistics ===
+In Bayesian statistics, Markov chain Monte Carlo methods are typically used to calculate moments and credible intervals of posterior probability distributions. The use of MCMC methods makes it possible to compute large hierarchical models that require integrations over hundreds to thousands of unknown parameters.
+
+
+=== Statistical physics ===
+Many contemporary research problems in statistical physics can be addressed by approximate solutions using Monte Carlo simulation, which provides valuable insights into the properties of complex systems. Monte Carlo methods are fundamental in computational physics, astrophysics, physical chemistry, and related disciplines, with broad applications including medical physics, where they are employed to model radiation transport for radiation dosimetry calculations. Instead of exhaustively analyzing all possible system states, the Monte Carlo method randomly examines a subset of them to form a representative sample, and yields accurate approximations of the system's characteristic properties. As the number of sampled states increases, the error can be further reduced to a lower level.
+
+
+=== Complex distribution sampling ===
+
+Langevin Dynamics are typically used in complex distribution sampling and generative modeling, via an MCMC procedure. Specifically, given the probability density function  
+  
+    
+      
+        p
+        (
+        x
+        )
+      
+    
+    {\displaystyle p(x)}
+  
+, we use its log gradient 
+  
+    
+      
+        
+          ∇
+          
+            x
+          
+        
+        log
+        ⁡
+        p
+        (
+        x
+        )
+      
+    
+    {\displaystyle \nabla _{x}\log p(x)}
+  
+ as the score function and start from a prior distribution 
+  
+    
+      
+        
+          x
+          
+            0
+          
+        
+        ∼
+        
+          p
+          
+            0
+          
+        
+      
+    
+    {\displaystyle x_{0}\sim p_{0}}
+  
+. Then, a chain is built by 
+
+  
+    
+      
+        
+          x
+          
+            i
+            +
+            1
+          
+        
+        =
+        
+          x
+          
+            i
+          
+        
+        +
+        ϵ
+        
+          ∇
+          
+            x
+          
+        
+        log
+        ⁡
+        p
+        (
+        x
+        )
+        +
+        
+          
+            2
+            ϵ
+          
+        
+        
+          z
+          
+            i
+          
+        
+        ,
+        
+          z
+          
+            i
+          
+        
+        ∼
+        
+          
+            N
+          
+        
+        (
+        0
+        ,
+        I
+        )
+      
+    
+    {\displaystyle x_{i+1}=x_{i}+\epsilon \nabla _{x}\log p(x)+{\sqrt {2\epsilon }}z_{i},z_{i}\sim {\mathcal {N}}(0,I)}
+  
+
+for 
+  
+    
+      
+        i
+        =
+        0
+        ,
+        …
+        ,
+        K
+      
+    
+    {\displaystyle i=0,\dots ,K}
+  
+. When 
+  
+    
+      
+        ϵ
+        →
+        0
+      
+    
+    {\displaystyle \epsilon \rightarrow 0}
+  
+ and 
+  
+    
+      
+        K
+        →
+        ∞
+      
+    
+    {\displaystyle K\rightarrow \infty }
+  
+, 
+  
+    
+      
+        
+          x
+          
+            K
+          
+        
+      
+    
+    {\displaystyle x_{K}}
+  
+ converges to a sample from the target distribution 
+  
+    
+      
+        p
+        (
+        x
+        )
+      
+    
+    {\displaystyle p(x)}
+  
+. 
+For some complex distribution, if we know its probability density function but find it difficult to directly sample from it, we can apply Langevin Dynamics as an alternate. However, in most cases, especially generative modeling, usually we do not know the exact probability density function of the target distribution we wish to sample from, neither the score function 
+  
+    
+      
+        
+          ∇
+          
+            x
+          
+        
+        log
+        ⁡
+        p
+        (
+        x
+        )
+      
+    
+    {\displaystyle \nabla _{x}\log p(x)}
+  
+. In this case, score matching methods provide feasible solutions, minimizing the Fisher information metric between a parameterized score-based model 
+  
+    
+      
+        
+          s
+          
+            θ
+          
+        
+        (
+        x
+        )
+      
+    
+    {\displaystyle s_{\theta }(x)}
+  
+ and the score function without knowing the ground-truth data score. The score function can be estimated on a training dataset by stochastic gradient descent.  
+In real cases, however, the training data only takes a small region of the target distribution, and the estimated score functions are inaccurate in other low density regions with fewer available data examples. To overcome this challenge, denoising score matching methods purturb the available data examples with noise of different scales, which can improve the coverage of low density regions, and use them as the training dataset for the score-base model. Note that the choice of noise scales is tricky, as too large noise will corrupt the original data, while too small noise will not populate the original data to those low density regions. Thus, carefully crafted noise schedules are applied for higher quality generation.
+
+
+== Convergence ==
+Usually it is not hard to construct a Markov chain with the desired properties. The more difficult problem is to determine (1) when to start collecting statistics and (2) how many steps are needed to converge to the stationary distribution within an acceptable error. Fortunately, there are a variety of practical diagnostics to empirically assess convergence.
+
+
+=== Total variation distance ===
+Formally, let 
+  
+    
+      
+        π
+      
+    
+    {\displaystyle \pi }
+  
+ denote the stationary distribution and 
+  
+    
+      
+        
+          P
+          
+            t
+          
+        
+        (
+        x
+        ,
+        ⋅
+        )
+      
+    
+    {\displaystyle P^{t}(x,\cdot )}
+  
+ the distribution of the Markov chain after 
+  
+    
+      
+        t
+      
+    
+    {\displaystyle t}
+  
+ steps starting from state 
+  
+    
+      
+        x
+      
+    
+    {\displaystyle x}
+  
+. Theoretically, convergence can be quantified by measuring the  total variation distance:
+
+  
+    
+      
+        
+          d
+          
+            TV
+          
+        
+        (
+        
+          P
+          
+            t
+          
+        
+        (
+        x
+        ,
+        ⋅
+        )
+        ,
+        π
+        )
+        =
+        
+          sup
+          
+            A
+          
+        
+        
+          |
+        
+        
+          P
+          
+            t
+          
+        
+        (
+        x
+        ,
+        A
+        )
+        −
+        π
+        (
+        A
+        )
+        
+          |
+        
+      
+    
+    {\displaystyle d_{\text{TV}}(P^{t}(x,\cdot ),\pi )=\sup _{A}|P^{t}(x,A)-\pi (A)|}
+  
+
+A chain is said to mix rapidly if 
+  
+    
+      
+        
+          d
+          
+            TV
+          
+        
+        (
+        
+          P
+          
+            t
+          
+        
+        (
+        x
+        ,
+        ⋅
+        )
+        ,
+        π
+        )
+        ≤
+        ϵ
+      
+    
+    {\displaystyle d_{\text{TV}}(P^{t}(x,\cdot ),\pi )\leq \epsilon }
+  
+ for all 
+  
+    
+      
+        x
+        ∈
+        
+          
+            X
+          
+        
+      
+    
+    {\displaystyle x\in {\mathcal {X}}}
+  
+ within a small number of steps 
+  
+    
+      
+        t
+      
+    
+    {\displaystyle t}
+  
+ under a pre-defined tolerance 
+  
+    
+      
+        ϵ
+        >
+        0
+      
+    
+    {\displaystyle \epsilon >0}
+  
+. In other words, the stationary distribution is reached quickly starting from an arbitrary position, and the minimum such 
+  
+    
+      
+        t
+      
+    
+    {\displaystyle t}
+  
+ is known as the mixing time. In practice, however, the total variation distance is generally intractable to compute, especially in high-dimensional problems or when the stationary distribution is only known up to a normalizing constant (as in most Bayesian applications).
+
+
+=== Gelman-Rubin diagnostics ===
+The Gelman-Rubin statistic, also known as the potential scale reduction factor (PSRF), evaluates MCMC convergence by sampling multiple independent Markov chains and comparing within-chain and between-chain variances. If all chains have converged to the same stationary distribution, the between-chain and within-chain variances should be similar, and thus the PSRF must approach 1. In practice, a value of 
+  
+    
+      
+        <
+        1.1
+      
+    
+    {\displaystyle <1.1}
+  
+ is often taken as evidence of convergence. Higher values suggest that the chains are still exploring different parts of the target distribution.
+
+
+=== Geweke diagnostics ===
+The Geweke diagnostic examines whether the distribution of samples in the early part of the Markov chain is statistically indistinguishable from the distribution in a later part. Given a sequence of correlated MCMC samples 
+  
+    
+      
+        {
+        
+          X
+          
+            1
+          
+        
+        ,
+        
+          X
+          
+            2
+          
+        
+        ,
+        …
+        ,
+        
+          X
+          
+            n
+          
+        
+        }
+      
+    
+    {\displaystyle \{X_{1},X_{2},\dots ,X_{n}\}}
+  
+, the diagnostic splits the chain into an early segment consisting of the first 
+  
+    
+      
+        
+          n
+          
+            A
+          
+        
+      
+    
+    {\displaystyle n_{A}}
+  
+ samples, typically chosen as 
+  
+    
+      
+        
+          n
+          
+            A
+          
+        
+        =
+        0.1
+        n
+      
+    
+    {\displaystyle n_{A}=0.1n}
+  
+ (i.e., the first 10% of the chain), and a late segment consisting of the last 
+  
+    
+      
+        
+          n
+          
+            B
+          
+        
+      
+    
+    {\displaystyle n_{B}}
+  
+ samples, typically chosen as 
+  
+    
+      
+        
+          n
+          
+            B
+          
+        
+        =
+        0.5
+        n
+      
+    
+    {\displaystyle n_{B}=0.5n}
+  
+ (i.e., the last 50% of the chain)
+Denote the sample means of these segments as:
+
+  
+    
+      
+        
+          
+            
+              
+                X
+                ¯
+              
+            
+          
+          
+            A
+          
+        
+        =
+        
+          
+            
+              1
+              
+                n
+                
+                  A
+                
+              
+            
+          
+        
+        
+          ∑
+          
+            i
+            =
+            1
+          
+          
+            
+              n
+              
+                A
+              
+            
+          
+        
+        
+          X
+          
+            i
+          
+        
+        ,
+        
+        
+        
+        
+          
+            
+              
+                X
+                ¯
+              
+            
+          
+          
+            B
+          
+        
+        =
+        
+          
+            
+              1
+              
+                n
+                
+                  B
+                
+              
+            
+          
+        
+        
+          ∑
+          
+            i
+            =
+            n
+            −
+            
+              n
+              
+                B
+              
+            
+            +
+            1
+          
+          
+            n
+          
+        
+        
+          X
+          
+            i
+          
+        
+      
+    
+    {\displaystyle {\bar {X}}_{A}={\dfrac {1}{n_{A}}}\sum _{i=1}^{n_{A}}X_{i},\;\;\;{\bar {X}}_{B}={\dfrac {1}{n_{B}}}\sum _{i=n-n_{B}+1}^{n}X_{i}}
+  
+
+Since MCMC samples are autocorrelated, a simple comparison of sample means is insufficient. Instead, the difference in means is standardized using an estimator of the spectral density at zero frequency, which accounts for the long-range dependencies in the chain. The test statistic is computed as:
+
+  
+    
+      
+        Z
+        =
+        
+          
+            
+              
+                
+                  
+                    
+                      
+                        X
+                        ¯
+                      
+                    
+                  
+                  
+                    A
+                  
+                
+                −
+                
+                  
+                    
+                      
+                        X
+                        ¯
+                      
+                    
+                  
+                  
+                    B
+                  
+                
+              
+              
+                
+                  
+                    
+                      S
+                      ^
+                    
+                  
+                
+                (
+                0
+                )
+                
+                  /
+                
+                
+                  n
+                  
+                    A
+                  
+                
+                +
+                
+                  
+                    
+                      S
+                      ^
+                    
+                  
+                
+                (
+                0
+                )
+                
+                  /
+                
+                
+                  n
+                  
+                    B
+                  
+                
+              
+            
+          
+        
+      
+    
+    {\displaystyle Z={\dfrac {{\bar {X}}_{A}-{\bar {X}}_{B}}{\sqrt {{\hat {S}}(0)/n_{A}+{\hat {S}}(0)/n_{B}}}}}
+  
+
+where 
+  
+    
+      
+        
+          
+            
+              S
+              ^
+            
+          
+        
+        (
+        0
+        )
+      
+    
+    {\displaystyle {\hat {S}}(0)}
+  
+ is an estimate of the long-run variance (i.e., the spectral density at frequency zero), commonly estimated using Newey-West estimators or batch means. Under the null hypothesis of convergence, the statistic 
+  
+    
+      
+        Z
+      
+    
+    {\displaystyle Z}
+  
+ follows an approximately standard normal distribution 
+  
+    
+      
+        Z
+        ∼
+        
+          
+            N
+          
+        
+        (
+        0
+        ,
+        1
+        )
+      
+    
+    {\displaystyle Z\sim {\mathcal {N}}(0,1)}
+  
+.
+If 
+  
+    
+      
+        
+          |
+        
+        Z
+        
+          |
+        
+        >
+        1.96
+      
+    
+    {\displaystyle |Z|>1.96}
+  
+, the null hypothesis is rejected at the 5% significance level, suggesting that the chain has not yet reached stationarity.
+
+
+=== Heidelberger-Welch diagnostics ===
+The Heidelberger-Welch diagnostic is grounded in spectral analysis and Brownian motion theory, and is particularly useful in the early stages of simulation to determine appropriate burn-in and stopping time. The diagnostic consists of two components, a stationarity test that assesses whether the Markov chain has reached a steady-state, and a half-width test that determines whether the estimated expectation is within a user-specified precision.
+
+
+==== Stationary test ====
+Let 
+  
+    
+      
+        {
+        
+          X
+          
+            t
+          
+        
+        
+          }
+          
+            t
+            =
+            1
+          
+          
+            n
+          
+        
+      
+    
+    {\displaystyle \{X_{t}\}_{t=1}^{n}}
+  
+ be the output of an MCMC simulation for a scalar function 
+  
+    
+      
+        g
+        (
+        
+          X
+          
+            t
+          
+        
+        )
+      
+    
+    {\displaystyle g(X_{t})}
+  
+, and 
+  
+    
+      
+        
+          g
+          
+            1
+          
+        
+        ,
+        
+          g
+          
+            2
+          
+        
+        ,
+        …
+        ,
+        
+          g
+          
+            n
+          
+        
+      
+    
+    {\displaystyle g_{1},g_{2},\dots ,g_{n}}
+  
+ the evaluations of the function 
+  
+    
+      
+        g
+      
+    
+    {\displaystyle g}
+  
+ over the chain. Define the standardized cumulative sum process:
+
+  
+    
+      
+        
+          B
+          
+            n
+          
+        
+        (
+        t
+        )
+        =
+        
+          
+            
+              
+                
+                  ∑
+                  
+                    i
+                    =
+                    1
+                  
+                  
+                    
+                      round
+                    
+                    (
+                    n
+                    t
+                    )
+                  
+                
+                
+                  g
+                  
+                    i
+                  
+                
+                −
+                
+                  round
+                
+                (
+                n
+                t
+                )
+                
+                  
+                    
+                      
+                        g
+                        ¯
+                      
+                    
+                  
+                  
+                    n
+                  
+                
+              
+              
+                n
+                
+                  
+                    
+                      S
+                      ^
+                    
+                  
+                
+                (
+                0
+                )
+              
+            
+          
+        
+        ,
+        
+        
+        
+        t
+        ∈
+        [
+        0
+        ,
+        1
+        ]
+      
+    
+    {\displaystyle B_{n}(t)={\dfrac {\sum _{i=1}^{{\text{round}}(nt)}g_{i}-{\text{round}}(nt){\bar {g}}_{n}}{\sqrt {n{\hat {S}}(0)}}},\;\;\;t\in [0,1]}
+  
+
+where 
+  
+    
+      
+        
+          
+            
+              
+                g
+                ¯
+              
+            
+          
+          
+            n
+          
+        
+        =
+        
+          
+            1
+            n
+          
+        
+        
+          ∑
+          
+            i
+            =
+            1
+          
+          
+            n
+          
+        
+        
+          g
+          
+            i
+          
+        
+      
+    
+    {\displaystyle {\bar {g}}_{n}={\frac {1}{n}}\sum _{i=1}^{n}g_{i}}
+  
+ is the sample mean and 
+  
+    
+      
+        
+          
+            
+              S
+              ^
+            
+          
+        
+        (
+        0
+        )
+      
+    
+    {\displaystyle {\hat {S}}(0)}
+  
+ is an estimate of the spectral density at frequency zero.
+Under the null hypothesis of convergence, the process 
+  
+    
+      
+        
+          B
+          
+            n
+          
+        
+        (
+        t
+        )
+      
+    
+    {\displaystyle B_{n}(t)}
+  
+ converges in distribution to a Brownian bridge. The following Cramér-von Mises statistic is used to test for stationarity:
+
+  
+    
+      
+        
+          C
+          
+            n
+          
+        
+        =
+        
+          ∫
+          
+            0
+          
+          
+            1
+          
+        
+        
+          B
+          
+            n
+          
+        
+        (
+        t
+        
+          )
+          
+            2
+          
+        
+        d
+        t
+        .
+      
+    
+    {\displaystyle C_{n}=\int _{0}^{1}B_{n}(t)^{2}dt.}
+  
+
+This statistic is compared against known critical values from the Brownian bridge distribution. If the null hypothesis is rejected, the first 10% of the samples are discarded and the test can be repeated on the remaining chain until either stationarity is accepted or 50% of the chain is discarded.
+
+
+==== Half-Width test (Precision check) ====
+Once stationarity is accepted, the second part of the diagnostic checks whether the Monte Carlo estimator is accurate enough for practical use. Assuming the central limit theorem holds, the confidence interval for the mean 
+  
+    
+      
+        
+          
+            E
+          
+          
+            π
+          
+        
+        [
+        g
+        (
+        X
+        )
+        ]
+      
+    
+    {\displaystyle \mathbb {E} _{\pi }[g(X)]}
+  
+ is given by
+
+  
+    
+      
+        
+          
+            
+              
+                g
+                ¯
+              
+            
+          
+          
+            n
+          
+        
+        ±
+        
+          t
+          
+            α
+            
+              /
+            
+            2
+            ,
+            ν
+          
+        
+        ⋅
+        
+          
+            
+              
+                
+                  
+                    
+                      σ
+                      ^
+                    
+                  
+                
+                
+                  n
+                
+              
+              
+                n
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\bar {g}}_{n}\pm t_{\alpha /2,\nu }\cdot {\dfrac {{\hat {\sigma }}_{n}}{\sqrt {n}}}}
+  
+
+where 
+  
+    
+      
+        
+          
+            
+              
+                σ
+                ^
+              
+            
+          
+          
+            2
+          
+        
+      
+    
+    {\displaystyle {\hat {\sigma }}^{2}}
+  
+ is an estimate of the variance of 
+  
+    
+      
+        g
+        (
+        X
+        )
+      
+    
+    {\displaystyle g(X)}
+  
+, 
+  
+    
+      
+        
+          t
+          
+            α
+            
+              /
+            
+            2
+            ,
+            ν
+          
+        
+      
+    
+    {\displaystyle t_{\alpha /2,\nu }}
+  
+ is the Student's 
+  
+    
+      
+        t
+      
+    
+    {\displaystyle t}
+  
+ critical value at confidence level 
+  
+    
+      
+        1
+        −
+        α
+      
+    
+    {\displaystyle 1-\alpha }
+  
+ and degrees of freedom 
+  
+    
+      
+        ν
+      
+    
+    {\displaystyle \nu }
+  
+, 
+  
+    
+      
+        n
+      
+    
+    {\displaystyle n}
+  
+ is the number of samples used.
+The half-width of this interval is defined as
+
+  
+    
+      
+        
+          t
+          
+            α
+            
+              /
+            
+            2
+            ,
+            ν
+          
+        
+        ⋅
+        
+          
+            
+              
+                
+                  
+                    
+                      σ
+                      ^
+                    
+                  
+                
+                
+                  n
+                
+              
+              
+                n
+              
+            
+          
+        
+      
+    
+    {\displaystyle t_{\alpha /2,\nu }\cdot {\dfrac {{\hat {\sigma }}_{n}}{\sqrt {n}}}}
+  
+
+If the half-width is smaller than a user-defined tolerance (e.g., 0.05), the chain is considered long enough to estimate the expectation reliably. Otherwise, the simulation should be extended.
+
+
+=== Raftery-Lewis diagnostics ===
+The Raftery-Lewis diagnostic is specifically designed to assess how many iterations are needed to estimate quantiles or tail probabilities of the target distribution with a desired accuracy and confidence. Unlike Gelman-Rubin or Geweke diagnostics, which are based on assessing convergence to the entire distribution, the Raftery-Lewis diagnostic is goal-oriented as it provides estimates for the number of samples required to estimate a specific quantile of interest within a desired margin of error.
+Let 
+  
+    
+      
+        q
+      
+    
+    {\displaystyle q}
+  
+ denote the desired quantile (e.g., 0.025) of a real-valued function 
+  
+    
+      
+        g
+        (
+        X
+        )
+      
+    
+    {\displaystyle g(X)}
+  
+: in other words, the goal is to find 
+  
+    
+      
+        u
+      
+    
+    {\displaystyle u}
+  
+ such that 
+  
+    
+      
+        P
+        (
+        g
+        (
+        X
+        )
+        ≤
+        u
+        )
+        =
+        q
+      
+    
+    {\displaystyle P(g(X)\leq u)=q}
+  
+. Suppose we wish to estimate this quantile such that the estimate falls within margin 
+  
+    
+      
+        ε
+      
+    
+    {\displaystyle \varepsilon }
+  
+ of the true value with probability 
+  
+    
+      
+        1
+        −
+        α
+      
+    
+    {\displaystyle 1-\alpha }
+  
+. That is, we want
+
+  
+    
+      
+        P
+        (
+        
+          |
+        
+        
+          
+            
+              q
+              ^
+            
+          
+        
+        −
+        q
+        
+          |
+        
+        <
+        ε
+        )
+        ≥
+        1
+        −
+        α
+      
+    
+    {\displaystyle P(|{\hat {q}}-q|<\varepsilon )\geq 1-\alpha }
+  
+
+The diagnostic proceeds by converting the output of the MCMC chain into a binary sequence:
+
+  
+    
+      
+        
+          W
+          
+            n
+          
+        
+        =
+        
+          I
+        
+        (
+        g
+        (
+        
+          X
+          
+            n
+          
+        
+        )
+        ≤
+        u
+        )
+        ,
+        
+        
+        
+        n
+        =
+        1
+        ,
+        2
+        ,
+        …
+      
+    
+    {\displaystyle W_{n}=\mathbb {I} (g(X_{n})\leq u),\;\;\;n=1,2,\dots }
+  
+
+where 
+  
+    
+      
+        I
+        (
+        ⋅
+        )
+      
+    
+    {\displaystyle I(\cdot )}
+  
+ is the indicator function. The sequence 
+  
+    
+      
+        {
+        
+          W
+          
+            n
+          
+        
+        }
+      
+    
+    {\displaystyle \{W_{n}\}}
+  
+ is treated as a realization from a two-state Markov chain. While this may not be strictly true, it is often a good approximation in practice.
+From the empirical transitions in the binary sequence, the Raftery-Lewis method estimates:
+
+The minimum number of iterations 
+  
+    
+      
+        
+          n
+          
+            min
+          
+        
+      
+    
+    {\displaystyle n_{\text{min}}}
+  
+ required to achieve the desired precision and confidence for estimating the quantile is obtained based on asymptotic theory for Bernoulli processes:
+
+  
+    
+      
+        
+          n
+          
+            min
+          
+        
+        =
+        
+          
+            {
+          
+        
+        
+          Φ
+          
+            −
+            1
+          
+        
+        
+          
+            (
+          
+        
+        1
+        −
+        
+          
+            
+              α
+              2
+            
+          
+        
+        
+          
+            )
+          
+        
+        
+          
+            
+              }
+            
+          
+          
+            2
+          
+        
+        
+          
+            
+              
+                q
+                (
+                1
+                −
+                q
+                )
+              
+              
+                ε
+                
+                  2
+                
+              
+            
+          
+        
+      
+    
+    {\displaystyle n_{\text{min}}={\bigg \{}\Phi ^{-1}{\bigg (}1-{\dfrac {\alpha }{2}}{\bigg )}{\bigg \}}^{2}{\dfrac {q(1-q)}{\varepsilon ^{2}}}}
+  
+
+where 
+  
+    
+      
+        
+          Φ
+          
+            −
+            1
+          
+        
+        (
+        ⋅
+        )
+      
+    
+    {\displaystyle \Phi ^{-1}(\cdot )}
+  
+ is the standard normal quantile function.
+
+The burn-in period 
+  
+    
+      
+        
+          n
+          
+            burn
+          
+        
+      
+    
+    {\displaystyle n_{\text{burn}}}
+  
+ is calculated using eigenvalue analysis of the transition matrix to estimate the number of initial iterations needed for the Markov chain to forget its initial state.
+
+
+== See also ==
+Coupling from the past
+Integrated nested Laplace approximations
+Markov chain central limit theorem
+Metropolis-adjusted Langevin algorithm
+
+
+== References ==
+
+
+=== Citations ===
+
+
+=== Sources ===
+
+
+== Further reading ==

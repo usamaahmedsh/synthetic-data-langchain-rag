@@ -1,0 +1,144 @@
+ext4 (fourth extended filesystem) is a journaling file system for Linux, developed as the successor to ext3.
+ext4 was initially a series of backward-compatible extensions to ext3, many of them originally developed by Cluster File Systems for the Lustre file system between 2003 and 2006, meant to extend storage limits and add other performance improvements. However, other Linux kernel developers opposed accepting extensions to ext3 for stability reasons, and proposed to fork the source code of ext3, rename it as ext4, and perform all the development there, without affecting existing ext3 users. This proposal was accepted, and on 28 June 2006, Theodore Ts'o, the ext3 maintainer, announced the new plan of development for ext4.
+A preliminary development version of ext4 was included in version 2.6.19 of the Linux kernel. On 11 October 2008, the patches that mark ext4 as stable code were merged in the Linux 2.6.28 source code repositories, denoting the end of the development phase and recommending ext4 adoption. Kernel 2.6.28, containing the ext4 filesystem, was finally released on 25 December 2008. On 15 January 2010, Google announced that it would upgrade its storage infrastructure from ext2 to ext4. On 14 December 2010, Google also announced it would use ext4, instead of YAFFS, on Android 2.3.
+Its improvements over ext3 include a date range that ends in the year 2446 instead of 2038, a timestamp accuracy of a nanosecond instead of one second, and higher size limits.
+
+
+== Adoption ==
+ext4 is the default file system for many Linux distributions including Debian and Ubuntu.
+
+
+== Features ==
+
+Large file system
+The ext4 filesystem can support volumes with sizes in theory up to 64 ZiB and single files with sizes up to 16 TiB with the standard 4 KiB block size, and volumes with sizes up to 1 YiB with 64 KiB clusters, though a limitation in the extent format makes 1 EiB the practical limit. The maximum file, directory, and filesystem size limits grow at least proportionately with the filesystem block size up to the maximum 64 KiB block size available on ARM and PowerPC/Power ISA CPUs.
+Extents
+Extents replace the traditional block mapping scheme used by ext2 and ext3. An extent is a range of contiguous physical blocks, improving large-file performance and reducing fragmentation. A single extent in ext4 can map up to 128 MiB of contiguous space with a 4 KiB block size. There can be four extents stored directly in the inode. When there are more than four extents to a file, the rest of the extents are indexed in a tree.
+Backward compatibility
+ext4 is backward-compatible with ext3 and ext2, making it possible to mount ext3 and ext2 as ext4. This will slightly improve performance, because certain new features of the ext4 implementation can also be used with ext3 and ext2, such as the new block allocation algorithm, without affecting the on-disk format.
+ext3 is partially forward-compatible with ext4. Practically, ext4 will not mount as an ext3 filesystem out of the box, unless certain new features are disabled when creating it, such as ^extent, ^flex_bg, ^huge_file, ^uninit_bg, ^dir_nlink, and ^extra_isize.
+Persistent pre-allocation
+ext4 can pre-allocate on-disk space for a file. To do this on most file systems, zeroes would be written to the file when created. In ext4 (and some other file systems such as XFS) fallocate(), a new system call in the Linux kernel, can be used. The allocated space would be guaranteed and likely contiguous. This situation has applications for media streaming and databases.
+Delayed allocation
+ext4 uses a performance technique called allocate-on-flush, also known as delayed allocation. That is, ext4 delays block allocation until data is flushed to disk; in contrast, some file systems allocate blocks immediately, even when the data goes into a write cache. Delayed allocation improves performance and reduces fragmentation by effectively allocating larger amounts of data at a time.
+Unlimited number of subdirectories
+ext4 does not limit the number of subdirectories in a single directory, except by the inherent size limit of the directory itself. (In ext3 a directory can have at most 32,000 subdirectories.) To allow for larger directories and continued performance, ext4 in Linux 2.6.23 and later turns on HTree indices (a specialized version of a B-tree) by default, which allows directories up to approximately 10–12 million entries to be stored in the 2-level HTree index and 2 GB directory size limit for 4 KiB block size, depending on the filename length. In Linux 4.12 and later the large_dir feature enabled a 3-level HTree and directory sizes over 2 GB, allowing approximately 6 billion entries in a single directory.
+Journal checksums
+ext4 uses checksums in the journal to improve reliability, since the journal is one of the most used files of the disk. This feature has a side benefit: it can safely avoid a disk I/O wait during journaling, improving performance slightly. Journal checksumming was inspired by a research article from the University of Wisconsin, titled IRON File Systems, with modifications within the implementation of compound transactions performed by the IRON file system (originally proposed by Sam Naghshineh in the RedHat summit).
+Metadata checksumming
+Support for metadata checksums was added in Linux kernel version 3.5 released in 2012. Many data structures were modified to add CRC-32C checksums but some only store the lower 16 bits of the 32-bit checksum as there isn't enough previously reserved space to fit the whole 4 bytes. In-place conversion can be done using tune2fs -O metadata_csum.
+Faster file-system checking
+In ext4 unallocated block groups and sections of the inode table are marked as such. This enables e2fsck to skip them entirely and greatly reduces the time it takes to check the file system. Linux 2.6.24 implements this feature.
+Multiblock allocator
+When ext3 appends to a file, it calls the block allocator, once for each block. Consequently, if there are multiple concurrent writers, files can easily become fragmented on disk. However, ext4 uses delayed allocation, which allows it to buffer data and allocate groups of blocks. Consequently, the multiblock allocator can make better choices about allocating files contiguously on disk. The multiblock allocator can also be used when files are opened in O_DIRECT mode. This feature does not affect the disk format.
+Improved timestamps
+As computers become faster in general, and as Linux becomes used more for mission-critical applications, the granularity of second-based timestamps becomes insufficient. To solve this, ext4 provides timestamps measured in nanoseconds. In addition, 2 bits of the expanded timestamp field are added to the most significant bits of the seconds field of the timestamps to defer the year 2038 problem for an additional 408 years.
+ext4 also adds support for time-of-creation timestamps. But, as Theodore Ts'o points out, while it is easy to add an extra creation-date field in the inode (thus technically enabling support for these timestamps in ext4), it is more difficult to modify or add the necessary system calls, like stat() (which would probably require a new version) and the various libraries that depend on them (like glibc). These changes will require coordination of many projects. Therefore, the creation date stored by ext4 is currently only available to user programs on Linux via the statx() API.
+Project quotas
+Support for project quotas was added in Linux kernel 4.4 on 8 Jan 2016. This feature allows assigning disk quota limits to a particular project ID. The project ID of a file is a 32-bit number stored on each file and is inherited by all files and subdirectories created beneath a parent directory with an assigned project ID. This allows assigning quota limits to a particular subdirectory tree independent of file access permissions on the file, such as user and project quotas that are dependent on the UID and GID. While this is similar to a directory quota, the main difference is that the same project ID can be assigned to multiple top-level directories and is not strictly hierarchical.
+Transparent encryption
+Support for transparent encryption was added in Linux kernel 4.1 in June 2015.
+Lazy initialization
+The lazyinit feature allows cleaning of inode tables in background, speeding initialization when creating a new ext4 file system. It is available since 2010 in Linux kernel version 2.6.37.
+Write barriers
+ext4 enables write barriers by default. It ensures that file system metadata is correctly written and ordered on disk, even when write caches lose power. This goes with a performance cost especially for applications that use fsync heavily or create and delete many small files. For disks with a battery-backed write cache, disabling barriers (option 'barrier=0') may safely improve performance.
+
+
+== Limitations ==
+In 2008, the principal developer of the ext3 and ext4 file systems, Theodore Ts'o, stated that although ext4 has improved features, it is not a major advancement, it uses old technology, and is a stop-gap. Ts'o believes that Btrfs is the better direction because "it offers improvements in scalability, reliability, and ease of management". Btrfs also has "a number of the same design ideas that reiser3/4 had". However, ext4 has continued to gain new features such as file encryption and metadata checksums.
+The ext4 file system does not honor the "secure deletion" file attribute, which is supposed to cause overwriting of files upon deletion. A patch to implement secure deletion was proposed in 2011, but did not solve the problem of sensitive data ending up in the file-system journal.
+
+
+== Delayed allocation and potential data loss ==
+Because delayed allocation changes the behavior that programmers have been relying on with ext3, the feature poses some additional risk of data loss in cases where the system crashes or loses power before all of the data has been written to disk. Due to this, ext4 in kernel versions 2.6.30 and later automatically handles these cases as ext3 does.
+The typical scenario in which this might occur is a program replacing the contents of a file without forcing a write to the disk with fsync. There are two common ways of replacing the contents of a file on Unix systems:
+
+fd=open("file", O_TRUNC); write(fd, data); close(fd);
+In this case, an existing file is truncated at the time of open (due to O_TRUNC flag), then new data is written out. Since the write can take some time, there is an opportunity of losing contents even with ext3, but usually very small. However, because ext4 can delay writing file data for a long time, this opportunity is much greater.
+There are several problems that can arise:
+If the write does not succeed (which may be due to error conditions in the writing program, or due to external conditions such as a full disk), then both the original version and the new version of the file will be lost, and the file may be corrupted because only a part of it has been written.
+If other processes access the file while it is being written, they see a corrupted version.
+If other processes have the file open and do not expect its contents to change, those processes may crash. One notable example is a shared library file which is mapped into running programs.
+Because of these issues, often the following idiom is preferred over the one above:
+fd=open("file.new"); write(fd, data); close(fd); rename("file.new", "file");
+A new temporary file ("file.new") is created, which initially contains the new contents. Then the new file is renamed over the old one. Replacing files by the rename() call is guaranteed to be atomic by POSIX standards – i.e. either the old file remains, or it is overwritten with the new one. Because the ext3 default "ordered" journaling mode guarantees file data is written out on disk before metadata, this technique guarantees that either the old or the new file contents will persist on disk. ext4's delayed allocation breaks this expectation, because the file write can be delayed for a long time, and the rename is usually carried out before new file contents reach the disk.
+Using fsync() more often to reduce the risk for ext4 could lead to performance penalties on ext3 filesystems mounted with the data=ordered flag (the default on most Linux distributions). Given that both file systems will be in use for some time, this complicates matters for end-user application developers. In response, ext4 in Linux kernels 2.6.30 and newer detect the occurrence of these common cases and force the files to be allocated immediately. For a small cost in performance, this provides semantics similar to ext3 ordered mode and increases the chance that either version of the file will survive the crash. This new behavior is enabled by default, but can be disabled with the "noauto_da_alloc" mount option.
+The new patches have become part of the mainline kernel 2.6.30, but various distributions chose to backport them to 2.6.28 or 2.6.29.
+These patches don't completely prevent potential data loss or help at all with new files. The only way to be safe is to write and use software that does fsync() when it needs to. Performance problems can be minimized by limiting crucial disk writes that need fsync() to occur less frequently.
+
+
+== Implementation ==
+
+Linux kernel Virtual File System is a subsystem or layer inside of the Linux kernel. It is the result of an attempt to integrate multiple file systems into an orderly single structure. The key idea, which dates back to the pioneering work done by Sun Microsystems employees in 1986, is to abstract out that part of the file system that is common to all file systems and put that code in a separate layer that calls the underlying concrete file systems to actually manage the data.
+All system calls related to files (or pseudo files) are directed to the Linux kernel Virtual File System for initial processing. These calls, coming from user processes, are the standard POSIX calls, such as open, read, write, lseek, etc.
+
+
+== Interoperability ==
+Although designed for and primarily used with Linux, an ext4 file system can be accessed via other operating systems via interoperability tools.
+Windows provides access via its Windows Subsystem for Linux (WSL) technology. Specifically, the second major version, WSL 2, is the first version with ext4 support. It was first released in Windows 10 Insider Preview Build 20211. WSL 2 requires Windows 10 version 1903 or higher, with build 18362 or higher, for x64 systems, and version 2004 or higher, with build 19041 or higher, for ARM64 systems.
+Paragon Software offers commercial products that provide full read/write access for ext2/3/4 – Linux File Systems for Windows and extFS for Mac.
+The free software ext4fuse provides limited (read-only) support.
+
+
+== General Architecture ==
+The ext4 filesystem divides the partition it resides into smaller chunks called blocks (a group of sectors, usually between 1 KiB and 64 KiB). By default, the block size is the same as the page size (4 KiB), but it can be configured with mkfs during filesystem creation. Blocks are grouped into larger chunks called block groups.
+
+
+=== Superblock ===
+
+This is the heart of the filesystem; it resides in only one block of the disk. It is usually the first item in a block group, except for group 0, where the first few bytes are reserved for the boot sector. The Superblock is vital for the filesystem – as such, backup copies are written across partitions at filesystem creation time, so it can be recovered in case of corruption.
+
+
+=== Group Descriptor Table ===
+GDT comes in second after superblock. GDT stores block group descriptors of each block group on the filesystem. It resides on more than one block on disk. Each GDT is 64 bytes in size. This structure is also vital for the filesystem; as such, redundant backups are stored across the filesystem.
+
+
+=== Block Bitmap ===
+The Block bitmap tracks the block usage status of all blocks of a block group. Each bit in the bitmap represents a block. If a block is in use, its corresponding bit will be set; otherwise, it will be unset. The location of the block bitmap is not fixed, so its position is stored in respective block group descriptors.
+
+
+=== Inode Bitmap ===
+Similar to the Block bitmap, the Inode bitmap's location is also not fixed; therefore, the group descriptor points to the location of the Inode bitmap. The Inode bitmap tracks usage of inodes. Each bit in the bitmap represents an inode. If an inode is in use then its corresponding bit in Inode bitmap will be set; otherwise, it will be unset.
+
+
+=== Block Group Descriptors ===
+Each block group is represented by its block group descriptor. It has vital information for the block group like free inodes, free blocks and the location of inode bitmap, block bitmap and the inode table of that particular block group.
+
+
+== Flexible block groups ==
+Ext4 introduced flexible block groups. In flex_bg, several block groups are grouped into one logical block group. Block bitmap and inode bitmap of first block group are expanded
+to include the bitmap and the inode table of other block groups.
+
+
+== See also ==
+Btrfs – Copy-on-write file system
+Comparison of file systems
+Extended file attributes – Set of file system features
+e2fsprogs – Software to maintain ext* file systems
+Ext2Fsd
+JFS – File system
+List of file systems
+List of default file systems
+Reiser4 – Computer file system, successor to ReiserFS
+XFS – Journaling file system for IRIX and Linux
+ZFS – Copy-on-write file system
+
+
+== References ==
+
+
+== External links ==
+ext4 documentation in Linux kernel source
+Theodore Ts'o's discussion on ext4, 29 June 2006
+"ext4 online defragmentation" Archived 30 December 2019 at the Wayback Machine (materials from Ottawa Linux Symposium 2007)
+"The new ext4 filesystem: current status and future plans" (materials from Ottawa Linux Symposium 2007)
+Kernel Log: Ext4 completes development phase as interim step to btrfs, 17 October 2008
+"Ext4 block and inode allocator improvements" Archived 31 March 2010 at the Wayback Machine (materials from Ottawa Linux Symposium 2008)
+"Ext4: The Next Generation of Ext2/3 Filesystem"
+Ext4 (and Ext2/Ext3) Wiki
+Ext4 wiki at kernelnewbies.org
+Native Windows port of Ext4 and other FS in CROSSMETA
+Ext2read A windows application to read/copy ext2/ext3/ext4 files with extent and LVM2 support.
+Ext2Fsd Open source ext2/ext3/ext4 read/write file system driver for Windows. ext4 is supported from version 0.50 onwards
+Ext4fuse Open source read-only ext4 driver for FUSE. (Supports Mac OS X 10.5 and later, using MacFuse)
+oracle post Understanding ext4 disk layout

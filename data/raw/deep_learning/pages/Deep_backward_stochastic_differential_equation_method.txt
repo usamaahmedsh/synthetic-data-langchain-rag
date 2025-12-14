@@ -1,0 +1,3906 @@
+Deep backward stochastic differential equation method is a numerical method that combines deep learning with Backward stochastic differential equation (BSDE). This method is particularly useful for solving high-dimensional problems in financial derivatives pricing and risk management. By leveraging the powerful function approximation capabilities of deep neural networks, deep BSDE addresses the computational challenges faced by traditional numerical methods in high-dimensional settings.
+
+
+== History ==
+
+
+=== Backwards stochastic differential equations ===
+BSDEs were first introduced by Pardoux and Peng in 1990 and have since become essential tools in stochastic control and financial mathematics. In the 1990s, Étienne Pardoux and Shige Peng established the existence and uniqueness theory for BSDE solutions, applying BSDEs to financial mathematics and control theory. For instance, BSDEs have been widely used in option pricing, risk measurement, and dynamic hedging.
+
+
+=== Deep learning ===
+
+Deep Learning is a machine learning method based on multilayer neural networks. Its core concept can be traced back to the neural computing models of the 1940s. In the 1980s, the proposal of the backpropagation algorithm made the training of multilayer neural networks possible. In 2006, the Deep Belief Networks proposed by Geoffrey Hinton and others rekindled interest in deep learning. Since then, deep learning has made groundbreaking advancements in image processing, speech recognition, natural language processing, and other fields.
+
+
+=== Limitations of traditional numerical methods ===
+Traditional numerical methods for solving stochastic differential equations include the Euler–Maruyama method, Milstein method, Runge–Kutta method (SDE) and methods based on different representations of iterated stochastic integrals.
+But as financial problems become more complex, traditional numerical methods for BSDEs (such as the Monte Carlo method, finite difference method, etc.) have shown limitations such as high computational complexity and the curse of dimensionality. 
+
+In high-dimensional scenarios, the Monte Carlo method requires numerous simulation paths to ensure accuracy, resulting in lengthy computation times. In particular, for nonlinear BSDEs, the convergence rate is slow, making it challenging to handle complex financial derivative pricing problems. 
+The finite difference method, on the other hand, experiences exponential growth in the number of computation grids with increasing dimensions, leading to significant computational and storage demands. This method is generally suitable for simple boundary conditions and low-dimensional BSDEs, but it is less effective in complex situations.
+
+
+=== Deep BSDE method ===
+The combination of deep learning with BSDEs, known as deep BSDE, was proposed by Han, Jentzen, and E in 2018 as a solution to the high-dimensional challenges faced by traditional numerical methods. The Deep BSDE approach leverages the powerful nonlinear fitting capabilities of deep learning, approximating the solution of BSDEs by constructing neural networks. The specific idea is to represent the solution of a BSDE as the output of a neural network and train the network to approximate the solution.
+
+
+== Model ==
+
+
+=== Mathematical method ===
+Backward Stochastic Differential Equations (BSDEs) represent a powerful mathematical tool extensively applied in fields such as stochastic control, financial mathematics, and beyond. Unlike traditional Stochastic differential equations (SDEs), which are solved forward in time, BSDEs are solved backward, starting from a future time and moving backwards to the present. This unique characteristic makes BSDEs particularly suitable for problems involving terminal conditions and uncertainties.
+
+A backward stochastic differential equation (BSDE) can be formulated as:
+
+  
+    
+      
+        
+          Y
+          
+            t
+          
+        
+        =
+        ξ
+        +
+        
+          ∫
+          
+            t
+          
+          
+            T
+          
+        
+        f
+        (
+        s
+        ,
+        
+          Y
+          
+            s
+          
+        
+        ,
+        
+          Z
+          
+            s
+          
+        
+        )
+        
+        d
+        s
+        −
+        
+          ∫
+          
+            t
+          
+          
+            T
+          
+        
+        
+          Z
+          
+            s
+          
+        
+        
+        d
+        
+          W
+          
+            s
+          
+        
+        ,
+        
+        t
+        ∈
+        [
+        0
+        ,
+        T
+        ]
+      
+    
+    {\displaystyle Y_{t}=\xi +\int _{t}^{T}f(s,Y_{s},Z_{s})\,ds-\int _{t}^{T}Z_{s}\,dW_{s},\quad t\in [0,T]}
+  
+
+In this equation:
+
+  
+    
+      
+        ξ
+      
+    
+    {\displaystyle \xi }
+  
+ is the terminal condition specified at time 
+  
+    
+      
+        T
+      
+    
+    {\displaystyle T}
+  
+.
+
+  
+    
+      
+        f
+        :
+        [
+        0
+        ,
+        T
+        ]
+        ×
+        
+          R
+        
+        ×
+        
+          R
+        
+        →
+        
+          R
+        
+      
+    
+    {\displaystyle f:[0,T]\times \mathbb {R} \times \mathbb {R} \to \mathbb {R} }
+  
+ is called the generator of the BSDE
+
+  
+    
+      
+        (
+        
+          Y
+          
+            t
+          
+        
+        ,
+        
+          Z
+          
+            t
+          
+        
+        
+          )
+          
+            t
+            ∈
+            [
+            0
+            ,
+            T
+            ]
+          
+        
+      
+    
+    {\displaystyle (Y_{t},Z_{t})_{t\in [0,T]}}
+  
+ is the solution consists of stochastic processes 
+  
+    
+      
+        (
+        
+          Y
+          
+            t
+          
+        
+        
+          )
+          
+            t
+            ∈
+            [
+            0
+            ,
+            T
+            ]
+          
+        
+      
+    
+    {\displaystyle (Y_{t})_{t\in [0,T]}}
+  
+ and 
+  
+    
+      
+        (
+        
+          Z
+          
+            t
+          
+        
+        
+          )
+          
+            t
+            ∈
+            [
+            0
+            ,
+            T
+            ]
+          
+        
+      
+    
+    {\displaystyle (Z_{t})_{t\in [0,T]}}
+  
+ which are adapted to the filtration 
+  
+    
+      
+        (
+        
+          
+            
+              F
+            
+          
+          
+            t
+          
+        
+        
+          )
+          
+            t
+            ∈
+            [
+            0
+            ,
+            T
+            ]
+          
+        
+      
+    
+    {\displaystyle ({\mathcal {F}}_{t})_{t\in [0,T]}}
+  
+
+  
+    
+      
+        
+          W
+          
+            s
+          
+        
+      
+    
+    {\displaystyle W_{s}}
+  
+ is a standard Brownian motion.
+The goal is to find adapted processes 
+  
+    
+      
+        
+          Y
+          
+            t
+          
+        
+      
+    
+    {\displaystyle Y_{t}}
+  
+ and 
+  
+    
+      
+        
+          Z
+          
+            t
+          
+        
+      
+    
+    {\displaystyle Z_{t}}
+  
+ that satisfy this equation. Traditional numerical methods struggle with BSDEs due to the curse of dimensionality, which makes computations in high-dimensional spaces extremely challenging.
+
+
+=== Methodology overview ===
+Source:
+
+
+==== 1. Semilinear parabolic PDEs ====
+We consider a general class of PDEs represented by
+
+  
+    
+      
+        
+          
+            
+              ∂
+              u
+            
+            
+              ∂
+              t
+            
+          
+        
+        (
+        t
+        ,
+        x
+        )
+        +
+        
+          
+            1
+            2
+          
+        
+        
+          Tr
+        
+        
+          (
+          
+            σ
+            
+              σ
+              
+                T
+              
+            
+            (
+            t
+            ,
+            x
+            )
+            
+              (
+              
+                
+                  
+                    Hess
+                  
+                  
+                    x
+                  
+                
+                u
+                (
+                t
+                ,
+                x
+                )
+              
+              )
+            
+          
+          )
+        
+        +
+        ∇
+        u
+        (
+        t
+        ,
+        x
+        )
+        ⋅
+        μ
+        (
+        t
+        ,
+        x
+        )
+        +
+        f
+        
+          (
+          
+            t
+            ,
+            x
+            ,
+            u
+            (
+            t
+            ,
+            x
+            )
+            ,
+            
+              σ
+              
+                T
+              
+            
+            (
+            t
+            ,
+            x
+            )
+            ∇
+            u
+            (
+            t
+            ,
+            x
+            )
+          
+          )
+        
+        =
+        0
+      
+    
+    {\displaystyle {\frac {\partial u}{\partial t}}(t,x)+{\frac {1}{2}}{\text{Tr}}\left(\sigma \sigma ^{T}(t,x)\left({\text{Hess}}_{x}u(t,x)\right)\right)+\nabla u(t,x)\cdot \mu (t,x)+f\left(t,x,u(t,x),\sigma ^{T}(t,x)\nabla u(t,x)\right)=0}
+  
+
+In this equation:
+
+  
+    
+      
+        u
+        (
+        T
+        ,
+        x
+        )
+        =
+        g
+        (
+        x
+        )
+      
+    
+    {\displaystyle u(T,x)=g(x)}
+  
+ is the terminal condition specified at time 
+  
+    
+      
+        T
+      
+    
+    {\displaystyle T}
+  
+.
+
+  
+    
+      
+        t
+      
+    
+    {\displaystyle t}
+  
+ and 
+  
+    
+      
+        x
+      
+    
+    {\displaystyle x}
+  
+ represent the time and 
+  
+    
+      
+        d
+      
+    
+    {\displaystyle d}
+  
+-dimensional space variable, respectively.
+
+  
+    
+      
+        σ
+      
+    
+    {\displaystyle \sigma }
+  
+ is a known vector-valued function, 
+  
+    
+      
+        
+          σ
+          
+            T
+          
+        
+      
+    
+    {\displaystyle \sigma ^{T}}
+  
+ denotes the transpose associated to 
+  
+    
+      
+        σ
+      
+    
+    {\displaystyle \sigma }
+  
+, and 
+  
+    
+      
+        
+          
+            Hess
+          
+          
+            x
+          
+        
+        u
+      
+    
+    {\displaystyle {\text{Hess}}_{x}u}
+  
+ denotes the Hessian of function 
+  
+    
+      
+        u
+      
+    
+    {\displaystyle u}
+  
+ with respect to 
+  
+    
+      
+        x
+      
+    
+    {\displaystyle x}
+  
+.
+
+  
+    
+      
+        μ
+      
+    
+    {\displaystyle \mu }
+  
+ is a known vector-valued function, and 
+  
+    
+      
+        f
+      
+    
+    {\displaystyle f}
+  
+ is a known nonlinear function.
+
+
+==== 2. Stochastic process representation ====
+Let 
+  
+    
+      
+        {
+        
+          W
+          
+            t
+          
+        
+        
+          }
+          
+            t
+            ≥
+            0
+          
+        
+      
+    
+    {\displaystyle \{W_{t}\}_{t\geq 0}}
+  
+ be a 
+  
+    
+      
+        d
+      
+    
+    {\displaystyle d}
+  
+-dimensional Brownian motion and 
+  
+    
+      
+        {
+        
+          X
+          
+            t
+          
+        
+        
+          }
+          
+            t
+            ≥
+            0
+          
+        
+      
+    
+    {\displaystyle \{X_{t}\}_{t\geq 0}}
+  
+ be a 
+  
+    
+      
+        d
+      
+    
+    {\displaystyle d}
+  
+-dimensional stochastic process which satisfies
+
+  
+    
+      
+        
+          X
+          
+            t
+          
+        
+        =
+        ξ
+        +
+        
+          ∫
+          
+            0
+          
+          
+            t
+          
+        
+        μ
+        (
+        s
+        ,
+        
+          X
+          
+            s
+          
+        
+        )
+        
+        d
+        s
+        +
+        
+          ∫
+          
+            0
+          
+          
+            t
+          
+        
+        σ
+        (
+        s
+        ,
+        
+          X
+          
+            s
+          
+        
+        )
+        
+        d
+        
+          W
+          
+            s
+          
+        
+      
+    
+    {\displaystyle X_{t}=\xi +\int _{0}^{t}\mu (s,X_{s})\,ds+\int _{0}^{t}\sigma (s,X_{s})\,dW_{s}}
+  
+
+
+==== 3. Backward stochastic differential equation (BSDE) ====
+Then the solution of the PDE satisfies the following BSDE:
+
+  
+    
+      
+        u
+        (
+        t
+        ,
+        
+          X
+          
+            t
+          
+        
+        )
+        −
+        u
+        (
+        0
+        ,
+        
+          X
+          
+            0
+          
+        
+        )
+      
+    
+    {\displaystyle u(t,X_{t})-u(0,X_{0})}
+  
+
+  
+    
+      
+        =
+        −
+        
+          ∫
+          
+            0
+          
+          
+            t
+          
+        
+        f
+        
+          (
+          
+            s
+            ,
+            
+              X
+              
+                s
+              
+            
+            ,
+            u
+            (
+            s
+            ,
+            
+              X
+              
+                s
+              
+            
+            )
+            ,
+            
+              σ
+              
+                T
+              
+            
+            (
+            s
+            ,
+            
+              X
+              
+                s
+              
+            
+            )
+            ∇
+            u
+            (
+            s
+            ,
+            
+              X
+              
+                s
+              
+            
+            )
+          
+          )
+        
+        
+        d
+        s
+        +
+        
+          ∫
+          
+            0
+          
+          
+            t
+          
+        
+        ∇
+        u
+        (
+        s
+        ,
+        
+          X
+          
+            s
+          
+        
+        )
+        ⋅
+        σ
+        (
+        s
+        ,
+        
+          X
+          
+            s
+          
+        
+        )
+        
+        d
+        
+          W
+          
+            s
+          
+        
+      
+    
+    {\displaystyle =-\int _{0}^{t}f\left(s,X_{s},u(s,X_{s}),\sigma ^{T}(s,X_{s})\nabla u(s,X_{s})\right)\,ds+\int _{0}^{t}\nabla u(s,X_{s})\cdot \sigma (s,X_{s})\,dW_{s}}
+  
+
+
+==== 4. Temporal discretization ====
+Discretize the time interval 
+  
+    
+      
+        [
+        0
+        ,
+        T
+        ]
+      
+    
+    {\displaystyle [0,T]}
+  
+ into steps 
+  
+    
+      
+        0
+        =
+        
+          t
+          
+            0
+          
+        
+        <
+        
+          t
+          
+            1
+          
+        
+        <
+        ⋯
+        <
+        
+          t
+          
+            N
+          
+        
+        =
+        T
+      
+    
+    {\displaystyle 0=t_{0}<t_{1}<\cdots <t_{N}=T}
+  
+:
+
+  
+    
+      
+        
+          X
+          
+            
+              t
+              
+                n
+                +
+                1
+              
+            
+          
+        
+        −
+        
+          X
+          
+            
+              t
+              
+                n
+              
+            
+          
+        
+        ≈
+        μ
+        (
+        
+          t
+          
+            n
+          
+        
+        ,
+        
+          X
+          
+            
+              t
+              
+                n
+              
+            
+          
+        
+        )
+        Δ
+        
+          t
+          
+            n
+          
+        
+        +
+        σ
+        (
+        
+          t
+          
+            n
+          
+        
+        ,
+        
+          X
+          
+            
+              t
+              
+                n
+              
+            
+          
+        
+        )
+        Δ
+        
+          W
+          
+            n
+          
+        
+      
+    
+    {\displaystyle X_{t_{n+1}}-X_{t_{n}}\approx \mu (t_{n},X_{t_{n}})\Delta t_{n}+\sigma (t_{n},X_{t_{n}})\Delta W_{n}}
+  
+
+  
+    
+      
+        u
+        (
+        
+          t
+          
+            n
+          
+        
+        ,
+        
+          X
+          
+            
+              t
+              
+                n
+                +
+                1
+              
+            
+          
+        
+        )
+        −
+        u
+        (
+        
+          t
+          
+            n
+          
+        
+        ,
+        
+          X
+          
+            
+              t
+              
+                n
+              
+            
+          
+        
+        )
+      
+    
+    {\displaystyle u(t_{n},X_{t_{n+1}})-u(t_{n},X_{t_{n}})}
+  
+
+  
+    
+      
+        ≈
+        −
+        f
+        
+          (
+          
+            
+              t
+              
+                n
+              
+            
+            ,
+            
+              X
+              
+                
+                  t
+                  
+                    n
+                  
+                
+              
+            
+            ,
+            u
+            (
+            
+              t
+              
+                n
+              
+            
+            ,
+            
+              X
+              
+                
+                  t
+                  
+                    n
+                  
+                
+              
+            
+            )
+            ,
+            
+              σ
+              
+                T
+              
+            
+            (
+            
+              t
+              
+                n
+              
+            
+            ,
+            
+              X
+              
+                
+                  t
+                  
+                    n
+                  
+                
+              
+            
+            )
+            ∇
+            u
+            (
+            
+              t
+              
+                n
+              
+            
+            ,
+            
+              X
+              
+                
+                  t
+                  
+                    n
+                  
+                
+              
+            
+            )
+          
+          )
+        
+        Δ
+        
+          t
+          
+            n
+          
+        
+        +
+        
+          [
+          
+            ∇
+            u
+            (
+            
+              t
+              
+                n
+              
+            
+            ,
+            
+              X
+              
+                
+                  t
+                  
+                    n
+                  
+                
+              
+            
+            )
+            σ
+            (
+            
+              t
+              
+                n
+              
+            
+            ,
+            
+              X
+              
+                
+                  t
+                  
+                    n
+                  
+                
+              
+            
+            )
+          
+          ]
+        
+        Δ
+        
+          W
+          
+            n
+          
+        
+      
+    
+    {\displaystyle \approx -f\left(t_{n},X_{t_{n}},u(t_{n},X_{t_{n}}),\sigma ^{T}(t_{n},X_{t_{n}})\nabla u(t_{n},X_{t_{n}})\right)\Delta t_{n}+\left[\nabla u(t_{n},X_{t_{n}})\sigma (t_{n},X_{t_{n}})\right]\Delta W_{n}}
+  
+
+where 
+  
+    
+      
+        Δ
+        
+          t
+          
+            n
+          
+        
+        =
+        
+          t
+          
+            n
+            +
+            1
+          
+        
+        −
+        
+          t
+          
+            n
+          
+        
+      
+    
+    {\displaystyle \Delta t_{n}=t_{n+1}-t_{n}}
+  
+ and 
+  
+    
+      
+        Δ
+        
+          W
+          
+            n
+          
+        
+        =
+        
+          W
+          
+            
+              t
+              
+                n
+                +
+                1
+              
+            
+          
+        
+        −
+        
+          W
+          
+            n
+          
+        
+      
+    
+    {\displaystyle \Delta W_{n}=W_{t_{n+1}}-W_{n}}
+  
+.
+
+
+==== 5. Neural network approximation ====
+Use a multilayer feedforward neural network to approximate:
+
+  
+    
+      
+        
+          σ
+          
+            T
+          
+        
+        (
+        
+          t
+          
+            n
+          
+        
+        ,
+        
+          X
+          
+            n
+          
+        
+        )
+        ∇
+        u
+        (
+        
+          t
+          
+            n
+          
+        
+        ,
+        
+          X
+          
+            n
+          
+        
+        )
+        ≈
+        (
+        
+          σ
+          
+            T
+          
+        
+        ∇
+        u
+        )
+        (
+        
+          t
+          
+            n
+          
+        
+        ,
+        
+          X
+          
+            n
+          
+        
+        ;
+        
+          θ
+          
+            n
+          
+        
+        )
+      
+    
+    {\displaystyle \sigma ^{T}(t_{n},X_{n})\nabla u(t_{n},X_{n})\approx (\sigma ^{T}\nabla u)(t_{n},X_{n};\theta _{n})}
+  
+
+for 
+  
+    
+      
+        n
+        =
+        1
+        ,
+        …
+        ,
+        N
+      
+    
+    {\displaystyle n=1,\ldots ,N}
+  
+, where 
+  
+    
+      
+        
+          θ
+          
+            n
+          
+        
+      
+    
+    {\displaystyle \theta _{n}}
+  
+ are parameters of the neural network approximating 
+  
+    
+      
+        x
+        ↦
+        
+          σ
+          
+            T
+          
+        
+        (
+        t
+        ,
+        x
+        )
+        ∇
+        u
+        (
+        t
+        ,
+        x
+        )
+      
+    
+    {\displaystyle x\mapsto \sigma ^{T}(t,x)\nabla u(t,x)}
+  
+ at 
+  
+    
+      
+        t
+        =
+        
+          t
+          
+            n
+          
+        
+      
+    
+    {\displaystyle t=t_{n}}
+  
+.
+
+
+==== 6. Training the neural network ====
+Stack all sub-networks in the approximation step to form a deep neural network. Train the network using paths 
+  
+    
+      
+        {
+        
+          X
+          
+            
+              t
+              
+                n
+              
+            
+          
+        
+        
+          }
+          
+            0
+            ≤
+            n
+            ≤
+            N
+          
+        
+      
+    
+    {\displaystyle \{X_{t_{n}}\}_{0\leq n\leq N}}
+  
+ and 
+  
+    
+      
+        {
+        
+          W
+          
+            
+              t
+              
+                n
+              
+            
+          
+        
+        
+          }
+          
+            0
+            ≤
+            n
+            ≤
+            N
+          
+        
+      
+    
+    {\displaystyle \{W_{t_{n}}\}_{0\leq n\leq N}}
+  
+ as input data, minimizing the loss function:
+
+  
+    
+      
+        l
+        (
+        θ
+        )
+        =
+        
+          E
+        
+        
+          
+            |
+            
+              g
+              (
+              
+                X
+                
+                  
+                    t
+                    
+                      N
+                    
+                  
+                
+              
+              )
+              −
+              
+                
+                  
+                    u
+                    ^
+                  
+                
+              
+              
+                (
+                
+                  {
+                  
+                    X
+                    
+                      
+                        t
+                        
+                          n
+                        
+                      
+                    
+                  
+                  
+                    }
+                    
+                      0
+                      ≤
+                      n
+                      ≤
+                      N
+                    
+                  
+                  ,
+                  {
+                  
+                    W
+                    
+                      
+                        t
+                        
+                          n
+                        
+                      
+                    
+                  
+                  
+                    }
+                    
+                      0
+                      ≤
+                      n
+                      ≤
+                      N
+                    
+                  
+                  ;
+                  θ
+                
+                )
+              
+            
+            |
+          
+          
+            2
+          
+        
+      
+    
+    {\displaystyle l(\theta )=\mathbb {E} \left|g(X_{t_{N}})-{\hat {u}}\left(\{X_{t_{n}}\}_{0\leq n\leq N},\{W_{t_{n}}\}_{0\leq n\leq N};\theta \right)\right|^{2}}
+  
+
+where 
+  
+    
+      
+        
+          
+            
+              u
+              ^
+            
+          
+        
+      
+    
+    {\displaystyle {\hat {u}}}
+  
+ is the approximation of 
+  
+    
+      
+        u
+        (
+        t
+        ,
+        
+          X
+          
+            t
+          
+        
+        )
+      
+    
+    {\displaystyle u(t,X_{t})}
+  
+.
+
+
+=== Neural network architecture ===
+Source:
+
+Deep learning encompass a class of machine learning techniques that have transformed numerous fields by enabling the modeling and interpretation of intricate data structures. These methods, often referred to as deep learning, are distinguished by their hierarchical architecture comprising multiple layers of interconnected nodes, or neurons. This architecture allows deep neural networks to autonomously learn abstract representations of data, making them particularly effective in tasks such as image recognition, natural language processing, and financial modeling. The core of this method lies in designing an appropriate neural network structure (such as fully connected networks or recurrent neural networks) and selecting effective optimization algorithms.
+The choice of deep BSDE network architecture, the number of layers, and the number of neurons per layer are crucial hyperparameters that significantly impact the performance of the deep BSDE method. The deep BSDE method constructs neural networks to approximate the solutions for 
+  
+    
+      
+        Y
+      
+    
+    {\displaystyle Y}
+  
+ and 
+  
+    
+      
+        Z
+      
+    
+    {\displaystyle Z}
+  
+, and utilizes stochastic gradient descent and other optimization algorithms for training.
+The fig illustrates the network architecture for the deep BSDE method. Note that 
+  
+    
+      
+        ∇
+        u
+        (
+        
+          t
+          
+            n
+          
+        
+        ,
+        
+          X
+          
+            
+              t
+              
+                n
+              
+            
+          
+        
+        )
+      
+    
+    {\displaystyle \nabla u(t_{n},X_{t_{n}})}
+  
+ denotes the variable approximated directly by subnetworks, and 
+  
+    
+      
+        u
+        (
+        
+          t
+          
+            n
+          
+        
+        ,
+        
+          X
+          
+            
+              t
+              
+                n
+              
+            
+          
+        
+        )
+      
+    
+    {\displaystyle u(t_{n},X_{t_{n}})}
+  
+ denotes the variable computed iteratively in the network. There are three types of connections in this network:
+i) 
+  
+    
+      
+        
+          X
+          
+            
+              t
+              
+                n
+              
+            
+          
+        
+        →
+        
+          h
+          
+            1
+          
+          
+            n
+          
+        
+        →
+        
+          h
+          
+            2
+          
+          
+            n
+          
+        
+        →
+        …
+        →
+        
+          h
+          
+            H
+          
+          
+            n
+          
+        
+        →
+        ∇
+        u
+        (
+        
+          t
+          
+            n
+          
+        
+        ,
+        
+          X
+          
+            
+              t
+              
+                n
+              
+            
+          
+        
+        )
+      
+    
+    {\displaystyle X_{t_{n}}\rightarrow h_{1}^{n}\rightarrow h_{2}^{n}\rightarrow \ldots \rightarrow h_{H}^{n}\rightarrow \nabla u(t_{n},X_{t_{n}})}
+  
+ is the multilayer feedforward neural network approximating the spatial gradients at time 
+  
+    
+      
+        t
+        =
+        
+          t
+          
+            n
+          
+        
+      
+    
+    {\displaystyle t=t_{n}}
+  
+. The weights 
+  
+    
+      
+        
+          θ
+          
+            n
+          
+        
+      
+    
+    {\displaystyle \theta _{n}}
+  
+ of this subnetwork are the parameters optimized.
+ii) 
+  
+    
+      
+        (
+        u
+        (
+        
+          t
+          
+            n
+          
+        
+        ,
+        
+          X
+          
+            
+              t
+              
+                n
+              
+            
+          
+        
+        )
+        ,
+        ∇
+        u
+        (
+        
+          t
+          
+            n
+          
+        
+        ,
+        
+          X
+          
+            
+              t
+              
+                n
+              
+            
+          
+        
+        )
+        ,
+        
+          W
+          
+            
+              t
+              
+                n
+              
+            
+            +
+            1
+          
+        
+        −
+        
+          W
+          
+            
+              t
+              
+                n
+              
+            
+          
+        
+        )
+        →
+        u
+        (
+        
+          t
+          
+            n
+            +
+            1
+          
+        
+        ,
+        
+          X
+          
+            
+              t
+              
+                n
+                +
+                1
+              
+            
+          
+        
+        )
+      
+    
+    {\displaystyle (u(t_{n},X_{t_{n}}),\nabla u(t_{n},X_{t_{n}}),W_{t_{n}+1}-W_{t_{n}})\rightarrow u(t_{n+1},X_{t_{n+1}})}
+  
+ is the forward iteration providing the final output of the network as an approximation of 
+  
+    
+      
+        u
+        (
+        
+          t
+          
+            N
+          
+        
+        ,
+        
+          X
+          
+            
+              t
+              
+                N
+              
+            
+          
+        
+        )
+      
+    
+    {\displaystyle u(t_{N},X_{t_{N}})}
+  
+, characterized by Eqs. 5 and 6. There are no parameters optimized in this type of connection.
+iii) 
+  
+    
+      
+        (
+        
+          X
+          
+            
+              t
+              
+                n
+              
+            
+          
+        
+        ,
+        
+          W
+          
+            
+              t
+              
+                n
+              
+            
+            +
+            1
+          
+        
+        −
+        
+          W
+          
+            
+              t
+              
+                n
+              
+            
+          
+        
+        )
+        →
+        
+          X
+          
+            
+              t
+              
+                n
+                +
+                1
+              
+            
+          
+        
+      
+    
+    {\displaystyle (X_{t_{n}},W_{t_{n}+1}-W_{t_{n}})\rightarrow X_{t_{n+1}}}
+  
+ is the shortcut connecting blocks at different times, characterized by Eqs. 4 and 6. There are also no parameters optimized in this type of connection.
+
+
+== Algorithms ==
+
+
+=== Adam optimizer ===
+This function implements the Adam algorithm for minimizing the target function 
+  
+    
+      
+        
+          
+            G
+          
+        
+        (
+        θ
+        )
+      
+    
+    {\displaystyle {\mathcal {G}}(\theta )}
+  
+.
+
+Function: ADAM(
+  
+    
+      
+        α
+      
+    
+    {\displaystyle \alpha }
+  
+, 
+  
+    
+      
+        
+          β
+          
+            1
+          
+        
+      
+    
+    {\displaystyle \beta _{1}}
+  
+, 
+  
+    
+      
+        
+          β
+          
+            2
+          
+        
+      
+    
+    {\displaystyle \beta _{2}}
+  
+, 
+  
+    
+      
+        ϵ
+      
+    
+    {\displaystyle \epsilon }
+  
+, 
+  
+    
+      
+        
+          
+            G
+          
+        
+        (
+        θ
+        )
+      
+    
+    {\displaystyle {\mathcal {G}}(\theta )}
+  
+, 
+  
+    
+      
+        
+          θ
+          
+            0
+          
+        
+      
+    
+    {\displaystyle \theta _{0}}
+  
+) is
+
+    
+  
+    
+      
+        
+          m
+          
+            0
+          
+        
+        :=
+        0
+      
+    
+    {\displaystyle m_{0}:=0}
+  
+ // Initialize the first moment vector
+    
+  
+    
+      
+        
+          v
+          
+            0
+          
+        
+        :=
+        0
+      
+    
+    {\displaystyle v_{0}:=0}
+  
+ // Initialize the second moment vector
+    
+  
+    
+      
+        t
+        :=
+        0
+      
+    
+    {\displaystyle t:=0}
+  
+   // Initialize timestep
+
+    // Step 1: Initialize parameters
+    
+  
+    
+      
+        
+          θ
+          
+            t
+          
+        
+        :=
+        
+          θ
+          
+            0
+          
+        
+      
+    
+    {\displaystyle \theta _{t}:=\theta _{0}}
+  
+
+    // Step 2: Optimization loop
+    while 
+  
+    
+      
+        
+          θ
+          
+            t
+          
+        
+      
+    
+    {\displaystyle \theta _{t}}
+  
+ has not converged do
+        
+  
+    
+      
+        t
+        :=
+        t
+        +
+        1
+      
+    
+    {\displaystyle t:=t+1}
+  
+
+        
+  
+    
+      
+        
+          g
+          
+            t
+          
+        
+        :=
+        
+          ∇
+          
+            θ
+          
+        
+        
+          
+            
+              G
+            
+          
+          
+            t
+          
+        
+        (
+        
+          θ
+          
+            t
+            −
+            1
+          
+        
+        )
+      
+    
+    {\displaystyle g_{t}:=\nabla _{\theta }{\mathcal {G}}_{t}(\theta _{t-1})}
+  
+ // Compute gradient of 
+  
+    
+      
+        
+          
+            G
+          
+        
+      
+    
+    {\displaystyle {\mathcal {G}}}
+  
+ at timestep 
+  
+    
+      
+        t
+      
+    
+    {\displaystyle t}
+  
+
+        
+  
+    
+      
+        
+          m
+          
+            t
+          
+        
+        :=
+        
+          β
+          
+            1
+          
+        
+        ⋅
+        
+          m
+          
+            t
+            −
+            1
+          
+        
+        +
+        (
+        1
+        −
+        
+          β
+          
+            1
+          
+        
+        )
+        ⋅
+        
+          g
+          
+            t
+          
+        
+      
+    
+    {\displaystyle m_{t}:=\beta _{1}\cdot m_{t-1}+(1-\beta _{1})\cdot g_{t}}
+  
+ // Update biased first moment estimate
+        
+  
+    
+      
+        
+          v
+          
+            t
+          
+        
+        :=
+        
+          β
+          
+            2
+          
+        
+        ⋅
+        
+          v
+          
+            t
+            −
+            1
+          
+        
+        +
+        (
+        1
+        −
+        
+          β
+          
+            2
+          
+        
+        )
+        ⋅
+        
+          g
+          
+            t
+          
+          
+            2
+          
+        
+      
+    
+    {\displaystyle v_{t}:=\beta _{2}\cdot v_{t-1}+(1-\beta _{2})\cdot g_{t}^{2}}
+  
+ // Update biased second raw moment estimate
+        
+  
+    
+      
+        
+          
+            
+              
+                m
+                ^
+              
+            
+          
+          
+            t
+          
+        
+        :=
+        
+          
+            
+              m
+              
+                t
+              
+            
+            
+              (
+              1
+              −
+              
+                β
+                
+                  1
+                
+                
+                  t
+                
+              
+              )
+            
+          
+        
+      
+    
+    {\displaystyle {\widehat {m}}_{t}:={\frac {m_{t}}{(1-\beta _{1}^{t})}}}
+  
+ // Compute bias-corrected first moment estimate
+        
+  
+    
+      
+        
+          
+            
+              
+                v
+                ^
+              
+            
+          
+          
+            t
+          
+        
+        :=
+        
+          
+            
+              v
+              
+                t
+              
+            
+            
+              (
+              1
+              −
+              
+                β
+                
+                  2
+                
+                
+                  t
+                
+              
+              )
+            
+          
+        
+      
+    
+    {\displaystyle {\widehat {v}}_{t}:={\frac {v_{t}}{(1-\beta _{2}^{t})}}}
+  
+ // Compute bias-corrected second moment estimate
+        
+  
+    
+      
+        
+          θ
+          
+            t
+          
+        
+        :=
+        
+          θ
+          
+            t
+            −
+            1
+          
+        
+        −
+        
+          
+            
+              α
+              ⋅
+              
+                
+                  
+                    
+                      m
+                      ^
+                    
+                  
+                
+                
+                  t
+                
+              
+            
+            
+              (
+              
+                
+                  
+                    
+                      
+                        
+                          v
+                          ^
+                        
+                      
+                    
+                    
+                      t
+                    
+                  
+                
+              
+              +
+              ϵ
+              )
+            
+          
+        
+      
+    
+    {\displaystyle \theta _{t}:=\theta _{t-1}-{\frac {\alpha \cdot {\widehat {m}}_{t}}{({\sqrt {{\widehat {v}}_{t}}}+\epsilon )}}}
+  
+ // Update parameters
+    
+    return 
+  
+    
+      
+        
+          θ
+          
+            t
+          
+        
+      
+    
+    {\displaystyle \theta _{t}}
+  
+
+With the ADAM algorithm described above, we now present the pseudocode corresponding to a multilayer feedforward neural network:
+
+
+=== Backpropagation algorithm ===
+This function implements the backpropagation algorithm for training a multi-layer feedforward neural network.
+
+Function: BackPropagation(set 
+  
+    
+      
+        D
+        =
+        
+          
+            {
+            
+              (
+              
+                
+                  x
+                
+                
+                  k
+                
+              
+              ,
+              
+                
+                  y
+                
+                
+                  k
+                
+              
+              )
+            
+            }
+          
+          
+            k
+            =
+            1
+          
+          
+            m
+          
+        
+      
+    
+    {\displaystyle D=\left\{(\mathbf {x} _{k},\mathbf {y} _{k})\right\}_{k=1}^{m}}
+  
+) is
+    // Step 1: Random initialization
+    // Step 2: Optimization loop
+    repeat until termination condition is met:
+        for each 
+  
+    
+      
+        (
+        
+          
+            x
+          
+          
+            k
+          
+        
+        ,
+        
+          
+            y
+          
+          
+            k
+          
+        
+        )
+        ∈
+        D
+      
+    
+    {\displaystyle (\mathbf {x} _{k},\mathbf {y} _{k})\in D}
+  
+:
+            
+  
+    
+      
+        
+          
+            
+              
+                
+                  y
+                
+                ^
+              
+            
+          
+          
+            k
+          
+        
+        :=
+        f
+        (
+        
+          β
+          
+            j
+          
+        
+        −
+        
+          θ
+          
+            j
+          
+        
+        )
+      
+    
+    {\displaystyle {\hat {\mathbf {y} }}_{k}:=f(\beta _{j}-\theta _{j})}
+  
+ // Compute output
+            // Compute gradients
+            for each output neuron 
+  
+    
+      
+        j
+      
+    
+    {\displaystyle j}
+  
+:
+                
+  
+    
+      
+        
+          g
+          
+            j
+          
+        
+        :=
+        
+          
+            
+              
+                y
+                ^
+              
+            
+          
+          
+            j
+          
+          
+            k
+          
+        
+        (
+        1
+        −
+        
+          
+            
+              
+                y
+                ^
+              
+            
+          
+          
+            j
+          
+          
+            k
+          
+        
+        )
+        (
+        
+          
+            
+              
+                y
+                ^
+              
+            
+          
+          
+            j
+          
+          
+            k
+          
+        
+        −
+        
+          y
+          
+            j
+          
+          
+            k
+          
+        
+        )
+      
+    
+    {\displaystyle g_{j}:={\hat {y}}_{j}^{k}(1-{\hat {y}}_{j}^{k})({\hat {y}}_{j}^{k}-y_{j}^{k})}
+  
+ // Gradient of output neuron
+            for each hidden neuron 
+  
+    
+      
+        h
+      
+    
+    {\displaystyle h}
+  
+:
+                
+  
+    
+      
+        
+          e
+          
+            h
+          
+        
+        :=
+        
+          b
+          
+            h
+          
+        
+        (
+        1
+        −
+        
+          b
+          
+            h
+          
+        
+        )
+        
+          ∑
+          
+            j
+            =
+            1
+          
+          
+            ℓ
+          
+        
+        
+          w
+          
+            h
+            j
+          
+        
+        
+          g
+          
+            j
+          
+        
+      
+    
+    {\displaystyle e_{h}:=b_{h}(1-b_{h})\sum _{j=1}^{\ell }w_{hj}g_{j}}
+  
+ // Gradient of hidden neuron
+            // Update weights
+            for each weight 
+  
+    
+      
+        
+          w
+          
+            h
+            j
+          
+        
+      
+    
+    {\displaystyle w_{hj}}
+  
+:
+                
+  
+    
+      
+        Δ
+        
+          w
+          
+            h
+            j
+          
+        
+        :=
+        η
+        
+          g
+          
+            j
+          
+        
+        
+          b
+          
+            h
+          
+        
+      
+    
+    {\displaystyle \Delta w_{hj}:=\eta g_{j}b_{h}}
+  
+ // Update rule for weight
+            for each weight 
+  
+    
+      
+        
+          v
+          
+            i
+            h
+          
+        
+      
+    
+    {\displaystyle v_{ih}}
+  
+:
+                
+  
+    
+      
+        Δ
+        
+          v
+          
+            i
+            h
+          
+        
+        :=
+        η
+        
+          e
+          
+            h
+          
+        
+        
+          x
+          
+            i
+          
+        
+      
+    
+    {\displaystyle \Delta v_{ih}:=\eta e_{h}x_{i}}
+  
+ // Update rule for weight
+            // Update parameters
+            for each parameter 
+  
+    
+      
+        
+          θ
+          
+            j
+          
+        
+      
+    
+    {\displaystyle \theta _{j}}
+  
+:
+                
+  
+    
+      
+        Δ
+        
+          θ
+          
+            j
+          
+        
+        :=
+        −
+        η
+        
+          g
+          
+            j
+          
+        
+      
+    
+    {\displaystyle \Delta \theta _{j}:=-\eta g_{j}}
+  
+ // Update rule for parameter
+            for each parameter 
+  
+    
+      
+        
+          γ
+          
+            h
+          
+        
+      
+    
+    {\displaystyle \gamma _{h}}
+  
+:
+                
+  
+    
+      
+        Δ
+        
+          γ
+          
+            h
+          
+        
+        :=
+        −
+        η
+        
+          e
+          
+            h
+          
+        
+      
+    
+    {\displaystyle \Delta \gamma _{h}:=-\eta e_{h}}
+  
+ // Update rule for parameter
+
+    // Step 3: Construct the trained multi-layer feedforward neural network
+
+    return trained neural network
+
+Combining the ADAM algorithm and a multilayer feedforward neural network, we provide the following pseudocode for solving the optimal investment portfolio:
+
+
+=== Numerical solution for optimal investment portfolio ===
+Source:
+This function calculates the optimal investment portfolio using the specified parameters and stochastic processes.
+
+function OptimalInvestment(
+  
+    
+      
+        
+          W
+          
+            
+              t
+              
+                i
+                +
+                1
+              
+            
+          
+        
+        −
+        
+          W
+          
+            
+              t
+              
+                i
+              
+            
+          
+        
+      
+    
+    {\displaystyle W_{t_{i+1}}-W_{t_{i}}}
+  
+, 
+  
+    
+      
+        x
+      
+    
+    {\displaystyle x}
+  
+, 
+  
+    
+      
+        θ
+        =
+        (
+        
+          X
+          
+            0
+          
+        
+        ,
+        
+          H
+          
+            0
+          
+        
+        ,
+        
+          θ
+          
+            1
+          
+        
+        ,
+        
+          θ
+          
+            2
+          
+        
+        ,
+        …
+        ,
+        
+          θ
+          
+            N
+            −
+            1
+          
+        
+        )
+      
+    
+    {\displaystyle \theta =(X_{0},H_{0},\theta _{1},\theta _{2},\dots ,\theta _{N-1})}
+  
+) is
+    // Step 1: Initialization
+    for 
+  
+    
+      
+        k
+        :=
+        0
+      
+    
+    {\displaystyle k:=0}
+  
+ to maxstep do
+        
+  
+    
+      
+        
+          M
+          
+            0
+          
+          
+            k
+            ,
+            m
+          
+        
+        :=
+        0
+      
+    
+    {\displaystyle M_{0}^{k,m}:=0}
+  
+, 
+  
+    
+      
+        
+          X
+          
+            0
+          
+          
+            k
+            ,
+            m
+          
+        
+        :=
+        
+          X
+          
+            0
+          
+          
+            k
+          
+        
+      
+    
+    {\displaystyle X_{0}^{k,m}:=X_{0}^{k}}
+  
+ // Parameter initialization
+        for 
+  
+    
+      
+        i
+        :=
+        0
+      
+    
+    {\displaystyle i:=0}
+  
+ to 
+  
+    
+      
+        N
+        −
+        1
+      
+    
+    {\displaystyle N-1}
+  
+ do
+            
+  
+    
+      
+        
+          H
+          
+            
+              t
+              
+                i
+              
+            
+          
+          
+            k
+            ,
+            m
+          
+        
+        :=
+        
+          
+            N
+            N
+          
+        
+        (
+        
+          M
+          
+            
+              t
+              
+                i
+              
+            
+          
+          
+            k
+            ,
+            m
+          
+        
+        ;
+        
+          θ
+          
+            i
+          
+          
+            k
+          
+        
+        )
+      
+    
+    {\displaystyle H_{t_{i}}^{k,m}:={\mathcal {NN}}(M_{t_{i}}^{k,m};\theta _{i}^{k})}
+  
+ // Update feedforward neural network unit
+            
+  
+    
+      
+        
+          M
+          
+            
+              t
+              
+                i
+                +
+                1
+              
+            
+          
+          
+            k
+            ,
+            m
+          
+        
+        :=
+        
+          M
+          
+            
+              t
+              
+                i
+              
+            
+          
+          
+            k
+            ,
+            m
+          
+        
+        +
+        
+          
+            (
+          
+        
+        (
+        1
+        −
+        ϕ
+        )
+        (
+        
+          μ
+          
+            
+              t
+              
+                i
+              
+            
+          
+        
+        −
+        
+          M
+          
+            
+              t
+              
+                i
+              
+            
+          
+          
+            k
+            ,
+            m
+          
+        
+        )
+        
+          
+            )
+          
+        
+        (
+        
+          t
+          
+            i
+            +
+            1
+          
+        
+        −
+        
+          t
+          
+            i
+          
+        
+        )
+        +
+        
+          σ
+          
+            
+              t
+              
+                i
+              
+            
+          
+        
+        (
+        
+          W
+          
+            
+              t
+              
+                i
+                +
+                1
+              
+            
+          
+        
+        −
+        
+          W
+          
+            
+              t
+              
+                i
+              
+            
+          
+        
+        )
+      
+    
+    {\displaystyle M_{t_{i+1}}^{k,m}:=M_{t_{i}}^{k,m}+{\big (}(1-\phi )(\mu _{t_{i}}-M_{t_{i}}^{k,m}){\big )}(t_{i+1}-t_{i})+\sigma _{t_{i}}(W_{t_{i+1}}-W_{t_{i}})}
+  
+
+            
+  
+    
+      
+        
+          X
+          
+            
+              t
+              
+                i
+                +
+                1
+              
+            
+          
+          
+            k
+            ,
+            m
+          
+        
+        :=
+        
+          X
+          
+            
+              t
+              
+                i
+              
+            
+          
+          
+            k
+            ,
+            m
+          
+        
+        +
+        
+          
+            [
+          
+        
+        
+          H
+          
+            
+              t
+              
+                i
+              
+            
+          
+          
+            k
+            ,
+            m
+          
+        
+        (
+        ϕ
+        (
+        
+          M
+          
+            
+              t
+              
+                i
+              
+            
+          
+          
+            k
+            ,
+            m
+          
+        
+        −
+        
+          μ
+          
+            
+              t
+              
+                i
+              
+            
+          
+        
+        )
+        +
+        
+          μ
+          
+            
+              t
+              
+                i
+              
+            
+          
+        
+        )
+        
+          
+            ]
+          
+        
+        (
+        
+          t
+          
+            i
+            +
+            1
+          
+        
+        −
+        
+          t
+          
+            i
+          
+        
+        )
+        +
+        
+          H
+          
+            
+              t
+              
+                i
+              
+            
+          
+          
+            k
+            ,
+            m
+          
+        
+        (
+        
+          W
+          
+            
+              t
+              
+                i
+                +
+                1
+              
+            
+          
+        
+        −
+        
+          W
+          
+            
+              t
+              
+                i
+              
+            
+          
+        
+        )
+      
+    
+    {\displaystyle X_{t_{i+1}}^{k,m}:=X_{t_{i}}^{k,m}+{\big [}H_{t_{i}}^{k,m}(\phi (M_{t_{i}}^{k,m}-\mu _{t_{i}})+\mu _{t_{i}}){\big ]}(t_{i+1}-t_{i})+H_{t_{i}}^{k,m}(W_{t_{i+1}}-W_{t_{i}})}
+  
+
+        // Step 2: Compute loss function
+        
+  
+    
+      
+        
+          
+            L
+          
+        
+        (
+        t
+        )
+        :=
+        
+          
+            1
+            M
+          
+        
+        
+          ∑
+          
+            m
+            =
+            1
+          
+          
+            M
+          
+        
+        
+          
+            |
+            
+              
+                X
+                
+                  
+                    t
+                    
+                      N
+                    
+                  
+                
+                
+                  k
+                  ,
+                  m
+                
+              
+              −
+              g
+              (
+              
+                M
+                
+                  
+                    t
+                    
+                      N
+                    
+                  
+                
+                
+                  k
+                  ,
+                  m
+                
+              
+              )
+            
+            |
+          
+          
+            2
+          
+        
+      
+    
+    {\displaystyle {\mathcal {L}}(t):={\frac {1}{M}}\sum _{m=1}^{M}\left|X_{t_{N}}^{k,m}-g(M_{t_{N}}^{k,m})\right|^{2}}
+  
+
+        // Step 3: Update parameters using ADAM optimization
+        
+  
+    
+      
+        
+          θ
+          
+            k
+            +
+            1
+          
+        
+        :=
+        ADAM
+        ⁡
+        (
+        
+          θ
+          
+            k
+          
+        
+        ,
+        ∇
+        
+          
+            L
+          
+        
+        (
+        t
+        )
+        )
+      
+    
+    {\displaystyle \theta ^{k+1}:=\operatorname {ADAM} (\theta ^{k},\nabla {\mathcal {L}}(t))}
+  
+
+        
+  
+    
+      
+        
+          X
+          
+            0
+          
+          
+            k
+            +
+            1
+          
+        
+        :=
+        ADAM
+        ⁡
+        (
+        
+          X
+          
+            0
+          
+          
+            k
+          
+        
+        ,
+        ∇
+        
+          
+            L
+          
+        
+        (
+        t
+        )
+        )
+      
+    
+    {\displaystyle X_{0}^{k+1}:=\operatorname {ADAM} (X_{0}^{k},\nabla {\mathcal {L}}(t))}
+  
+
+    // Step 4: Return terminal state
+    return 
+  
+    
+      
+        (
+        
+          M
+          
+            
+              t
+              
+                N
+              
+            
+          
+        
+        ,
+        
+          X
+          
+            
+              t
+              
+                N
+              
+            
+          
+        
+        )
+      
+    
+    {\displaystyle (M_{t_{N}},X_{t_{N}})}
+  
+
+
+== Application ==
+
+Deep BSDE is widely used in the fields of financial derivatives pricing, risk management, and asset allocation. It is particularly suitable for:
+
+High-Dimensional Option Pricing: Pricing complex derivatives like basket options and Asian options, which involve multiple underlying assets. Traditional methods such as finite difference methods and Monte Carlo simulations struggle with these high-dimensional problems due to the curse of dimensionality, where the computational cost increases exponentially with the number of dimensions. Deep BSDE methods utilize the function approximation capabilities of deep neural networks to manage this complexity and provide accurate pricing solutions. The deep BSDE approach is particularly beneficial in scenarios where traditional numerical methods fall short. For instance, in high-dimensional option pricing, methods like finite difference or Monte Carlo simulations face significant challenges due to the exponential increase in computational requirements with the number of dimensions. Deep BSDE methods overcome this by leveraging deep learning to approximate solutions to high-dimensional PDEs efficiently.
+Risk Measurement: Calculating risk measures such as Conditional Value-at-Risk (CVaR) and Expected shortfall (ES). These risk measures are crucial for financial institutions to assess potential losses in their portfolios. Deep BSDE methods enable efficient computation of these risk metrics even in high-dimensional settings, thereby improving the accuracy and robustness of risk assessments. In risk management, deep BSDE methods enhance the computation of advanced risk measures like CVaR and ES, which are essential for capturing tail risk in portfolios. These measures provide a more comprehensive understanding of potential losses compared to simpler metrics like Value-at-Risk (VaR). The use of deep neural networks enables these computations to be feasible even in high-dimensional contexts, ensuring accurate and reliable risk assessments.
+Dynamic Asset Allocation: Determining optimal strategies for asset allocation over time in a stochastic environment. This involves creating investment strategies that adapt to changing market conditions and asset price dynamics. By modeling the stochastic behavior of asset returns and incorporating it into the allocation decisions, deep BSDE methods allow investors to dynamically adjust their portfolios, maximizing expected returns while managing risk effectively. For dynamic asset allocation, deep BSDE methods offer significant advantages by optimizing investment strategies in response to market changes. This dynamic approach is critical for managing portfolios in a stochastic financial environment, where asset prices are subject to random fluctuations. Deep BSDE methods provide a framework for developing and executing strategies that adapt to these fluctuations, leading to more resilient and effective asset management.
+
+
+== Advantages and disadvantages ==
+
+
+=== Advantages ===
+Sources:
+
+High-dimensional capability: Compared to traditional numerical methods, deep BSDE performs exceptionally well in high-dimensional problems.
+Flexibility: The incorporation of deep neural networks allows this method to adapt to various types of BSDEs and financial models.
+Parallel computing: Deep learning frameworks support GPU acceleration, significantly improving computational efficiency.
+
+
+=== Disadvantages ===
+Sources:
+
+Training time: Training deep neural networks typically requires substantial data and computational resources.
+Parameter sensitivity: The choice of neural network architecture and hyperparameters greatly impacts the results, often requiring experience and trial-and-error.
+
+
+== See also ==
+
+
+== References ==
+
+
+== Further reading ==
+Bishop, Christopher M.; Bishop, Hugh (2024). Deep learning: foundations and concepts. Springer. ISBN 978-3-031-45467-7.
+Goodfellow, Ian; Bengio, Yoshua; Courville, Aaron (2016). Deep Learning. MIT Press. ISBN 978-0-26203561-3. Archived from the original on 2016-04-16. Retrieved 2021-05-09, introductory textbook.{{cite book}}:  CS1 maint: postscript (link)
+Evans, Lawrence C. (2013). An Introduction to Stochastic Differential Equations American Mathematical Society.
+Higham., Desmond J. (January 2001). "An Algorithmic Introduction to Numerical Simulation of Stochastic Differential Equations". SIAM Review. 43 (3): 525–546. Bibcode:2001SIAMR..43..525H. CiteSeerX 10.1.1.137.6375. doi:10.1137/S0036144500378302.
+Desmond Higham and Peter Kloeden: "An Introduction to the Numerical Simulation of Stochastic Differential Equations", SIAM, ISBN 978-1-611976-42-7 (2021).

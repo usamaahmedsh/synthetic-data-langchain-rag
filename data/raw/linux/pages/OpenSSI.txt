@@ -1,0 +1,90 @@
+OpenSSI is an open-source single-system image clustering system. It allows a collection of computers to be treated as one large system, allowing applications running on any one machine access to the resources of all the machines in the cluster.
+OpenSSI is based on the Linux operating system and was released as an open source project by Compaq in 2001.
+It is the final stage of a long process of development, stretching back to LOCUS, developed in the early 1980s.
+
+
+== Description ==
+OpenSSI allows a cluster of individual computers (nodes) to be treated as one large system.  Processes run on any node have full access to the resources of all nodes.  Processes can be migrated from node to node automatically to balance system utilization.  Inbound network connections can be directed to the least loaded node available.
+OpenSSI is designed to be used for both high performance and high availability clusters. It is possible to create an OpenSSI cluster with no single point of failure, for example the file system can be mirrored between two nodes, so if one node crashes the process accessing the file will fail over to the other node.  Alternatively the cluster can be designed in such a manner that every node has direct access to the file system.
+
+
+== Features ==
+
+
+=== Single process space ===
+OpenSSI provides a single process space – every process is visible from every node, and can be managed from any node using the normal Linux commands (ps, kill, renice and so on).  The Linux /proc virtual filesystem shows all running processes on all nodes.
+The implementation of the single process space is accomplished using the VPROC abstraction invented by Locus for the OSF/1 AD operating system.
+
+
+=== Migration ===
+OpenSSI allows migration of running processes between nodes.  When running processes are migrated they continue to have access to any open files, IPC objects or network connections.
+Processes can be manually migrated, either by the process calling the special OpenSSI migrate(2) system call, or by writing a node number to a special file in the processes /proc directory.
+Processes may also, if the user wants, be automatically migrated in order to balance load across the cluster.  OpenSSI uses an algorithm developed by the MOSIX project for determining the load on each node.
+
+
+=== Single root ===
+OpenSSI provides a single root for the cluster - from any node the same files and directories are available.  OpenSSI uses several mechanisms to provide the single root – CFS (the OpenSSI Cluster File System), SAN cluster filesystems and parallel mounts of network file systems.
+OpenSSI uses the context dependent symbolic link (CDSL) feature, inspired by HP's TruCluster system, to allow access to node-specific files in a manner transparent to non cluster-aware applications.  A CDSL may point to different files on each node in the cluster.
+
+
+==== CFS ====
+CFS, the OpenSSI Cluster File System provides transparent inter-node access to an underlying real file system on one node.
+CFS is stacked on top of the real file system and co-ordinates access from different nodes using a token mechanism.  One node has physical access to the underlying file system and performs all read and write operations.  At any one time one node owns a token, representing a part of the underlying file, this implies that that part of the file is in the cache of the owning node.  If another node tries to access that part of the file the token is stolen and the cache contents are copied to the stealing node.  The OpenSSI CFS implementation is remarkably similar to that used by HP TruCluster.
+CFS is also used to co-ordinate access to shared memory segments.
+CFS can be used in a fault tolerant system by using shared disk subsystems (dual ported SCSI or SAN), or by using DRBD.  If the node that is currently directly accessing the file system crashes then the CFS mount fails over to the other node that is directly connected to the disk and the cluster now accesses the file system via that node.
+
+
+==== SAN clustered file systems ====
+OpenSSI can use SAN based clustered file systems for its root provided they provide a POSIX compatible file system interface. Lustre and Global File System have been tested, too.
+With a clustered file system, each node mounts the file system in parallel and access to the files goes directly from the node to the file system.
+
+
+==== NFS ====
+OpenSSI mounts NFS files systems in parallel on each node.  Every node accesses the NFS server directly.
+
+
+=== Single I/O space ===
+OpenSSI provides cluster-wide access to all I/O devices on the system, with some limitations - it is not possible for a node to mount a block device from another node.
+The udev device manager is used to manage the /dev directory.  Each node runs its own copy of udev to create the appropriate device nodes in a subdirectory of /dev, /dev/1 for node 1, /dev/2 for node 2 and so on.
+
+
+=== Single IPC space ===
+OpenSSI provides internode access to all the standard Linux inter-process communication mechanisms, shared memory, semaphores, SYSV message queues, pipes and Unix domain sockets.
+In order to implement cluster wide shared memory – distributed shared memory – OpenSSI uses the CFS token system.  At any one time a memory segment may be readable by one or more nodes, or writable by one node.  If a node without write access to a segment tries to write then the segment is marked unreadable on all other nodes and writable on the current node.  If a node without read access tries to read a segment then the current value is copied from a node where it was valid and if it was writable it is marked readable.
+
+
+=== Cluster IP address ===
+OpenSSI uses LVS to provide fault-tolerant load balanced IP services.  Inbound network connections are received by a director node which redirects them to the least loaded server node.  (A node may be both a director and server). In the event of director node failure another director node takes over and the system continues to accept inbound connections.
+
+
+== Distributions ==
+The OpenSSI software is available for various Linux distributions.  The OpenSSI kernel is distribution independent but various distribution specific Linux user level systems need to be modified, for example the init process and the system startup scripts.
+In 2010 the most recent supported Linux distributions were:
+
+Fedora Core 3
+Debian Sarge
+Since 2008, work was in progress to port OpenSSI to Debian Etch and Lenny distributions.
+
+
+== History ==
+The origins of OpenSSI date back to the early 1980s, when the LOCUS distributed operating system was developed at UCLA. The group that created ″LOCUS″ went on to form the Locus Computing Corporation in 1982, and produced versions of the technology derived from it under several names. In the mid-1990s, this work culminated in the UnixWare NonStop Clusters product at Tandem Computers, which by 1995 took over the team of the former Locus CC and rights to the technology. Compaq would purchase Tandem Computers in 1997. 
+The NonStop Clusters were commercialized by Santa Cruz Operation as an add-on for UnixWare. When SCO Group stopped selling the product, the developers (brought in by the Tandem acquisition and now working at Compaq) ported the ″NonStop Clusters″ code to Linux and in 2001, now called OpenSSI, released it as open source. Employees continued development for some time after Compaq being acquired by Hewlett-Packard (which happened in 2002). Over the next decade OpenSSI was enhanced by independent contributors.
+
+
+== See also ==
+
+Kerrighed
+OpenMosix
+LinuxPMI
+DIPC
+
+
+== References ==
+
+
+== External links ==
+OpenSSI homepage (archive.org)
+Sourceforge.net Project Summary Page
+Cluster Infrastructure Project
+OpenSSI Webview homepage
+Popcorn Linux

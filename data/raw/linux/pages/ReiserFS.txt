@@ -1,0 +1,52 @@
+ReiserFS is a general-purpose, journaling file system initially designed and implemented by a team at Namesys led by Hans Reiser and licensed under GPLv2. Introduced in version 2.4.1 of the Linux kernel, it was the first journaling file system to be included in the standard kernel. ReiserFS was the default file system in Novell's SUSE Linux Enterprise until Novell decided to move to ext3 for future releases on October 12, 2006.
+ReiserFS version 3.6, now occasionally referred to as Reiser3, introduced a new on-disk format allowing larger filesizes. Namesys considered ReiserFS stable and feature-complete and ceased development on it to concentrate on its successor, Reiser4, though it continued to release security updates and critical bug fixes. Namesys went out of business in 2008 after Reiser's conviction for murder. The product is now maintained as open source by volunteers. The reiserfsprogs 3.6.27 were released on 25 July 2017.
+As of Linux 6.12, ReiserFS is supported on Linux without quota support. Due to technical issues inherent to the file system and lack of maintenance, the Linux community had been discussing removal of ReiserFS from mainline since at least early 2022. ReiserFS was removed from the Linux kernel in version 6.13.
+
+
+== Features ==
+At the time of its introduction, ReiserFS offered features that had not been available in existing Linux file systems. These include tail packing—a scheme to reduce internal fragmentation at cost of performance. Reiser4 may have improved this by packing tails where it does not negatively affect performance.
+
+
+== Design ==
+ReiserFS stores file metadata ("stat items"), directory entries ("directory items"), inode block lists ("indirect items"), and tails of files ("direct items") in a single, combined B+ tree keyed by a universal object ID. Disk blocks allocated to nodes of the tree are "formatted internal blocks".  Blocks for leaf nodes (in which items are packed end-to-end) are "formatted leaf blocks".  All other blocks are "unformatted blocks" containing file contents.  Directory items with too many entries or indirect items which are too long to fit into a node spill over into the right leaf neighbour. Block allocation is tracked by free space bitmaps in fixed locations.
+By contrast, ext2 and other Berkeley FFS-like file systems of that time simply used a fixed formula for computing inode locations, hence limiting the number of files they may contain. Most such file systems also store directories as simple lists of entries, which makes directory lookups and updates linear time operations and degrades performance on very large directories. The single B+ tree design in ReiserFS avoids both of these problems due to better scalability properties.
+
+
+== Performance ==
+Compared with ext2 and ext3 in version 2.4 of the Linux kernel, when dealing with files under 4 KiB and with tail packing enabled, ReiserFS may be faster.
+Before Linux 2.6.33, ReiserFS heavily used the big kernel lock (BKL)—a global kernel-wide lock—which does not scale well for systems with multiple cores, as the critical code parts are only ever executed by one core at a time.
+
+
+== Usage ==
+ReiserFS was the default file system in SUSE Linux since version 6.4 (released in 2000), until switching to ext3 in SUSE Linux Enterprise 10.2 and openSUSE 11, announced in 2006.
+Jeff Mahoney of SUSE wrote a post on 14 September 2006 proposing to move from ReiserFS to ext3 for the default installation file system. The reasons he mentioned included scalability, "performance problems with extended attributes and ACLs", "a small and shrinking development community", and that "Reiser4 is not an incremental update and requires a reformat, which is unreasonable for most people." On October 4 he wrote a response comment on a blog in order to clear up some issues. He wrote that his proposal for the switch was unrelated to Hans Reiser being under trial for murder. Mahoney wrote he "was concerned that people would make a connection where none existed" and that "the timing is entirely coincidental and the motivation is unrelated."
+ReiserFS has been discussed for removal from the Linux kernel since early 2022 due to a lack of maintenance upstream, and technical issues inherent to the filesystem, such as suffering from the year 2038 problem; it was deprecated in Linux 5.18, and marked as obsolete in Linux 6.6, then removed from mainline during the Linux 6.13 development cycle.
+
+
+== Criticism ==
+Some directory operations (including unlink(2)) are not synchronous on ReiserFS, which can result in data corruption with applications relying heavily on file-based locks (such as mail transfer agents like qmail and Postfix)  if the machine halts before it has synchronized the disk.
+There are no programs to specifically defragment a ReiserFS file system, although tools have been written to automatically copy the contents of fragmented files hoping that more contiguous blocks of free space can be found. However, a "repacker" tool was planned for the next Reiser4 file system to deal with file fragmentation. Fragmentation is still an issue with solid-state drives regardless of file system.
+
+
+=== fsck ===
+ReiserFS 3's fsck is capable of rebuilding the whole tree as part of the rescue in case of its total corruption. This action has to be explicitly initiated by administrator and is not part of normal operation. Predictably, the process is destructive and may further corrupt existing files or introduce new entries with unexpected contents, which has been criticized as a less than optimal method.
+ReiserFS v3 images should not be stored on a ReiserFS v3 partition (e.g. backups or disk images for emulators) without transforming them (e.g., by compressing or encrypting) in order to avoid confusing the rebuild. Reformatting an existing ReiserFS v3 partition can also leave behind data that could confuse the rebuild operation and make files from the old system reappear. This also allows malicious users to intentionally store files that will confuse the rebuilder. As the metadata is always in a consistent state after a file system check, corruption here means that contents of files are merged in unexpected ways with the contained file system's metadata. This is similar to the FSID problem in btrfs. The ReiserFS successor, Reiser4, fixes this problem.
+ReiserFS in versions of the Linux kernel before 2.4.16 were considered unstable by Namesys and not recommended for production use, especially in conjunction with NFS.
+Early implementations of ReiserFS (prior to that in Linux 2.6.2) were also susceptible to out-of-order write hazards. But the current journaling implementation in ReiserFS is now on par with that of ext3's "ordered" journaling level.
+
+
+== See also ==
+List of file systems
+Comparison of file systems
+
+
+== References ==
+
+
+== External links ==
+ReiserFS 3.6 at Linus Torvalds' Git repository – nowadays (2019) the main development resource of ReiserFS 3
+ReiserFS and Reiser4 wiki
+Reiserfsprogs
+convertfs, a utility which performs in-place conversion between any two file systems with sparse file support
+Gentoo Forum Link – Discussion on ReiserFS fragmentation, including a script for measuring fragmentation and defragmenting files
+Windows utilities to access ReiserFS: YAReG – Yet Another R(eiser)FStool GUI, rfsd – ReiserDriver.

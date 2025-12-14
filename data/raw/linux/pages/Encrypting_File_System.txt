@@ -1,0 +1,158 @@
+The Encrypting File System (EFS) on Microsoft Windows is a feature introduced in version 3.0 of NTFS that provides filesystem-level encryption. The technology enables files to be transparently encrypted to protect confidential data from attackers with physical access to the computer.
+EFS is available in all versions of Windows except the home versions (see Supported operating systems below) from Windows 2000 onwards. By default, no files are encrypted, but encryption can be enabled by users on a per-file, per-directory, or per-drive basis. Some EFS settings can also be mandated via Group Policy in Windows domain environments.
+Cryptographic file system implementations for other operating systems are available, but the Microsoft EFS is not compatible with any of them. See also the list of cryptographic file systems.
+
+
+== Basic ideas ==
+
+When an operating system is running on a system without file encryption, access to files normally goes through OS-controlled user authentication and access control lists. However, if an attacker gains physical access to the computer, this barrier can be easily circumvented. One way, for example, would be to remove the disk and put it in another computer with an OS installed that can read the filesystem; another, would be to simply reboot the computer from a boot CD containing an OS that is suitable for accessing the local filesystem.
+The most widely accepted solution to this is to store the files encrypted on the physical media (disks, USB pen drives, tapes, CDs and so on).
+In the Microsoft Windows family of operating systems EFS enables this measure, although on NTFS drives only, and does so using a combination of public key cryptography and symmetric key cryptography to make decrypting the files extremely difficult without the correct key.
+However, the cryptography keys for EFS are in practice protected by the user account password, and are therefore susceptible to most password attacks. In other words, the encryption of a file is only as strong as the password to unlock the decryption key.
+
+
+== Operation ==
+
+EFS works by encrypting a file with a bulk symmetric key, also known as the File Encryption Key, or FEK. It uses a symmetric encryption algorithm because it takes less time to encrypt and decrypt large amounts of data than if an asymmetric key cipher is used.  The symmetric encryption algorithm used will vary depending on the version and configuration of the operating system; see Algorithms used by Windows version below.  The FEK (the symmetric key that is used to encrypt the file) is then encrypted with a public key that is associated with the user who encrypted the file, and this encrypted FEK is stored in the $EFS alternative data stream of the encrypted file. To decrypt the file, the EFS component driver uses the private key that matches the EFS digital certificate (used to encrypt the file) to decrypt the symmetric key that is stored in the $EFS stream. The EFS component driver then uses the symmetric key to decrypt the file. Because the encryption & decryption operations are performed at a layer below NTFS, it is transparent to the user and all their applications.
+Folders whose contents are to be encrypted by the file system are marked with an encryption attribute. The EFS component driver treats this encryption attribute in a way that is analogous to the inheritance of file permissions in NTFS: if a folder is marked for encryption, then by default all files and subfolders that are created under the folder are also encrypted.  When encrypted files are moved within an NTFS volume, the files remain encrypted.  However, there are a number of occasions in which the file could be decrypted without the user explicitly asking Windows to do so.
+Files and folders are decrypted before being copied to a volume formatted with another file system, like FAT32. Finally, when encrypted files are copied over the network using the SMB/CIFS protocol, the files are decrypted before they are sent over the network.
+The most significant way of preventing the decryption-on-copy is using backup applications that are aware of the "Raw" APIs.  Backup applications that have implemented these Raw APIs will simply copy the encrypted file stream and the $EFS alternative data stream as a single file.  In other words, the files are "copied" (e.g. into the backup file) in encrypted form, and are not decrypted during backup.
+Starting with Windows Vista, a user's private key can be stored on a smart card; Data Recovery Agent (DRA) keys can also be stored on a smart card.
+
+
+== Security ==
+
+
+=== Vulnerabilities ===
+Two significant security vulnerabilities existed in Windows 2000 EFS, and have been variously targeted since.
+In Windows 2000, the local administrator is the default Data Recovery Agent, capable of decrypting all files encrypted with EFS by any local user.
+EFS in Windows 2000 cannot function without a recovery agent, so there is always someone who can decrypt encrypted files of the users.  Any non-domain-joined Windows 2000 computer will be susceptible to unauthorized EFS decryption by anyone who can take over the local Administrator account, which is trivial given many tools available freely on the Internet.
+In Windows XP and later, there is no default local Data Recovery Agent and no requirement to have one. Setting SYSKEY to mode 2 or 3 (syskey typed in during bootup or stored on a floppy disk) will mitigate the risk of unauthorized decryption through the local Administrator account. This is because the local user's password hashes, stored in the SAM file, are encrypted with the Syskey, and the Syskey value is not available to an offline attacker who does not possess the Syskey passphrase/floppy.
+
+
+==== Accessing private key via password reset ====
+In Windows 2000, the user's RSA private key is not only stored in a truly encrypted form, but there is also a backup of the user's RSA private key that is more weakly protected. If an attacker gains physical access to the Windows 2000 computer and resets a local user account's password, the attacker can log in as that user (or recovery agent) and gain access to the RSA private key which can decrypt all files.  This is because the backup of the user's RSA private key is encrypted with an LSA secret, which is accessible to any attacker who can elevate their login to LocalSystem (again, trivial given numerous tools on the Internet).
+In Windows XP and beyond, the user's RSA private key is backed up using an offline public key whose matching private key is stored in one of two places: the password reset disk (if Windows XP is not a member of a domain) or in the Active Directory (if Windows XP is a member of a domain).  This means that an attacker who can authenticate to Windows XP as LocalSystem still does not have access to a decryption key stored on the PC's hard drive.
+In Windows 2000, XP or later, the user's RSA private key is encrypted using a hash of the user's NTLM password hash plus the user name – use of a salted hash makes it extremely difficult to reverse the process and recover the private key without knowing the user's passphrase. Also, again, setting Syskey to mode 2 or 3 (Syskey typed in during bootup or stored on a floppy disk) will mitigate this attack, since the local user's password hash will be stored encrypted in the SAM file.
+
+
+=== Other issues ===
+Once a user is logged on successfully, access to his own EFS encrypted data requires no additional authentication, decryption happens transparently. Thus, any compromise of the user's password automatically leads to access to that data. Windows can store versions of user account passphrases with reversible encryption, though this is no longer default behaviour; it can also be configured to store (and will by default on the original version of Windows XP and lower) Lan Manager hashes of the local user account passphrases, which can be attacked and broken easily. It also stores local user account passphrases as NTLM hashes, which can be fairly easily attacked using "rainbow tables" if the passwords are weak (Windows Vista and later versions don't allow weak passwords by default). To mitigate the threat of trivial brute-force attacks on local passphrases, older versions of Windows need to be configured (using the Security Settings portion of Group Policy) to never store LM hashes, and of course, to not enable Autologon (which stores plaintext passphrases in the registry). Further, using local user account passphrases over 14 characters long prevents Windows from storing an LM hash in the SAM – and has the added benefit of making brute-force attacks against the NTLM hash harder.
+When encrypting files with EFS – when converting plaintext files to encrypted files – the plaintext files are not wiped, but simply deleted (i.e. data blocks flagged as "not in use" in the filesystem). This means that, unless they for example happen to be stored on an SSD with TRIM support, they can be easily recovered unless they are overwritten. To fully mitigate known, non-challenging technical attacks against EFS, encryption should be configured at the folder level (so that all temporary files like Word document backups which are created in these directories are also encrypted). When encrypting individual files, they should be copied to an encrypted folder or encrypted "in place", followed by securely wiping the disk volume. The Windows Cipher utility can be used (with the /W option) to wipe free space including that which still contains deleted plaintext files; various third-party utilities may work as well.
+Anyone who can gain Administrators access can overwrite, override or change the Data Recovery Agent configuration. This is a very serious issue, since an attacker can for example hack the Administrator account (using third-party tools), set whatever DRA certificate they want as the Data Recovery Agent and wait. This is sometimes referred to as a two-stage attack, which is a significantly different scenario than the risk due to a lost or stolen PC, but which highlights the risk due to malicious insiders.
+When the user encrypts files after the first stage of such an attack, the FEKs are automatically encrypted with the designated DRA's public key. The attacker only needs to access the computer once more as Administrator to gain full access to all those subsequently EFS-encrypted files. Even using Syskey mode 2 or 3 does not protect against this attack, because the attacker could back up the encrypted files offline, restore them elsewhere and use the DRA's private key to decrypt the files. If such a malicious insider can gain physical access to the computer, all security features are to be considered irrelevant, because they could also install rootkits, software or even hardware keyloggers etc. on the computer – which is potentially much more interesting and effective than overwriting DRA policy.
+
+
+=== Recovery ===
+Files encrypted with EFS can only be decrypted by using the RSA private key(s) matching the previously used public key(s).  The stored copy of the user's private key is ultimately protected by the user's logon password. Accessing encrypted files from outside Windows with other operating systems (Linux, for example) is not possible—not least of which because there is currently no third party EFS component driver. Further, using special tools to reset the user's login password will render it impossible to decrypt the user's private key and thus useless for gaining access to the user's encrypted files. The significance of this is occasionally lost on users, resulting in data loss if a user forgets their password, or fails to back up the encryption key. This led to coining of the term "delayed recycle bin", to describe the seeming inevitability of data loss if an inexperienced user encrypts their files.
+If EFS is configured to use keys issued by a Public Key Infrastructure and the PKI is configured to enable Key Archival and Recovery, encrypted files can be recovered by recovering the private key first.
+
+
+=== Keys ===
+user password (or smart card private key): used to generate a decryption key to decrypt the user's DPAPI Master Key
+DPAPI Master Key: used to decrypt the user's RSA private key(s)
+RSA private key: used to decrypt each file's FEK
+File Encryption Key (FEK): used to decrypt/encrypt each file's data (in the primary NTFS stream)
+SYSKEY: used to encrypt the cached domain verifier and the password hashes stored in the SAM
+
+
+== Supported operating systems ==
+
+
+=== Windows ===
+Windows 2000 Professional, Server, Advanced Server and Datacenter editions
+Windows XP Professional, also in Tablet PC Edition, Media Center Edition and x64 Edition
+Windows Server 2003 and Windows Server 2003 R2, in both x86 and x64 editions
+Windows Vista Business, Enterprise and Ultimate editions
+Windows 7 Professional, Enterprise and Ultimate editions
+Windows Server 2008 and Windows Server 2008 R2
+Windows 8 and 8.1 Pro and Enterprise editions
+Windows Server 2012 and Windows Server 2012 R2
+Windows 10 Pro, Enterprise, and Education editions.
+Windows 11 Pro, Enterprise, and Education editions.
+Windows Server 2016
+Windows Server 2019
+
+
+=== Other operating systems ===
+No other operating systems or file systems have native support for EFS.
+
+
+== New features available by Windows version ==
+Windows XP
+Encryption of the Client-Side Cache (Offline Files database)
+Protection of DPAPI Master Key backup using domain-wide public key
+Autoenrollment of user certificates (including EFS certificates)
+Multiple-user (shared) access to encrypted files (on a file-by-file basis) and revocation checking on certificates used when sharing encrypted files
+Encrypted files can be shown in an alternative color (green by default)
+No requirement for mandatory Recovery Agent
+Warning when files may be getting silently decrypted when moving to an unsupported file system
+Password reset disk
+EFS over WebDAV and remote encryption for servers delegated in Active Directory
+Windows XP SP1
+Support for and default use of AES-256 symmetric encryption algorithm for all EFS-encrypted files
+Windows XP SP2 + KB 912761
+Prevent enrollment of self-signed EFS certificates
+Windows Server 2003
+Digital Identity Management Service
+Enforcement of RSAKeyLength setting for enforcing a minimum key length when enrolling self-signed EFS certificates
+Windows Vista and Windows Server 2008
+Per-user encryption of Client-Side Cache (Offline Files)
+Support for storing (user or DRA) RSA private keys on a PC/SC smart card
+EFS Re-Key Wizard
+EFS Key backup prompts
+Support for deriving DPAPI Master Key from PC/SC smart card
+Support for encryption of pagefile.sys
+Protection of EFS-related secrets using BitLocker (Enterprise or Ultimate edition of Windows Vista)
+Group Policy controls to enforce
+Encryption of Documents folder
+Offline files encryption
+Indexing of encrypted files
+Requiring smart card for EFS
+Creating a caching-capable user key from smart card
+Displaying a key backup notification when a user key is created or changed
+Specifying the certificate template used for enrolling EFS certificates automatically
+Windows Server 2008
+EFS self-signed certificates enrolled on the Windows Server 2008 server will default to 2048-bit RSA key length
+All EFS templates (user and data recovery agent certificates) default to 2048-bit RSA key length
+Windows 7 and Windows Server 2008 R2
+Elliptic-curve cryptographic algorithms (ECC). Windows 7 supports a mixed mode operation of ECC and RSA algorithms for backward compatibility
+EFS self-signed certificates, when using ECC, will use 256-bit key by default.
+EFS can be configured to use 1K/2k/4k/8k/16k-bit keys when using self-signed RSA certificates, or 256/384/521-bit keys when using ECC certificates.
+Windows 10 version 1607 and Windows Server 2016
+Add EFS support on FAT and exFAT.
+
+
+== Algorithms used by Windows version ==
+Windows EFS supports a range of encryption algorithms, depending on the version of Windows in use when the files are encrypted:
+
+Notes:
+
+The certificates used in EFS are in the standard X.509 format.
+The AES-256 + SHA-256 signature method of encrypting the FEK is intended to improve performance by reducing the number of public key operations performed. It is used by default for certificates stored on smart cards.
+
+
+== See also ==
+BitLocker
+Data Protection API
+Disk encryption
+Disk encryption software
+eCryptfs
+EncFS
+Filesystem-level encryption
+Hardware-based full disk encryption
+
+
+== References ==
+
+
+== Further reading ==
+
+"Implementing the Encrypting File System in Windows 2000". Windows 2000 Evaluated Configuration Administrators Guide. Microsoft. Retrieved 20 December 2014.
+Bragg, Roberta. "The Encrypting File System". TechNet. Microsoft.
+"Encrypting File System (Windows Server 2008, Windows Vista)". TechNet. Microsoft. February 25, 2009.
+"Encrypting File System in Windows XP and Windows Server 2003". TechNet. Microsoft. April 11, 2003.
+Network Associates Laboratories. "How to Use the Encrypting File System (Windows Server 2003, Windows XP Professional)". MSDN. Microsoft.
+"Using Encrypting File System". Windows XP Resource Kit. Microsoft. November 3, 2005.
+"Encrypting File System". Windows 2000 Resource Kit. Microsoft.
+"How EFS Works". Windows 2000 Resource Kit. Microsoft.

@@ -1,0 +1,161 @@
+In computing, Deflate (stylized as DEFLATE, and also called Flate) is a lossless data compression file format that uses a combination of LZ77 and Huffman coding. It was designed by Phil Katz, for version 2 of his PKZIP archiving tool. Deflate was later specified in Request for Comments (RFC) 1951 (1996).
+Katz also designed the original algorithm used to construct Deflate streams. This algorithm received software patent U.S. patent 5,051,745, assigned to PKWare, Inc. As stated in the RFC document, an algorithm producing Deflate files was widely thought to be implementable in a manner not covered by patents. This led to its widespread use. For example, in gzip compressed files and Portable Network Graphics (PNG) image files, in addition to the ZIP file format for which Katz originally designed it. The patent has since expired.
+
+
+== Stream format ==
+A Deflate stream consists of a series of blocks. Each block is preceded by a 3-bit header:
+
+First bit: Last-block-in-stream marker:
+1: This is the last block in the stream.
+0: There are more blocks to process after this one.
+Second and third bits: Encoding method used for this block type:
+00: A stored (a.k.a. raw or literal) section, between 0 and 65,535 bytes in length
+01: A static Huffman compressed block, using a pre-agreed Huffman tree defined in the RFC
+10: A dynamic Huffman compressed block, complete with the Huffman table supplied
+11: Reserved: don't use
+The stored block option adds minimal overhead and is used for data that is incompressible.
+Most compressible data will end up being encoded using method 10, the dynamic Huffman encoding, which produces an optimized Huffman tree customized for each block of data individually. Instructions to generate the necessary Huffman tree immediately follow the block header. The static Huffman option is used for short messages, where the fixed saving gained by omitting the tree outweighs the percentage compression loss due to using a non-optimal (thus, not technically Huffman) code.
+Compression is achieved through two steps:
+
+Matching and replacing duplicate strings with pointers
+Replacing symbols with new, weighted symbols based on use frequency
+
+
+=== Duplicate string elimination ===
+
+Within compressed blocks, if a duplicate series of bytes is spotted (a repeated string), then a back-reference is inserted, linking to the prior location of that identical string instead. An encoded match to an earlier string consists of an 8-bit length (3–258 bytes) and a 15-bit distance (1–32,768 bytes) to the start of the duplicate. Relative back-references can be made across any number of blocks, as long as the distance appears within the last 32 KiB of uncompressed data decoded (termed the sliding window).
+If the distance is less than the length, the duplicate overlaps itself, indicating repetition. For example, a run of 10 identical bytes can be encoded as one byte, followed by a duplicate of length 9, starting with the prior byte.
+Searching the preceding text for duplicate substrings is the most computationally expensive part of the Deflate algorithm, and the operation which compression level settings affect.
+
+
+=== Bit reduction ===
+
+The second compression stage consists of replacing commonly used symbols with shorter representations and less commonly used symbols with longer representations. The method used is Huffman coding which creates an unprefixed tree of non-overlapping intervals, where the length of each sequence is inversely proportional to the logarithm of the probability of that symbol needing to be encoded. The more likely it is that a symbol has to be encoded, the shorter its bit-sequence will be.
+A tree is created, containing space for 288 symbols:
+
+0–255: represent the literal bytes/symbols 0–255.
+256: end of block – stop processing if last block, otherwise start processing next block.
+257–285: combined with extra-bits, a match length of 3–258 bytes.
+286, 287: not used, reserved and illegal but still part of the tree.
+A match length code will always be followed by a distance code. Based on the distance code read, further "extra" bits may be read in order to produce the final distance. The distance tree contains space for 32 symbols:
+
+0–3: distances 1–4
+4–5: distances 5–8, 1 extra bit
+6–7: distances 9–16, 2 extra bits
+8–9: distances 17–32, 3 extra bits
+...
+26–27: distances 8,193–16,384, 12 extra bits
+28–29: distances 16,385–32,768, 13 extra bits
+30–31: not used, reserved and illegal but still part of the tree
+For the match distance symbols 2–29, the number of extra bits can be calculated as 
+  
+    
+      
+        
+          ⌊
+          
+            
+              n
+              2
+            
+          
+          ⌋
+        
+        −
+        1
+      
+    
+    {\displaystyle \left\lfloor {\frac {n}{2}}\right\rfloor -1}
+  
+.
+The two codes (the 288-symbol length/literal tree and the 32-symbol distance tree) are themselves encoded as canonical Huffman codes by giving the bit length of the code for each symbol. The bit lengths are themselves run-length encoded to produce as compact a representation as possible. As an alternative to including the tree representation, the "static tree" option provides standard fixed Huffman trees. The compressed size using the static trees can be computed using the same statistics (the number of times each symbol appears) as are used to generate the dynamic trees, so it is easy for a compressor to choose whichever is smaller.
+
+
+== Encoder–compressor ==
+During the compression stage, it is the encoder that chooses the amount of time spent looking for matching strings. The zlib/gzip reference implementation allows the user to select from a sliding scale of likely resulting compression-level vs. speed of encoding. Options range from 0 (do not attempt compression, just store uncompressed) to 9 representing the maximum capability of the reference implementation in zlib/gzip.
+Other Deflate encoders have been produced, all of which will also produce a compatible bitstream capable of being decompressed by any existing Deflate decoder. Differing implementations will likely produce variations on the final encoded bit-stream produced. The focus with non-zlib versions of an encoder has normally been to produce a more efficiently compressed and smaller encoded stream.
+
+
+=== Deflate64 ===
+Deflate64, specified by PKWARE, is a proprietary variant of Deflate. It's fundamentally the same algorithm. What has changed is the increase in dictionary size from 32 KB to 64 KB, an extension of the distance codes to 16 bits so that they may address a range of 64 KB, and the length code, which is extended to 16-bit, so that it may define lengths of three to 65,538 bytes. This leads to Deflate64 having a longer compression time, and potentially a slightly higher compression ratio, than Deflate. Several free and/or open source projects support Deflate64, such as 7-Zip, while others, such as zlib, do not, because the procedure is proprietary, and the performance increase over Deflate is small.
+
+
+== Using Deflate in new software ==
+Implementations of Deflate are freely available in many languages. Apps written in C typically use the zlib library (under the permissive zlib License). Apps in Borland Pascal (and compatible languages) can use paszlib. Apps in C++ can take advantage of the improved Deflate library in 7-Zip. Both Java and .NET framework offer out-of-the-box support for Deflate in their libraries (respectively, java.util.zip and System.IO.Compression). Apps in Ada can use Zip-Ada (pure) or ZLib-Ada.
+
+
+=== Encoder implementations ===
+PKZIP: the first implementation, originally done by Phil Katz as part of PKZip
+zlib: standard reference implementation adopted in many apps because of its open-source, permissive license. See Zlib § Forks for higher-performance forks.
+Crypto++: contains a public-domain implementation in C++ aimed at reducing potential security vulnerabilities. The author, Wei Dai states "This code is less clever, but hopefully more understandable and maintainable [than zlib]".
+7-Zip: written by Igor Pavlov in C++, this version is freely licensed and achieves higher compression than zlib at the expense of central processing unit (CPU) use. Has an option to use the Deflate64 storage format.
+PuTTY 'sshzlib.c': a standalone implementation under the MIT License by Simon Tatham, it has full decoding capability, but only supports static tree only creation
+libflate: part of Plan 9 from Bell Labs, implements deflate compression
+Hyperbac: uses its own proprietary compression library (in C++ and assembly) with an option to implement the Deflate64 storage format
+Zopfli: C implementation under the Apache License by Google; achieves higher compression at the expense of CPU use. ZopfliPNG is a variant of Zopfli for use with PNG files.
+igzip: an encoder written in the x86 assembly language, released by Intel under the MIT License. 3x faster than zlib -1. Useful for compressing genomic data.
+libdeflate: a library for fast, whole-buffer Deflate-based compression and decompression. Libdeflate is heavily optimized, especially on x86 processors.
+AdvanceCOMP uses the higher compression ratio versions of Deflate in 7-Zip, libdeflate, and Zopfli to enable recompression of gzip, PNG, multiple-image Network Graphics (MNG) and ZIP files with the possibility of smaller file sizes than zlib is able to achieve at maximum settings.
+
+
+=== Hardware encoders ===
+AHA361-PCIX/AHA362-PCIX from Comtech AHA Archived 2006-12-08 at the Wayback Machine. Comtech produced a PCI-X card (PCI-ID: 193f:0001) able to compress streams using Deflate at a rate of up to 3.0 Gbit/s (375 MB/s) for incoming uncompressed data. Accompanying the Linux kernel device driver for the AHA361-PCIX is an "ahagzip" utility and customized "mod_deflate_aha" able to use the hardware compression from Apache. The hardware is based on a Xilinx Virtex field-programmable gate array (FPGA) and four custom AHA3601 application-specific integrated circuits (ASICs). The AHA361/AHA362 boards are limited to only handling static Huffman blocks and require software to be modified to add support. The cards could not support the full Deflate specification, meaning they could only reliably decode their own output (a stream that did not contain any dynamic Huffman type 2 blocks).
+StorCompress 300/MX3 from Indra Networks. This is a range of Peripheral Component Interconnect (PCI, PCI-ID: 17b4:0011) or PCI-X cards featuring between one and six compression engines with claimed processing speeds of up to 3.6 Gbit/s (450 MB/s). A version of the cards are available with the separate brand WebEnhance specifically designed for web-serving use rather than storage area network (SAN) or backup use; a PCI Express (PCIe) revision, the MX4E is also produced.
+AHA363-PCIe/AHA364-PCIe/AHA367-PCIe. In 2008, Comtech started producing two PCIe cards (PCI-ID: 193f:0363/193f:0364) with a new hardware AHA3610 encoder chip. The new chip was designed to be capable of a sustained 2.5 Gbit/s. Using two of these chips, the AHA363-PCIe board can process Deflate at a rate of up to 5.0 Gbit/s (625 MB/s) using the two channels (two compression and two decompression). The AHA364-PCIe variant is an encode-only version of the card designed for out-going load balancers and instead has multiple register sets to allow 32 independent virtual compression channels feeding two physical compression engines. Linux, Microsoft Windows, and OpenSolaris kernel device drivers are available for both of the new cards, along with a modified zlib system library so that dynamically linked applications can automatically use the hardware support without internal modification. The AHA367-PCIe board (PCI-ID: 193f:0367) is similar to the AHA363-PCIe but uses four AHA3610 chips for a sustained compression rate of 10 Gbit/s (1250 MB/s). Unlike the AHA362-PCIX, the decompression engines on the AHA363-PCIe and AHA367-PCIe boards are fully deflate compliant.
+Nitrox and Octeon processors from Cavium, Inc. contain high-speed hardware deflate and inflate engines compatible with both ZLIB and GZIP with some devices able to handle multiple simultaneous data streams.
+HDL-Deflate GPL FPGA implementation.
+ZipAccel-C from CAST Inc. This is a Silicon IP core supporting Deflate, Zlib and Gzip compression. ZipAccel-C can be implemented in ASIC or field-programmable gate array (FPGAs), supports both Dynamic and Static Huffman tables, and can provide throughputs in excess of 100 Gbit/s. The company offers compression/decompression accelerator board reference designs for Intel FPGA (ZipAccel-RD-INT) and Xilinx FPGAs (ZipAccel-RD-XIL).
+Intel Communications Chipset 89xx Series (Cave Creek) for the Intel Xeon E5-2600 and E5-2400 Processor Series (Sandy Bridge-EP/EN) supports hardware compression and decompression using QuickAssist Technology. Depending on the chipset, compression and decompression rates of 5 Gbit/s, 10 Gbit/s, or 20 Gbit/s are available.
+IBM z15 CPUs incorporate an improved version of the Nest Accelerator Unit (NXU) hardware acceleration from the zEDC Express input/output (I/O) expansion cards used in z14 systems for hardware Deflate compression and decompression as specified by RFC1951.
+Starting with the POWER9 architecture, IBM added hardware support for compressing and decompressing Deflate (as specified by RFC 1951) to the formerly crypto-centric Nest accelerator (NX) core introduced with POWER7+. This support is available to programs running with AIX 7.2 Technology Level 4 Expansion Pack or AIX 7.2 Technology Level 5 Service Pack 2 through the zlibNX library.
+
+
+== Decoder, decompressor ==
+Inflate is the decoding process that takes a Deflate bitstream for decompression and correctly produces the original full-size data or file.
+
+
+=== Inflate-only implementations ===
+The normal intent with an alternative Inflate implementation is highly optimized decoding speed, or extremely predictable random-access memory (RAM) use for microcontroller embedded systems.
+
+Assembly
+6502 inflate, written by Piotr Fusik in 6502 assembly language.
+SAMflate, written by Andrew Collier in Zilog Z80 assembly language with optional memory paging support for the SAM Coupé, and released under a combination of software licenses: Berkeley Software Distribution (BSD), GNU General Public License (GPL), GNU Lesser General Public License (LGPL), Debian Free Software Guidelines (DFSG).
+gunzip, written by Laurens Holst in Z80 assembly language for the MSX, licensed under BSD.
+inflate.asm, a fast and efficient implementation in Motorola 68000 machine language, written by Keir Fraser and released into the public domain.
+C, C++
+kunzip by Michael Kohn and unrelated to "KZIP". Comes with C source code under the GNU Lesser General Public License (LGPL). Used in the GNU Image Manipulation Program (GIMP) installer.
+puff.c (zlib), a small, unencumbered, single-file reference implementation included in the /contrib/puff directory of the zlib distribution.
+tinf written by Jørgen Ibsen in ANSI C and comes with zlib license. Adds about 2k code.
+tinfl.c (miniz), Public domain Inflate implementation contained entirely in a single C function.
+PCDEZIP, Bob Flanders and Michael Holmes, published in PC Magazine 1994-01-11.
+inflate.cl by John Foderaro. Self-standing Common Lisp decoder distributed with a GNU Lesser General Public License (LGPL).
+pyflate, a pure-Python stand-alone Deflate (gzip) and bzip2 decoder by Paul Sladen. Written for research/prototyping and released under a combination of software licenses: Berkeley Software Distribution (BSD), GNU General Public License (GPL), GNU Lesser General Public License (LGPL), Debian Free Software Guidelines (DFSG).
+deflatelua, a pure-Lua implementation of Deflate and gzip/zlib decompression, by David Manura.
+inflate a pure-JavaScript implementation of Inflate by Chris Dickinson
+pako: JavaScript speed-optimized port of zlib. Contains separate build with inflate only.
+
+
+=== Hardware decoders ===
+Serial Inflate GPU from BitSim. Hardware implementation of Inflate. Part of the Bitsim Accelerated Display Graphics Engine (BADGE) controller offering for embedded systems.
+HDL-Deflate GPL FPGA implementation.
+ZipAccel-D from CAST Inc. This is a Silicon IP core supporting decompression of Deflate, Zlib and Gzip files. The ZipAccel-D IP core that can be implemented in ASIC or FPGAs. The company offers compression/decompression accelerator board reference designs for Intel FPGA (ZipAccel-RD-INT) and Xilinx FPGAs (ZipAccel-RD-XIL).
+IBM z15 CPUs incorporate an improved version of the Nest Accelerator Unit (NXU) hardware acceleration from the zEDC Express input/output (I/O) expansion cards used in z14 systems for hardware Deflate compression and decompression as specified by RFC1951.
+Starting with the POWER9 architecture, IBM added hardware support for compressing and decompressing Deflate (as specified by RFC 1951) to the formerly crypto-centric Nest accelerator (NX) core introduced with POWER7+. This support is available to programs running with AIX 7.2 Technology Level 4 Expansion Pack or AIX 7.2 Technology Level 5 Service Pack 2 through the zlibNX library.
+
+
+== See also ==
+List of archive formats
+List of file archivers
+Comparison of file archivers
+
+
+== References ==
+
+
+== External links ==
+PKWare, Inc.'s appnote.txt, .ZIP File Format Specification Archived 2014-12-05 at the Wayback Machine; Section 10, X. Deflating – Method 8.
+RFC 1951 – Deflate Compressed Data Format Specification version 1.3
+zlib Home Page
+An Explanation of the Deflate Algorithm – by Antaeus Feldspar
+Extended Application of Suffix Trees to Data Compression Archived 2016-09-23 at the Wayback Machine – an excellent algorithm to implement Deflate by Jesper Larsson
+Zip Files: History, Explanation and Implementation – walk-through of a Deflate implementation

@@ -1,0 +1,119 @@
+A decompiler is a computer program that translates an executable file back into high-level source code. Unlike a compiler, which converts high-level code into machine code, a decompiler performs the reverse process. While disassemblers translate executables into assembly language, decompilers go a step further by reconstructing the disassembly into higher-level languages like C. Due to the one-way nature of the compilation process, decompilers usually cannot perfectly recreate the original source code. They often produce obfuscated and less readable code.
+
+
+== Introduction ==
+Decompilation is the process of transforming executable code into a high-level, human-readable format using a decompiler. This process is commonly used for tasks that involve reverse-engineering the logic behind executable code, such as recovering lost or unavailable source code. Decompilers face inherent challenges due to the loss of critical information during the compilation process, such as variable names, comments, and code structure.
+Certain factors can impact the success of decompilation. Executables containing detailed metadata, such as those used by Java and .NET, are easier to reverse-engineer because they often retain class structures, method signatures, and debugging information. Executable files stripped of such context are far more challenging to translate into meaningful source code. 
+Some software developers may obfuscate, pack, or encrypt parts of their executable programs, making the decompiled code much harder to interpret. These techniques are often done to deter reverse-engineering, making the process more difficult and time-intensive.
+
+
+== Design ==
+Decompilers can be thought of as composed of a series of phases each of which contributes specific aspects of the overall decompilation process.
+
+
+=== Loader ===
+The first decompilation phase loads and parses the input machine code or intermediate language program's binary file format. It should be able to discover basic facts about the input program, such as the architecture (Pentium, PowerPC, etc.) and the entry point. In many cases, it should be able to find the equivalent of the main function of a C program, which is the start of the user written code. This excludes the runtime initialization code, which should not be decompiled if possible. If available the symbol tables and debug data are also loaded. The front end may be able to identify the libraries used even if they are linked with the code, this will provide library interfaces. If it can determine the compiler or compilers used it may provide useful information in identifying code idioms.
+
+
+=== Disassembly ===
+The next logical phase is the disassembly of machine code instructions into a machine independent intermediate representation (IR). For example, the Pentium machine instruction
+
+might be translated to the IR
+
+
+=== Idioms ===
+Idiomatic machine code sequences are sequences of code whose combined semantics are not immediately apparent from the instructions' individual semantics. Either as part of the disassembly phase, or as part of later analyses, these idiomatic sequences need to be translated into known equivalent IR. For example, the x86 assembly code:
+
+could be translated to
+
+eax  := abs(eax);
+
+Some idiomatic sequences are machine independent; some involve only one instruction. For example, xor eax, eax clears the eax register (sets it to zero). This can be implemented with a machine independent simplification rule, such as a = 0.
+In general, it is best to delay detection of idiomatic sequences if possible, to later stages that are less affected by instruction ordering. For example, the instruction scheduling phase of a compiler may insert other instructions into an idiomatic sequence, or change the ordering of instructions in the sequence. A pattern matching process in the disassembly phase would probably not recognize the altered pattern. Later phases group instruction expressions into more complex expressions, and modify them into a canonical (standardized) form, making it more likely that even the altered idiom will match a higher level pattern later in the decompilation.
+It is particularly important to recognize the compiler idioms for subroutine calls, exception handling, and switch statements. Some languages also have extensive support for strings or long integers.
+
+
+=== Program analysis ===
+Various program analyses can be applied to the IR. In particular, expression propagation combines the semantics of several instructions into more complex expressions. For example,
+
+could result in the following IR after expression propagation:
+
+m[ebx+12]  := m[ebx+12] - (m[ebx+4] + m[ebx+8]);
+
+The resulting expression is more like high level language, and has also eliminated the use of the machine register eax. Later analyses may eliminate the ebx register.
+
+
+=== Data flow analysis ===
+The places where register contents are defined and used must be traced using data flow analysis. The same analysis can be applied to locations that are used for temporaries and local data. A different name can then be formed for each such connected set of value definitions and uses. It is possible that the same local variable location was used for more than one variable in different parts of the original program. Even worse it is possible for the data flow analysis to identify a path whereby a value may flow between two such uses even though it would never actually happen or matter in reality. This may in bad cases lead to needing to define a location as a union of types. The decompiler may allow the user to explicitly break such unnatural dependencies which will lead to clearer code. This of course means a variable is potentially used without being initialized and so indicates a problem in the original program.
+
+
+=== Type analysis ===
+A good machine code decompiler will perform type analysis. Here, the way registers or memory locations are used result in constraints on the possible type of the location. For example, an and instruction implies that the operand is an integer; programs do not use such an operation on floating point values (except in special library code) or on pointers. An add instruction results in three constraints, since the operands may be both integer, or one integer and one pointer (with integer and pointer results respectively; the third constraint comes from the ordering of the two operands when the types are different).
+Various high level expressions can be recognized which trigger recognition of structures or arrays. However, it is difficult to distinguish many of the possibilities, because of the freedom that machine code or even some high level languages such as C allow with casts and pointer arithmetic.
+The example from the previous section could result in the following high level code:
+
+
+=== Structuring ===
+The penultimate decompilation phase involves structuring of the IR into higher level constructs such as while loops and if/then/else conditional statements. For example, the machine code
+
+could be translated into:
+
+Unstructured code is more difficult to translate into structured code than already structured code. Solutions include replicating some code, or adding Boolean variables.
+
+
+=== Code generation ===
+The final phase is the generation of the high level code in the back end of the decompiler. Just as a compiler may have several back ends for generating machine code for different architectures, a decompiler may have several back ends for generating high level code in different high level languages.
+Just before code generation, it may be desirable to allow an interactive editing of the IR, perhaps using some form of graphical user interface. This would allow the user to enter comments, and non-generic variable and function names. However, these are almost as easily entered in a post decompilation edit. The user may want to change structural aspects, such as converting a while loop to a for loop. These are less readily modified with a simple text editor, although source code refactoring tools may assist with this process. The user may need to enter information that failed to be identified during the type analysis phase, e.g. modifying a memory expression to an array or structure expression. Finally, incorrect IR may need to be corrected, or changes made to cause the output code to be more readable.
+
+
+=== Other techniques ===
+Decompilers using neural networks have been developed. Such a decompiler may be trained by machine learning to improve its accuracy over time.
+
+
+== Legality ==
+
+The majority of computer programs are covered by copyright laws. Although the precise scope of what is covered by copyright differs from region to region, copyright law generally provides the author (the programmer(s) or employer) with a collection of exclusive rights to the program. These rights include the right to make copies, including copies made into the computer’s RAM (unless creating such a copy is essential for using the program).
+Since the decompilation process involves making multiple such copies, it is generally prohibited without the authorization of the copyright holder. However, because decompilation is often a necessary step in achieving software interoperability, copyright laws in both the United States and Europe permit decompilation to a limited extent.
+In the United States, the copyright fair use defence has been successfully invoked in decompilation cases. For example, in Sega v. Accolade, the court held that Accolade could lawfully engage in decompilation in order to circumvent the software locking mechanism used by Sega's game consoles. Additionally, the Digital Millennium Copyright Act (PUBLIC LAW 105–304) has proper exemptions for both Security Testing and Evaluation in §1201(i), and Reverse Engineering in §1201(f).
+In Europe, the 1991 Software Directive explicitly provides for a right to decompile in order to achieve interoperability. The result of a heated debate between, on the one side, software protectionists, and, on the other, academics as well as independent software developers, Article 6 permits decompilation only if a number of conditions are met:
+
+First, a person or entity must have a license to use the program to be decompiled.
+Second, decompilation must be necessary to achieve interoperability with the target program or other programs. Interoperability information should therefore not be readily available, such as through manuals or API documentation. This is an important limitation. The necessity must be proven by the decompiler. The purpose of this important limitation is primarily to provide an incentive for developers to document and disclose their products' interoperability information.
+Third, the decompilation process must, if possible, be confined to the parts of the target program relevant to interoperability. Since one of the purposes of decompilation is to gain an understanding of the program structure, this third limitation may be difficult to meet. Again, the burden of proof is on the decompiler.
+In addition, Article 6 prescribes that the information obtained through decompilation may not be used for other purposes and that it may not be given to others.
+Overall, the decompilation right provided by Article 6 codifies what is claimed to be common practice in the software industry. Few European lawsuits are known to have emerged from the decompilation right. This could be interpreted as meaning one of three things:
+
+) the decompilation right is not used frequently and the decompilation right may therefore have been unnecessary,
+) the decompilation right functions well and provides sufficient legal certainty not to give rise to legal disputes or
+) illegal decompilation goes largely undetected.
+In a report of 2000 regarding implementation of the Software Directive by the European member states, the European Commission seemed to support the second interpretation.
+
+
+== See also ==
+Disassembler
+Binary recompiler
+Linker (computing)
+Abstract interpretation
+Resource editor
+
+
+=== Java decompilers ===
+Mocha decompiler
+JD Decompiler
+JAD decompiler
+
+
+=== Other decompilers ===
+.NET Reflector
+dotPeek
+JEB Decompiler (Android Dalvik, Intel x86, ARM, MIPS, WebAssembly, Ethereum)
+Ghidra
+IDA Pro, which includes a decompiler as an optional paid feature
+Binary Ninja
+uncompyle6 (Python Bytecode from 1.0 to 3.8)
+
+
+== References ==
+
+
+== External links ==

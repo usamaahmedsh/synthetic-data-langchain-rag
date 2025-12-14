@@ -1,0 +1,186 @@
+SIRIUS is a Java-based open-source software for the identification of small molecules from fragmentation mass spectrometry data without the use of spectral libraries. It combines the analysis of isotope patterns in MS1 spectra with the analysis of fragmentation patterns in MS2 spectra. SIRIUS is the umbrella application comprising CSI:FingerID, CANOPUS, COSMIC and ZODIAC.
+SIRIUS, including its web services for structural elucidation, is freely available to use for academic research. Bright Giant GmbH offers subscription-based access to the SIRIUS web services for commercial users.
+SIRIUS is not suitable for analyzing proteomics MS data.
+
+
+== History ==
+The SIRIUS software is developed by the group of Sebastian Böcker at the Friedrich Schiller University Jena, Germany and since 2019 together with Bright Giant GmbH. SIRIUS development started in 2009 as a software for identification of the molecular formula by decomposing high-resolution isotope patterns (also called MS1 data). The name is an akronym resulting from this original purpose: Sum formula Identification by Ranking Isotope patterns Using mass Spectrometry.
+In 2008 the group introduced the concept of fragmentation trees for identification of the molecular formula based on fragmentation mass spectrometry data, also called tandem MS or MS2 data. Back then, identification of small molecules was approached by searching in a reference spectral library. Examples of such libraries include MassBank, METLIN, or NIST/EPA/NIH EI-MS Library. However, this is limited to known molecules with available standards that have been measured and put in a reference spectral library. For unknown molecules, identification of the molecular formula is a crucial step. In 2011/2012, the group conceived fragmentation trees as a means of structural elucidation by automatically comparing these fragmentation trees. Fragmentation pattern similarities are strongly correlated with the chemical similarity of molecules. Thus, aligning the fragmentation tree of an unknown molecule to a set of known molecules helps to elucidate its structure. Fragmentation trees were introduced in SIRIUS 2.
+Also in 2012, the group of Juho Rousu at University of Helsinki, Finland, introduced a machine learning method to predict molecular properties from tandem MS data. This concept was brought together with the fragmentation tree concept in 2015 resulting in CSI:FingerID, being introduced in SIRIUS 3. The fragmentation tree is used to predict a molecular fingerprint of the unknown molecule using machine learning, which in turn is used to search a molecular structure database such as PubChem. Molecular structure databases are orders of magnitude larger than reference spectra libraries (PubChem containing ~111 million compounds in 2021 compared to NIST Tandem Mass Spectral Library containing ~50.000 compounds in 2023). This kind of structure identification refers to the identity and connectivity (with bond multiplicities) of the atoms, but not stereochemistry information. Elucidation of stereochemistry is currently beyond the power of automated search engines.
+SIRIUS 3 also introduced the graphical user interface (GUI).
+In 2020, in cooperation with the group of Pieter C Dorrestein at UC San Diego, USA, molecular formula identification was improved based on derivative networks from complete biological datasets to rank molecular formula candidates. This method is called ZODIAC and has been integrated into SIRIUS 4.
+Also in 2020, in cooperation with Rousu's and Dorrestein's groups, CANOPUS for systematic compound class annotation was introduced to SIRIUS 4.
+In 2022, the COSMIC confidence score was added to the CSI:FingerID structure identification workflow in SIRIUS 4, allowing users to determine the trustworthiness of the identification.
+In 2024, the de novo generation of candidate structures through MSNovelist was introduced with SIRIUS 6.
+
+
+== Data ==
+SIRIUS is using data from liquid-chromatography tandem mass spectrometry (LC-MS/MS). It requires high-resolution, high mass accuracy MS1 and MS2 data as input. LC is not mandatory for SIRIUS, however is often required to separate individual compounds in complex samples.
+
+MS1 data refers mainly to the isotope pattern of the compound. Due to the natural isotopic distributions of the elements, several peaks in the mass spectrum correspond to the same type of sample molecule, reflecting its isotope pattern.
+MS2 data refers to the fragmentation pattern of the compound. MS2 is also known as tandem mass spectrometry or MS/MS. The statistical model of SIRIUS and the machine learning model of CSI:FingerID were trained on MS2 spectra created by collision-induced dissociation (CID), as commonly applied in LC-MS/MS experiments.
+SIRIUS expects both, MS1 and MS2 spectra, as input. Omitting the MS1 data is possible, but it will make the analysis more time-consuming and can lead to poorer results.
+SIRIUS and CSI:FingerID have been trained on a wide variety of data, including data from different instrument types. Certain aspects of the mass spectra are important to successfully process the data: 
+
+High mass accuracy: The mass deviation of the input spectra should be within 20 ppm. Mass spectrometry devices such as TOF, Orbitrap and FT-ICR usually provide data with high mass accuracy, as do coupled devices such as Q-TOF, IT-TOF or IT-Orbitrap. Spectra measured with a quadrupole or linear trap do not provide the required accuracy for data analysis with SIRIUS.
+Rich fragmentation spectra: It is not possible to deduce the structure or even the molecular formula from an MS2 spectrum that contains almost no peaks. Prior noise filtering of the spectra is not necessary and not favorable. SIRIUS considers up to 60 peaks in the fragmentation spectrum and decides for itself which of these peaks are regarded as noise.
+Centroided MS data: SIRIUS does not contain routines for peak picking from profile-mode spectra. msConvert in ProteoWizard can be used to convert to centroided data. Additionally, there are several tools specialized for the preprocessing task, such as OpenMS, MZmine or XCMS. OpenMS and MZmine 3 both provide export functions tailored to the needs for SIRIUS.
+Different common MS file formats, such as .csv, .ms or .mgf files, can be imported to SIRIUS. SIRIUS can import full LC-MS-runs (.mzML) or single compounds. At present, SIRIUS only handles single-charged compounds.
+
+
+== Features ==
+SIRIUS identifies small molecules in a two step approach:
+
+First, the molecular formula of the molecule is determined.
+Second, a molecular fingerprint is predicted to search against a structure database to identify the most likely candidate.
+The following algorithms are implemented in SIRIUS:
+
+
+=== SIRIUS: Molecular formula identification ===
+SIRIUS is the name of the umbrella application, but (for historic reasons) also the name for the identification of the molecular formula. Molecular formula refers to the elemental composition of the molecule. The mere mass of a molecule is not sufficient to determine the correct molecular formula. Even with very high mass accuracy, many molecular formulas can explain a mass measured in a spectrum, in particular in higher mass regions. In SIRIUS, molecular formula identification is done using isotope pattern analysis on the MS1 data as well as fragmentation tree computation on the MS2 data. The score of a molecular formula candidate is a combination of the isotope pattern score and the fragmentation tree score.
+To identify the molecular formula, SIRIUS is considering all possible molecular formulas for a set of elements. The elements most abundant in living beings are hydrogen (H), carbon (C), nitrogen (N), oxygen (O), and phosphor (P). This is the default set of elements in SIRIUS. Some less common elements result in very characteristic isotope pattern changes and can be automatically detected. Detectable elements are sulfur (S), chlorine (Cl), bromine (Br), boron (B) and selenium (Se). The current version of SIRIUS uses
+a deep neural network for auto-detection of elements from the isotope and fragmentation pattern of the query molecule.
+For very large molecules or in case of missing data (e.g., a missing isotope pattern), it is possible to restrict SIRIUS to molecular formulas found in a database, such as PubChem.
+
+
+==== Decomposition of mass ====
+In order to quickly generate a manageable number of molecular formula candidates, the monoisotopic mass is decomposed into all possible molecular formulas that would lead to this mass. There are two definitions of the monoisotopic mass: (1) the sum of the masses of the most abundant naturally occurring stable isotope of each atom (i.e. the highest peak of the isotope pattern) (2) the sum of the masses of the lightest naturally occurring stable isotope of each atom (i.e. the peak of the isotope pattern with the lowest mass). For small molecules, the lightest peak is also mostly the highest peak of the isotope pattern. However, in the computational context of SIRIUS, the second definition is used.
+Decomposing the monoisotopic mass into all possible molecular formulas requires a mass interval taking into account the measurement inaccuracy of the instrument. This real-valued decomposition is transformed into a problem instance with integer masses by using a blowup factor. The resulting problem is known as Change-making problem which is well-studied and can be solved in runtime linear in the size of the output.
+
+
+==== Isotope pattern analysis ====
+Isotope patterns of the candidate molecular formulas are simulated starting with the isotopic distributions of the individual elements, and then combining these distributions by folding.
+The simulated isotope pattern is compared with the measured pattern by assigning probabilities to the observed masses and intensities.
+
+
+==== Fragmentation tree computation ====
+A fragmentation tree is a representation of the fragmentation process similar to "fragmentation diagrams" created by experts. The fragmentation tree annotates the MS2 spectrum by providing a molecular formula for each fragment peak. Peaks that do not receive an annotation are considered noise peaks. The fragmentation tree also predicts the fragmentation reactions (called losses) leading to the fragment peaks. Fragmentation trees are a valuable tool for deducing information about the fragmentation but are not a precise depiction of the actual fragmentation process.
+To identify the molecular formula of an unknown molecule, a separate fragmentation tree is computed for every molecular formula candidate. In other words, the method attempts to reconstruct the fragmentation process that led to this MS2 spectrum for each candidate molecular formula. This allows to compare the different hypotheses that a particular candidate is actual the correct molecular formula. The best-scoring fragmentation tree (i.e. the fragmentation process that is best explaining the spectrum) corresponds to the most likely molecular formula explanation.
+
+
+=== ZODIAC: Improved molecular formula identification ===
+ZODIAC improves the ranking of the formula candidates provided by SIRIUS. Organisms produce related metabolites derived from multiple but limited biosynthetic pathways. For a full LC-MS/MS run that is derived from a biological sample or any other set of derivatives the relation of the metabolites is reflected in their similarity. Those similarities are in turn reflected in joint fragments and losses between the fragmentation trees and can be leveraged to improve molecular formula identification of the individual molecules.
+ZODIAC uses the top X molecular formula candidates for each molecule from SIRIUS to build a similarity network, and uses Bayesian statistics to re-rank those candidates. Prior probabilities are derived from fragmentation tree similarity. Finding an optimal solution to the resulting computational problem is NP-hard, therefore Gibbs sampling is used.
+ZODIAC stands for ZODIAC: Organic compound Determination by Integral Assignment of elemental Compositions.
+
+
+=== CSI:FingerID: Structure database search ===
+CSI:FIngerID identifies the structure of a molecule by predicting its molecular fingerprint and using this fingerprint to search in a molecular structure database.
+
+
+==== Molecular fingerprints ====
+A molecular fingerprint is a binary vector, where each position corresponds to a specific molecular property. In this representation, a given position X may encode the presence or absence of a particular substructure, with '1' indicating presence and '0' indicating absence. Various types of molecular fingerprints exist, including PubChem CACTVS fingerprints, Klekota-Roth fingerprints, MACCS fingerprints, and Extended-Connectivity Fingerprints (ECFP). A molecular fingerprint can be deterministically computed from a given molecular structure. Different molecular structures may yield the same molecular fingerprint.
+
+
+==== Predicting molecular fingerprints ====
+CSI:FingerID predicts a probabilistic fingerprint with a variety of molecular properties from several fingerprint types. The fingerprint is predicted from the given spectrum and its corresponding fragmentation tree using deep kernel learning, which is a combination of kernel methods and deep neural networks. Not only the top scoring molecular formula but multiple high-scoring molecular formula candidates are considered.
+
+
+==== Comparing molecular fingerprints ====
+To search in a molecular structure database requires a metric to compare and score the molecular fingerprints. Tanimoto similarity (Jaccard index) is a commonly employed metric. A similarity value of 1 signifies identical fingerprints, while a value of 0 indicates structures that do not share any molecular properties. The calculated similarity value depends on the choice of fingerprint type.
+CSI:FingerID employs a logarithmic posterior probability to rank the structure candidates, where scores are represented as negative numbers, and zero is the optimum. This scoring function results in a higher number of correct identifications. Tanimoto similarities are also given.
+
+
+=== COSMIC: Identification confidence ===
+The COSMIC confidence score assigns a confidence to CSI:FingerID structure identifications. The idea is similar to False Discovery Rates: All molecules in a large dataset are analysed using CSI:FingerID, the top-ranked hit for each molecule will be evaluated by COSMIC and the most trustworthy identifications can be selected for further analysis. COSMIC does not re-rank structure candidates of a particular molecule nor does it discard any identifications.
+COSMIC employs a confidence score that combines E-value estimation and a linear support vector machine (SVM) with enforced directionality. Calibration of CSI:FingerID scores is achieved using E-value estimates. Generating decoys for small molecule structures is a non-trivial task, that is why candidates in PubChem serve as a proxy for decoys here.
+The score distribution is modeled as a mixture distribution of log-normal distributions, and the P-value and E-value of a hit score are estimated using the kernel density estimate of PubChem candidate scores. The SVM is employed to classify whether a hit is correct, utilizing features such as the calibrated score, score differences to other candidates, the total peak intensity explained by the fragmentation tree, and the cardinality of molecular fingerprints. Learning is constrained to a linear SVM to mitigate the risk of overfitting, and the directionality of features is enforced. This involves making upfront decisions about whether high or low values of a feature should enhance the confidence in an identification. For instance, a high CSI:FingerID score of a hit should increase but never decrease the confidence that the hit is correct. Some features necessitate the existence of at least two candidates for comparison, and separate SVMs are trained for single instances. The decision values of the SVM are mapped to posterior probability estimates using Platt scaling. This comprehensive approach ensures a robust and nuanced assessment of the confidence in molecule identifications.
+
+
+=== CANOPUS: Compound class prediction ===
+CANOPUS is short for class assignment and ontology prediction using mass spectrometry. It predicts the compound classes from the molecular fingerprint predicted by CSI:FingerID. This approach is completely database-free, i.e. it is not even limited to molecules that are listed in structure databases.
+CANOPUS employs a deep neural network (DNN) to predict 2,497 compound classes. The DNN was trained on 4.10 million compound structures with compound classes assigned by ClassyFire. No MS/MS data was used for training, but instead simulated 'realistic' probabilistic fingerprints for the training molecular structures were used. The DNN predicts all compound classes simultaneously.
+For full biological datasets, CANOPUS provides a comprehensive overview of compound classes present in the sample and allows for comparisons between different cohorts at compound class level.
+
+
+=== MSNovelist: De novo structure prediction ===
+MSNovelist is a computational method for the de novo generation of small molecule structures. It addresses a key limitation of database search tools, which can only identify compounds already present in reference structure databases. This makes it particularly useful for analyzing poorly represented analyte classes and novel compounds. It is not intended to replace database searches altogether, but generates structures which can serve as a great starting point for elucidation of specific unknowns.
+MSNovelist functions by generating novel molecular structures based on the molecular formula (identified by SIRIUS) and the molecular fingerprint (predicted by CSI:FingerID) of the unknown compound. An encoder–decoder recurrent neural network (RNN) model is trained to translate the input fingerprint into a structure, represented as a SMILES sequence, under the constraints of the predicted molecular formula. MSNovelist generates multiple candidate structures from the predicted molecular fingerprint. Once the candidate structures are generated, they are ranked using CSI:FingerID.
+
+
+=== Additional features ===
+Beyond the core algorithmic features, SIRIUS provides a comprehensive set of additional features streamlining the analysis workflow from feature detection to detailed result validation.
+
+LC/MS Preprocessing: SIRIUS can automatically detect and align chromatographic features across multiple samples, including adduct assignment. The preprocessing further provides quality metrics that enable users to prioritize and filter results for downstream analysis.
+Spectral Library (Analog) Search: SIRIUS enables rapid identity search and analog search against spectral libraries. An identity search matches the query spectrum against library spectra sharing the same precursor mass. Conversely, an analog search matches against library spectra with different precursor masses. These spectral library hits are auxiliary annotations alongside the CSI:FingerID results and do not influence the ranking of structure candidates.
+Substructure Annotations: Substructure annotations serve as a visualization tool to illustrate the connection between the input MS/MS spectrum, the predicted CSI:FingerID structure candidates, and any (analog) spectral library matches. This feature is based on the combinatorial fragmentation of the candidate structure and operates independently of the scoring algorithm CSI:FingerID uses to rank structure candidates.
+Structure Sketcher: The Structure Sketcher is a user interface component that enables manual modification of existing candidate structures or the creation of new ones. Users can integrate these manually-defined structures into the list of candidates for subsequent analysis.
+Biotransformer Integration: SIRIUS integrates BioTransformer 3.0 for generating custom transformation product databases
+Kendrick Mass Defect (KMD) Plots: SIRIUS can generate Kendrick Mass Defect (KMD) plots. These plots are used to quickly group chemically related molecules, such as homologous series, facilitating their identification within complex sample data.
+
+
+== Areas of application ==
+Small molecules are essential components found throughout nature, playing a significant role in various fields such as drug discovery, diagnostics, food science, environmental monitoring, forensics and more. Effectively addressing many global challenges hinges on the comprehensive identification of small molecules in complex samples. These complex mixtures contain thousands of different molecules measurable in a single mass spectrometry run.
+The identification of unknown small molecules is considered a critical bottleneck in metabolomics, natural product research, and related fields, given that widely over 90% of all small molecules remain unknown. Commonly, analyses were based on targeted approaches that are limited to the rediscovery of known molecules. In contrast, untargeted analysis is a top-down strategy that avoids the need for a prior specific hypothesis on expected small molecules. The focus shifts from asking, "Is molecule X present in the sample?" to "Which (unknown) molecules are present in the sample and might be relevant for downstream analysis?"
+SIRIUS is designed for the untargeted structural elucidation of unknown molecules, addressing various challenges:
+
+The correct molecular structure is prominently ranked from an extensive list of candidates. This can be compared to a Google search where the optimal answer is expected to be among the top three.
+It can be assessed whether the top candidate is indeed correct.
+Structural information is available even for molecules absent in extensive structure databases, including de novo candidate structures, details on compound class and substructure information.
+
+
+=== Examples of application ===
+The rise of antibiotic resistance poses a serious threat to public health. The presence of antibiotic residues in wastewater exacerbates the problem. SIRIUS identifies and predicts the chemical structures of degradation products created by fungi as a promising biological solution to remove persistent antibiotic residues from wastewater.
+The widespread use of synthetic polymers in food contact materials have raised significant concerns about plastic contamination in food and beverages. A non-targeted approach to analysis is essential for uncovering both known and unknown contaminants. Researchers screened suspected and unanticipated chemicals in a variety of liquor samples using SIRIUS.
+SIRIUS is used in forensic science to analyze the chemical changes during decomposition, helping to understand microbial networks and potentially predict the time since death.
+Neonatal dried blood spots are important for newborn screening and a powerful source for investigating the potential metabolic etiologies of various diseases using untargeted LC-MS-based metabolomics. Researchers used SIRIUS to investigate the stability of metabolites and classes of molecules in neonatal dried blood spot biobanks.
+Marine microorganisms offer a rich source of bioactive compounds with unique structures and remarkable biological activity. This makes them an important resource for the search for new therapeutic compounds. Researchers are using SIRIUS, to narrow down the search to the most promising microorganisms.
+Pediatric asthma poses diagnostic challenges due to its variable presentation. Breath analysis could be a game-changer in pediatric allergic asthma management. By identifying unique exhaled metabolic signatures using SIRIUS, researchers developed an approach to diagnose children with allergic asthma.
+Thiacloprid is a first-generation, widely used, neonicotinoid insecticide. Its persistence in the environment and potential adverse effects on human health have raised significant concerns. Elucidating the impurity profile of pesticides is crucial for assessing their environmental impact and potential risks, and setting acceptable limits for impurities. Using SIRIUS, researchers demonstrated an approach for identifying structurally related impurities in pesticides.
+Under certain conditions, two bacterial species can thrive together in a dual-species biofilm. The cooperation between P. aeruginosa and S. aureus in cystic fibrosis leads to increased disease severity. Using SIRIUS, researchers identified a metabolite that could be related to the increased pathogenesis of this dual-species biofilm in cystic fibrosis.
+Our skin hosts a diverse community of microorganisms known as the skin microbiota. Using SIRIUS, researchers identified changes in the skin metabolome that are more pronounced than changes in the microbial composition, suggesting that even subtle shifts in microbial abundance can lead to significant effects on the skin.
+
+
+== Limitations ==
+
+
+=== Limitation of the measurement method ===
+Mass spectra alone lack sufficient information to unambiguously identify every molecule. Some molecules produce almost indistinguishable spectra – even more similar than the same molecule measured on two different instruments. Extensive follow-up experiments are required for unambiguous identification.
+Based thereon, it is impossible to always correctly identify a molecular structure merely from a mass spectrum. Thus, CSI:FingerID as well as other methods for structure database search, cannot guarantee finding the correct molecular structure as first hit. That is why it is important to have the correct structure ranked very high from an extensive list of candidates and to assess the confidence in the top hit.
+
+
+=== Limitation of structure databases ===
+Structure databases are orders of magnitude larger than spectral libraries but still incomplete. It is understood that not every existing biomolecule is or will be contained in structure databases.
+For these instances, SIRIUS offers several solutions:
+
+SIRIUS can search in databases of hypothetical structures. This could be for example interesting for finding derivatives.
+The predicted molecular fingerprint offers structural information about, e.g., substructures.
+CANOPUS predicts the compound classes of a molecule without searching in a database.
+MSNovelist de novo generates candidate structures from the predicted molecular fingerprint.
+
+
+== Independent evaluation of the software ==
+CASMI (Critical Assessment of Small Molecule Identification)
+is an open contest on the identification of small molecules from mass spectrometry data, and was launched in 2012 by Emma Schymanski and Steffen Neumann.
+In CASMI 2016, CSI:FingerID and a derivative of CSI:FingerID, in which the Böcker Group was also involved, won first and second place in the category "Best Automatic Structural Identification - In Silico Fragmentation Only". Also, CSI:FingerID had the best result for ranking the correct molecule structure at position one (70 out of 127, positive mode).
+In CASMI 2017, SIRIUS plus CSI:FingerID won in 3 of 4 categories: "Best Structure Identification on Natural Products", "Best Automatic Structural Identification - In Silico Fragmentation Only", "Best Automatic Candidate Ranking".
+In CASMI 2022, six out of 16 contestants used SIRIUS in their workflow to identify the best molecular structure candidates. SIRIUS won in the categories "Correct elemental formulas", "Correct compound structure classes" and "Correct 2D chemical structures". CASMI 2022 included compounds that were not even contained in PubChem.
+
+
+== Awards and recognition ==
+Sebastian Böcker's group at FSU Jena won the 2022 Thuringian Research Award in the Applied Research category for SIRIUS and the underlying methods.
+SIRIUS was recognized as a "method to watch" by Nature Methods in 2020.
+
+
+== Licences ==
+SIRIUS is developed by the group of Sebastian Böcker at the FSU Jena in close collaboration with the Bright Giant GmbH. SIRIUS is provided as a software-as-a-service solution. The client software is open-source and installed on the users' computers. Molecular formula annotation using fragmentation trees and isotope pattern analysis is performed on your local computer without subscription requirement.
+The SIRIUS web services for structural elucidation, including molecular fingerprint prediction, structure database search, confidence score assessment and compound class prediction, require a user account. The web services are free for academic/non-commercial use provided/hosted by the FSU Jena. Academic institutions are identified by their email domain and access will be granted automatically. In some cases, further validation might be required.
+Bright Giant GmbH offers subscription-based access to the SIRIUS web services for structural elucidation for commercial users.
+
+
+== Alternatives ==
+Other algorithms and software for searching in structure databases are CFM-ID, ICEBERG, MetFrag, MS-FINDER, MetaboScape® (Bruker), MassHunter (Agilent) or Compound Discoverer™ (Thermo Fisher Scientific).
+
+
+== See also ==
+Tandem mass spectrometry
+Metabolomics
+List of mass spectrometry software
+
+
+== References ==
+
+
+== External links ==
+Official Documentation
+Video tutorials

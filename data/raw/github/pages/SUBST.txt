@@ -1,0 +1,130 @@
+In computing, SUBST is a command on the DOS, IBM OS/2, Microsoft Windows and ReactOS operating systems used for substituting paths on physical and logical drives as virtual drives.
+
+
+== Overview ==
+In MS-DOS, the SUBST command was added with the release of MS-DOS 3.1. The command is similar to floating drives, a more general concept in operating systems of Digital Research origin, including CP/M-86 2.x, Personal CP/M-86 2.x, Concurrent DOS, Multiuser DOS, System Manager 7, REAL/32, as well as DOS Plus and DR DOS (up to 6.0). DR DOS 6.0 includes an implementation of the SUBST command. The command is also available in FreeDOS and PTS-DOS. The Windows SUBST command is available in supported versions of the command line interpreter cmd.exe. In Windows NT, SUBST uses DefineDosDevice() to create the disk mappings.
+The JOIN command is the "opposite" of SUBST, because JOIN will take a drive letter and make it appear as a directory.
+Some versions of MS-DOS COMMAND.COM support the undocumented internal TRUENAME command which can display the "true name" of a file, i.e. the fully qualified name with drive, path, and extension, which is found possibly by name only via the PATH environment variable, or through SUBST, JOIN and ASSIGN filesystem mappings.
+
+
+== Syntax ==
+This is the command syntax in Windows XP to associate a path with a drive letter:
+
+SUBST [drive1: [drive2:]path]
+SUBST drive1: /D
+
+
+=== Parameters ===
+drive1: – Specify a virtual drive to which to assign a path.
+[drive2:]path – Specify a physical drive and path to assign to a virtual drive.
+/D – Delete a substituted (virtual) drive.
+
+
+== Examples ==
+
+
+=== Mapping a drive ===
+This means that, for example, to map C:'s root to X:, the following command would be used at the command-line interface:
+
+Upon doing this, a new drive called X: would appear under the My Computer virtual folder in Windows Explorer.
+
+
+=== Unmapping a drive ===
+To unmap drive X: again, the following command needs to by typed at the command prompt:
+
+
+== Custom label ==
+A custom label can be assigned to a drive letter created in this way by way of a registry key, which can be created by renaming (select "rename" from the drive letter context menu or press F2) the SUBST drive in Windows Explorer/My Computer.
+HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\DriveIcons\M\DefaultLabel\
+(DefaultValue) = Your Drive Label
+"M" represents the drive letter to assign a custom label to.
+However, labels created for SUBST drives in this manner are overridden by the label of the host drive/partition: the custom labels are only used if the host drive has no label. One may then:
+
+Delete the host's drive label;
+Create the proper registry keys for the SUBST drive letter;
+Create the proper registry keys for the host drive letter (optional, works around the host drive label override caveat);
+Re-create the SUBST drive to see label changes applied.
+Note that the LABEL command is NOT able to change the label name of a drive letter created using subst. 
+LABEL is one of several commands that only work on physical drives.
+
+
+== Persisting across reboots ==
+Drive letters mapped with the command are not available during system startup for services nor do they persist across a reboot.
+
+
+=== Registry (DOS Devices) ===
+The DOS Devices mechanism that underlies subst can be set in registry. This way, the mapped drives are usable immediately during startup.
+Create a new registry entry "String Value" in the following key:
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\DOS Devices
+The name should be  "X:"  where X is the drive letter.
+The value should be the path in one of the following NT Object Manager forms: 
+
+\??\C:\some\directory (preferred)
+\DosDevices\C:\some\directory (long version of the former)
+\Device\Mup\127.0.0.1\C$\some\directory (discouraged, as this goes through SMB share)
+There are tools available to make the necessary changes for the user, including psubst.
+The relative to this thematic registry key is HKEY_LOCAL_MACHINE\SYSTEM\MountedDevices. It defines mapping of drive letters into particular hard disk partitions, similar to /etc/fstab on a Unix system.  It also can be edited manually, but only at that time while that particular installed Window operation system is "inactive". So that, for example, if you currently boot from "D:\Windows" then you can edit the HKEY_LOCAL_MACHINE\SYSTEM\MountedDevices key of Windows that is installed in a "C:\Windows" folder, for an instance by doing the following actions:
+
+run command: reg load hklm\$system C:\WINDOWS\system32\config\system
+run command: regedit.exe
+edit registry key HKEY_LOCAL_MACHINE\$system\MountedDevices  (that represents the HKEY_LOCAL_MACHINE\SYSTEM\MountedDevices registry key of the Windows instance that is installed in C:\WINDOWS)
+close regedit.exe
+run command: reg unload hklm\$system (to complete the editing procedure)
+
+
+==== Importing reg file ====
+The easiest way to do this is to create a registry file (.reg), and double click the file to import the settings into the registry.
+Here is an example registry file.
+
+After configuring the registry the computer must be rebooted for the changes to take effect.
+
+
+=== Run on boot (batch) ===
+Create a batch file to run the built-in SUBST command to create a virtual drive letter for the existing mount points and place it in the user accounts startup folder.
+This is not preferred, as the mapping only appears at the end of user logon.
+Here is an example:
+
+The user must log off and back on or the service must be restarted for the changes to take effect.
+
+
+=== Run on boot (registry) ===
+Edit the registry to run the built-in subst command during computer startup or user logon by leveraging the appropriate Run registry key.  The easiest way to do this is to create a registry file (.reg), and double click the file to import the settings into the registry.
+This is not preferred, as the mapping only appears at the end of bootup.
+Example to run during computer boot
+
+The computer must be rebooted for the changes to take effect.
+Example of user logon
+
+The user must log off and back on for the changes to take effect.
+
+
+== Limitations ==
+Windows actions which act on disks at the physical layer are not possible.
+Since (at least) Microsoft Windows XP SP2 autorun.inf files present in the new drive letter are ignored; thus, AutoRun/AutoPlay does not work on drive letters created in this way. In addition, assigning a custom icon or label to the drive letter created this way via autorun.inf does not work. A custom label assigned to the drive letter created with subst only appears if the source drive/volume does not have a volume label set (check and set with the label command).
+Starting with Windows Vista, deleted files are immediately deleted permanently, and are not moved to the Recycle Bin. Prior to Windows Vista (in Windows XP, for example) files from substituted "disks" were moved to the Recycle Bin when deleted. A registry entry could be added to re-enable the Recycle Bin.
+Files or folders on drives created this way may have different access rights. Software installations may not work correctly, because the Config.msi directory created by the windows installer can not be accessed properly. Log files can not be written although the executing user has administrative rights.
+
+
+== See also ==
+Drive letter assignment
+Floating drive
+Load drive
+NTFS symbolic link
+
+
+== References ==
+
+
+== Further reading ==
+Cooper, Jim (2001). Special Edition Using MS-DOS 6.22, Third Edition. Que Publishing. ISBN 978-0789725738.
+Kathy Ivens; Brian Proffit (1993). OS/2 Inside & Out. Osborne McGraw-Hill. ISBN 978-0078818714.
+John Paul Mueller (2007). Windows Administration at the Command Line for Windows Vista, Windows 2003, Windows XP, and Windows 2000. John Wiley & Sons. ISBN 978-0470165799.
+
+
+== External links ==
+
+subst | Microsoft Docs
+SS64.com about "subst"
+psubst tool for persistent mappings
+Visual Subst — a GUI tool with persistent drive-mapping option.

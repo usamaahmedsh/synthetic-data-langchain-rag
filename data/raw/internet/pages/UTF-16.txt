@@ -1,0 +1,117 @@
+UTF-16 (16-bit Unicode Transformation Format) is a character encoding that supports all 1,112,064 valid code points of Unicode. The encoding is variable-length as code points are encoded with one or two 16-bit code units. UTF-16 arose from an earlier obsolete fixed-width 16-bit encoding now known as UCS-2 (for 2-byte Universal Character Set), once it became clear that more than 216 (65,536) code points were needed, including most emoji and important CJK characters such as for personal and place names.
+UTF-16 is used by the Windows API, and by many programming environments such as Java and Qt. The variable-length character of UTF-16, combined with the fact that most characters are not variable-length (so variable length is rarely tested), has led to many bugs in software, including in Windows itself.
+UTF-16 is the only encoding (still) allowed on the web that is incompatible with 8-bit ASCII. It has never gained popularity on the web, where it is declared by under 0.004% of public web pages (and even then, the web pages are most likely also using UTF-8). UTF-8, by comparison, gained dominance years ago and accounted for 99% of all web pages by 2025. The Web Hypertext Application Technology Working Group (WHATWG) considers UTF-8 "the mandatory encoding for all [text]" and that for security reasons browser applications should not use UTF-16.
+
+
+== History ==
+In the late 1980s, work began on developing a uniform encoding for a "Universal Character Set" (UCS) that would replace earlier language-specific encodings with one coordinated system. The goal was to include all required characters from most of the world's languages, as well as symbols from technical domains such as science, mathematics, and music. The original idea was to replace the typical 256-character encodings, which required 1 byte per character, with an encoding using 65,536 (216) values, which would require 2 bytes (16 bits) per character.
+Two groups worked on this in parallel, ISO/IEC JTC 1/SC 2 and the Unicode Consortium, the latter representing mostly manufacturers of computing equipment.  The two groups attempted to synchronize their character assignments so that the developing encodings would be mutually compatible.  The early 2-byte encoding was called "UCS-2".
+When it became increasingly clear that 216 characters would not suffice, IEEE introduced a larger 31-bit space and an encoding (UCS-4) that would require 4 bytes per character. This was resisted by the Unicode Consortium, both because 4 bytes per character wasted a lot of memory and disk space, and because some manufacturers were already heavily invested in 2-byte-per-character technology. The UTF-16 encoding scheme was developed as a compromise and introduced with version 2.0 of the Unicode standard in July 1996. It is fully specified in RFC 2781, published in 2000 by the IETF.
+UTF-16 is specified in the latest versions of both the international standard ISO/IEC 10646 and the Unicode Standard. "UCS-2 should now be considered obsolete. It no longer refers to an encoding form in either 10646 or the Unicode Standard." UTF-16 will never be extended to support a larger number of code points or to support the code points that were replaced by surrogates, as this would violate the Unicode Stability Policy with respect to general category or surrogate code points. (Any scheme that remains a self-synchronizing code would require allocating at least one  Basic Multilingual Plane (BMP) code point to start a sequence. Changing the purpose of  a code point is disallowed.)
+
+
+== Description ==
+Each Unicode code point is encoded either as one or two 16-bit code units. Code points less than 216 ("in the BMP") are encoded with a single 16-bit code unit equal to the numerical value of the code point, as in the older UCS-2. Code points greater than or equal to 216 ("above the BMP") are encoded using two 16-bit code units. These two 16-bit code units are chosen from the UTF-16 surrogate range 0xD800–0xDFFF which had not previously been assigned to characters. Values in this range are not used as characters, and UTF-16 provides no legal way to code them as individual code points. A UTF-16 stream, therefore, consists of single 16-bit codes outside the surrogate range, and pairs of 16-bit values that are within the surrogate range.
+
+
+=== U+0000 to U+D7FF and U+E000 to U+FFFF ===
+
+Both UTF-16 and UCS-2 encode code points in this range as single 16-bit code units that are numerically equal to the corresponding code points. These code points in the Basic Multilingual Plane (BMP) are the only code points that can be represented in UCS-2. As of Unicode 9.0, some modern non-Latin Asian, Middle-Eastern, and African scripts fall outside this range, as do most emoji characters.
+
+
+=== Code points from U+010000 to U+10FFFF ===
+Code points from the other planes are encoded as two 16-bit code units called a surrogate pair. The first code unit is a high surrogate and the second is a low surrogate (These are also known as "leading" and "trailing" surrogates, respectively, analogous to the leading and trailing bytes of UTF-8.):
+
+0x10000 is subtracted from the code point (U), leaving a 20-bit number (U') in the hex number range 0x00000–0xFFFFF.
+The high ten bits (in the range 0x000–0x3FF) are added to 0xD800 to give the first 16-bit code unit or high surrogate (W1), which will be in the range 0xD800–0xDBFF.
+The low ten bits (also in the range 0x000–0x3FF) are added to 0xDC00 to give the second 16-bit code unit or low surrogate (W2), which will be in the range 0xDC00–0xDFFF.
+Illustrated visually, the distribution of U' between W1 and W2 looks like:
+Since the ranges for the high surrogates (0xD800–0xDBFF), low surrogates (0xDC00–0xDFFF), and valid BMP characters (0x0000–0xD7FF, 0xE000–0xFFFF) are disjoint, it is not possible for a surrogate to match a BMP character, or for two adjacent code units to look like a legal surrogate pair. This simplifies searches a great deal. It also means that UTF-16 is self-synchronizing on 16-bit words: whether a code unit starts a character can be determined without examining earlier code units (i.e. the type of code unit can be determined by the ranges of values in which it falls). UTF-8 shares these advantages, but many earlier multi-byte encoding schemes (such as Shift JIS and other Asian multi-byte encodings) did not allow unambiguous searching and could only be synchronized by re-parsing from the start of the string. UTF-16 is not self-synchronizing if one byte is lost or if traversal starts at a random byte.
+Because the most commonly used characters are all in the BMP, handling of surrogate pairs is often not thoroughly tested.  This leads to persistent bugs and potential security holes, even in popular and well-reviewed application software (e.g. CVE-2008-2938, CVE-2012-2135).
+
+
+=== U+D800 to U+DFFF (surrogates) ===
+
+The official Unicode standard says that no UTF forms, including UTF-16, can encode the surrogate code points. Since these will never be assigned a character, there should be no reason to encode them. However, Windows allows unpaired surrogates in filenames and other places, which generally means they have to be supported by software in spite of their exclusion from the Unicode standard.
+UCS-2, UTF-8, and UTF-32 can encode these code points in trivial and obvious ways, and a large amount of software does so, even though the standard states that such arrangements should be treated as encoding errors. It is possible to unambiguously encode an unpaired surrogate (a high surrogate code point not followed by a low one, or a low one not preceded by a high one) in the format of UTF-16 by using a code unit equal to the code point. The result is not valid UTF-16, but the majority of UTF-16 encoder and decoder implementations do this when translating between encodings.
+
+
+=== Examples ===
+To encode U+10437 (𐐷) to UTF-16:
+
+Subtract 0x10000 from the code point, leaving 0x0437.
+For the high surrogate, shift right by 10 (divide by 0x400), then add 0xD800, resulting in 0x0001 + 0xD800 = 0xD801.
+For the low surrogate, take the low 10 bits (remainder of dividing by 0x400), then add 0xDC00, resulting in 0x0037 + 0xDC00 = 0xDC37.
+To decode U+10437 (𐐷) from UTF-16:
+
+Take the high surrogate (0xD801) and subtract 0xD800, then multiply by 0x400, resulting in 0x0001 × 0x400 = 0x0400.
+Take the low surrogate (0xDC37) and subtract 0xDC00, resulting in 0x37.
+Add these two results together (0x0437), and finally add 0x10000 to get the final code point, 0x10437.
+The following table summarizes this conversion, as well as others. The colors indicate how bits from the code point are distributed among the UTF-16 bytes. Additional bits added by the UTF-16 encoding process are shown in black.
+
+
+== Byte-order encoding schemes ==
+UTF-16 and UCS-2 produce a sequence of 16-bit code units. Since most communication and storage protocols are defined for bytes, and each unit thus takes two 8-bit bytes, the order of the bytes may depend on the endianness (byte order) of the computer architecture.
+To assist in recognizing the byte order of code units, UTF-16 allows a byte order mark (BOM), a code point with the value U+FEFF, to precede the first actual coded value. (U+FEFF is the invisible zero-width non-breaking space/ZWNBSP character). If the endian architecture of the decoder matches that of the encoder, the decoder detects the 0xFEFF value, but an opposite-endian decoder interprets the BOM as the noncharacter value U+FFFE reserved for this purpose. This incorrect result provides a hint to perform byte-swapping for the remaining values.
+If the BOM is missing, RFC 2781 recommends that big-endian (BE) encoding be assumed. In practice, due to Windows using little-endian (LE) order by default, many applications assume little-endian encoding. It is also reliable to detect endianness by looking for null bytes, on the assumption that characters less than U+0100 are very common. If more even bytes (starting at 0) are null, then it is big-endian.
+The standard also allows the byte order to be stated explicitly by specifying UTF-16BE or UTF-16LE as the encoding type.  When the byte order is specified explicitly this way, a BOM is specifically not supposed to be prepended to the text, and a U+FEFF at the beginning should be handled as a ZWNBSP character. Most applications ignore a BOM in all cases despite this rule.
+For Internet protocols, IANA has approved "UTF-16", "UTF-16BE", and "UTF-16LE" as the names for these encodings (the names are case insensitive). The aliases UTF_16 or UTF16 may be meaningful in some programming languages or software applications, but they are not standard names in Internet protocols.
+Similar designations, UCS-2BE and UCS-2LE, are used to show versions of UCS-2.
+
+
+== Efficiency ==
+A "character" may use any number of Unicode code points and in UTF-16 a code point could use either 1 or 2 16-bit values. This means that UTF-16 in no way assists in "counting characters" or in "measuring the width/length of a string".
+UTF-16 is often claimed to be more space-efficient than UTF-8 for East Asian languages, since it uses two bytes for characters that take 3 bytes in UTF-8. Since real text contains many spaces, numbers, punctuation, markup (for e.g. web pages), and control characters, which take only one byte in UTF-8, this is only true for artificially constructed dense blocks of text. A more serious claim can be made for Devanagari and Bengali, which use multi-letter words and all the letters take 3 bytes in UTF-8 and only 2 in UTF-16. In addition the Chinese Unicode encoding standard GB 18030 always produces files the same size or smaller than UTF-16 for all languages, not just for Chinese (it does this by sacrificing self-synchronization).
+
+
+== Usage ==
+A method to determine what encoding a system is using internally is to ask for the "length" of string containing a single non-BMP character. If the length is 2 then UTF-16 is being used. 4 indicates UTF-8. 3 or 6 may indicate CESU-8. 1 may indicate UTF-32, but more likely indicates the language decodes the string to code points before measuring the "length".
+
+
+=== Operating systems ===
+UTF-16 is used for text in the OS API of all currently supported versions of Microsoft Windows (and including at least Windows CE since Windows CE 5.0 and Windows NT since Windows 2000). Windows NT prior to Windows 2000 only supported UCS-2. Windows 9x only supported UCS-2, and support of Unicode is limited to internal, such as VFAT and WDM. Since Windows 10 version 1903 (or insider build 17035) it has been possible to use UTF-8 in the API, though most software, such as Windows File Explorer, still uses UTF-16 API. Microsoft has stated that "UTF-16 [..] is a unique burden that Windows places on code that targets multiple platforms"
+The IBM i operating system designates CCSID (code page) 13488 for UCS-2 encoding and CCSID 1200 for UTF-16 encoding, though the system treats them both as UTF-16.
+UTF-16 is used by the Qualcomm BREW operating systems; the .NET environments; and the Qt cross-platform graphical widget toolkit.
+
+
+=== File systems ===
+The Joliet file system, used in CD-ROM media, encodes file names using UCS-2BE (up to sixty-four Unicode characters per file name). NTFS and ReFS use UTF-16 to store strings.
+
+
+=== Messaging ===
+SMS text messaging effectively uses UTF-16. The 3GPP TS 23.038 (GSM) and IS-637 (CDMA) standards specify UCS-2, but UTF-16 is necessary for Emoji to work. Symbian OS used in Nokia S60 handsets and Sony Ericsson UIQ handsets uses UCS-2. iPhone handsets use UTF-16.
+
+
+=== Programming languages ===
+Python version 2.0 officially only used UCS-2 internally, but the UTF-8 decoder to "Unicode" produced correct UTF-16. There was also the ability to compile Python so that it used UTF-32 internally, this was sometimes done on Unix. Python 3.3 switched internal storage to use one of ISO-8859-1, UCS-2, or UTF-32 depending on the largest code point in the string. Python 3.12 drops some functionality (for CPython extensions) to make it easier to migrate to UTF-8 for all strings.
+Java originally used UCS-2, and added UTF-16 supplementary character support in J2SE 5.0. All strings in memory are UTF-16 (since Java 9, strings containing only ISO-8859-1 characters can be "compressed" to bytes). Java I/O uses UTF-8 or Modified UTF-8.
+JavaScript may use UCS-2 or UTF-16. As of ES2015, string methods and regular expression flags have been added to the language that permit handling strings from an encoding-agnostic perspective.
+Swift, Apple's preferred application language, used UTF-16 to store strings until version 5 which switched to UTF-8.
+Quite a few languages make the encoding part of the string object, and thus store and support a large set of encodings including UTF-16. Most consider UTF-16 and UCS-2 to be different encodings. Examples are the PHP language and MySQL.
+
+
+=== Firmware ===
+UEFI uses UTF-16 to encode strings by default.
+
+
+== See also ==
+CESU-8
+Comparison of Unicode encodings
+Plane (Unicode)
+UTF-32
+UTF-8
+
+
+== Notes ==
+
+
+== References ==
+
+
+== External links ==
+A very short algorithm for determining the surrogate pair for any code point
+Unicode Technical Note #12: UTF-16 for Processing
+Unicode FAQ: What is the difference between UCS-2 and UTF-16?
+Unicode Character Name Index
+RFC 2781: UTF-16, an encoding of ISO 10646
+java.lang.String documentation, discussing surrogate handling

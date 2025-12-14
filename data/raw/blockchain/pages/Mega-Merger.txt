@@ -1,0 +1,1250 @@
+Mega-merger is a distributed algorithm aimed at solving the election problem in generic connected undirected graph.
+
+
+== Introduction ==
+Mega-Merger was developed by Robert Gray Gallager at MIT in 1983. It applies a distributed divide and conquer approach mixed with a rank-based conquer strategy. The algorithm is usually presented through a village-city analogy. Each node in the graph indicates a village, while the edges that connect them are the roads and a rooted spanning tree in a sub-graph is a city. The whole graph is then a mega-city. Mega-Merger pushes villages to bind together to form cities according to each other's rank and edges. Cities are then formed by alliances or by conquering/absorption.
+
+
+== Pre-requisites ==
+Mega-Merger builds a minimum spanning tree over connected graphs provided:
+
+Total reliability: No message is lost in transmission.
+UI (unique initiator): A single node starts the protocol.
+Bi-directional communications channels: Each edge is bi-directional, communications can travel in both directions.
+No further restrictions are necessary.
+
+
+== Algorithm ==
+The algorithm assigns to each village a name and a rank, the former usually unique. The latter states the number of friendly mergers that the city has gone through, and the larger it is, the more powerful a city is considered. Moreover, to each edge is assigned a weight: each village/city 
+  
+    
+      
+        C
+      
+    
+    {\displaystyle C}
+  
+ has a minimum-weight edge 
+  
+    
+      
+        
+          e
+          
+            m
+            e
+            r
+            g
+            e
+          
+        
+        (
+        C
+        ,
+        
+          C
+          ′
+        
+        )
+      
+    
+    {\displaystyle e_{merge}(C,C')}
+  
+ also called merge link, that is the edge whose traversal has minimum cost.
+The algorithm proceeds in consecutive stages until a mega-city is formed. Each city C computes its own merge link and sends a request for merging across 
+  
+    
+      
+        
+          e
+          
+            m
+            e
+            r
+            g
+            e
+          
+        
+        (
+        C
+        ,
+        
+          C
+          ′
+        
+        )
+      
+    
+    {\displaystyle e_{merge}(C,C')}
+  
+. The request is handled by 
+  
+    
+      
+        
+          C
+          ′
+        
+      
+    
+    {\displaystyle C'}
+  
+ in the following ways:
+
+Friendly merge: 
+  
+    
+      
+        r
+        a
+        n
+        k
+        (
+        C
+        )
+        =
+        r
+        a
+        n
+        k
+        (
+        
+          C
+          ′
+        
+        )
+        ∧
+        
+          e
+          
+            m
+            e
+            r
+            g
+            e
+          
+        
+        (
+        C
+        ,
+        
+          C
+          ′
+        
+        )
+        =
+        
+          e
+          
+            m
+            e
+            r
+            g
+            e
+          
+        
+        (
+        
+          C
+          ′
+        
+        ,
+        C
+        )
+      
+    
+    {\displaystyle rank(C)=rank(C')\land e_{merge}(C,C')=e_{merge}(C',C)}
+  
+: If the cities share the same merge link and have same rank, a friendly merge occurs, and the two cities merge into one. A new name is picked for the newly created city, a ruling village is picked and the path from the previous ruler to the node in the merge link is re-oriented such that it leads to the new leader. The new city also has its rank increased by one. Notice as this is the only way two cities can increase each other's rank.
+Absorption:  
+  
+    
+      
+        r
+        a
+        n
+        k
+        (
+        C
+        )
+        <
+        r
+        a
+        n
+        k
+        (
+        
+          C
+          ′
+        
+        )
+      
+    
+    {\displaystyle rank(C)<rank(C')}
+  
+: If the requesting city has a lower rank, the city in the receiving end enacts an absorption process: 
+  
+    
+      
+        C
+      
+    
+    {\displaystyle C}
+  
+ is absorbed like in the friendly merge, but loses its name and the resulting city has the rank of 
+  
+    
+      
+        
+          C
+          ′
+        
+      
+    
+    {\displaystyle C'}
+  
+.
+Suspension: 
+  
+    
+      
+        r
+        a
+        n
+        k
+        (
+        C
+        )
+        =
+        r
+        a
+        n
+        k
+        (
+        
+          C
+          ′
+        
+        )
+        ∧
+        
+          e
+          
+            m
+            e
+            r
+            g
+            e
+          
+        
+        (
+        C
+        ,
+        
+          C
+          ′
+        
+        )
+        ≠
+        
+          e
+          
+            m
+            e
+            r
+            g
+            e
+          
+        
+        (
+        
+          C
+          ′
+        
+        ,
+        C
+        )
+        ∨
+        r
+        a
+        n
+        k
+        (
+        C
+        )
+        >
+        r
+        a
+        n
+        k
+        (
+        
+          C
+          ′
+        
+        )
+      
+    
+    {\textstyle rank(C)=rank(C')\land e_{merge}(C,C')\neq e_{merge}(C',C)\lor rank(C)>rank(C')}
+  
+: In such cases 
+  
+    
+      
+        
+          C
+          ′
+        
+      
+    
+    {\displaystyle C'}
+  
+ freezes the request: it waits to either be absorbed by rule 2 or to merge and increase its rank above the one of 
+  
+    
+      
+        C
+      
+    
+    {\displaystyle C}
+  
+ in order to be able to enact rule 1 and absorb 
+  
+    
+      
+        C
+      
+    
+    {\displaystyle C}
+  
+.
+
+
+== Outside messages ==
+No nodes in the graph have a list of villages belonging to their village, hence each time a city wants to look for edges leading outside of it, it has to adopt an ask-reply protocol. The city ruler sends a broadcast message through its spanning tree, and each node 
+  
+    
+      
+        x
+      
+    
+    {\displaystyle x}
+  
+ receiving it sends requests to its neighbors, excluding the edges to its child(ren) and parent. The response protocol is as follows:
+
+  
+    
+      
+        x
+        .
+        c
+        i
+        t
+        y
+        =
+        y
+        .
+        c
+        i
+        t
+        y
+      
+    
+    {\displaystyle x.city=y.city}
+  
+: clearly the edge is an intra-edge in 
+  
+    
+      
+        C
+      
+    
+    {\displaystyle C}
+  
+. 
+  
+    
+      
+        x
+      
+    
+    {\displaystyle x}
+  
+ and 
+  
+    
+      
+        y
+      
+    
+    {\displaystyle y}
+  
+ exchange negative responses.
+
+  
+    
+      
+        x
+        .
+        c
+        i
+        t
+        y
+        ≠
+        y
+        .
+        c
+        i
+        t
+        y
+        ∧
+        x
+        .
+        r
+        a
+        n
+        k
+        <
+        y
+        .
+        r
+        a
+        n
+        k
+      
+    
+    {\displaystyle x.city\neq y.city\land x.rank<y.rank}
+  
+: 
+  
+    
+      
+        x
+      
+    
+    {\displaystyle x}
+  
+ is asking to a city of higher rank. By rule 2 we can assert that no absorption occurs, and 
+  
+    
+      
+        y
+      
+    
+    {\displaystyle y}
+  
+ indeed belongs to another city.
+
+  
+    
+      
+        x
+        .
+        c
+        i
+        t
+        y
+        ≠
+        y
+        .
+        c
+        i
+        t
+        y
+        ∧
+        x
+        .
+        r
+        a
+        n
+        k
+        >
+        y
+        .
+        r
+        a
+        n
+        k
+      
+    
+    {\displaystyle x.city\neq y.city\land x.rank>y.rank}
+  
+: in this case 
+  
+    
+      
+        y
+      
+    
+    {\displaystyle y}
+  
+ will delay the answer as by rule 3.
+
+
+== Properties ==
+Mega-Merger holds several properties:
+
+Monotonic rank: Each city 
+  
+    
+      
+        C
+      
+    
+    {\displaystyle C}
+  
+, mega-city excluded, will eventually rise in rank. By rule 1 
+  
+    
+      
+        C
+      
+    
+    {\displaystyle C}
+  
+ could friendly merge, raising its rank by 
+  
+    
+      
+        1
+      
+    
+    {\displaystyle 1}
+  
+; by rule 2 and 3 
+  
+    
+      
+        C
+      
+    
+    {\displaystyle C}
+  
+ will have a merge link (by hypothesis 
+  
+    
+      
+        C
+      
+    
+    {\displaystyle C}
+  
+ is not the mega-city) it will either ask a higher-rank city 
+  
+    
+      
+        
+          C
+          ′
+        
+      
+    
+    {\displaystyle C'}
+  
+, getting absorbed and increasing its rank, or wait until 
+  
+    
+      
+        
+          C
+          ′
+        
+      
+    
+    {\displaystyle C'}
+  
+ reaches its level and operate a friendly merge.
+
+  
+    
+      
+        r
+        a
+        n
+        k
+        (
+        C
+        )
+        =
+        K
+        
+        ⟹
+        
+        
+          |
+        
+        C
+        
+          |
+        
+        ≥
+        
+          2
+          
+            k
+          
+        
+      
+    
+    {\displaystyle rank(C)=K\implies |C|\geq 2^{k}}
+  
+: we have a level increase each time a friendly merge is operated. We compute by induction: on the base case, 
+  
+    
+      
+        r
+        a
+        n
+        k
+        (
+        C
+        )
+        =
+        0
+      
+    
+    {\displaystyle rank(C)=0}
+  
+, exactly one village is in 
+  
+    
+      
+        C
+      
+    
+    {\displaystyle C}
+  
+. On the inductive case, two cities 
+  
+    
+      
+        
+          C
+          ′
+        
+        ,
+        
+          C
+          ″
+        
+        s
+        .
+        t
+        .
+        r
+        a
+        n
+        k
+        (
+        
+          C
+          ′
+        
+        )
+        =
+        r
+        a
+        n
+        k
+        (
+        
+          C
+          ″
+        
+        )
+        =
+        k
+      
+    
+    {\displaystyle C',C''s.t.rank(C')=rank(C'')=k}
+  
+ operate a friendly merge, hence 
+  
+    
+      
+        
+          |
+        
+        
+          C
+          ′
+        
+        −
+        
+          C
+          ″
+        
+        
+          |
+        
+        =
+        
+          |
+        
+        
+          C
+          ′
+        
+        
+          |
+        
+        +
+        
+          |
+        
+        
+          C
+          ″
+        
+        
+          |
+        
+        =
+        
+          2
+          
+            k
+          
+        
+        +
+        
+          2
+          
+            k
+          
+        
+        =
+        
+          2
+          
+            k
+            +
+            1
+          
+        
+      
+    
+    {\displaystyle |C'-C''|=|C'|+|C''|=2^{k}+2^{k}=2^{k+1}}
+  
+ by inductive hypothesis.
+
+  
+    
+      
+        max
+        
+          r
+          a
+          n
+          k
+          (
+          C
+          )
+        
+        ≤
+        log
+        ⁡
+        n
+      
+    
+    {\displaystyle \max {rank(C)}\leq \log n}
+  
+: by the previous rule cities are built up on an exponential base 
+  
+    
+      
+        2
+      
+    
+    {\displaystyle 2}
+  
+, hence the inverse 
+  
+    
+      
+        
+          log
+          
+            2
+          
+        
+        ⁡
+        n
+      
+    
+    {\displaystyle \log _{2}n}
+  
+.
+Deadlock prevention: Mega-Merger doesn't incur in any deadlock. As shown by rule 3 a city 
+  
+    
+      
+        C
+      
+    
+    {\displaystyle C}
+  
+ can wait for a lower-rank city to answer on merge link 
+  
+    
+      
+        e
+      
+    
+    {\displaystyle e}
+  
+: in order to incur in a deadlock such city 
+  
+    
+      
+        
+          C
+          ′
+        
+      
+    
+    {\displaystyle C'}
+  
+ would have to wait on 
+  
+    
+      
+        
+          C
+          ″
+        
+      
+    
+    {\displaystyle C''}
+  
+, and 
+  
+    
+      
+        
+          C
+          ″
+        
+      
+    
+    {\displaystyle C''}
+  
+ on 
+  
+    
+      
+        
+          C
+          ‴
+        
+      
+    
+    {\displaystyle C'''}
+  
+, and so on until a cycle is detected on 
+  
+    
+      
+        
+          C
+          
+            n
+          
+        
+      
+    
+    {\displaystyle C^{n}}
+  
+ waiting on 
+  
+    
+      
+        C
+      
+    
+    {\displaystyle C}
+  
+ on a merge link 
+  
+    
+      
+        
+          e
+          ′
+        
+      
+    
+    {\displaystyle e'}
+  
+. But by hypothesis 
+  
+    
+      
+        e
+      
+    
+    {\displaystyle e}
+  
+ is the merge-link of 
+  
+    
+      
+        C
+      
+    
+    {\displaystyle C}
+  
+, hence such chain cannot exist.  The other deadlock-inducing situation is a request from 
+  
+    
+      
+        C
+      
+    
+    {\displaystyle C}
+  
+ to 
+  
+    
+      
+        
+          C
+          ′
+        
+      
+    
+    {\displaystyle C'}
+  
+ where 
+  
+    
+      
+        
+          C
+          ′
+        
+      
+    
+    {\displaystyle C'}
+  
+ has a different merge link than 
+  
+    
+      
+        C
+      
+    
+    {\displaystyle C}
+  
+. Still, as shown by monotonic rank either 
+  
+    
+      
+        
+          C
+          ′
+        
+      
+    
+    {\displaystyle C'}
+  
+ will grow its rank to absorb 
+  
+    
+      
+        C
+      
+    
+    {\displaystyle C}
+  
+, or will consume all its merge links to be the only city in the graph with 
+  
+    
+      
+        C
+      
+    
+    {\displaystyle C}
+  
+. Trivially in such case the two merge links would coincide and 
+  
+    
+      
+        
+          C
+          ′
+        
+      
+    
+    {\displaystyle C'}
+  
+ would be forced into absorption by rule 2.
+
+
+== Termination ==
+Termination is granted by deadlock prevention and total reliability.
+
+
+== Cost ==
+The cost analysis has two components, the stage-cost and the stage upper-bound. A city 
+  
+    
+      
+        C
+      
+    
+    {\displaystyle C}
+  
+ enacts a stage by requesting a merge link from its villages and applying one of the above rules according to the desired situation. We can divide this stage in five steps:
+
+Broadcast request for merge link to the 
+  
+    
+      
+        ≤
+        n
+      
+    
+    {\displaystyle \leq n}
+  
+ nodes in the tree.
+Each node forwards an 
+  
+    
+      
+        o
+        u
+        t
+        s
+        i
+        d
+        e
+        ?
+      
+    
+    {\displaystyle outside?}
+  
+ message to its 
+  
+    
+      
+        ≤
+        n
+      
+    
+    {\displaystyle \leq n}
+  
+ neighbors and waits for their 
+  
+    
+      
+        ≤
+        n
+      
+    
+    {\displaystyle \leq n}
+  
+ answers.
+The nodes then send the answers back to the city ruler by convergecast for a total of 
+  
+    
+      
+        ≤
+        n
+      
+    
+    {\displaystyle \leq n}
+  
+ messages.
+The root then decides on a merge link and sends a message to the elected node. Trivially this message will need to travel 
+  
+    
+      
+        h
+        e
+        i
+        g
+        h
+        t
+        (
+        T
+        r
+        e
+        e
+        )
+        ≤
+        n
+      
+    
+    {\displaystyle height(Tree)\leq n}
+  
+ nodes.
+These five phases of request, outside discovery, communication and delivery have a total cost of 
+  
+    
+      
+        n
+        +
+        2
+        n
+        +
+        n
+        +
+        n
+        ≤
+        5
+        n
+      
+    
+    {\displaystyle n+2n+n+n\leq 5n}
+  
+. As for the wasted messages in the 
+  
+    
+      
+        o
+        u
+        t
+        s
+        i
+        d
+        e
+        ?
+      
+    
+    {\displaystyle outside?}
+  
+ between internal nodes, each node 
+  
+    
+      
+        x
+      
+    
+    {\displaystyle x}
+  
+ has at most 
+  
+    
+      
+        d
+        e
+        g
+        (
+        x
+        )
+        −
+        2
+      
+    
+    {\displaystyle deg(x)-2}
+  
+ internal edges, or 
+  
+    
+      
+        d
+        e
+        g
+        (
+        x
+        )
+        −
+        1
+      
+    
+    {\displaystyle deg(x)-1}
+  
+ if 
+  
+    
+      
+        x
+      
+    
+    {\displaystyle x}
+  
+ is a leaf, for a total of 
+  
+    
+      
+        2
+        m
+        −
+        n
+      
+    
+    {\displaystyle 2m-n}
+  
+ wasted internal messages.
+Now for the number of stages. By the previously presented property on the cities size, each city of level 
+  
+    
+      
+        k
+      
+    
+    {\displaystyle k}
+  
+ has 
+  
+    
+      
+        ≥
+        
+          2
+          
+            k
+          
+        
+      
+    
+    {\displaystyle \geq 2^{k}}
+  
+, hence the largest reachable rank is 
+  
+    
+      
+        l
+        o
+        
+          g
+          
+            2
+          
+        
+        
+          n
+        
+      
+    
+    {\displaystyle log_{2}{n}}
+  
+. Since cities can merge/be absorbed only once per stage, we have a total of 
+  
+    
+      
+        2
+        m
+        +
+        n
+        +
+        5
+        n
+        log
+        ⁡
+        
+          n
+        
+      
+    
+    {\displaystyle 2m+n+5n\log {n}}
+  
+total messages.
+
+
+== Correctness ==
+Mega-Merger creates a minimum spanning tree by merging sub-trees through the minimum cost path, i.e. the merge link. By definition of minimum spanning tree, a minimum spanning tree is a set of minimum spanning trees connected through minimum-cost paths. By construction Mega-Merger forwards a request through its merge-link, and that sooner or later that edge is going to be part of the tree by deadlock prevention.
+
+
+== References ==

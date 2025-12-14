@@ -1,0 +1,2592 @@
+A Neural Network Gaussian Process (NNGP) is a Gaussian process (GP) obtained as the limit of a certain type of sequence of neural networks. Specifically, a wide variety of network architectures converges to a GP in the infinitely wide limit, in the sense of distribution.
+The concept constitutes an intensional definition, i.e., a NNGP is just a GP, but distinguished by how it is obtained.
+
+
+== Motivation ==
+Bayesian networks are a modeling tool for assigning probabilities to events, and thereby characterizing the uncertainty in a model's predictions. Deep learning and artificial neural networks are approaches used in machine learning to build computational models which learn from training examples. Bayesian neural networks merge these fields. They are a type of neural network whose parameters and predictions are both probabilistic. While standard neural networks often assign high confidence even to incorrect predictions, Bayesian neural networks can more accurately evaluate how likely their predictions are to be correct.
+
+Computation in artificial neural networks is usually organized into sequential layers of artificial neurons. The number of neurons in a layer is called the layer width. When we consider a sequence of Bayesian neural networks with increasingly wide layers (see figure), they converge in distribution to a NNGP. This large width limit is of practical interest, since the networks often improve as layers get wider. And the process may give a closed form way to evaluate networks. 
+NNGPs also appears in several other contexts: It describes the distribution over predictions made by wide non-Bayesian artificial neural networks after random initialization of their parameters, but before training; it appears as a term in neural tangent kernel prediction equations; it is used in deep information propagation to characterize whether hyperparameters and architectures will be trainable. 
+It is related to other large width limits of neural networks.
+
+
+=== Scope ===
+The first correspondence result had been established in the 1995 PhD thesis of Radford M. Neal, then supervised by Geoffrey Hinton at University of Toronto. Neal cites David J. C. MacKay as inspiration, who worked in Bayesian learning.
+Today the correspondence is proven for: Single hidden layer Bayesian neural networks; deep fully connected networks as the number of units per layer is taken to infinity; convolutional neural networks as the number of channels is taken to infinity; transformer networks as the number of attention heads is taken to infinity; recurrent networks as the number of units is taken to infinity.
+In fact, this NNGP correspondence holds for almost any architecture: Generally, if an architecture can be expressed solely via matrix multiplication and coordinatewise nonlinearities (i.e., a tensor program), then it has an infinite-width GP.
+This in particular includes all feedforward or recurrent neural networks composed of multilayer perceptron, recurrent neural networks (e.g., LSTMs, GRUs), (nD or graph) convolution, pooling, skip connection, attention, batch normalization, and/or layer normalization.
+
+
+=== Illustration ===
+
+Every setting of a neural network's parameters 
+  
+    
+      
+        θ
+      
+    
+    {\displaystyle \theta }
+  
+ corresponds to a specific function computed by the neural network. A prior distribution 
+  
+    
+      
+        p
+        (
+        θ
+        )
+      
+    
+    {\displaystyle p(\theta )}
+  
+ over neural network parameters therefore corresponds to a prior distribution over functions computed by the network. As neural networks are made infinitely wide, this distribution over functions converges to a Gaussian process for many architectures.
+The notation used in this section is the same as the notation used below to derive the correspondence between NNGPs and fully connected networks, and more details can be found there.
+The figure to the right plots the one-dimensional outputs 
+  
+    
+      
+        
+          z
+          
+            L
+          
+        
+        (
+        ⋅
+        ;
+        θ
+        )
+      
+    
+    {\displaystyle z^{L}(\cdot ;\theta )}
+  
+ of a neural network for two inputs 
+  
+    
+      
+        x
+      
+    
+    {\displaystyle x}
+  
+ and 
+  
+    
+      
+        
+          x
+          
+            ∗
+          
+        
+      
+    
+    {\displaystyle x^{*}}
+  
+ against each other. The black dots show the function computed by the neural network on these inputs for random draws of the parameters from 
+  
+    
+      
+        p
+        (
+        θ
+        )
+      
+    
+    {\displaystyle p(\theta )}
+  
+. The red lines are iso-probability contours for the joint distribution over network outputs 
+  
+    
+      
+        
+          z
+          
+            L
+          
+        
+        (
+        x
+        ;
+        θ
+        )
+      
+    
+    {\displaystyle z^{L}(x;\theta )}
+  
+ and 
+  
+    
+      
+        
+          z
+          
+            L
+          
+        
+        (
+        
+          x
+          
+            ∗
+          
+        
+        ;
+        θ
+        )
+      
+    
+    {\displaystyle z^{L}(x^{*};\theta )}
+  
+ induced by 
+  
+    
+      
+        p
+        (
+        θ
+        )
+      
+    
+    {\displaystyle p(\theta )}
+  
+. This is the distribution in function space corresponding to the distribution 
+  
+    
+      
+        p
+        (
+        θ
+        )
+      
+    
+    {\displaystyle p(\theta )}
+  
+ in parameter space, and the black dots are samples from this distribution. For infinitely wide neural networks, since the distribution over functions computed by the neural network is a Gaussian process, the joint distribution over network outputs is a multivariate Gaussian for any finite set of network inputs.
+
+
+== Discussion ==
+
+
+=== Infinitely wide fully connected network ===
+This section expands on the correspondence between infinitely wide neural networks and Gaussian processes for the specific case of a fully connected architecture. It provides a proof sketch outlining why the correspondence holds, and introduces the specific functional form of the NNGP for fully connected networks. The proof sketch closely follows the approach by Novak and coauthors.
+
+
+==== Network architecture specification ====
+
+Consider a fully connected artificial neural network with inputs 
+  
+    
+      
+        x
+      
+    
+    {\displaystyle x}
+  
+, parameters 
+  
+    
+      
+        θ
+      
+    
+    {\displaystyle \theta }
+  
+ consisting of weights 
+  
+    
+      
+        
+          W
+          
+            l
+          
+        
+      
+    
+    {\displaystyle W^{l}}
+  
+ and biases 
+  
+    
+      
+        
+          b
+          
+            l
+          
+        
+      
+    
+    {\displaystyle b^{l}}
+  
+ for each layer 
+  
+    
+      
+        l
+      
+    
+    {\displaystyle l}
+  
+ in the network, pre-activations (pre-nonlinearity) 
+  
+    
+      
+        
+          z
+          
+            l
+          
+        
+      
+    
+    {\displaystyle z^{l}}
+  
+, activations (post-nonlinearity) 
+  
+    
+      
+        
+          y
+          
+            l
+          
+        
+      
+    
+    {\displaystyle y^{l}}
+  
+, pointwise nonlinearity 
+  
+    
+      
+        ϕ
+        (
+        ⋅
+        )
+      
+    
+    {\displaystyle \phi (\cdot )}
+  
+, and layer widths 
+  
+    
+      
+        
+          n
+          
+            l
+          
+        
+      
+    
+    {\displaystyle n^{l}}
+  
+. For simplicity, the width 
+  
+    
+      
+        
+          n
+          
+            L
+            +
+            1
+          
+        
+      
+    
+    {\displaystyle n^{L+1}}
+  
+ of the readout vector 
+  
+    
+      
+        
+          z
+          
+            L
+          
+        
+      
+    
+    {\displaystyle z^{L}}
+  
+ is taken to be 1. The parameters of this network have a prior distribution 
+  
+    
+      
+        p
+        (
+        θ
+        )
+      
+    
+    {\displaystyle p(\theta )}
+  
+, which consists of an isotropic Gaussian for each weight and bias, with the variance of the weights scaled inversely with layer width. This network is illustrated in the figure to the right, and described by the following set of equations:
+
+  
+    
+      
+        
+          
+            
+              
+                x
+              
+              
+                
+                ≡
+                
+                  input
+                
+              
+            
+            
+              
+                
+                  y
+                  
+                    l
+                  
+                
+                (
+                x
+                )
+              
+              
+                
+                =
+                
+                  {
+                  
+                    
+                      
+                        
+                          x
+                        
+                        
+                        
+                          l
+                          =
+                          0
+                        
+                      
+                      
+                        
+                          ϕ
+                          
+                            (
+                            
+                              
+                                z
+                                
+                                  l
+                                  −
+                                  1
+                                
+                              
+                              (
+                              x
+                              )
+                            
+                            )
+                          
+                        
+                        
+                        
+                          l
+                          >
+                          0
+                        
+                      
+                    
+                  
+                  
+                
+              
+            
+            
+              
+                
+                  z
+                  
+                    i
+                  
+                  
+                    l
+                  
+                
+                (
+                x
+                )
+              
+              
+                
+                =
+                
+                  ∑
+                  
+                    j
+                  
+                
+                
+                  W
+                  
+                    i
+                    j
+                  
+                  
+                    l
+                  
+                
+                
+                  y
+                  
+                    j
+                  
+                  
+                    l
+                  
+                
+                (
+                x
+                )
+                +
+                
+                  b
+                  
+                    i
+                  
+                  
+                    l
+                  
+                
+              
+            
+            
+              
+                
+                  W
+                  
+                    i
+                    j
+                  
+                  
+                    l
+                  
+                
+              
+              
+                
+                ∼
+                
+                  
+                    N
+                  
+                
+                
+                  (
+                  
+                    0
+                    ,
+                    
+                      
+                        
+                          σ
+                          
+                            w
+                          
+                          
+                            2
+                          
+                        
+                        
+                          n
+                          
+                            l
+                          
+                        
+                      
+                    
+                  
+                  )
+                
+              
+            
+            
+              
+                
+                  b
+                  
+                    i
+                  
+                  
+                    l
+                  
+                
+              
+              
+                
+                ∼
+                
+                  
+                    N
+                  
+                
+                
+                  (
+                  
+                    0
+                    ,
+                    
+                      σ
+                      
+                        b
+                      
+                      
+                        2
+                      
+                    
+                  
+                  )
+                
+              
+            
+            
+              
+                ϕ
+                (
+                ⋅
+                )
+              
+              
+                
+                ≡
+                
+                  nonlinearity
+                
+              
+            
+            
+              
+                
+                  y
+                  
+                    l
+                  
+                
+                (
+                x
+                )
+                ,
+                
+                  z
+                  
+                    l
+                    −
+                    1
+                  
+                
+                (
+                x
+                )
+              
+              
+                
+                ∈
+                
+                  
+                    R
+                  
+                  
+                    
+                      n
+                      
+                        l
+                      
+                    
+                    ×
+                    1
+                  
+                
+              
+            
+            
+              
+                
+                  n
+                  
+                    L
+                    +
+                    1
+                  
+                
+              
+              
+                
+                =
+                1
+              
+            
+            
+              
+                θ
+              
+              
+                
+                =
+                
+                  {
+                  
+                    
+                      W
+                      
+                        0
+                      
+                    
+                    ,
+                    
+                      b
+                      
+                        0
+                      
+                    
+                    ,
+                    …
+                    ,
+                    
+                      W
+                      
+                        L
+                      
+                    
+                    ,
+                    
+                      b
+                      
+                        L
+                      
+                    
+                  
+                  }
+                
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{aligned}x&\equiv {\text{input}}\\y^{l}(x)&=\left\{{\begin{array}{lcl}x&&l=0\\\phi \left(z^{l-1}(x)\right)&&l>0\end{array}}\right.\\z_{i}^{l}(x)&=\sum _{j}W_{ij}^{l}y_{j}^{l}(x)+b_{i}^{l}\\W_{ij}^{l}&\sim {\mathcal {N}}\left(0,{\frac {\sigma _{w}^{2}}{n^{l}}}\right)\\b_{i}^{l}&\sim {\mathcal {N}}\left(0,\sigma _{b}^{2}\right)\\\phi (\cdot )&\equiv {\text{nonlinearity}}\\y^{l}(x),z^{l-1}(x)&\in \mathbb {R} ^{n^{l}\times 1}\\n^{L+1}&=1\\\theta &=\left\{W^{0},b^{0},\dots ,W^{L},b^{L}\right\}\end{aligned}}}
+  
+
+
+====  ====
+  
+    
+      
+        
+          z
+          
+            l
+          
+        
+        
+          |
+        
+        
+          y
+          
+            l
+          
+        
+      
+    
+    {\displaystyle z^{l}|y^{l}}
+  
+ is a Gaussian process
+We first observe that the pre-activations 
+  
+    
+      
+        
+          z
+          
+            l
+          
+        
+      
+    
+    {\displaystyle z^{l}}
+  
+ are described by a Gaussian process conditioned on the preceding activations 
+  
+    
+      
+        
+          y
+          
+            l
+          
+        
+      
+    
+    {\displaystyle y^{l}}
+  
+. This result holds even at finite width. 
+Each pre-activation 
+  
+    
+      
+        
+          z
+          
+            i
+          
+          
+            l
+          
+        
+      
+    
+    {\displaystyle z_{i}^{l}}
+  
+ is a weighted sum of Gaussian random variables, corresponding to the weights 
+  
+    
+      
+        
+          W
+          
+            i
+            j
+          
+          
+            l
+          
+        
+      
+    
+    {\displaystyle W_{ij}^{l}}
+  
+ and biases 
+  
+    
+      
+        
+          b
+          
+            i
+          
+          
+            l
+          
+        
+      
+    
+    {\displaystyle b_{i}^{l}}
+  
+, where the coefficients for each of those Gaussian variables are the preceding activations 
+  
+    
+      
+        
+          y
+          
+            j
+          
+          
+            l
+          
+        
+      
+    
+    {\displaystyle y_{j}^{l}}
+  
+. 
+Because they are a weighted sum of zero-mean Gaussians, the 
+  
+    
+      
+        
+          z
+          
+            i
+          
+          
+            l
+          
+        
+      
+    
+    {\displaystyle z_{i}^{l}}
+  
+ are themselves zero-mean Gaussians (conditioned on the coefficients 
+  
+    
+      
+        
+          y
+          
+            j
+          
+          
+            l
+          
+        
+      
+    
+    {\displaystyle y_{j}^{l}}
+  
+).
+Since the 
+  
+    
+      
+        
+          z
+          
+            l
+          
+        
+      
+    
+    {\displaystyle z^{l}}
+  
+ are jointly Gaussian for any set of 
+  
+    
+      
+        
+          y
+          
+            l
+          
+        
+      
+    
+    {\displaystyle y^{l}}
+  
+, they are described by a Gaussian process conditioned on the preceding activations 
+  
+    
+      
+        
+          y
+          
+            l
+          
+        
+      
+    
+    {\displaystyle y^{l}}
+  
+. 
+The covariance or kernel of this Gaussian process depends on the weight and bias variances 
+  
+    
+      
+        
+          σ
+          
+            w
+          
+          
+            2
+          
+        
+      
+    
+    {\displaystyle \sigma _{w}^{2}}
+  
+ and 
+  
+    
+      
+        
+          σ
+          
+            b
+          
+          
+            2
+          
+        
+      
+    
+    {\displaystyle \sigma _{b}^{2}}
+  
+, as well as the second moment matrix 
+  
+    
+      
+        
+          K
+          
+            l
+          
+        
+      
+    
+    {\displaystyle K^{l}}
+  
+ of the preceding activations 
+  
+    
+      
+        
+          y
+          
+            l
+          
+        
+      
+    
+    {\displaystyle y^{l}}
+  
+,
+
+  
+    
+      
+        
+          
+            
+              
+                
+                  z
+                  
+                    i
+                  
+                  
+                    l
+                  
+                
+                ∣
+                
+                  y
+                  
+                    l
+                  
+                
+              
+              
+                
+                ∼
+                
+                  
+                    G
+                    P
+                  
+                
+                
+                  (
+                  
+                    0
+                    ,
+                    
+                      σ
+                      
+                        w
+                      
+                      
+                        2
+                      
+                    
+                    
+                      K
+                      
+                        l
+                      
+                    
+                    +
+                    
+                      σ
+                      
+                        b
+                      
+                      
+                        2
+                      
+                    
+                  
+                  )
+                
+              
+            
+            
+              
+                
+                  K
+                  
+                    l
+                  
+                
+                (
+                x
+                ,
+                
+                  x
+                  ′
+                
+                )
+              
+              
+                
+                =
+                
+                  
+                    1
+                    
+                      n
+                      
+                        l
+                      
+                    
+                  
+                
+                
+                  ∑
+                  
+                    i
+                  
+                
+                
+                  y
+                  
+                    i
+                  
+                  
+                    l
+                  
+                
+                (
+                x
+                )
+                
+                  y
+                  
+                    i
+                  
+                  
+                    l
+                  
+                
+                (
+                
+                  x
+                  ′
+                
+                )
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{aligned}z_{i}^{l}\mid y^{l}&\sim {\mathcal {GP}}\left(0,\sigma _{w}^{2}K^{l}+\sigma _{b}^{2}\right)\\K^{l}(x,x')&={\frac {1}{n^{l}}}\sum _{i}y_{i}^{l}(x)y_{i}^{l}(x')\end{aligned}}}
+  
+
+The effect of the weight scale 
+  
+    
+      
+        
+          σ
+          
+            w
+          
+          
+            2
+          
+        
+      
+    
+    {\displaystyle \sigma _{w}^{2}}
+  
+ is to rescale the contribution to the covariance matrix from 
+  
+    
+      
+        
+          K
+          
+            l
+          
+        
+      
+    
+    {\displaystyle K^{l}}
+  
+, while the bias is shared for all inputs, and so 
+  
+    
+      
+        
+          σ
+          
+            b
+          
+          
+            2
+          
+        
+      
+    
+    {\displaystyle \sigma _{b}^{2}}
+  
+ makes the 
+  
+    
+      
+        
+          z
+          
+            i
+          
+          
+            l
+          
+        
+      
+    
+    {\displaystyle z_{i}^{l}}
+  
+ for different datapoints more similar and makes the covariance matrix more like a constant matrix.
+
+
+====  ====
+  
+    
+      
+        
+          z
+          
+            l
+          
+        
+        
+          |
+        
+        
+          K
+          
+            l
+          
+        
+      
+    
+    {\displaystyle z^{l}|K^{l}}
+  
+ is a Gaussian process
+The pre-activations 
+  
+    
+      
+        
+          z
+          
+            l
+          
+        
+      
+    
+    {\displaystyle z^{l}}
+  
+ only depend on 
+  
+    
+      
+        
+          y
+          
+            l
+          
+        
+      
+    
+    {\displaystyle y^{l}}
+  
+ through its second moment matrix 
+  
+    
+      
+        
+          K
+          
+            l
+          
+        
+      
+    
+    {\displaystyle K^{l}}
+  
+. Because of this, we can say that 
+  
+    
+      
+        
+          z
+          
+            l
+          
+        
+      
+    
+    {\displaystyle z^{l}}
+  
+ is a Gaussian process conditioned on 
+  
+    
+      
+        
+          K
+          
+            l
+          
+        
+      
+    
+    {\displaystyle K^{l}}
+  
+, rather than conditioned on 
+  
+    
+      
+        
+          y
+          
+            l
+          
+        
+      
+    
+    {\displaystyle y^{l}}
+  
+,
+
+  
+    
+      
+        
+          
+            
+              
+                
+                  z
+                  
+                    i
+                  
+                  
+                    l
+                  
+                
+                ∣
+                
+                  K
+                  
+                    l
+                  
+                
+              
+              
+                
+                ∼
+                
+                  
+                    G
+                    P
+                  
+                
+                
+                  (
+                  
+                    0
+                    ,
+                    
+                      σ
+                      
+                        w
+                      
+                      
+                        2
+                      
+                    
+                    
+                      K
+                      
+                        l
+                      
+                    
+                    +
+                    
+                      σ
+                      
+                        b
+                      
+                      
+                        2
+                      
+                    
+                  
+                  )
+                
+                .
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{aligned}z_{i}^{l}\mid K^{l}&\sim {\mathcal {GP}}\left(0,\sigma _{w}^{2}K^{l}+\sigma _{b}^{2}\right).\end{aligned}}}
+  
+
+
+==== As layer width ====
+  
+    
+      
+        
+          n
+          
+            l
+          
+        
+        →
+        ∞
+      
+    
+    {\displaystyle n^{l}\rightarrow \infty }
+  
+, 
+  
+    
+      
+        
+          K
+          
+            l
+          
+        
+        ∣
+        
+          K
+          
+            l
+            −
+            1
+          
+        
+      
+    
+    {\displaystyle K^{l}\mid K^{l-1}}
+  
+ becomes deterministic
+As previously defined, 
+  
+    
+      
+        
+          K
+          
+            l
+          
+        
+      
+    
+    {\displaystyle K^{l}}
+  
+ is the second moment matrix of 
+  
+    
+      
+        
+          y
+          
+            l
+          
+        
+      
+    
+    {\displaystyle y^{l}}
+  
+. Since 
+  
+    
+      
+        
+          y
+          
+            l
+          
+        
+      
+    
+    {\displaystyle y^{l}}
+  
+ is the activation vector after applying the nonlinearity 
+  
+    
+      
+        ϕ
+      
+    
+    {\displaystyle \phi }
+  
+, it can be replaced by 
+  
+    
+      
+        ϕ
+        
+          (
+          
+            z
+            
+              l
+              −
+              1
+            
+          
+          )
+        
+      
+    
+    {\displaystyle \phi \left(z^{l-1}\right)}
+  
+, resulting in a modified equation expressing 
+  
+    
+      
+        
+          K
+          
+            l
+          
+        
+      
+    
+    {\displaystyle K^{l}}
+  
+ for 
+  
+    
+      
+        l
+        >
+        0
+      
+    
+    {\displaystyle l>0}
+  
+ in terms of 
+  
+    
+      
+        
+          z
+          
+            l
+            −
+            1
+          
+        
+      
+    
+    {\displaystyle z^{l-1}}
+  
+,
+
+  
+    
+      
+        
+          
+            
+              
+                
+                  K
+                  
+                    l
+                  
+                
+                (
+                x
+                ,
+                
+                  x
+                  ′
+                
+                )
+              
+              
+                
+                =
+                
+                  
+                    1
+                    
+                      n
+                      
+                        l
+                      
+                    
+                  
+                
+                
+                  ∑
+                  
+                    i
+                  
+                
+                ϕ
+                
+                  (
+                  
+                    
+                      z
+                      
+                        i
+                      
+                      
+                        l
+                        −
+                        1
+                      
+                    
+                    (
+                    x
+                    )
+                  
+                  )
+                
+                ϕ
+                
+                  (
+                  
+                    
+                      z
+                      
+                        i
+                      
+                      
+                        l
+                        −
+                        1
+                      
+                    
+                    (
+                    
+                      x
+                      ′
+                    
+                    )
+                  
+                  )
+                
+                .
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{aligned}K^{l}(x,x')&={\frac {1}{n^{l}}}\sum _{i}\phi \left(z_{i}^{l-1}(x)\right)\phi \left(z_{i}^{l-1}(x')\right).\end{aligned}}}
+  
+
+We have already determined that 
+  
+    
+      
+        
+          z
+          
+            l
+            −
+            1
+          
+        
+        
+          |
+        
+        
+          K
+          
+            l
+            −
+            1
+          
+        
+      
+    
+    {\displaystyle z^{l-1}|K^{l-1}}
+  
+ is a Gaussian process. This means that the sum defining 
+  
+    
+      
+        
+          K
+          
+            l
+          
+        
+      
+    
+    {\displaystyle K^{l}}
+  
+ is an average over 
+  
+    
+      
+        
+          n
+          
+            l
+          
+        
+      
+    
+    {\displaystyle n^{l}}
+  
+ samples from a Gaussian process which is a function of 
+  
+    
+      
+        
+          K
+          
+            l
+            −
+            1
+          
+        
+      
+    
+    {\displaystyle K^{l-1}}
+  
+,
+
+  
+    
+      
+        
+          
+            
+              
+                
+                  {
+                  
+                    
+                      z
+                      
+                        i
+                      
+                      
+                        l
+                        −
+                        1
+                      
+                    
+                    (
+                    x
+                    )
+                    ,
+                    
+                      z
+                      
+                        i
+                      
+                      
+                        l
+                        −
+                        1
+                      
+                    
+                    (
+                    
+                      x
+                      ′
+                    
+                    )
+                  
+                  }
+                
+              
+              
+                
+                ∼
+                
+                  
+                    G
+                    P
+                  
+                
+                
+                  (
+                  
+                    0
+                    ,
+                    
+                      σ
+                      
+                        w
+                      
+                      
+                        2
+                      
+                    
+                    
+                      K
+                      
+                        l
+                        −
+                        1
+                      
+                    
+                    +
+                    
+                      σ
+                      
+                        b
+                      
+                      
+                        2
+                      
+                    
+                  
+                  )
+                
+                .
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{aligned}\left\{z_{i}^{l-1}(x),z_{i}^{l-1}(x')\right\}&\sim {\mathcal {GP}}\left(0,\sigma _{w}^{2}K^{l-1}+\sigma _{b}^{2}\right).\end{aligned}}}
+  
+
+As the layer width 
+  
+    
+      
+        
+          n
+          
+            l
+          
+        
+      
+    
+    {\displaystyle n^{l}}
+  
+ goes to infinity, this average over 
+  
+    
+      
+        
+          n
+          
+            l
+          
+        
+      
+    
+    {\displaystyle n^{l}}
+  
+ samples from the Gaussian process can be replaced with an integral over the Gaussian process:
+
+  
+    
+      
+        
+          
+            
+              
+                
+                  lim
+                  
+                    
+                      n
+                      
+                        l
+                      
+                    
+                    →
+                    ∞
+                  
+                
+                
+                  K
+                  
+                    l
+                  
+                
+                (
+                x
+                ,
+                
+                  x
+                  ′
+                
+                )
+              
+              
+                
+                =
+                ∫
+                d
+                z
+                
+                d
+                
+                  z
+                  ′
+                
+                
+                ϕ
+                (
+                z
+                )
+                
+                ϕ
+                (
+                
+                  z
+                  ′
+                
+                )
+                
+                
+                  
+                    N
+                  
+                
+                
+                  (
+                  
+                    
+                      [
+                      
+                        
+                          
+                            
+                              z
+                            
+                          
+                          
+                            
+                              
+                                z
+                                ′
+                              
+                            
+                          
+                        
+                      
+                      ]
+                    
+                    ;
+                    0
+                    ,
+                    
+                      σ
+                      
+                        w
+                      
+                      
+                        2
+                      
+                    
+                    
+                      [
+                      
+                        
+                          
+                            
+                              
+                                K
+                                
+                                  l
+                                  −
+                                  1
+                                
+                              
+                              (
+                              x
+                              ,
+                              x
+                              )
+                            
+                            
+                              
+                                K
+                                
+                                  l
+                                  −
+                                  1
+                                
+                              
+                              (
+                              x
+                              ,
+                              
+                                x
+                                ′
+                              
+                              )
+                            
+                          
+                          
+                            
+                              
+                                K
+                                
+                                  l
+                                  −
+                                  1
+                                
+                              
+                              (
+                              
+                                x
+                                ′
+                              
+                              ,
+                              x
+                              )
+                            
+                            
+                              
+                                K
+                                
+                                  l
+                                  −
+                                  1
+                                
+                              
+                              (
+                              
+                                x
+                                ′
+                              
+                              ,
+                              
+                                x
+                                ′
+                              
+                              )
+                            
+                          
+                        
+                      
+                      ]
+                    
+                    +
+                    
+                      σ
+                      
+                        b
+                      
+                      
+                        2
+                      
+                    
+                  
+                  )
+                
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{aligned}\lim _{n^{l}\rightarrow \infty }K^{l}(x,x')&=\int dz\,dz'\,\phi (z)\,\phi (z')\,{\mathcal {N}}\left(\left[{\begin{array}{c}z\\z'\end{array}}\right];0,\sigma _{w}^{2}\left[{\begin{array}{cc}K^{l-1}(x,x)&K^{l-1}(x,x')\\K^{l-1}(x',x)&K^{l-1}(x',x')\end{array}}\right]+\sigma _{b}^{2}\right)\end{aligned}}}
+  
+
+So, in the infinite width limit the second moment matrix 
+  
+    
+      
+        
+          K
+          
+            l
+          
+        
+      
+    
+    {\displaystyle K^{l}}
+  
+ for each pair of inputs 
+  
+    
+      
+        x
+      
+    
+    {\displaystyle x}
+  
+ and 
+  
+    
+      
+        
+          x
+          ′
+        
+      
+    
+    {\displaystyle x'}
+  
+ can be expressed as an integral over a 2d Gaussian, of the product of 
+  
+    
+      
+        ϕ
+        (
+        z
+        )
+      
+    
+    {\displaystyle \phi (z)}
+  
+ and 
+  
+    
+      
+        ϕ
+        (
+        
+          z
+          ′
+        
+        )
+      
+    
+    {\displaystyle \phi (z')}
+  
+. 
+There are a number of situations where this has been solved analytically, such as when 
+  
+    
+      
+        ϕ
+        (
+        ⋅
+        )
+      
+    
+    {\displaystyle \phi (\cdot )}
+  
+ is a ReLU,
+ELU, GELU, or error function nonlinearity.
+Even when it can't be solved analytically, since it is a 2d integral it can generally be efficiently computed numerically.
+This integral is deterministic, so 
+  
+    
+      
+        
+          K
+          
+            l
+          
+        
+        
+          |
+        
+        
+          K
+          
+            l
+            −
+            1
+          
+        
+      
+    
+    {\displaystyle K^{l}|K^{l-1}}
+  
+ is deterministic.
+For shorthand, we define a functional 
+  
+    
+      
+        F
+      
+    
+    {\displaystyle F}
+  
+, which corresponds to computing this 2d integral for all pairs of inputs, and which maps 
+  
+    
+      
+        
+          K
+          
+            l
+            −
+            1
+          
+        
+      
+    
+    {\displaystyle K^{l-1}}
+  
+ into 
+  
+    
+      
+        
+          K
+          
+            l
+          
+        
+      
+    
+    {\displaystyle K^{l}}
+  
+,
+
+  
+    
+      
+        
+          
+            
+              
+                
+                  lim
+                  
+                    
+                      n
+                      
+                        l
+                      
+                    
+                    →
+                    ∞
+                  
+                
+                
+                  K
+                  
+                    l
+                  
+                
+              
+              
+                
+                =
+                F
+                
+                  (
+                  
+                    K
+                    
+                      l
+                      −
+                      1
+                    
+                  
+                  )
+                
+                .
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{aligned}\lim _{n^{l}\rightarrow \infty }K^{l}&=F\left(K^{l-1}\right).\end{aligned}}}
+  
+
+
+====  ====
+  
+    
+      
+        
+          z
+          
+            L
+          
+        
+        ∣
+        x
+      
+    
+    {\displaystyle z^{L}\mid x}
+  
+ is an NNGP
+By recursively applying the observation that 
+  
+    
+      
+        
+          K
+          
+            l
+          
+        
+        ∣
+        
+          K
+          
+            l
+            −
+            1
+          
+        
+      
+    
+    {\displaystyle K^{l}\mid K^{l-1}}
+  
+ is deterministic as 
+  
+    
+      
+        
+          n
+          
+            l
+          
+        
+        →
+        ∞
+      
+    
+    {\displaystyle n^{l}\rightarrow \infty }
+  
+, 
+  
+    
+      
+        
+          K
+          
+            L
+          
+        
+      
+    
+    {\displaystyle K^{L}}
+  
+ can be written as a deterministic function of 
+  
+    
+      
+        
+          K
+          
+            0
+          
+        
+      
+    
+    {\displaystyle K^{0}}
+  
+,
+
+  
+    
+      
+        
+          
+            
+              
+                
+                  lim
+                  
+                    min
+                    
+                      (
+                      
+                        
+                          n
+                          
+                            1
+                          
+                        
+                        ,
+                        …
+                        ,
+                        
+                          n
+                          
+                            L
+                          
+                        
+                      
+                      )
+                    
+                    →
+                    ∞
+                  
+                
+                
+                  K
+                  
+                    L
+                  
+                
+              
+              
+                
+                =
+                F
+                ∘
+                F
+                ⋯
+                
+                  (
+                  
+                    K
+                    
+                      0
+                    
+                  
+                  )
+                
+                =
+                
+                  F
+                  
+                    L
+                  
+                
+                
+                  (
+                  
+                    K
+                    
+                      0
+                    
+                  
+                  )
+                
+                ,
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{aligned}\lim _{\min \left(n^{1},\dots ,n^{L}\right)\rightarrow \infty }K^{L}&=F\circ F\cdots \left(K^{0}\right)=F^{L}\left(K^{0}\right),\end{aligned}}}
+  
+
+where 
+  
+    
+      
+        
+          F
+          
+            L
+          
+        
+      
+    
+    {\displaystyle F^{L}}
+  
+ indicates applying the functional 
+  
+    
+      
+        F
+      
+    
+    {\displaystyle F}
+  
+ sequentially 
+  
+    
+      
+        L
+      
+    
+    {\displaystyle L}
+  
+ times. 
+By combining this expression with the further observations that the input layer second moment matrix 
+  
+    
+      
+        
+          K
+          
+            0
+          
+        
+        (
+        x
+        ,
+        
+          x
+          ′
+        
+        )
+        =
+        
+          
+            
+              1
+              
+                n
+                
+                  0
+                
+              
+            
+          
+        
+        
+          ∑
+          
+            i
+          
+        
+        
+          x
+          
+            i
+          
+        
+        
+          x
+          
+            i
+          
+          ′
+        
+      
+    
+    {\displaystyle K^{0}(x,x')={\tfrac {1}{n^{0}}}\sum _{i}x_{i}x'_{i}}
+  
+ is a deterministic function of the input 
+  
+    
+      
+        x
+      
+    
+    {\displaystyle x}
+  
+, and that 
+  
+    
+      
+        
+          z
+          
+            L
+          
+        
+        
+          |
+        
+        
+          K
+          
+            L
+          
+        
+      
+    
+    {\displaystyle z^{L}|K^{L}}
+  
+ is a Gaussian process, the output of the neural network can be expressed as a Gaussian process in terms of its input,
+
+  
+    
+      
+        
+          
+            
+              
+                
+                  z
+                  
+                    i
+                  
+                  
+                    L
+                  
+                
+                (
+                x
+                )
+              
+              
+                
+                ∼
+                
+                  
+                    G
+                    P
+                  
+                
+                
+                  (
+                  
+                    0
+                    ,
+                    
+                      σ
+                      
+                        w
+                      
+                      
+                        2
+                      
+                    
+                    
+                      F
+                      
+                        L
+                      
+                    
+                    
+                      (
+                      
+                        K
+                        
+                          0
+                        
+                      
+                      )
+                    
+                    +
+                    
+                      σ
+                      
+                        b
+                      
+                      
+                        2
+                      
+                    
+                  
+                  )
+                
+                .
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{aligned}z_{i}^{L}(x)&\sim {\mathcal {GP}}\left(0,\sigma _{w}^{2}F^{L}\left(K^{0}\right)+\sigma _{b}^{2}\right).\end{aligned}}}
+  
+
+
+== Software libraries ==
+Neural Tangents is a free and open-source Python library used for computing and doing inference with the NNGP and neural tangent kernel corresponding to various common ANN architectures.
+
+
+== References ==

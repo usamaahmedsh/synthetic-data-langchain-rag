@@ -1,0 +1,106 @@
+The AT Protocol (Authenticated Transfer Protocol, pronounced "at protocol", commonly shortened to ATProto or "ATP") is a protocol and open standard for distributed social networking services. It is under development by Bluesky Social PBC, a public benefit corporation originally created as an independent research group within Twitter, Inc. to investigate the possibility of decentralizing the service. 
+The AT Protocol aims to address perceived issues with other decentralized protocols, such as user experience, platform interoperability, discoverability, network scalability, and portability of user data and social graphs. It employs a modular microservice architecture and a federated, server-agnostic user identity to enable movement between protocol services, with the goal of providing an integrated online experience. Platforms can access and serve any user content within the network by fetching content formatted as predefined data schemas from federated network-wide data streams.
+The AT Protocol powers the Bluesky social network, which was created as a proof of concept for the protocol, and is the main service in an ecosystem of platforms and services built on the AT Protocol referred to as the ATmosphere. As of 2024, Bluesky Social has pledged to transfer the protocol's development to a standards body such as the Internet Engineering Task Force (IETF) in the near future, with Internet Drafts for an overview of the protocol's general architecture, user repositories and data synchronization protocol being submitted in September 2025.
+
+
+== Design ==
+
+The AT Protocol is designed to facilitate the creation of federated identities, so that users can retain, manage, and customize one online identity across multiple platforms and services. Bluesky Social describes the protocol as being "modeled after the open web". 
+Compared to other protocols for social networking such as ActivityPub, where implementations are typically designed as a monolithic server that hosts both user data and the application, it splits up these elements into smaller microservices, which can be used as needed.
+AT Protocol clients and services interoperate through an HTTP API called XRPC that primarily uses JSON for data serialization. Additionally, all data within the protocol that must be authenticated, referenced, or stored is encoded in CBOR.
+
+
+=== User identity ===
+The AT Protocol utilizes a dual identifier system: a mutable handle, in the form of a domain name, and an immutable decentralized identifier (DID). A handle serves as a verifiable user identifier. Verification is by either of two equivalent methods proving control of the domain name: Either a DNS query of a resource record with the same name as the handle, or a request for a text file from a Web service with the same name. DIDs resolve to DID documents, which contain references to key user metadata, such as the user's handle, public keys, and data repository.
+Services can assign handles to new users upon signup using subdomains (e.g. @username.bsky.social). Alternatively, users can set a custom domain or subdomain as their handle (e.g. @username.com or @username.wikipedia.org) by adding a TXT record to the domain's records or by responding to HTTP requests to a specific well-known URI, associating the domain or subdomain with the user's DID. 
+The protocol's dual identifier system provides both user-friendly identifiers for use in end-user services and consistent cryptographic identities within the protocol, while also providing a robust TCP/IP-based account verification mechanism at the protocol level.
+
+
+=== User data repositories ===
+User data within the protocol is stored in dedicated data repositories, or "repos". Each user is associated with a single repository, over which they have exclusive management rights. Repositories contain mutable collections of user records, which log actions such as posts, likes, follows, and blocks. Records are persistent and can only be added or removed at the explicit request of the user.
+Each record within a repository's collection is assigned a unique record key, which is used by network agents to reference records within a user's repository. The current implementation of record keys is the timestamp identifier (TID), derived from the record's creation time. Repositories store collections in a Merkle search tree, which sorts records chronologically based on their TID.
+Media files, along with their metadata, size, and media type, are stored separately from repositories as blobs, a type of unstructured binary data, in the user's host server. This allows network agents to access and process arbitrary media files regardless of their original schema or upload context.
+Currently all data in repositories is public, but there are plans to add private data to the protocol.
+
+
+=== Personal Data Servers ===
+Personal Data Servers (PDSes) host user repositories and their associated media. They also serve as the network access point for users, facilitating repository updates, backups, data queries, and user requests. 
+Platform clients access the protocol on the user's behalf by querying their PDS, which, in turn, fetches the requested data from other services within the network. This design differs from ActivityPub, where protocol interactions and services are handled by monolithic host servers. Since network events are resolved through the protocol's network-wide indexing infrastructure, the availability of any single PDS is, by design, potentially inconsequential to the user experience.
+The AT Protocol prioritizes data portability, enabling users to back up and migrate repositories and associated media without data loss, even in the event of an adversarial PDS. The design of PDSes within the protocol results in low computational requirements for operation, allowing individuals or groups to run their own PDSes without the need for significant computational resources.
+Although most users' repositories reside in PDSes run by Bluesky Social, many independent PDSes exist within the network.
+
+
+=== Relays and the firehose ===
+Relays are a key component of the protocol's indexing infrastructure, serving as the core indexers within the network. Relays crawl the network by continuously fetching repository updates from PDSes before aggregating, indexing, and forwarding these updates into network-wide data streams, collectively called the firehose. The firehose is available to all network agents, and can be consumed by any service within the network. Relays can choose to index all or part of the network.
+By eliminating the need to crawl or store user data and providing a unified data stream, relays simplify the development of applications and services in the protocol and reduce their operational costs.
+Relays have been criticized as being the most centralized component in the protocol's design, given their near-indispensable role in the network and a lack of clear incentives for running a relay.
+
+
+=== App Views ===
+App Views, analogous to current-day social networking services, are end-user platforms and services within the protocol that consume, process, and deliver data from the relay to user clients in response to queries from users' PDSes. They utilize network-wide information from the firehose, such as posts, likes, follows, and replies, to create customized user experiences within their clients.
+The design of App Views within the protocol allows for significant variation in implementation. App Views can implement invite systems, custom algorithms, alternative clients, varying monetization and content moderation strategies, and off-protocol services. Despite these differences, all App Views operate from the same data sourced from the firehose. This architecture reduces the computational load and storage requirements of App Views, and prevents user lock-in by enabling users to easily switch between App Views while retaining their posts, follows, likes, etc.
+The largest App View on the protocol is currently Bluesky, although other App Views, such as WhiteWind (a long-form blogging platform), Frontpage (a Hacker News-style social news website) and Smoke Signal (an RSVP management service) are also available within the protocol.
+
+
+=== Lexicons ===
+All posts within the AT Protocol follow a specific global schema language called a lexicon to support different service and platform modalities. App Views within the protocol have the flexibility to define their own unique lexicons, or utilize existing ones. 
+This approach allows App Views to create custom lexicons that are tailored to their specific use case while maintaining compatibility with the broader network. As an example, records displayed in an App View focused on microblogging would likely use a different lexicon than one focused on video-sharing, as their content types require different sets of attributes.
+However, App Views can also choose to serve content using lexicons defined by other App Views, even if the content was originally posted elsewhere in the network. For example, a new microblogging App View could choose to serve previously posted content using the lexicon defined by an established competitor, enabling them to provide novel features and services while maintaining compatibility with existing content. 
+This schema design is intended to eliminate user lock-in and foster user-centric innovation by forcing App Views to differentiate themselves through unique user experiences and additional functionality, rather than relying on exclusive access to content.
+Lexicons are referenced within records using Namespaced Identifiers (NSIDs), which consist of a domain authority in reverse domain-name order, followed by an arbitrary name segment. For example, com.appview.foo is a valid NSID, where com.appview is the domain authority, and foo is the name segment.
+The most popular lexicon in the protocol, app.bsky, defines Bluesky's microblogging schema. 
+
+
+=== Opinionated services ===
+Opinionated services are services within the protocol that process data from the firehose to provide subjective judgements on network data for the purposes of content moderation and curation. These services contrast with the intended "unopinionated" nature of relays and App Views. Opinionated services enable users to customize their content consumption and moderation preferences within the protocol while maintaining the neutrality of the protocol's core components.
+Users have the ability to subscribe and unsubscribe to these services at any time through their client app (unless they are hard-coded into the user's current App View.) The modularity of these services allows for a customizable, stackable, user-centric approach to content curation and moderation within the protocol.
+
+
+==== Labelers ====
+Labelers produce judgements about user-generated content, such as identifying spam or inappropriate material. These labels can be applied to various aspects of the network, including posts, images, or accounts. The output of labelers is consumed by App Views and PDSes, which can then provide various strategies to users for handling labeled content, such as hiding, labeling, or blurring. 
+Bluesky Social has open-sourced its internal labeler moderation service "Ozone", allowing users to create custom moderation services for the network.
+Although labelers can be used as moderation services, they can also serve informational or entertainment purposes, such as labeling post topics, user pronouns, or adding positive or playful labels to user profiles and posts.
+
+
+==== Feed generators ====
+Feed generators process posts within the firehose for inclusion in custom feeds. After a PDS query, they return a list of post IDs to the user's App View, which can then be used to create curated feeds. While Bluesky does not provide any built-in tools for generating and hosting custom feeds, services such as Graze provide tools for users to create and host feeds using block coding, as well as to monetize them with injected advertisements.
+
+
+== Adoption ==
+The protocol's reference implementation was first released to GitHub on May 4, 2022 under the name Authenticated Data Experiment (ADX), and is licensed under both the MIT and Apache licenses. It rebranded to the AT Protocol in October 2022.
+The AT Protocol has been adopted for use by the Bluesky social network (also developed by Bluesky Social PBC), and is its most popular implementation. The social network itself opened federation with other Personal Data Servers in late February 2024, as it had launched without the ability to federate with other servers not run by Bluesky Social. Additionally, the news aggregator Flipboard allows users to log in with their Bluesky account to view and interact with posts from the service. To aid adoption, Bluesky Social funds, via grants, various projects that use the AT Protocol for federating or creating content, or both. A notable application funded by the grants is a proxy server known as SkyBridge, which can convert API calls from Mastodon apps to their equivalent AT Protocol and Bluesky APIs, allowing users to have access to both networks even without official support.
+While the AT Protocol is a separate protocol with no major technical similarities to other protocols, there have been services developed that can bridge content across protocols. An example is the Bridgy Fed software, which can crosspost content between all posts made on the ActivityPub protocol and posts using Bluesky lexicon on the AT Protocol. Posts from Nostr can also be "double-bridged" to the AT Protocol via another bridge that can crosspost notes from Nostr to ActivityPub.
+In August 2025, some portions of the AT Protocol were submitted to the Internet Engineering Task Force as a non-Working Group-forming Birds of a Feather (BOF) proposal, mainly for the purpose of receiving feedback from the IETF community. In September of the same year, Internet Drafts for a written specification of the protocol's repository formats and data synchronization process as well as a general overview of the protocol's architecture were submitted to the IETF.
+
+
+=== Third-party applications ===
+As Bluesky's popularity has grown, the protocol has also received more attention from both independent developers and investors. Most developers have opted to target solely Bluesky's API subset, as it allows for access of its pre-existing content and is faster to develop for. Notable among these are Flashes, a client with similarities to Instagram, and Skylight, a client designed as a short-video platform akin to TikTok, backed by American entrepreneur Mark Cuban after he posted a call to action for developing an alternative to the application on the protocol following the (at the time) impending ban of the app in the United States.
+Gander Social, a social media platform designed primarily for Canadian users, is using the AT Protocol to support interoperability with Bluesky as well as to integrate its own lexicons into the network. Gander expects to launch a public beta by the final quarter of 2025.
+Despite the focus on Bluesky compatibility, there have been apps developed independently from Bluesky's AppView and lexicons, allowing for greater flexibility in what content is allowed. Examples of this include:
+
+Leaflet, a longform blogging and document application
+WhiteWind, a longform blogging application
+PiPup, a longform blogging application
+Tangled, a Git collaboration application
+Roomy, a group chat application
+
+
+== See also ==
+ActivityPub, another protocol that powers social networking services like Mastodon
+Fediverse
+Comparison of software and protocols for distributed social networking
+Nostr, a similar social networking protocol
+Secure Scuttlebutt
+
+
+== References ==
+
+
+== Further reading ==
+Bluesky and the AT Protocol: Usable Decentralized Social Media (2024)
+How does BlueSky Work? (2024)
+“I’m in the Bluesky Tonight”: Insights from a Year Worth of Social Data (2024)
+
+
+== External links ==
+Official website and documentation

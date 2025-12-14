@@ -1,0 +1,3641 @@
+Generalized filtering is a generic Bayesian filtering scheme for nonlinear state-space models. It is based on a variational principle of least action, formulated in generalized coordinates of motion. Note that "generalized coordinates of motion" are related to—but distinct from—generalized coordinates as used in (multibody) dynamical systems analysis. Generalized filtering furnishes posterior densities over hidden states (and parameters) generating observed data using a generalized gradient descent on variational free energy, under the Laplace assumption. Unlike classical (e.g. Kalman-Bucy or particle) filtering, generalized filtering eschews Markovian assumptions about random fluctuations. Furthermore, it operates online, assimilating data to approximate the posterior density  over unknown quantities, without the need for a backward pass. Special cases include variational filtering, dynamic expectation maximization and generalized predictive coding.
+
+
+== Definition ==
+Definition: Generalized filtering rests on the tuple 
+  
+    
+      
+        (
+        Ω
+        ,
+        U
+        ,
+        X
+        ,
+        S
+        ,
+        p
+        ,
+        q
+        )
+      
+    
+    {\displaystyle (\Omega ,U,X,S,p,q)}
+  
+:
+
+A sample space 
+  
+    
+      
+        Ω
+      
+    
+    {\displaystyle \Omega }
+  
+  from which random fluctuations 
+  
+    
+      
+        ω
+        ∈
+        Ω
+      
+    
+    {\displaystyle \omega \in \Omega }
+  
+  are drawn
+Control states 
+  
+    
+      
+        U
+        ∈
+        
+          R
+        
+      
+    
+    {\displaystyle U\in \mathbb {R} }
+  
+ – that act as external causes, input or forcing terms
+Hidden states  
+  
+    
+      
+        X
+        :
+        X
+        ×
+        U
+        ×
+        Ω
+        →
+        
+          R
+        
+      
+    
+    {\displaystyle X:X\times U\times \Omega \to \mathbb {R} }
+  
+ – that cause sensory states and depend on control states
+Sensor states  
+  
+    
+      
+        S
+        :
+        X
+        ×
+        U
+        ×
+        Ω
+        →
+        
+          R
+        
+      
+    
+    {\displaystyle S:X\times U\times \Omega \to \mathbb {R} }
+  
+ – a probabilistic mapping from hidden and control states
+Generative density  
+  
+    
+      
+        p
+        (
+        
+          
+            
+              s
+              ~
+            
+          
+        
+        ,
+        
+          
+            
+              x
+              ~
+            
+          
+        
+        ,
+        
+          
+            
+              u
+              ~
+            
+          
+        
+        ∣
+        m
+        )
+      
+    
+    {\displaystyle p({\tilde {s}},{\tilde {x}},{\tilde {u}}\mid m)}
+  
+ – over sensory, hidden and control states under a generative model 
+  
+    
+      
+        m
+      
+    
+    {\displaystyle m}
+  
+
+Variational density 
+  
+    
+      
+        q
+        (
+        
+          
+            
+              x
+              ~
+            
+          
+        
+        ,
+        
+          
+            
+              u
+              ~
+            
+          
+        
+        ∣
+        
+          
+            
+              μ
+              ~
+            
+          
+        
+        )
+      
+    
+    {\displaystyle q({\tilde {x}},{\tilde {u}}\mid {\tilde {\mu }})}
+  
+  – over hidden and control states with mean 
+  
+    
+      
+        
+          
+            
+              μ
+              ~
+            
+          
+        
+        ∈
+        
+          R
+        
+      
+    
+    {\displaystyle {\tilde {\mu }}\in \mathbb {R} }
+  
+
+ 
+Here ~ denotes a variable in generalized coordinates of motion: 
+  
+    
+      
+        
+          
+            
+              u
+              ~
+            
+          
+        
+        =
+        [
+        u
+        ,
+        
+          u
+          ′
+        
+        ,
+        
+          u
+          ″
+        
+        ,
+        …
+        
+          ]
+          
+            T
+          
+        
+      
+    
+    {\displaystyle {\tilde {u}}=[u,u',u'',\ldots ]^{T}}
+  
+
+
+=== Generalized filtering ===
+The objective is to approximate the posterior density over hidden and control states, given sensor states and a generative model – and estimate the (path integral of) model evidence  
+  
+    
+      
+        p
+        (
+        
+          
+            
+              s
+              ~
+            
+          
+        
+        (
+        t
+        )
+        |
+        m
+        )
+      
+    
+    {\displaystyle p({\tilde {s}}(t)\vert m)}
+  
+ to compare different models. This generally involves an intractable marginalization over hidden states, so model evidence (or marginal likelihood) is replaced with a variational free energy bound. Given the following definitions:
+
+  
+    
+      
+        
+          
+            
+              μ
+              ~
+            
+          
+        
+        (
+        t
+        )
+        =
+        
+          
+            
+              a
+              r
+              g
+              
+              m
+              i
+              n
+            
+            
+              
+                μ
+                ~
+              
+            
+          
+        
+        {
+        F
+        (
+        
+          
+            
+              s
+              ~
+            
+          
+        
+        (
+        t
+        )
+        ,
+        
+          
+            
+              μ
+              ~
+            
+          
+        
+        )
+        }
+      
+    
+    {\displaystyle {\tilde {\mu }}(t)={\underset {\tilde {\mu }}{\operatorname {arg\,min} }}\{F({\tilde {s}}(t),{\tilde {\mu }})\}}
+  
+
+  
+    
+      
+        G
+        (
+        
+          
+            
+              s
+              ~
+            
+          
+        
+        ,
+        
+          
+            
+              x
+              ~
+            
+          
+        
+        ,
+        
+          
+            
+              u
+              ~
+            
+          
+        
+        )
+        =
+        −
+        ln
+        ⁡
+        p
+        (
+        
+          
+            
+              s
+              ~
+            
+          
+        
+        ,
+        
+          
+            
+              x
+              ~
+            
+          
+        
+        ,
+        
+          
+            
+              u
+              ~
+            
+          
+        
+        |
+        m
+        )
+      
+    
+    {\displaystyle G({\tilde {s}},{\tilde {x}},{\tilde {u}})=-\ln p({\tilde {s}},{\tilde {x}},{\tilde {u}}\vert m)}
+  
+
+Denote the Shannon entropy of the density 
+  
+    
+      
+        q
+      
+    
+    {\displaystyle q}
+  
+ by 
+  
+    
+      
+        H
+        [
+        q
+        ]
+        =
+        
+          E
+          
+            q
+          
+        
+        [
+        −
+        log
+        ⁡
+        (
+        q
+        )
+        ]
+      
+    
+    {\displaystyle H[q]=E_{q}[-\log(q)]}
+  
+. We can then write the variational free energy in two ways:
+
+  
+    
+      
+        F
+        (
+        
+          
+            
+              s
+              ~
+            
+          
+        
+        ,
+        
+          
+            
+              μ
+              ~
+            
+          
+        
+        )
+        =
+        
+          E
+          
+            q
+          
+        
+        [
+        G
+        (
+        
+          
+            
+              s
+              ~
+            
+          
+        
+        ,
+        
+          
+            
+              x
+              ~
+            
+          
+        
+        ,
+        
+          
+            
+              u
+              ~
+            
+          
+        
+        )
+        ]
+        −
+        H
+        [
+        q
+        (
+        
+          
+            
+              x
+              ~
+            
+          
+        
+        ,
+        
+          
+            
+              u
+              ~
+            
+          
+        
+        |
+        
+          
+            
+              μ
+              ~
+            
+          
+        
+        )
+        ]
+        =
+        −
+        ln
+        ⁡
+        p
+        (
+        
+          
+            
+              s
+              ~
+            
+          
+        
+        |
+        m
+        )
+        +
+        
+          D
+          
+            K
+            L
+          
+        
+        [
+        q
+        (
+        
+          
+            
+              x
+              ~
+            
+          
+        
+        ,
+        
+          
+            
+              u
+              ~
+            
+          
+        
+        |
+        
+          
+            
+              μ
+              ~
+            
+          
+        
+        )
+        |
+        |
+        p
+        (
+        
+          
+            
+              x
+              ~
+            
+          
+        
+        ,
+        
+          
+            
+              u
+              ~
+            
+          
+        
+        |
+        
+          
+            
+              s
+              ~
+            
+          
+        
+        ,
+        m
+        )
+        ]
+      
+    
+    {\displaystyle F({\tilde {s}},{\tilde {\mu }})=E_{q}[G({\tilde {s}},{\tilde {x}},{\tilde {u}})]-H[q({\tilde {x}},{\tilde {u}}\vert {\tilde {\mu }})]=-\ln p({\tilde {s}}\vert m)+D_{KL}[q({\tilde {x}},{\tilde {u}}\vert {\tilde {\mu }})\vert \vert p({\tilde {x}},{\tilde {u}}\vert {\tilde {s}},m)]}
+  
+
+The second equality shows that minimizing variational free energy (i) minimizes the Kullback-Leibler divergence between the variational and true posterior density and (ii) renders the variational free energy (a bound approximation to) the negative log evidence (because the divergence can never be less than zero). Under the Laplace assumption 
+  
+    
+      
+        q
+        (
+        
+          
+            
+              x
+              ~
+            
+          
+        
+        ,
+        
+          
+            
+              u
+              ~
+            
+          
+        
+        ∣
+        
+          
+            
+              μ
+              ~
+            
+          
+        
+        )
+        =
+        
+          
+            N
+          
+        
+        (
+        
+          
+            
+              μ
+              ~
+            
+          
+        
+        ,
+        C
+        )
+      
+    
+    {\displaystyle q({\tilde {x}},{\tilde {u}}\mid {\tilde {\mu }})={\mathcal {N}}({\tilde {\mu }},C)}
+  
+ the variational density is Gaussian and the precision that minimizes free energy is 
+  
+    
+      
+        
+          C
+          
+            −
+            1
+          
+        
+        =
+        Π
+        =
+        
+          ∂
+          
+            
+              
+                
+                  μ
+                  ~
+                
+              
+            
+            
+              
+                
+                  μ
+                  ~
+                
+              
+            
+          
+        
+        G
+        (
+        
+          
+            
+              μ
+              ~
+            
+          
+        
+        )
+      
+    
+    {\displaystyle C^{-1}=\Pi =\partial _{{\tilde {\mu }}{\tilde {\mu }}}G({\tilde {\mu }})}
+  
+. This means that free-energy can be expressed in terms of the variational mean  (omitting constants):
+
+  
+    
+      
+        F
+        =
+        G
+        (
+        
+          
+            
+              μ
+              ~
+            
+          
+        
+        )
+        +
+        
+          
+            
+              1
+              2
+            
+          
+          ln
+          ⁡
+          |
+          
+            ∂
+            
+              
+                
+                  
+                    μ
+                    ~
+                  
+                
+              
+              
+                
+                  
+                    μ
+                    ~
+                  
+                
+              
+            
+          
+          G
+          (
+          
+            
+              
+                μ
+                ~
+              
+            
+          
+          )
+          |
+        
+      
+    
+    {\displaystyle F=G({\tilde {\mu }})+\textstyle {1 \over 2}\ln \vert \partial _{{\tilde {\mu }}{\tilde {\mu }}}G({\tilde {\mu }})\vert }
+  
+
+The variational means that minimize the (path integral) of free energy can now be recovered by solving the generalized filter:
+
+  
+    
+      
+        
+          
+            
+              
+                
+                  μ
+                  ~
+                
+              
+              ˙
+            
+          
+        
+        =
+        D
+        
+          
+            
+              μ
+              ~
+            
+          
+        
+        −
+        
+          ∂
+          
+            
+              
+                μ
+                ~
+              
+            
+          
+        
+        F
+        (
+        
+          
+            
+              s
+              ~
+            
+          
+        
+        ,
+        
+          
+            
+              μ
+              ~
+            
+          
+        
+        )
+      
+    
+    {\displaystyle {\dot {\tilde {\mu }}}=D{\tilde {\mu }}-\partial _{\tilde {\mu }}F({\tilde {s}},{\tilde {\mu }})}
+  
+
+where 
+  
+    
+      
+        D
+      
+    
+    {\displaystyle D}
+  
+ is a block matrix derivative operator of identify matrices such that 
+  
+    
+      
+        D
+        
+          
+            
+              u
+              ~
+            
+          
+        
+        =
+        [
+        
+          u
+          ′
+        
+        ,
+        
+          u
+          ″
+        
+        ,
+        …
+        
+          ]
+          
+            T
+          
+        
+      
+    
+    {\displaystyle D{\tilde {u}}=[u',u'',\ldots ]^{T}}
+  
+
+
+=== Variational basis ===
+Generalized filtering is based on the following lemma: The self-consistent solution to 
+  
+    
+      
+        
+          
+            
+              
+                
+                  μ
+                  ~
+                
+              
+              ˙
+            
+          
+        
+        =
+        D
+        
+          
+            
+              μ
+              ~
+            
+          
+        
+        −
+        
+          ∂
+          
+            
+              
+                μ
+                ~
+              
+            
+          
+        
+        F
+        (
+        s
+        ,
+        
+          
+            
+              μ
+              ~
+            
+          
+        
+        )
+      
+    
+    {\displaystyle {\dot {\tilde {\mu }}}=D{\tilde {\mu }}-\partial _{\tilde {\mu }}F(s,{\tilde {\mu }})}
+  
+ satisfies the variational principle of stationary action, where action is the path integral of variational free energy
+
+  
+    
+      
+        S
+        =
+        ∫
+        d
+        t
+        
+        F
+        (
+        
+          
+            
+              s
+              ~
+            
+          
+        
+        (
+        t
+        )
+        ,
+        
+          
+            
+              μ
+              ~
+            
+          
+        
+        (
+        t
+        )
+        )
+      
+    
+    {\displaystyle S=\int dt\,F({\tilde {s}}(t),{\tilde {\mu }}(t))}
+  
+
+Proof: self-consistency requires the motion of the mean to be the mean of the motion and (by the fundamental lemma of variational calculus)
+
+  
+    
+      
+        
+          
+            
+              
+                
+                  μ
+                  ~
+                
+              
+              ˙
+            
+          
+        
+        =
+        D
+        
+          
+            
+              μ
+              ~
+            
+          
+        
+        ⇔
+        
+          ∂
+          
+            
+              
+                μ
+                ~
+              
+            
+          
+        
+        F
+        (
+        
+          
+            
+              s
+              ~
+            
+          
+        
+        ,
+        
+          
+            
+              μ
+              ~
+            
+          
+        
+        )
+        =
+        0
+        ⇔
+        
+          δ
+          
+            
+              
+                μ
+                ~
+              
+            
+          
+        
+        S
+        =
+        0
+      
+    
+    {\displaystyle {\dot {\tilde {\mu }}}=D{\tilde {\mu }}\Leftrightarrow \partial _{\tilde {\mu }}F({\tilde {s}},{\tilde {\mu }})=0\Leftrightarrow \delta _{\tilde {\mu }}S=0}
+  
+
+Put simply, small perturbations to the path of the mean do not change variational free energy and it has the least action of all possible (local) paths.
+Remarks: Heuristically, generalized filtering performs a gradient descent on variational free energy in a moving frame of reference: 
+  
+    
+      
+        
+          
+            
+              
+                
+                  μ
+                  ~
+                
+              
+              ˙
+            
+          
+        
+        −
+        D
+        
+          
+            
+              μ
+              ~
+            
+          
+        
+        =
+        −
+        
+          ∂
+          
+            
+              
+                μ
+                ~
+              
+            
+          
+        
+        F
+        (
+        s
+        ,
+        
+          
+            
+              μ
+              ~
+            
+          
+        
+        )
+      
+    
+    {\displaystyle {\dot {\tilde {\mu }}}-D{\tilde {\mu }}=-\partial _{\tilde {\mu }}F(s,{\tilde {\mu }})}
+  
+, where the frame itself minimizes variational free energy. For a related example in statistical physics, see Kerr and Graham  who use ensemble dynamics in generalized coordinates to provide a generalized phase-space version of Langevin and associated Fokker-Planck equations.
+In practice, generalized filtering uses local linearization over intervals 
+  
+    
+      
+        Δ
+        t
+      
+    
+    {\displaystyle \Delta t}
+  
+ to recover discrete updates
+
+  
+    
+      
+        
+          
+            
+              
+                Δ
+                
+                  
+                    
+                      μ
+                      ~
+                    
+                  
+                
+              
+              
+                
+                =
+                (
+                exp
+                ⁡
+                (
+                Δ
+                t
+                ⋅
+                J
+                )
+                −
+                I
+                )
+                
+                  J
+                  
+                    −
+                    1
+                  
+                
+                
+                  
+                    
+                      
+                        
+                          μ
+                          ~
+                        
+                      
+                      ˙
+                    
+                  
+                
+              
+            
+            
+              
+                J
+              
+              
+                
+                =
+                
+                  ∂
+                  
+                    
+                      
+                        μ
+                        ~
+                      
+                    
+                  
+                
+                
+                  
+                    
+                      
+                        
+                          μ
+                          ~
+                        
+                      
+                      ˙
+                    
+                  
+                
+                =
+                D
+                −
+                
+                  ∂
+                  
+                    
+                      
+                        
+                          μ
+                          ~
+                        
+                      
+                    
+                    
+                      
+                        
+                          μ
+                          ~
+                        
+                      
+                    
+                  
+                
+                F
+                (
+                
+                  
+                    
+                      s
+                      ~
+                    
+                  
+                
+                ,
+                
+                  
+                    
+                      μ
+                      ~
+                    
+                  
+                
+                )
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{aligned}\Delta {\tilde {\mu }}&=(\exp(\Delta t\cdot J)-I)J^{-1}{\dot {\tilde {\mu }}}\\J&=\partial _{\tilde {\mu }}{\dot {\tilde {\mu }}}=D-\partial _{{\tilde {\mu }}{\tilde {\mu }}}F({\tilde {s}},{\tilde {\mu }})\end{aligned}}}
+  
+
+This updates the means of hidden variables at each interval (usually the interval between observations).
+
+
+== Generative (state-space) models in generalized coordinates ==
+Usually, the generative density or model is specified in terms of a nonlinear input-state-output model with continuous nonlinear functions:
+
+  
+    
+      
+        
+          
+            
+              
+                s
+              
+              
+                
+                =
+                g
+                (
+                x
+                ,
+                u
+                )
+                +
+                
+                  ω
+                  
+                    s
+                  
+                
+              
+            
+            
+              
+                
+                  
+                    
+                      x
+                      ˙
+                    
+                  
+                
+              
+              
+                
+                =
+                f
+                (
+                x
+                ,
+                u
+                )
+                +
+                
+                  ω
+                  
+                    x
+                  
+                
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{aligned}s&=g(x,u)+\omega _{s}\\{\dot {x}}&=f(x,u)+\omega _{x}\end{aligned}}}
+  
+
+The corresponding generalized model (under local linearity assumptions) obtains the from the chain rule
+
+  
+    
+      
+        
+          
+            
+              
+                
+                  
+                    
+                      s
+                      ~
+                    
+                  
+                
+              
+              
+                
+                =
+                
+                  
+                    
+                      g
+                      ~
+                    
+                  
+                
+                (
+                
+                  
+                    
+                      x
+                      ~
+                    
+                  
+                
+                ,
+                
+                  
+                    
+                      u
+                      ~
+                    
+                  
+                
+                )
+                +
+                
+                  
+                    
+                      
+                        ω
+                        ~
+                      
+                    
+                  
+                  
+                    s
+                  
+                
+              
+            
+            
+              
+            
+            
+              
+                s
+              
+              
+                
+                =
+                g
+                (
+                x
+                ,
+                u
+                )
+                +
+                
+                  ω
+                  
+                    s
+                  
+                
+              
+            
+            
+              
+                
+                  s
+                  ′
+                
+              
+              
+                
+                =
+                
+                  ∂
+                  
+                    x
+                  
+                
+                g
+                ⋅
+                
+                  x
+                  ′
+                
+                +
+                
+                  ∂
+                  
+                    u
+                  
+                
+                g
+                ⋅
+                
+                  u
+                  ′
+                
+                +
+                
+                  ω
+                  
+                    s
+                  
+                  ′
+                
+              
+            
+            
+              
+                
+                  s
+                  ″
+                
+              
+              
+                
+                =
+                
+                  ∂
+                  
+                    x
+                  
+                
+                g
+                ⋅
+                
+                  x
+                  ″
+                
+                +
+                
+                  ∂
+                  
+                    u
+                  
+                
+                g
+                ⋅
+                
+                  u
+                  ″
+                
+                +
+                
+                  ω
+                  
+                    s
+                  
+                  ″
+                
+              
+            
+            
+              
+              
+                
+                ⋮
+              
+            
+          
+        
+        
+        
+          
+            
+              
+                
+                  
+                    
+                      
+                        
+                          x
+                          ~
+                        
+                      
+                      ˙
+                    
+                  
+                
+              
+              
+                
+                =
+                
+                  
+                    
+                      f
+                      ~
+                    
+                  
+                
+                (
+                
+                  
+                    
+                      x
+                      ~
+                    
+                  
+                
+                ,
+                
+                  
+                    
+                      u
+                      ~
+                    
+                  
+                
+                )
+                +
+                
+                  
+                    
+                      
+                        ω
+                        ~
+                      
+                    
+                  
+                  
+                    x
+                  
+                
+              
+            
+            
+              
+            
+            
+              
+                
+                  
+                    
+                      x
+                      ˙
+                    
+                  
+                
+              
+              
+                
+                =
+                f
+                (
+                x
+                ,
+                u
+                )
+                +
+                
+                  ω
+                  
+                    x
+                  
+                
+              
+            
+            
+              
+                
+                  
+                    
+                      
+                        x
+                        ˙
+                      
+                    
+                  
+                  ′
+                
+              
+              
+                
+                =
+                
+                  ∂
+                  
+                    x
+                  
+                
+                f
+                ⋅
+                
+                  x
+                  ′
+                
+                +
+                
+                  ∂
+                  
+                    u
+                  
+                
+                f
+                ⋅
+                
+                  u
+                  ′
+                
+                +
+                
+                  ω
+                  
+                    x
+                  
+                  ′
+                
+              
+            
+            
+              
+                
+                  
+                    
+                      
+                        x
+                        ˙
+                      
+                    
+                  
+                  ″
+                
+              
+              
+                
+                =
+                
+                  ∂
+                  
+                    x
+                  
+                
+                f
+                ⋅
+                
+                  x
+                  ″
+                
+                +
+                
+                  ∂
+                  
+                    u
+                  
+                
+                f
+                ⋅
+                
+                  u
+                  ″
+                
+                +
+                
+                  ω
+                  
+                    x
+                  
+                  ″
+                
+              
+            
+            
+              
+              
+                
+                ⋮
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{aligned}{\tilde {s}}&={\tilde {g}}({\tilde {x}},{\tilde {u}})+{\tilde {\omega }}_{s}\\\\s&=g(x,u)+\omega _{s}\\s'&=\partial _{x}g\cdot x'+\partial _{u}g\cdot u'+\omega '_{s}\\s''&=\partial _{x}g\cdot x''+\partial _{u}g\cdot u''+\omega ''_{s}\\&\vdots \\\end{aligned}}\qquad {\begin{aligned}{\dot {\tilde {x}}}&={\tilde {f}}({\tilde {x}},{\tilde {u}})+{\tilde {\omega }}_{x}\\\\{\dot {x}}&=f(x,u)+\omega _{x}\\{\dot {x}}'&=\partial _{x}f\cdot x'+\partial _{u}f\cdot u'+\omega '_{x}\\{\dot {x}}''&=\partial _{x}f\cdot x''+\partial _{u}f\cdot u''+\omega ''_{x}\\&\vdots \end{aligned}}}
+  
+
+Gaussian assumptions about the random fluctuations 
+  
+    
+      
+        ω
+      
+    
+    {\displaystyle \omega }
+  
+ then prescribe the likelihood and empirical priors on the motion of hidden states
+
+  
+    
+      
+        
+          
+            
+              
+                p
+                
+                  (
+                  
+                    
+                      
+                        
+                          s
+                          ~
+                        
+                      
+                    
+                    ,
+                    
+                      
+                        
+                          x
+                          ~
+                        
+                      
+                    
+                    ,
+                    
+                      
+                        
+                          u
+                          ~
+                        
+                      
+                    
+                    |
+                    m
+                  
+                  )
+                
+              
+              
+                
+                =
+                p
+                
+                  (
+                  
+                    
+                      
+                        
+                          s
+                          ~
+                        
+                      
+                    
+                    |
+                    
+                      
+                        
+                          x
+                          ~
+                        
+                      
+                    
+                    ,
+                    
+                      
+                        
+                          u
+                          ~
+                        
+                      
+                    
+                    ,
+                    m
+                  
+                  )
+                
+                p
+                
+                  (
+                  
+                    D
+                    
+                      
+                        
+                          x
+                          ~
+                        
+                      
+                    
+                    |
+                    x
+                    ,
+                    
+                      
+                        
+                          u
+                          ~
+                        
+                      
+                    
+                    ,
+                    m
+                  
+                  )
+                
+                p
+                (
+                x
+                |
+                m
+                )
+                p
+                (
+                
+                  
+                    
+                      u
+                      ~
+                    
+                  
+                
+                |
+                m
+                )
+              
+            
+            
+              
+                p
+                
+                  (
+                  
+                    
+                      
+                        
+                          s
+                          ~
+                        
+                      
+                    
+                    |
+                    
+                      
+                        
+                          x
+                          ~
+                        
+                      
+                    
+                    ,
+                    
+                      
+                        
+                          u
+                          ~
+                        
+                      
+                    
+                    ,
+                    m
+                  
+                  )
+                
+              
+              
+                
+                =
+                
+                  
+                    N
+                  
+                
+                (
+                
+                  
+                    
+                      g
+                      ~
+                    
+                  
+                
+                (
+                
+                  
+                    
+                      x
+                      ~
+                    
+                  
+                
+                ,
+                
+                  
+                    
+                      u
+                      ~
+                    
+                  
+                
+                )
+                ,
+                
+                  
+                    
+                      Σ
+                      ~
+                    
+                  
+                
+                (
+                
+                  
+                    
+                      x
+                      ~
+                    
+                  
+                
+                ,
+                
+                  
+                    
+                      u
+                      ~
+                    
+                  
+                
+                
+                  )
+                  
+                    s
+                  
+                
+                )
+              
+            
+            
+              
+                p
+                
+                  (
+                  
+                    D
+                    
+                      
+                        
+                          x
+                          ~
+                        
+                      
+                    
+                    |
+                    x
+                    ,
+                    
+                      
+                        
+                          u
+                          ~
+                        
+                      
+                    
+                    ,
+                    m
+                  
+                  )
+                
+              
+              
+                
+                =
+                
+                  
+                    N
+                  
+                
+                (
+                
+                  
+                    
+                      f
+                      ~
+                    
+                  
+                
+                (
+                
+                  
+                    
+                      x
+                      ~
+                    
+                  
+                
+                ,
+                
+                  
+                    
+                      u
+                      ~
+                    
+                  
+                
+                )
+                ,
+                
+                  
+                    
+                      Σ
+                      ~
+                    
+                  
+                
+                (
+                
+                  
+                    
+                      x
+                      ~
+                    
+                  
+                
+                ,
+                
+                  
+                    
+                      u
+                      ~
+                    
+                  
+                
+                
+                  )
+                  
+                    x
+                  
+                
+                )
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{aligned}p\left({\tilde {s}},{\tilde {x}},{\tilde {u}}\vert m\right)&=p\left({\tilde {s}}\vert {\tilde {x}},{\tilde {u}},m\right)p\left({D{\tilde {x}}\vert x,{\tilde {u}},m}\right)p(x\vert m)p({\tilde {u}}\vert m)\\p\left({\tilde {s}}\vert {\tilde {x}},{\tilde {u}},m\right)&={\mathcal {N}}({\tilde {g}}({\tilde {x}},{\tilde {u}}),{\tilde {\Sigma }}({\tilde {x}},{\tilde {u}})_{s})\\p\left({D{\tilde {x}}\vert x,{\tilde {u}},m}\right)&={\mathcal {N}}({\tilde {f}}({\tilde {x}},{\tilde {u}}),{\tilde {\Sigma }}({\tilde {x}},{\tilde {u}})_{x})\\\end{aligned}}}
+  
+
+The covariances 
+  
+    
+      
+        
+          
+            
+              Σ
+              ~
+            
+          
+        
+        =
+        V
+        ⊗
+        Σ
+      
+    
+    {\displaystyle {\tilde {\Sigma }}=V\otimes \Sigma }
+  
+ factorize into a covariance among variables and correlations 
+  
+    
+      
+        V
+      
+    
+    {\displaystyle V}
+  
+ among generalized fluctuations that encodes their autocorrelation:
+
+  
+    
+      
+        V
+        =
+        
+          
+            [
+            
+              
+                
+                  1
+                
+                
+                  0
+                
+                
+                  
+                    
+                      
+                        ρ
+                        ¨
+                      
+                    
+                  
+                  (
+                  0
+                  )
+                
+                
+                  ⋯
+                
+              
+              
+                
+                  0
+                
+                
+                  −
+                  
+                    
+                      
+                        ρ
+                        ¨
+                      
+                    
+                  
+                  (
+                  0
+                  )
+                
+                
+                  0
+                   
+                
+                
+                   
+                
+              
+              
+                
+                  
+                    
+                      
+                        ρ
+                        ¨
+                      
+                    
+                  
+                  (
+                  0
+                  )
+                   
+                
+                
+                  0
+                   
+                
+                
+                  
+                    
+                      
+                        
+                          
+                            ρ
+                            ¨
+                          
+                        
+                        ¨
+                      
+                    
+                  
+                  (
+                  0
+                  )
+                   
+                
+                
+                   
+                
+              
+              
+                
+                  ⋮
+                   
+                
+                
+                   
+                
+                
+                   
+                
+                
+                  ⋱
+                   
+                
+              
+            
+            ]
+          
+        
+      
+    
+    {\displaystyle V={\begin{bmatrix}1&0&{\ddot {\rho }}(0)&\cdots \\0&-{\ddot {\rho }}(0)&0\ &\ \\{\ddot {\rho }}(0)\ &0\ &{\ddot {\ddot {\rho }}}(0)\ &\ \\\vdots \ &\ &\ &\ddots \ \\\end{bmatrix}}}
+  
+
+Here, 
+  
+    
+      
+        
+          
+            
+              ρ
+              ¨
+            
+          
+        
+        (
+        0
+        )
+      
+    
+    {\displaystyle {\ddot {\rho }}(0)}
+  
+ is the second derivative of the autocorrelation function evaluated at zero. This is a ubiquitous measure of roughness in the theory of stochastic processes. Crucially, the precision (inverse variance) of high order derivatives fall to zero fairly quickly, which means it is only necessary to model relatively low order generalized motion (usually between two and eight) for any given or parameterized autocorrelation function.
+
+
+== Special cases ==
+
+
+=== Filtering discrete time series ===
+When time series are observed as a discrete sequence of 
+  
+    
+      
+        N
+      
+    
+    {\displaystyle N}
+  
+ observations, the implicit sampling is treated as part of the generative process, where (using Taylor's theorem)
+
+  
+    
+      
+        [
+        
+          s
+          
+            1
+          
+        
+        ,
+        …
+        ,
+        
+          s
+          
+            N
+          
+        
+        
+          ]
+          
+            T
+          
+        
+        =
+        (
+        E
+        ⊗
+        I
+        )
+        ⋅
+        
+          
+            
+              s
+              ~
+            
+          
+        
+        (
+        t
+        )
+        :
+        
+        
+          E
+          
+            i
+            j
+          
+        
+        =
+        
+          
+            
+              (
+              i
+              −
+              t
+              
+                )
+                
+                  (
+                  j
+                  −
+                  1
+                  )
+                
+              
+            
+            
+              (
+              j
+              −
+              1
+              )
+              !
+            
+          
+        
+      
+    
+    {\displaystyle [s_{1},\dots ,s_{N}]^{T}=(E\otimes I)\cdot {\tilde {s}}(t):\qquad E_{ij}={\frac {(i-t)^{(j-1)}}{(j-1)!}}}
+  
+
+In principle, the entire sequence could be used to estimate hidden variables at each point in time. However, the precision of samples in the past and future falls quickly and can be ignored. This allows the scheme to assimilate data online, using local observations around each time point (typically between two and eight).
+
+
+=== Generalized filtering and model parameters ===
+For any slowly varying model parameters of the equations of motion 
+  
+    
+      
+        f
+        (
+        x
+        ,
+        u
+        ,
+        θ
+        )
+      
+    
+    {\displaystyle f(x,u,\theta )}
+  
+ or precision 
+  
+    
+      
+        
+          
+            
+              Π
+              ~
+            
+          
+        
+        (
+        x
+        ,
+        u
+        ,
+        θ
+        )
+      
+    
+    {\displaystyle {\tilde {\Pi }}(x,u,\theta )}
+  
+ generalized filtering takes the following form (where 
+  
+    
+      
+        μ
+      
+    
+    {\displaystyle \mu }
+  
+ corresponds to the variational mean of the parameters)
+
+  
+    
+      
+        
+          
+            
+              
+                
+                  
+                    
+                      μ
+                      ˙
+                    
+                  
+                
+              
+              
+                
+                =
+                
+                  μ
+                  ′
+                
+              
+            
+            
+              
+                
+                  
+                    
+                      
+                        μ
+                        ′
+                      
+                      ˙
+                    
+                  
+                
+              
+              
+                
+                =
+                −
+                
+                  ∂
+                  
+                    μ
+                  
+                
+                F
+                (
+                
+                  
+                    
+                      s
+                      ~
+                    
+                  
+                
+                ,
+                μ
+                )
+                −
+                κ
+                
+                  μ
+                  ′
+                
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{aligned}{\dot {\mu }}&=\mu '\\{\dot {\mu '}}&=-\partial _{\mu }F({\tilde {s}},\mu )-\kappa \mu '\end{aligned}}}
+  
+
+Here, the solution 
+  
+    
+      
+        
+          
+            
+              
+                
+                  μ
+                  ~
+                
+              
+              ˙
+            
+          
+        
+        =
+        0
+      
+    
+    {\displaystyle {\dot {\tilde {\mu }}}=0}
+  
+ minimizes variational free energy, when the motion of the mean is small. This can be seen by noting 
+  
+    
+      
+        
+          
+            
+              μ
+              ˙
+            
+          
+        
+        =
+        
+          
+            
+              
+                μ
+                ˙
+              
+            
+          
+          ′
+        
+        =
+        0
+        ⇒
+        
+          ∂
+          
+            μ
+          
+        
+        F
+        =
+        0
+        ⇒
+        
+          δ
+          
+            μ
+          
+        
+        S
+        =
+        0
+      
+    
+    {\displaystyle {\dot {\mu }}={\dot {\mu }}'=0\Rightarrow \partial _{\mu }F=0\Rightarrow \delta _{\mu }S=0}
+  
+. It is straightforward to show that this solution corresponds to a classical Newton update.
+
+
+== Relationship to Bayesian filtering and predictive coding ==
+
+
+=== Generalized filtering and Kalman filtering ===
+Classical filtering under Markovian or Wiener assumptions is equivalent to assuming the precision of the motion of random fluctuations is zero. In this limiting case, one only has to consider the states and their first derivative 
+  
+    
+      
+        
+          
+            
+              μ
+              ~
+            
+          
+        
+        =
+        (
+        μ
+        ,
+        
+          
+            μ
+          
+          ′
+        
+        )
+      
+    
+    {\displaystyle {\tilde {\mu }}=(\mu ,{\mu }')}
+  
+. This means generalized filtering takes the form of a Kalman-Bucy filter, with prediction and correction terms:
+
+  
+    
+      
+        
+          
+            
+              
+                
+                  
+                    
+                      μ
+                      ˙
+                    
+                  
+                
+              
+              
+                
+                =
+                
+                  μ
+                  ′
+                
+                −
+                
+                  ∂
+                  
+                    μ
+                  
+                
+                F
+                (
+                s
+                ,
+                
+                  
+                    
+                      μ
+                      ~
+                    
+                  
+                
+                )
+              
+            
+            
+              
+                
+                  
+                    
+                      
+                        μ
+                        ′
+                      
+                      ˙
+                    
+                  
+                
+              
+              
+                
+                =
+                −
+                
+                  ∂
+                  
+                    
+                      μ
+                      ′
+                    
+                  
+                
+                F
+                (
+                s
+                ,
+                
+                  
+                    
+                      μ
+                      ~
+                    
+                  
+                
+                )
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{aligned}{\dot {\mu }}&=\mu '-\partial _{\mu }F(s,{\tilde {\mu }})\\{\dot {\mu '}}&=-\partial _{\mu '}F(s,{\tilde {\mu }})\end{aligned}}}
+  
+
+Substituting this first-order filtering into the discrete update scheme above gives the equivalent of (extended) Kalman filtering.
+
+
+=== Generalized filtering and particle filtering ===
+Particle filtering is a sampling-based scheme that relaxes assumptions about the form of the variational or approximate posterior density. The corresponding generalized filtering scheme is called variational filtering. In variational filtering, an ensemble of particles diffuse over the free energy landscape in a frame of reference that moves with the expected (generalized) motion of the ensemble. This provides a relatively simple scheme that eschews Gaussian (unimodal) assumptions. Unlike particle filtering it does not require proposal densities—or the elimination or creation of particles.
+
+
+=== Generalized filtering and variational Bayes ===
+Variational Bayes rests on a mean field partition of the variational density:
+
+  
+    
+      
+        q
+        (
+        
+          
+            
+              x
+              ~
+            
+          
+        
+        ,
+        
+          
+            
+              u
+              ~
+            
+          
+        
+        ,
+        θ
+        …
+        |
+        
+          
+            
+              μ
+              ~
+            
+          
+        
+        ,
+        μ
+        )
+        =
+        q
+        (
+        
+          
+            
+              x
+              ~
+            
+          
+        
+        ,
+        
+          
+            
+              u
+              ~
+            
+          
+        
+        |
+        
+          
+            
+              μ
+              ~
+            
+          
+        
+        )
+        q
+        (
+        θ
+        |
+        μ
+        )
+        …
+      
+    
+    {\displaystyle q({\tilde {x}},{\tilde {u}},\theta \dots \vert {\tilde {\mu }},\mu )=q({\tilde {x}},{\tilde {u}}\vert {\tilde {\mu }})q(\theta \vert \mu )\dots }
+  
+
+This partition induces a variational update or step for each marginal density—that is usually solved analytically using conjugate priors. In generalized filtering, this leads to dynamic expectation maximisation. that comprises a D-step that optimizes the sufficient statistics of unknown states, an E-step for parameters and an M-step for precisions.
+
+
+=== Generalized filtering and predictive coding ===
+Generalized filtering is usually used to invert hierarchical models of the following form
+
+  
+    
+      
+        
+          
+            
+              
+                
+                  
+                    
+                      s
+                      ~
+                    
+                  
+                
+              
+              
+                
+                =
+                
+                  
+                    
+                      
+                        g
+                        ~
+                      
+                    
+                  
+                  
+                    1
+                  
+                
+                (
+                
+                  
+                    
+                      
+                        x
+                        ~
+                      
+                    
+                  
+                  
+                    1
+                  
+                
+                ,
+                
+                  
+                    
+                      
+                        u
+                        ~
+                      
+                    
+                  
+                  
+                    (
+                    1
+                    )
+                  
+                
+                )
+                +
+                
+                  
+                    
+                      
+                        ω
+                        ~
+                      
+                    
+                  
+                  
+                    s
+                  
+                  
+                    (
+                    1
+                    )
+                  
+                
+              
+            
+            
+              
+                
+                  
+                    
+                      
+                        
+                          
+                            x
+                            ~
+                          
+                        
+                        ˙
+                      
+                    
+                  
+                  
+                    (
+                    1
+                    )
+                  
+                
+              
+              
+                
+                =
+                
+                  
+                    
+                      
+                        f
+                        ~
+                      
+                    
+                  
+                  
+                    (
+                    1
+                    )
+                  
+                
+                (
+                
+                  
+                    
+                      
+                        x
+                        ~
+                      
+                    
+                  
+                  
+                    (
+                    1
+                    )
+                  
+                
+                ,
+                
+                  
+                    
+                      
+                        u
+                        ~
+                      
+                    
+                  
+                  
+                    (
+                    1
+                    )
+                  
+                
+                )
+                +
+                
+                  
+                    
+                      
+                        ω
+                        ~
+                      
+                    
+                  
+                  
+                    x
+                  
+                  
+                    (
+                    1
+                    )
+                  
+                
+              
+            
+            
+              
+                ⋮
+              
+            
+            
+              
+                
+                  
+                    
+                      
+                        u
+                        ~
+                      
+                    
+                  
+                  
+                    (
+                    i
+                    −
+                    1
+                    )
+                  
+                
+              
+              
+                
+                =
+                
+                  
+                    
+                      
+                        g
+                        ~
+                      
+                    
+                  
+                  
+                    (
+                    i
+                    )
+                  
+                
+                (
+                
+                  
+                    
+                      
+                        x
+                        ~
+                      
+                    
+                  
+                  
+                    (
+                    i
+                    )
+                  
+                
+                ,
+                
+                  
+                    
+                      
+                        u
+                        ~
+                      
+                    
+                  
+                  
+                    (
+                    i
+                    )
+                  
+                
+                )
+                +
+                
+                  
+                    
+                      
+                        ω
+                        ~
+                      
+                    
+                  
+                  
+                    u
+                  
+                  
+                    (
+                    i
+                    )
+                  
+                
+              
+            
+            
+              
+                
+                  
+                    
+                      
+                        
+                          
+                            x
+                            ~
+                          
+                        
+                        ˙
+                      
+                    
+                  
+                  
+                    (
+                    i
+                    )
+                  
+                
+              
+              
+                
+                =
+                
+                  
+                    
+                      
+                        f
+                        ~
+                      
+                    
+                  
+                  
+                    (
+                    i
+                    )
+                  
+                
+                (
+                
+                  
+                    
+                      
+                        x
+                        ~
+                      
+                    
+                  
+                  
+                    (
+                    i
+                    )
+                  
+                
+                ,
+                
+                  
+                    
+                      
+                        u
+                        ~
+                      
+                    
+                  
+                  
+                    (
+                    i
+                    )
+                  
+                
+                )
+                +
+                
+                  
+                    
+                      
+                        ω
+                        ~
+                      
+                    
+                  
+                  
+                    x
+                  
+                  
+                    (
+                    i
+                    )
+                  
+                
+              
+            
+            
+              
+                ⋮
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{aligned}{\tilde {s}}&={\tilde {g}}^{1}({\tilde {x}}^{1},{\tilde {u}}^{(1)})+{\tilde {\omega }}_{s}^{(1)}\\{\dot {\tilde {x}}}^{(1)}&={\tilde {f}}^{(1)}({\tilde {x}}^{(1)},{\tilde {u}}^{(1)})+{\tilde {\omega }}_{x}^{(1)}\\\vdots \\{\tilde {u}}^{(i-1)}&={\tilde {g}}^{(i)}({\tilde {x}}^{(i)},{\tilde {u}}^{(i)})+{\tilde {\omega }}_{u}^{(i)}\\{\dot {\tilde {x}}}^{(i)}&={\tilde {f}}^{(i)}({\tilde {x}}^{(i)},{\tilde {u}}^{(i)})+{\tilde {\omega }}_{x}^{(i)}\\\vdots \end{aligned}}}
+  
+
+The ensuing generalized gradient descent on free energy can then be expressed compactly in terms of prediction errors, where (omitting high order terms):
+
+  
+    
+      
+        
+          
+            
+              
+                
+                  
+                    
+                      
+                        
+                          
+                            μ
+                            ~
+                          
+                        
+                        ˙
+                      
+                    
+                  
+                  
+                    u
+                  
+                  
+                    (
+                    i
+                    )
+                  
+                
+              
+              
+                
+                =
+                D
+                
+                  
+                    
+                      
+                        μ
+                        ~
+                      
+                    
+                  
+                  
+                    (
+                    u
+                    ,
+                    i
+                    )
+                  
+                
+                −
+                
+                  ∂
+                  
+                    u
+                  
+                
+                
+                  
+                    
+                      
+                        ε
+                        ~
+                      
+                    
+                  
+                  
+                    (
+                    i
+                    )
+                  
+                
+                ⋅
+                
+                  Π
+                  
+                    (
+                    i
+                    )
+                  
+                
+                
+                  
+                    
+                      
+                        ε
+                        ~
+                      
+                    
+                  
+                  
+                    (
+                    i
+                    )
+                  
+                
+                −
+                
+                  Π
+                  
+                    (
+                    i
+                    +
+                    1
+                    )
+                  
+                
+                
+                  
+                    
+                      
+                        ε
+                        ~
+                      
+                    
+                  
+                  
+                    u
+                  
+                  
+                    (
+                    i
+                    +
+                    1
+                    )
+                  
+                
+              
+            
+            
+              
+                
+                  
+                    
+                      
+                        
+                          
+                            μ
+                            ~
+                          
+                        
+                        ˙
+                      
+                    
+                  
+                  
+                    x
+                  
+                  
+                    (
+                    i
+                    )
+                  
+                
+              
+              
+                
+                =
+                D
+                
+                  
+                    
+                      
+                        μ
+                        ~
+                      
+                    
+                  
+                  
+                    (
+                    x
+                    ,
+                    i
+                    )
+                  
+                
+                −
+                
+                  ∂
+                  
+                    x
+                  
+                
+                
+                  
+                    
+                      
+                        ε
+                        ~
+                      
+                    
+                  
+                  
+                    (
+                    i
+                    )
+                  
+                
+                ⋅
+                
+                  Π
+                  
+                    (
+                    i
+                    )
+                  
+                
+                
+                  
+                    
+                      
+                        ε
+                        ~
+                      
+                    
+                  
+                  
+                    (
+                    i
+                    )
+                  
+                
+              
+            
+            
+              
+            
+            
+              
+                
+                  
+                    
+                      
+                        ε
+                        ~
+                      
+                    
+                  
+                  
+                    u
+                  
+                  
+                    (
+                    i
+                    )
+                  
+                
+              
+              
+                
+                =
+                
+                  
+                    
+                      
+                        μ
+                        ~
+                      
+                    
+                  
+                  
+                    u
+                  
+                  
+                    (
+                    i
+                    −
+                    1
+                    )
+                  
+                
+                −
+                
+                  
+                    
+                      
+                        g
+                        ~
+                      
+                    
+                  
+                  
+                    (
+                    i
+                    )
+                  
+                
+              
+            
+            
+              
+                
+                  
+                    
+                      
+                        ε
+                        ~
+                      
+                    
+                  
+                  
+                    x
+                  
+                  
+                    (
+                    i
+                    )
+                  
+                
+              
+              
+                
+                =
+                D
+                
+                  
+                    
+                      
+                        μ
+                        ~
+                      
+                    
+                  
+                  
+                    x
+                  
+                  
+                    (
+                    i
+                    )
+                  
+                
+                −
+                
+                  
+                    
+                      
+                        f
+                        ~
+                      
+                    
+                  
+                  
+                    (
+                    i
+                    )
+                  
+                
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{aligned}{\dot {\tilde {\mu }}}_{u}^{(i)}&=D{\tilde {\mu }}^{(u,i)}-\partial _{u}{\tilde {\varepsilon }}^{(i)}\cdot \Pi ^{(i)}{\tilde {\varepsilon }}^{(i)}-\Pi ^{(i+1)}{\tilde {\varepsilon }}_{u}^{(i+1)}\\{\dot {\tilde {\mu }}}_{x}^{(i)}&=D{\tilde {\mu }}^{(x,i)}-\partial _{x}{\tilde {\varepsilon }}^{(i)}\cdot \Pi ^{(i)}{\tilde {\varepsilon }}^{(i)}\\\\{\tilde {\varepsilon }}_{u}^{(i)}&={\tilde {\mu }}_{u}^{(i-1)}-{\tilde {g}}^{(i)}\\{\tilde {\varepsilon }}_{x}^{(i)}&=D{\tilde {\mu }}_{x}^{(i)}-{\tilde {f}}^{(i)}\end{aligned}}}
+  
+
+Here, 
+  
+    
+      
+        
+          Π
+          
+            (
+            i
+            )
+          
+        
+      
+    
+    {\displaystyle \Pi ^{(i)}}
+  
+ is the precision of random fluctuations at the i-th level. This is known as generalized predictive coding [11], with linear predictive coding as a special case.
+
+
+== Applications ==
+Generalized filtering has been primarily applied to biological timeseries—in particular functional magnetic resonance imaging and electrophysiological data. This is usually in the context of dynamic causal modelling to make inferences about the underlying architectures of (neuronal) systems generating data. It is also used to simulate inference in terms of generalized (hierarchical) predictive coding in the brain.
+
+
+== See also ==
+Dynamic Bayesian network
+Kalman filter
+Linear predictive coding
+Optimal control
+Particle filter
+Recursive Bayesian estimation
+System identification
+Variational Bayesian methods
+
+
+== References ==
+
+
+== External links ==
+software demonstrations and applications are available as academic freeware (as Matlab code) in the DEM toolbox of SPM
+papers collection of technical and application papers

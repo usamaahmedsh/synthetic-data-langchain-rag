@@ -1,0 +1,58 @@
+Amazon SimpleDB is a distributed database written in Erlang by Amazon.com. It is used as a web service in concert with Amazon Elastic Compute Cloud (EC2) and Amazon S3 and is part of Amazon Web Services. It was announced on December 13, 2007.
+As with EC2 and S3, Amazon charges fees for SimpleDB storage, transfer, and throughput over the Internet. On December 1, 2008, Amazon introduced new pricing with Free Tier for 1 GB of data & 25 machine hours. Transfer to other Amazon Web Services is free of charge.
+
+
+== Limitations ==
+
+SimpleDB provides eventual consistency, which is a weaker form of consistency, compared to other database management systems. This is often considered a limitation, because it is harder to reason about, which makes it harder to write correct programs that make use of SimpleDB. This limitation is the result of a fundamental design trade-off. By forgoing consistency, the system is able to achieve two other highly desirable properties:
+
+availability – components of the system may fail, but the service will continue to operate correctly.
+partition tolerance – components in the system are connected by a computer network. If components are not able to contact one another using the network (a condition known as a network partition), the operation of the system will continue.
+Component failures are assumed to be inevitable; thus, both of these properties were deemed necessary in order to provide a reliable web service. The CAP theorem states that it is not possible for a system to exhibit these properties along with consistency; thus, the designers need to settle for a weaker form of consistency.
+Published limitations:
+
+
+=== Store limitations ===
+
+
+=== Query limitations ===
+
+
+== Features ==
+
+
+=== Conditional Put and Delete ===
+Conditional put and conditional delete are new operations that were added in February 2010. They address a problem that arises when accessing SimpleDB concurrently. Consider a simple program that uses SimpleDB to store a counter, i.e. a number that can be incremented. The program must do three things:
+
+Retrieve the current value of the counter from SimpleDB.
+Add one to the value.
+Store the new value in the same place as the old value in SimpleDB.
+If this program runs while no other programs access SimpleDB, it will work correctly; however, it is often desirable for software applications (particularly web applications) to access the same data concurrently. When the same data is accessed concurrently, a race condition arises, which would result in undetectable data loss.
+Continuing the previous example, consider two processes, A and B, running the same program. Suppose SimpleDB services requests for data, as described in step 1, from both A and B. A and B see the same value. Let's say that the current value of the counter is 0. Because of steps 2 and 3, A will try to store 1. B will try to do the same; thus, the final counter value will be 1, even though the expected final counter value is 2, because the system attempted two increment operations, one by A, and another by B.
+This problem can be solved by the use of conditional put. Suppose we change step 3 as follows: instead of unconditionally storing the new value, the program asks SimpleDB to store the new value only if the value that it currently holds is the same as the value that was retrieved in step 1. Then, we can be sure that the counter's value actually increases. This introduces some additional complexity; if SimpleDB is not able to store the new value because the current value was not as expected, the program must repeat steps 1–3 until the conditional put operation actually changes the stored value.
+
+
+=== Consistent Read ===
+Consistent read was a new feature that was released at the same time as conditional put and conditional delete. As the name suggests, consistent read addresses problems that arise due to SimpleDB's eventual consistency model (See the Limitations section). Consider the following sequence of operations:
+
+Program A stores some data in SimpleDB.
+Immediately after, A requests the data it just stored.
+SimpleDB's eventual consistency guarantee does not allow us to say that the data retrieved in step 2 reflects the updates that were made in step 1. Eventual consistency only guarantees that step 2 reflects the complete set of updates in step 1, or none of those updates. A consistent read can be used to ensure that the data retrieved in step 2 reflects changes in step 1.
+The reason that inconsistent results can arise when the consistent read operation is not used is that SimpleDB stores data in multiple locations (for availability), and the new data in step 1 might not be written at all locations when SimpleDB receives the data request in step 2. In that case, it is possible that the data request in step 2 is serviced at one of the locations where the new data has not been written.
+Amazon discourages the use of consistent read, unless it is required for correctness. The reason for this recommendation is that the rate at which consistent read operations are serviced is lower than for regular reads.
+
+
+== Relationship to DynamoDB ==
+
+There has been some talk of SimpleDB being superseded by DynamoDB (it is no longer being "iterated on", though Amazon does not plan to remove it).  DynamoDB appears to be its successor.
+
+
+== See also ==
+NoSQL
+
+
+== References ==
+
+
+== External links ==
+Amazon SimpleDB official home page

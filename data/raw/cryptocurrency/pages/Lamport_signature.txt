@@ -1,0 +1,543 @@
+In cryptography, a Lamport signature or Lamport one-time signature scheme is a method for constructing a digital signature. Lamport signatures can be built from any cryptographically secure one-way function; usually a cryptographic hash function is used.
+Although the potential development of quantum computers threatens the security of many common forms of cryptography such as RSA, it is believed that Lamport signatures with large hash functions would still be secure in that event. Each Lamport key can only be used to sign a single message. However, many Lamport signatures can be handled by one Merkle hash tree, thus a single hash tree key can be used for many messages, making this a fairly efficient digital signature scheme.
+The Lamport signature cryptosystem was invented in 1979 and named after its inventor, Leslie Lamport.
+
+
+== Example ==
+Alice has a 256-bit cryptographic hash function and some kind of secure random number generator. She wants to create and use a Lamport key pair, that is, a private key and a corresponding public key.
+
+
+=== Making the key pair ===
+To create the private key Alice uses the random number generator to produce 256 pairs of random numbers (2×256 numbers in total), each number being 256 bits in size, that is, a total of 2×256×256 bits = 128 Kibit in total. This is her private key and she will store it away in a secure place for later use.
+To create the public key she hashes each of the 512 random numbers in the private key, thus creating 512 hashes, each 256 bits in size. (Also 128 Kbits in total.) These 512 hashes form her public key, which she will share with the world.
+
+
+=== Signing the message ===
+Later Alice wants to sign a message. First she hashes the message to a 256-bit hash sum. Then, for each bit in the hash, based on the value of the bit, she picks one number from the corresponding pairs of numbers that make up her private key (i.e., if the bit is 0, the first number is chosen, and if the bit is 1, the second is chosen). This produces a sequence of 256 numbers. As each number is itself 256 bits long the total size of her signature will be 256×256 bits = 65536 bits = 64 Kibit. These (originally randomly picked) numbers are her signature and she publishes them along with the message.
+Note that now that Alice's private key is used, it should never be used again. She must destroy the other 256 numbers that she did not use for the signature. Otherwise, each additional signature reusing the private key reduces the security level against adversaries that might later create false signatures from them.
+
+
+=== Verifying the signature ===
+Then Bob wants to verify Alice's signature of the message. He also hashes the message to get a 256-bit hash sum. Then he uses the bits in the hash sum to pick out 256 of the hashes in Alice's public key. He picks the hashes in the same manner that Alice picked the random numbers for the signature. That is, if the first bit of the message hash is a 0, he picks the first hash in the first pair, and so on.
+Then Bob hashes each of the 256 random numbers in Alice's signature. This gives him 256 hashes. If these 256 hashes exactly match the 256 hashes he just picked from Alice's public key then the signature is ok. If not, then the signature is wrong.
+Note that prior to Alice publishing the signature of the message, no one else knows the 2×256 random numbers in the private key. Thus, no one else can create the proper list of 256 random numbers for the signature. And after Alice has published the signature, others still do not know the other 256 random numbers and thus can not create signatures that fit other message hashes.
+
+
+== Formal description ==
+Below is a short description of how Lamport signatures work, written in mathematical notation. Note that the "message" in this description is a fixed sized block of reasonable size, possibly (but not necessarily) the hash result of an arbitrarily long message being signed.
+
+
+=== Keys ===
+Let 
+  
+    
+      
+        k
+      
+    
+    {\displaystyle k}
+  
+ be a positive integer and let 
+  
+    
+      
+        P
+        =
+        {
+        0
+        ,
+        1
+        
+          }
+          
+            k
+          
+        
+      
+    
+    {\displaystyle P=\{0,1\}^{k}}
+  
+ be the set of messages. Let 
+  
+    
+      
+        f
+        :
+        
+        Y
+        →
+        Z
+      
+    
+    {\displaystyle f:\,Y\rightarrow Z}
+  
+ be a one-way function.
+For 
+  
+    
+      
+        1
+        ≤
+        i
+        ≤
+        k
+      
+    
+    {\displaystyle 1\leq i\leq k}
+  
+ and 
+  
+    
+      
+        j
+        ∈
+        {
+        0
+        ,
+        1
+        }
+      
+    
+    {\displaystyle j\in \{0,1\}}
+  
+ the signer chooses 
+  
+    
+      
+        
+          y
+          
+            i
+            ,
+            j
+          
+        
+        ∈
+        Y
+      
+    
+    {\displaystyle y_{i,j}\in Y}
+  
+ randomly and computes 
+  
+    
+      
+        
+          z
+          
+            i
+            ,
+            j
+          
+        
+        =
+        f
+        (
+        
+          y
+          
+            i
+            ,
+            j
+          
+        
+        )
+      
+    
+    {\displaystyle z_{i,j}=f(y_{i,j})}
+  
+.
+The private key, 
+  
+    
+      
+        K
+      
+    
+    {\displaystyle K}
+  
+, consists of 
+  
+    
+      
+        2
+        k
+      
+    
+    {\displaystyle 2k}
+  
+ values 
+  
+    
+      
+        
+          y
+          
+            i
+            ,
+            j
+          
+        
+      
+    
+    {\displaystyle y_{i,j}}
+  
+. The public key consists of the 
+  
+    
+      
+        2
+        k
+      
+    
+    {\displaystyle 2k}
+  
+ values 
+  
+    
+      
+        
+          z
+          
+            i
+            ,
+            j
+          
+        
+      
+    
+    {\displaystyle z_{i,j}}
+  
+.
+
+
+=== Signing a message ===
+Let 
+  
+    
+      
+        m
+        =
+        
+          m
+          
+            1
+          
+        
+        …
+        
+          m
+          
+            k
+          
+        
+        ∈
+        {
+        0
+        ,
+        1
+        
+          }
+          
+            k
+          
+        
+      
+    
+    {\displaystyle m=m_{1}\ldots m_{k}\in \{0,1\}^{k}}
+  
+ be a message.
+The signature of the message is 
+
+  
+    
+      
+        sig
+        ⁡
+        (
+        
+          m
+          
+            1
+          
+        
+        …
+        
+          m
+          
+            k
+          
+        
+        )
+        =
+        (
+        
+          y
+          
+            1
+            ,
+            
+              m
+              
+                1
+              
+            
+          
+        
+        ,
+        …
+        ,
+        
+          y
+          
+            k
+            ,
+            
+              m
+              
+                k
+              
+            
+          
+        
+        )
+        =
+        (
+        
+          s
+          
+            1
+          
+        
+        ,
+        …
+        ,
+        
+          s
+          
+            k
+          
+        
+        )
+      
+    
+    {\displaystyle \operatorname {sig} (m_{1}\ldots m_{k})=(y_{1,m_{1}},\ldots ,y_{k,m_{k}})=(s_{1},\ldots ,s_{k})}
+  
+.
+
+
+=== Verifying a signature ===
+The verifier validates a signature by checking 
+that 
+  
+    
+      
+        f
+        (
+        
+          s
+          
+            i
+          
+        
+        )
+        =
+        
+          z
+          
+            i
+            ,
+            
+              m
+              
+                i
+              
+            
+          
+        
+      
+    
+    {\displaystyle f(s_{i})=z_{i,m_{i}}}
+  
+ for all  
+  
+    
+      
+        1
+        ≤
+        i
+        ≤
+        k
+      
+    
+    {\displaystyle 1\leq i\leq k}
+  
+.
+In order to forge a message Eve would have to invert the one-way function 
+  
+    
+      
+        f
+      
+    
+    {\displaystyle f}
+  
+. This is assumed to be intractable for suitably sized inputs and outputs.
+
+
+== Security parameters ==
+The security of Lamport signatures is based on the security of the one-way hash function and the length of its output.
+For a hash function that generates an n-bit message digest, the ideal preimage and 2nd preimage resistance on a single hash function invocation implies on the order of 2n operations to find a collision under a classical computing model. According to Grover's algorithm, finding a preimage collision on a single invocation of an ideal hash function is upper bound on O(2n/2) operations under a quantum computing model. In Lamport signatures, each bit of the public key and signature is based on short messages requiring only a single invocation to a hash function.
+For each private key yi,j and its corresponding zi,j public key pair, the private key length must be selected so performing a preimage attack on the length of the input is not faster than performing a preimage attack on the length of the output. For example, in a degenerate case, if each private key yi,j element was only 16 bits in length, it is trivial to exhaustively search all 216 possible private key combinations in 216 operations to find a match with the output, irrespective of the message digest length. Therefore, a balanced system design ensures both lengths are approximately equal.
+Based on Grover's algorithm, a quantum secure system, the length of the public key elements zi,j, the private key elements yi,j and the signature elements si,j must be no less than 2 times larger than the security rating of the system. That is: 
+
+An 80-bit secure system uses element lengths of no less than 160 bit;
+A 128-bit secure system uses element lengths of no less than 256 bit;
+However caution should be taken as the idealistic work estimates above assume an ideal (perfect) hash function and are limited to attacks that target only a single preimage at a time. It is known under a conventional computing model that if 23n/5 preimages are searched, the full cost per preimage decreases from 2n/2 to 22n/5. Selecting the optimum element size taking into account the collection of multiple message digests is an open problem. Selection of larger element sizes and stronger hash functions, such as 512-bit elements and SHA-512, ensures greater security margins to manage these unknowns.
+
+
+== Optimisations and variants ==
+
+
+=== Lamport's improved variant ===
+Lamport's original version (described above)
+was first published in the 1976 paper
+"New Directions in Cryptography".
+Lamport later published an improved approach in 1979.
+Both approaches produce a signature that is a list of half of the values in Alice's private key, with Alice then destroying the other (unused) values from that private key.
+Rather than always publishing exactly one number from each pair of numbers in the private key as in the original version, the improved version may publish both, one, or neither number from any particular pair of numbers in the private key.
+The extra flexibility supports the same strength of security using a shorter private key (and therefore a shorter public key).
+
+
+=== Short private key ===
+Instead of creating and storing all the random numbers of the private key, a single key of sufficient size can be stored. (Usually the same size as one of the random numbers in the private key.) The single key can then be used as the seed for a cryptographically secure pseudorandom number generator (CSPRNG) to create all the random numbers in the private key when needed. Note a cryptographically secure hash (or at least whose output is not XORed with the seed) can not be used instead of CSPRNG because signing a message would reveal additional random values from the private key. If the adversary can access the signature before the intended recipients can, then he can forge a signature with a halving of security level for each doubling of the revealed random values from the private key.
+In the same manner a single key can be used together with a CSPRNG to create many Lamport keys. Preferably then some kind of post-quantum secure random access CSPRNG should be used. Notably, classic CSPRNG like BBS should not be used.
+
+
+=== Short public key ===
+A Lamport signature can be combined with a hash list, making it possible to publish only the single top hash instead of all the hashes in the public key. That is, instead of the 
+  
+    
+      
+        2
+        k
+      
+    
+    {\displaystyle 2k}
+  
+ values 
+  
+    
+      
+        
+          z
+          
+            i
+            j
+          
+        
+      
+    
+    {\displaystyle z_{ij}}
+  
+. To verify against the single top hash, the signature must include the random numbers and the unused hashes from the hash list of the public key, resulting in signatures of about twice the size. That is, the values 
+  
+    
+      
+        (
+        
+          z
+          
+            i
+            j
+          
+        
+        )
+      
+    
+    {\displaystyle (z_{ij})}
+  
+ for all 
+  
+    
+      
+        j
+        ≠
+        
+          m
+          
+            i
+          
+        
+      
+    
+    {\displaystyle j\neq m_{i}}
+  
+ needs to be included.
+The unused hashes do not need to be included in the signature if a cryptographic accumulator is used instead of a hash list.
+
+
+=== Short keys and signature ===
+Winternitz signature compression reduces the size of the private key and public key by slightly less than a factor of the 
+  
+    
+      
+        2
+        ⟨
+        
+          chunk size in bits
+        
+        ⟩
+      
+    
+    {\displaystyle 2\langle {\text{chunk size in bits}}\rangle }
+  
+, and half that factor for the signature. The computation increases by slightly more than a factor of 
+  
+    
+      
+        
+          2
+          
+            ⟨
+            
+              chunk size in bits
+            
+            ⟩
+          
+        
+        
+          /
+        
+        ⟨
+        
+          chunk size in bits
+        
+        ⟩
+      
+    
+    {\displaystyle 2^{\langle {\text{chunk size in bits}}\rangle }/\langle {\text{chunk size in bits}}\rangle }
+  
+. A cryptographically secure hash suffices instead of the requirement for a CSPRNG.
+A hash list could also be employed to shorten the public key to a single value at the expense of doubling the size of the signature as explained in the prior section.
+
+
+=== Public key for multiple messages ===
+
+Each Lamport public key can only be used to sign one single message, which means many keys have to be published if many messages are to be signed. But a hash tree can be used on those public keys, publishing the top hash of the hash tree instead. This increases the size of the resulting signature, since a branch of the hash tree has to be included in the signature, but it makes it possible to publish a single hash that then can be used to verify a large number of future signatures.
+
+
+== See also ==
+S/KEY
+
+
+== References ==
+
+
+== Further reading ==
+L. Lamport, Constructing digital signatures from a one-way function, Technical Report SRI-CSL-98, SRI International Computer Science Laboratory, Oct. 1979.
+Efficient Use of Merkle Trees - RSA labs explanation of the original purpose of Merkle trees + Lamport signatures, as an efficient one-time signature scheme.
+An introduction to hash-based signatures and Merkle signatures by Adam Langley.
+Reference implementation of Lamport scheme on top of BLAKE2b (C++)
+Reference Implementation of Lamport Signatures on top of SHA256, SHA512, or Blake2b (Rust)
+Small Implementation of Merkle-Lamport Signatures on top of any power of 2 sized hash (C)

@@ -1,0 +1,6655 @@
+Policy gradient methods are a class of reinforcement learning algorithms.
+Policy gradient methods are a sub-class of policy optimization methods. Unlike value-based methods which learn a value function to derive a policy, policy optimization methods directly learn a policy function 
+  
+    
+      
+        π
+      
+    
+    {\displaystyle \pi }
+  
+ that selects actions without consulting a value function. For policy gradient to apply, the policy function 
+  
+    
+      
+        
+          π
+          
+            θ
+          
+        
+      
+    
+    {\displaystyle \pi _{\theta }}
+  
+ is parameterized by a differentiable parameter 
+  
+    
+      
+        θ
+      
+    
+    {\displaystyle \theta }
+  
+.
+
+
+== Overview ==
+In policy-based RL, the actor is a parameterized policy function 
+  
+    
+      
+        
+          π
+          
+            θ
+          
+        
+      
+    
+    {\displaystyle \pi _{\theta }}
+  
+, where 
+  
+    
+      
+        θ
+      
+    
+    {\displaystyle \theta }
+  
+ are the parameters of the actor. The actor takes as argument the state of the environment 
+  
+    
+      
+        s
+      
+    
+    {\displaystyle s}
+  
+ and produces a probability distribution 
+  
+    
+      
+        
+          π
+          
+            θ
+          
+        
+        (
+        ⋅
+        ∣
+        s
+        )
+      
+    
+    {\displaystyle \pi _{\theta }(\cdot \mid s)}
+  
+.
+If the action space is discrete, then 
+  
+    
+      
+        
+          ∑
+          
+            a
+          
+        
+        
+          π
+          
+            θ
+          
+        
+        (
+        a
+        ∣
+        s
+        )
+        =
+        1
+      
+    
+    {\displaystyle \sum _{a}\pi _{\theta }(a\mid s)=1}
+  
+. If the action space is continuous, then 
+  
+    
+      
+        
+          ∫
+          
+            a
+          
+        
+        
+          π
+          
+            θ
+          
+        
+        (
+        a
+        ∣
+        s
+        )
+        
+          d
+        
+        a
+        =
+        1
+      
+    
+    {\displaystyle \int _{a}\pi _{\theta }(a\mid s)\mathrm {d} a=1}
+  
+.
+The goal of policy optimization is to find some 
+  
+    
+      
+        θ
+      
+    
+    {\displaystyle \theta }
+  
+ that maximizes the expected episodic reward 
+  
+    
+      
+        J
+        (
+        θ
+        )
+      
+    
+    {\displaystyle J(\theta )}
+  
+:
+  
+    
+      
+        J
+        (
+        θ
+        )
+        =
+        
+          
+            E
+          
+          
+            
+              π
+              
+                θ
+              
+            
+          
+        
+        
+          [
+          
+            
+              ∑
+              
+                t
+                ∈
+                0
+                :
+                T
+              
+            
+            
+              γ
+              
+                t
+              
+            
+            
+              R
+              
+                t
+              
+            
+            
+              
+                |
+              
+            
+            
+              S
+              
+                0
+              
+            
+            =
+            
+              s
+              
+                0
+              
+            
+          
+          ]
+        
+      
+    
+    {\displaystyle J(\theta )=\mathbb {E} _{\pi _{\theta }}\left[\sum _{t\in 0:T}\gamma ^{t}R_{t}{\Big |}S_{0}=s_{0}\right]}
+  
+where 
+  
+    
+      
+        γ
+      
+    
+    {\displaystyle \gamma }
+  
+ is the discount factor, 
+  
+    
+      
+        
+          R
+          
+            t
+          
+        
+      
+    
+    {\displaystyle R_{t}}
+  
+ is the reward at step 
+  
+    
+      
+        t
+      
+    
+    {\displaystyle t}
+  
+, 
+  
+    
+      
+        
+          s
+          
+            0
+          
+        
+      
+    
+    {\displaystyle s_{0}}
+  
+ is the starting state, and 
+  
+    
+      
+        T
+      
+    
+    {\displaystyle T}
+  
+ is the time-horizon (which can be infinite).
+The policy gradient is defined as 
+  
+    
+      
+        
+          ∇
+          
+            θ
+          
+        
+        J
+        (
+        θ
+        )
+      
+    
+    {\displaystyle \nabla _{\theta }J(\theta )}
+  
+. Different policy gradient methods stochastically estimate the policy gradient in different ways. The goal of any policy gradient method is to iteratively maximize 
+  
+    
+      
+        J
+        (
+        θ
+        )
+      
+    
+    {\displaystyle J(\theta )}
+  
+ by gradient ascent. Since the key part of any policy gradient method is the stochastic estimation of the policy gradient, they are also studied under the title of "Monte Carlo gradient estimation".
+
+
+== REINFORCE ==
+
+
+=== Policy gradient ===
+The REINFORCE algorithm, introduced by Ronald J. Williams in 1992, was the first policy gradient method. It is based on the identity for the policy gradient
+  
+    
+      
+        
+          ∇
+          
+            θ
+          
+        
+        J
+        (
+        θ
+        )
+        =
+        
+          
+            E
+          
+          
+            
+              π
+              
+                θ
+              
+            
+          
+        
+        
+          [
+          
+            
+              ∑
+              
+                t
+                ∈
+                0
+                :
+                T
+              
+            
+            
+              ∇
+              
+                θ
+              
+            
+            ln
+            ⁡
+            
+              π
+              
+                θ
+              
+            
+            (
+            
+              A
+              
+                t
+              
+            
+            ∣
+            
+              S
+              
+                t
+              
+            
+            )
+            
+            
+              ∑
+              
+                t
+                ∈
+                0
+                :
+                T
+              
+            
+            (
+            
+              γ
+              
+                t
+              
+            
+            
+              R
+              
+                t
+              
+            
+            )
+            
+              
+                |
+              
+            
+            
+              S
+              
+                0
+              
+            
+            =
+            
+              s
+              
+                0
+              
+            
+          
+          ]
+        
+      
+    
+    {\displaystyle \nabla _{\theta }J(\theta )=\mathbb {E} _{\pi _{\theta }}\left[\sum _{t\in 0:T}\nabla _{\theta }\ln \pi _{\theta }(A_{t}\mid S_{t})\;\sum _{t\in 0:T}(\gamma ^{t}R_{t}){\Big |}S_{0}=s_{0}\right]}
+  
+ which can be improved via the "causality trick"
+  
+    
+      
+        
+          ∇
+          
+            θ
+          
+        
+        J
+        (
+        θ
+        )
+        =
+        
+          
+            E
+          
+          
+            
+              π
+              
+                θ
+              
+            
+          
+        
+        
+          [
+          
+            
+              ∑
+              
+                t
+                ∈
+                0
+                :
+                T
+              
+            
+            
+              ∇
+              
+                θ
+              
+            
+            ln
+            ⁡
+            
+              π
+              
+                θ
+              
+            
+            (
+            
+              A
+              
+                t
+              
+            
+            ∣
+            
+              S
+              
+                t
+              
+            
+            )
+            
+              ∑
+              
+                τ
+                ∈
+                t
+                :
+                T
+              
+            
+            (
+            
+              γ
+              
+                τ
+              
+            
+            
+              R
+              
+                τ
+              
+            
+            )
+            
+              
+                |
+              
+            
+            
+              S
+              
+                0
+              
+            
+            =
+            
+              s
+              
+                0
+              
+            
+          
+          ]
+        
+      
+    
+    {\displaystyle \nabla _{\theta }J(\theta )=\mathbb {E} _{\pi _{\theta }}\left[\sum _{t\in 0:T}\nabla _{\theta }\ln \pi _{\theta }(A_{t}\mid S_{t})\sum _{\tau \in t:T}(\gamma ^{\tau }R_{\tau }){\Big |}S_{0}=s_{0}\right]}
+  
+
+Thus, we have an unbiased estimator of the policy gradient:
+  
+    
+      
+        
+          ∇
+          
+            θ
+          
+        
+        J
+        (
+        θ
+        )
+        ≈
+        
+          
+            1
+            N
+          
+        
+        
+          ∑
+          
+            n
+            =
+            1
+          
+          
+            N
+          
+        
+        
+          [
+          
+            
+              ∑
+              
+                t
+                ∈
+                0
+                :
+                T
+              
+            
+            
+              ∇
+              
+                θ
+              
+            
+            ln
+            ⁡
+            
+              π
+              
+                θ
+              
+            
+            (
+            
+              A
+              
+                t
+                ,
+                n
+              
+            
+            ∣
+            
+              S
+              
+                t
+                ,
+                n
+              
+            
+            )
+            
+              ∑
+              
+                τ
+                ∈
+                t
+                :
+                T
+              
+            
+            (
+            
+              γ
+              
+                τ
+                −
+                t
+              
+            
+            
+              R
+              
+                τ
+                ,
+                n
+              
+            
+            )
+          
+          ]
+        
+      
+    
+    {\displaystyle \nabla _{\theta }J(\theta )\approx {\frac {1}{N}}\sum _{n=1}^{N}\left[\sum _{t\in 0:T}\nabla _{\theta }\ln \pi _{\theta }(A_{t,n}\mid S_{t,n})\sum _{\tau \in t:T}(\gamma ^{\tau -t}R_{\tau ,n})\right]}
+  
+where the index 
+  
+    
+      
+        n
+      
+    
+    {\displaystyle n}
+  
+ ranges over 
+  
+    
+      
+        N
+      
+    
+    {\displaystyle N}
+  
+ rollout trajectories using the policy 
+  
+    
+      
+        
+          π
+          
+            θ
+          
+        
+      
+    
+    {\displaystyle \pi _{\theta }}
+  
+.
+The score function 
+  
+    
+      
+        
+          ∇
+          
+            θ
+          
+        
+        ln
+        ⁡
+        
+          π
+          
+            θ
+          
+        
+        (
+        
+          A
+          
+            t
+          
+        
+        ∣
+        
+          S
+          
+            t
+          
+        
+        )
+      
+    
+    {\displaystyle \nabla _{\theta }\ln \pi _{\theta }(A_{t}\mid S_{t})}
+  
+ can be interpreted as the direction in the parameter space that increases the probability of taking action 
+  
+    
+      
+        
+          A
+          
+            t
+          
+        
+      
+    
+    {\displaystyle A_{t}}
+  
+ in state 
+  
+    
+      
+        
+          S
+          
+            t
+          
+        
+      
+    
+    {\displaystyle S_{t}}
+  
+. The policy gradient, then, is a weighted average of all possible directions to increase the probability of taking any action in any state, but weighted by reward signals, so that if taking a certain action in a certain state is associated with high reward, then that direction would be highly reinforced, and vice versa.
+
+
+=== Algorithm ===
+The REINFORCE algorithm is a loop:
+
+Rollout 
+  
+    
+      
+        N
+      
+    
+    {\displaystyle N}
+  
+ trajectories in the environment, using 
+  
+    
+      
+        
+          π
+          
+            
+              θ
+              
+                t
+              
+            
+          
+        
+      
+    
+    {\displaystyle \pi _{\theta _{t}}}
+  
+ as the policy function.
+Compute the policy gradient estimation: 
+  
+    
+      
+        
+          g
+          
+            i
+          
+        
+        ←
+        
+          
+            1
+            N
+          
+        
+        
+          ∑
+          
+            n
+            =
+            1
+          
+          
+            N
+          
+        
+        
+          [
+          
+            
+              ∑
+              
+                t
+                ∈
+                0
+                :
+                T
+              
+            
+            
+              ∇
+              
+                
+                  θ
+                  
+                    t
+                  
+                
+              
+            
+            ln
+            ⁡
+            
+              π
+              
+                θ
+              
+            
+            (
+            
+              A
+              
+                t
+                ,
+                n
+              
+            
+            ∣
+            
+              S
+              
+                t
+                ,
+                n
+              
+            
+            )
+            
+              ∑
+              
+                τ
+                ∈
+                t
+                :
+                T
+              
+            
+            (
+            
+              γ
+              
+                τ
+              
+            
+            
+              R
+              
+                τ
+                ,
+                n
+              
+            
+            )
+          
+          ]
+        
+      
+    
+    {\displaystyle g_{i}\leftarrow {\frac {1}{N}}\sum _{n=1}^{N}\left[\sum _{t\in 0:T}\nabla _{\theta _{t}}\ln \pi _{\theta }(A_{t,n}\mid S_{t,n})\sum _{\tau \in t:T}(\gamma ^{\tau }R_{\tau ,n})\right]}
+  
+
+Update the policy by gradient ascent: 
+  
+    
+      
+        
+          θ
+          
+            i
+            +
+            1
+          
+        
+        ←
+        
+          θ
+          
+            i
+          
+        
+        +
+        
+          α
+          
+            i
+          
+        
+        
+          g
+          
+            i
+          
+        
+      
+    
+    {\displaystyle \theta _{i+1}\leftarrow \theta _{i}+\alpha _{i}g_{i}}
+  
+
+Here, 
+  
+    
+      
+        
+          α
+          
+            i
+          
+        
+      
+    
+    {\displaystyle \alpha _{i}}
+  
+ is the learning rate at update step 
+  
+    
+      
+        i
+      
+    
+    {\displaystyle i}
+  
+.
+
+
+== Variance reduction ==
+REINFORCE is an on-policy algorithm, meaning that the trajectories used for the update must be sampled from the current policy 
+  
+    
+      
+        
+          π
+          
+            θ
+          
+        
+      
+    
+    {\displaystyle \pi _{\theta }}
+  
+. This can lead to high variance in the updates, as the returns 
+  
+    
+      
+        R
+        (
+        τ
+        )
+      
+    
+    {\displaystyle R(\tau )}
+  
+ can vary significantly between trajectories. Many variants of REINFORCE have been introduced, under the title of variance reduction.
+
+
+=== REINFORCE with baseline ===
+A common way for reducing variance is the REINFORCE with baseline algorithm, based on the following identity:
+  
+    
+      
+        
+          ∇
+          
+            θ
+          
+        
+        J
+        (
+        θ
+        )
+        =
+        
+          
+            E
+          
+          
+            
+              π
+              
+                θ
+              
+            
+          
+        
+        
+          [
+          
+            
+              ∑
+              
+                t
+                ∈
+                0
+                :
+                T
+              
+            
+            
+              ∇
+              
+                θ
+              
+            
+            ln
+            ⁡
+            
+              π
+              
+                θ
+              
+            
+            (
+            
+              A
+              
+                t
+              
+            
+            
+              |
+            
+            
+              S
+              
+                t
+              
+            
+            )
+            
+              (
+              
+                
+                  ∑
+                  
+                    τ
+                    ∈
+                    t
+                    :
+                    T
+                  
+                
+                (
+                
+                  γ
+                  
+                    τ
+                  
+                
+                
+                  R
+                  
+                    τ
+                  
+                
+                )
+                −
+                b
+                (
+                
+                  S
+                  
+                    t
+                  
+                
+                )
+              
+              )
+            
+            
+              
+                |
+              
+            
+            
+              S
+              
+                0
+              
+            
+            =
+            
+              s
+              
+                0
+              
+            
+          
+          ]
+        
+      
+    
+    {\displaystyle \nabla _{\theta }J(\theta )=\mathbb {E} _{\pi _{\theta }}\left[\sum _{t\in 0:T}\nabla _{\theta }\ln \pi _{\theta }(A_{t}|S_{t})\left(\sum _{\tau \in t:T}(\gamma ^{\tau }R_{\tau })-b(S_{t})\right){\Big |}S_{0}=s_{0}\right]}
+  
+for any function 
+  
+    
+      
+        b
+        :
+        
+          States
+        
+        →
+        
+          R
+        
+      
+    
+    {\displaystyle b:{\text{States}}\to \mathbb {R} }
+  
+. This can be proven by applying the previous lemma.
+The algorithm uses the modified gradient estimator
+  
+    
+      
+        
+          g
+          
+            i
+          
+        
+        ←
+        
+          
+            1
+            N
+          
+        
+        
+          ∑
+          
+            n
+            =
+            1
+          
+          
+            N
+          
+        
+        
+          [
+          
+            
+              ∑
+              
+                t
+                ∈
+                0
+                :
+                T
+              
+            
+            
+              ∇
+              
+                
+                  θ
+                  
+                    t
+                  
+                
+              
+            
+            ln
+            ⁡
+            
+              π
+              
+                θ
+              
+            
+            (
+            
+              A
+              
+                t
+                ,
+                n
+              
+            
+            
+              |
+            
+            
+              S
+              
+                t
+                ,
+                n
+              
+            
+            )
+            
+              (
+              
+                
+                  ∑
+                  
+                    τ
+                    ∈
+                    t
+                    :
+                    T
+                  
+                
+                (
+                
+                  γ
+                  
+                    τ
+                  
+                
+                
+                  R
+                  
+                    τ
+                    ,
+                    n
+                  
+                
+                )
+                −
+                
+                  b
+                  
+                    i
+                  
+                
+                (
+                
+                  S
+                  
+                    t
+                    ,
+                    n
+                  
+                
+                )
+              
+              )
+            
+          
+          ]
+        
+      
+    
+    {\displaystyle g_{i}\leftarrow {\frac {1}{N}}\sum _{n=1}^{N}\left[\sum _{t\in 0:T}\nabla _{\theta _{t}}\ln \pi _{\theta }(A_{t,n}|S_{t,n})\left(\sum _{\tau \in t:T}(\gamma ^{\tau }R_{\tau ,n})-b_{i}(S_{t,n})\right)\right]}
+  
+ and the original REINFORCE algorithm is the special case where 
+  
+    
+      
+        
+          b
+          
+            i
+          
+        
+        ≡
+        0
+      
+    
+    {\displaystyle b_{i}\equiv 0}
+  
+.
+
+
+=== Actor-critic methods ===
+
+If 
+  
+    
+      
+        
+          b
+          
+            i
+          
+        
+      
+    
+    {\textstyle b_{i}}
+  
+ is chosen well, such that 
+  
+    
+      
+        
+          b
+          
+            i
+          
+        
+        (
+        
+          S
+          
+            t
+          
+        
+        )
+        ≈
+        
+          ∑
+          
+            τ
+            ∈
+            t
+            :
+            T
+          
+        
+        (
+        
+          γ
+          
+            τ
+          
+        
+        
+          R
+          
+            τ
+          
+        
+        )
+        =
+        
+          γ
+          
+            t
+          
+        
+        
+          V
+          
+            
+              π
+              
+                
+                  θ
+                  
+                    i
+                  
+                
+              
+            
+          
+        
+        (
+        
+          S
+          
+            t
+          
+        
+        )
+      
+    
+    {\textstyle b_{i}(S_{t})\approx \sum _{\tau \in t:T}(\gamma ^{\tau }R_{\tau })=\gamma ^{t}V^{\pi _{\theta _{i}}}(S_{t})}
+  
+, this could significantly decrease variance in the gradient estimation. That is, the baseline should be as close to the value function 
+  
+    
+      
+        
+          V
+          
+            
+              π
+              
+                
+                  θ
+                  
+                    i
+                  
+                
+              
+            
+          
+        
+        (
+        
+          S
+          
+            t
+          
+        
+        )
+      
+    
+    {\displaystyle V^{\pi _{\theta _{i}}}(S_{t})}
+  
+ as possible, approaching the ideal of:
+  
+    
+      
+        
+          ∇
+          
+            θ
+          
+        
+        J
+        (
+        θ
+        )
+        =
+        
+          
+            E
+          
+          
+            
+              π
+              
+                θ
+              
+            
+          
+        
+        
+          [
+          
+            
+              ∑
+              
+                t
+                ∈
+                0
+                :
+                T
+              
+            
+            
+              ∇
+              
+                θ
+              
+            
+            ln
+            ⁡
+            
+              π
+              
+                θ
+              
+            
+            (
+            
+              A
+              
+                t
+              
+            
+            
+              |
+            
+            
+              S
+              
+                t
+              
+            
+            )
+            
+              (
+              
+                
+                  ∑
+                  
+                    τ
+                    ∈
+                    t
+                    :
+                    T
+                  
+                
+                (
+                
+                  γ
+                  
+                    τ
+                  
+                
+                
+                  R
+                  
+                    τ
+                  
+                
+                )
+                −
+                
+                  γ
+                  
+                    t
+                  
+                
+                
+                  V
+                  
+                    
+                      π
+                      
+                        θ
+                      
+                    
+                  
+                
+                (
+                
+                  S
+                  
+                    t
+                  
+                
+                )
+              
+              )
+            
+            
+              
+                |
+              
+            
+            
+              S
+              
+                0
+              
+            
+            =
+            
+              s
+              
+                0
+              
+            
+          
+          ]
+        
+      
+    
+    {\displaystyle \nabla _{\theta }J(\theta )=\mathbb {E} _{\pi _{\theta }}\left[\sum _{t\in 0:T}\nabla _{\theta }\ln \pi _{\theta }(A_{t}|S_{t})\left(\sum _{\tau \in t:T}(\gamma ^{\tau }R_{\tau })-\gamma ^{t}V^{\pi _{\theta }}(S_{t})\right){\Big |}S_{0}=s_{0}\right]}
+  
+Note that, as the policy 
+  
+    
+      
+        
+          π
+          
+            
+              θ
+              
+                t
+              
+            
+          
+        
+      
+    
+    {\displaystyle \pi _{\theta _{t}}}
+  
+ updates, the value function 
+  
+    
+      
+        
+          V
+          
+            
+              π
+              
+                
+                  θ
+                  
+                    i
+                  
+                
+              
+            
+          
+        
+        (
+        
+          S
+          
+            t
+          
+        
+        )
+      
+    
+    {\displaystyle V^{\pi _{\theta _{i}}}(S_{t})}
+  
+ updates as well, so the baseline should also be updated. One common approach is to train a separate function that estimates the value function, and use that as the baseline. This is one of the actor-critic methods, where the policy function is the actor and the value function is the critic.
+The Q-function 
+  
+    
+      
+        
+          Q
+          
+            π
+          
+        
+      
+    
+    {\displaystyle Q^{\pi }}
+  
+ can also be used as the critic, since
+  
+    
+      
+        
+          ∇
+          
+            θ
+          
+        
+        J
+        (
+        θ
+        )
+        =
+        
+          E
+          
+            
+              π
+              
+                θ
+              
+            
+          
+        
+        
+          [
+          
+            
+              ∑
+              
+                0
+                ≤
+                t
+                ≤
+                T
+              
+            
+            
+              γ
+              
+                t
+              
+            
+            
+              ∇
+              
+                θ
+              
+            
+            ln
+            ⁡
+            
+              π
+              
+                θ
+              
+            
+            (
+            
+              A
+              
+                t
+              
+            
+            
+              |
+            
+            
+              S
+              
+                t
+              
+            
+            )
+            ⋅
+            
+              Q
+              
+                
+                  π
+                  
+                    θ
+                  
+                
+              
+            
+            (
+            
+              S
+              
+                t
+              
+            
+            ,
+            
+              A
+              
+                t
+              
+            
+            )
+            
+              
+                |
+              
+            
+            
+              S
+              
+                0
+              
+            
+            =
+            
+              s
+              
+                0
+              
+            
+          
+          ]
+        
+      
+    
+    {\displaystyle \nabla _{\theta }J(\theta )=E_{\pi _{\theta }}\left[\sum _{0\leq t\leq T}\gamma ^{t}\nabla _{\theta }\ln \pi _{\theta }(A_{t}|S_{t})\cdot Q^{\pi _{\theta }}(S_{t},A_{t}){\Big |}S_{0}=s_{0}\right]}
+  
+ by a similar argument using the tower law.
+Subtracting the value function as a baseline, we find that the advantage function 
+  
+    
+      
+        
+          A
+          
+            π
+          
+        
+        (
+        S
+        ,
+        A
+        )
+        =
+        
+          Q
+          
+            π
+          
+        
+        (
+        S
+        ,
+        A
+        )
+        −
+        
+          V
+          
+            π
+          
+        
+        (
+        S
+        )
+      
+    
+    {\displaystyle A^{\pi }(S,A)=Q^{\pi }(S,A)-V^{\pi }(S)}
+  
+ can be used as the critic as well:
+  
+    
+      
+        
+          ∇
+          
+            θ
+          
+        
+        J
+        (
+        θ
+        )
+        =
+        
+          E
+          
+            
+              π
+              
+                θ
+              
+            
+          
+        
+        
+          [
+          
+            
+              ∑
+              
+                0
+                ≤
+                t
+                ≤
+                T
+              
+            
+            
+              γ
+              
+                t
+              
+            
+            
+              ∇
+              
+                θ
+              
+            
+            ln
+            ⁡
+            
+              π
+              
+                θ
+              
+            
+            (
+            
+              A
+              
+                t
+              
+            
+            
+              |
+            
+            
+              S
+              
+                t
+              
+            
+            )
+            ⋅
+            
+              A
+              
+                
+                  π
+                  
+                    θ
+                  
+                
+              
+            
+            (
+            
+              S
+              
+                t
+              
+            
+            ,
+            
+              A
+              
+                t
+              
+            
+            )
+            
+              
+                |
+              
+            
+            
+              S
+              
+                0
+              
+            
+            =
+            
+              s
+              
+                0
+              
+            
+          
+          ]
+        
+      
+    
+    {\displaystyle \nabla _{\theta }J(\theta )=E_{\pi _{\theta }}\left[\sum _{0\leq t\leq T}\gamma ^{t}\nabla _{\theta }\ln \pi _{\theta }(A_{t}|S_{t})\cdot A^{\pi _{\theta }}(S_{t},A_{t}){\Big |}S_{0}=s_{0}\right]}
+  
+In summary, there are many unbiased estimators for 
+  
+    
+      
+        
+          ∇
+          
+            θ
+          
+        
+        
+          J
+          
+            θ
+          
+        
+      
+    
+    {\textstyle \nabla _{\theta }J_{\theta }}
+  
+, all in the form of: 
+  
+    
+      
+        
+          ∇
+          
+            θ
+          
+        
+        J
+        (
+        θ
+        )
+        =
+        
+          E
+          
+            
+              π
+              
+                θ
+              
+            
+          
+        
+        
+          [
+          
+            
+              ∑
+              
+                0
+                ≤
+                t
+                ≤
+                T
+              
+            
+            
+              ∇
+              
+                θ
+              
+            
+            ln
+            ⁡
+            
+              π
+              
+                θ
+              
+            
+            (
+            
+              A
+              
+                t
+              
+            
+            
+              |
+            
+            
+              S
+              
+                t
+              
+            
+            )
+            ⋅
+            
+              Ψ
+              
+                t
+              
+            
+            
+              
+                |
+              
+            
+            
+              S
+              
+                0
+              
+            
+            =
+            
+              s
+              
+                0
+              
+            
+          
+          ]
+        
+      
+    
+    {\displaystyle \nabla _{\theta }J(\theta )=E_{\pi _{\theta }}\left[\sum _{0\leq t\leq T}\nabla _{\theta }\ln \pi _{\theta }(A_{t}|S_{t})\cdot \Psi _{t}{\Big |}S_{0}=s_{0}\right]}
+  
+ where 
+  
+    
+      
+        
+          Ψ
+          
+            t
+          
+        
+      
+    
+    {\textstyle \Psi _{t}}
+  
+ is any linear sum of the following terms:
+
+  
+    
+      
+        
+          ∑
+          
+            0
+            ≤
+            τ
+            ≤
+            T
+          
+        
+        (
+        
+          γ
+          
+            τ
+          
+        
+        
+          R
+          
+            τ
+          
+        
+        )
+      
+    
+    {\textstyle \sum _{0\leq \tau \leq T}(\gamma ^{\tau }R_{\tau })}
+  
+: never used.
+
+  
+    
+      
+        
+          γ
+          
+            t
+          
+        
+        
+          ∑
+          
+            t
+            ≤
+            τ
+            ≤
+            T
+          
+        
+        (
+        
+          γ
+          
+            τ
+            −
+            t
+          
+        
+        
+          R
+          
+            τ
+          
+        
+        )
+      
+    
+    {\textstyle \gamma ^{t}\sum _{t\leq \tau \leq T}(\gamma ^{\tau -t}R_{\tau })}
+  
+: used by the REINFORCE algorithm.
+
+  
+    
+      
+        
+          γ
+          
+            t
+          
+        
+        
+          ∑
+          
+            t
+            ≤
+            τ
+            ≤
+            T
+          
+        
+        (
+        
+          γ
+          
+            τ
+            −
+            t
+          
+        
+        
+          R
+          
+            τ
+          
+        
+        )
+        −
+        b
+        (
+        
+          S
+          
+            t
+          
+        
+        )
+      
+    
+    {\textstyle \gamma ^{t}\sum _{t\leq \tau \leq T}(\gamma ^{\tau -t}R_{\tau })-b(S_{t})}
+  
+: used by the REINFORCE with baseline algorithm.
+
+  
+    
+      
+        
+          γ
+          
+            t
+          
+        
+        
+          (
+          
+            
+              R
+              
+                t
+              
+            
+            +
+            γ
+            
+              V
+              
+                
+                  π
+                  
+                    θ
+                  
+                
+              
+            
+            (
+            
+              S
+              
+                t
+                +
+                1
+              
+            
+            )
+            −
+            
+              V
+              
+                
+                  π
+                  
+                    θ
+                  
+                
+              
+            
+            (
+            
+              S
+              
+                t
+              
+            
+            )
+          
+          )
+        
+      
+    
+    {\textstyle \gamma ^{t}\left(R_{t}+\gamma V^{\pi _{\theta }}(S_{t+1})-V^{\pi _{\theta }}(S_{t})\right)}
+  
+: 1-step TD learning.
+
+  
+    
+      
+        
+          γ
+          
+            t
+          
+        
+        
+          Q
+          
+            
+              π
+              
+                θ
+              
+            
+          
+        
+        (
+        
+          S
+          
+            t
+          
+        
+        ,
+        
+          A
+          
+            t
+          
+        
+        )
+      
+    
+    {\textstyle \gamma ^{t}Q^{\pi _{\theta }}(S_{t},A_{t})}
+  
+.
+
+  
+    
+      
+        
+          γ
+          
+            t
+          
+        
+        
+          A
+          
+            
+              π
+              
+                θ
+              
+            
+          
+        
+        (
+        
+          S
+          
+            t
+          
+        
+        ,
+        
+          A
+          
+            t
+          
+        
+        )
+      
+    
+    {\textstyle \gamma ^{t}A^{\pi _{\theta }}(S_{t},A_{t})}
+  
+.
+Some more possible 
+  
+    
+      
+        
+          Ψ
+          
+            t
+          
+        
+      
+    
+    {\textstyle \Psi _{t}}
+  
+ are as follows, with very similar proofs.
+
+  
+    
+      
+        
+          γ
+          
+            t
+          
+        
+        
+          (
+          
+            
+              R
+              
+                t
+              
+            
+            +
+            γ
+            
+              R
+              
+                t
+                +
+                1
+              
+            
+            +
+            
+              γ
+              
+                2
+              
+            
+            
+              V
+              
+                
+                  π
+                  
+                    θ
+                  
+                
+              
+            
+            (
+            
+              S
+              
+                t
+                +
+                2
+              
+            
+            )
+            −
+            
+              V
+              
+                
+                  π
+                  
+                    θ
+                  
+                
+              
+            
+            (
+            
+              S
+              
+                t
+              
+            
+            )
+          
+          )
+        
+      
+    
+    {\textstyle \gamma ^{t}\left(R_{t}+\gamma R_{t+1}+\gamma ^{2}V^{\pi _{\theta }}(S_{t+2})-V^{\pi _{\theta }}(S_{t})\right)}
+  
+: 2-step TD learning.
+
+  
+    
+      
+        
+          γ
+          
+            t
+          
+        
+        
+          (
+          
+            
+              ∑
+              
+                k
+                =
+                0
+              
+              
+                n
+                −
+                1
+              
+            
+            
+              γ
+              
+                k
+              
+            
+            
+              R
+              
+                t
+                +
+                k
+              
+            
+            +
+            
+              γ
+              
+                n
+              
+            
+            
+              V
+              
+                
+                  π
+                  
+                    θ
+                  
+                
+              
+            
+            (
+            
+              S
+              
+                t
+                +
+                n
+              
+            
+            )
+            −
+            
+              V
+              
+                
+                  π
+                  
+                    θ
+                  
+                
+              
+            
+            (
+            
+              S
+              
+                t
+              
+            
+            )
+          
+          )
+        
+      
+    
+    {\textstyle \gamma ^{t}\left(\sum _{k=0}^{n-1}\gamma ^{k}R_{t+k}+\gamma ^{n}V^{\pi _{\theta }}(S_{t+n})-V^{\pi _{\theta }}(S_{t})\right)}
+  
+: n-step TD learning.
+
+  
+    
+      
+        
+          γ
+          
+            t
+          
+        
+        
+          ∑
+          
+            n
+            =
+            1
+          
+          
+            ∞
+          
+        
+        
+          
+            
+              λ
+              
+                n
+                −
+                1
+              
+            
+            
+              1
+              −
+              λ
+            
+          
+        
+        ⋅
+        
+          (
+          
+            
+              ∑
+              
+                k
+                =
+                0
+              
+              
+                n
+                −
+                1
+              
+            
+            
+              γ
+              
+                k
+              
+            
+            
+              R
+              
+                t
+                +
+                k
+              
+            
+            +
+            
+              γ
+              
+                n
+              
+            
+            
+              V
+              
+                
+                  π
+                  
+                    θ
+                  
+                
+              
+            
+            (
+            
+              S
+              
+                t
+                +
+                n
+              
+            
+            )
+            −
+            
+              V
+              
+                
+                  π
+                  
+                    θ
+                  
+                
+              
+            
+            (
+            
+              S
+              
+                t
+              
+            
+            )
+          
+          )
+        
+      
+    
+    {\textstyle \gamma ^{t}\sum _{n=1}^{\infty }{\frac {\lambda ^{n-1}}{1-\lambda }}\cdot \left(\sum _{k=0}^{n-1}\gamma ^{k}R_{t+k}+\gamma ^{n}V^{\pi _{\theta }}(S_{t+n})-V^{\pi _{\theta }}(S_{t})\right)}
+  
+: TD(λ) learning, also known as GAE (generalized advantage estimate). This is obtained by an exponentially decaying sum of the n-step TD learning ones.
+
+
+== Natural policy gradient ==
+
+The natural policy gradient method is a variant of the policy gradient method, proposed by Sham Kakade in 2001. Unlike standard policy gradient methods, which depend on the choice of parameters 
+  
+    
+      
+        θ
+      
+    
+    {\displaystyle \theta }
+  
+ (making updates coordinate-dependent), the natural policy gradient aims to provide a coordinate-free update, which is geometrically "natural".
+
+
+=== Motivation ===
+Standard policy gradient updates 
+  
+    
+      
+        
+          θ
+          
+            i
+            +
+            1
+          
+        
+        =
+        
+          θ
+          
+            i
+          
+        
+        +
+        α
+        
+          ∇
+          
+            θ
+          
+        
+        J
+        (
+        
+          θ
+          
+            i
+          
+        
+        )
+      
+    
+    {\displaystyle \theta _{i+1}=\theta _{i}+\alpha \nabla _{\theta }J(\theta _{i})}
+  
+ solve a constrained optimization problem:
+  
+    
+      
+        
+          
+            {
+            
+              
+                
+                  
+                    max
+                    
+                      
+                        θ
+                        
+                          i
+                          +
+                          1
+                        
+                      
+                    
+                  
+                  J
+                  (
+                  
+                    θ
+                    
+                      i
+                    
+                  
+                  )
+                  +
+                  (
+                  
+                    θ
+                    
+                      i
+                      +
+                      1
+                    
+                  
+                  −
+                  
+                    θ
+                    
+                      i
+                    
+                  
+                  
+                    )
+                    
+                      T
+                    
+                  
+                  
+                    ∇
+                    
+                      θ
+                    
+                  
+                  J
+                  (
+                  
+                    θ
+                    
+                      i
+                    
+                  
+                  )
+                
+              
+              
+                
+                  ‖
+                  
+                    θ
+                    
+                      i
+                      +
+                      1
+                    
+                  
+                  −
+                  
+                    θ
+                    
+                      i
+                    
+                  
+                  ‖
+                  ≤
+                  α
+                  ⋅
+                  ‖
+                  
+                    ∇
+                    
+                      θ
+                    
+                  
+                  J
+                  (
+                  
+                    θ
+                    
+                      i
+                    
+                  
+                  )
+                  ‖
+                
+              
+            
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{cases}\max _{\theta _{i+1}}J(\theta _{i})+(\theta _{i+1}-\theta _{i})^{T}\nabla _{\theta }J(\theta _{i})\\\|\theta _{i+1}-\theta _{i}\|\leq \alpha \cdot \|\nabla _{\theta }J(\theta _{i})\|\end{cases}}}
+  
+
+While the objective (linearized improvement) is geometrically meaningful, the Euclidean constraint 
+  
+    
+      
+        ‖
+        
+          θ
+          
+            i
+            +
+            1
+          
+        
+        −
+        
+          θ
+          
+            i
+          
+        
+        ‖
+      
+    
+    {\displaystyle \|\theta _{i+1}-\theta _{i}\|}
+  
+ introduces coordinate dependence. To address this, the natural policy gradient replaces the Euclidean constraint with a Kullback–Leibler divergence (KL) constraint:
+  
+    
+      
+        
+          
+            {
+            
+              
+                
+                  
+                    max
+                    
+                      
+                        θ
+                        
+                          i
+                          +
+                          1
+                        
+                      
+                    
+                  
+                  J
+                  (
+                  
+                    θ
+                    
+                      i
+                    
+                  
+                  )
+                  +
+                  (
+                  
+                    θ
+                    
+                      i
+                      +
+                      1
+                    
+                  
+                  −
+                  
+                    θ
+                    
+                      i
+                    
+                  
+                  
+                    )
+                    
+                      T
+                    
+                  
+                  
+                    ∇
+                    
+                      θ
+                    
+                  
+                  J
+                  (
+                  
+                    θ
+                    
+                      i
+                    
+                  
+                  )
+                
+              
+              
+                
+                  
+                    
+                      
+                        
+                          D
+                          ¯
+                        
+                      
+                    
+                    
+                      K
+                      L
+                    
+                  
+                  (
+                  
+                    π
+                    
+                      
+                        θ
+                        
+                          i
+                          +
+                          1
+                        
+                      
+                    
+                  
+                  ‖
+                  
+                    π
+                    
+                      
+                        θ
+                        
+                          i
+                        
+                      
+                    
+                  
+                  )
+                  ≤
+                  ϵ
+                
+              
+            
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{cases}\max _{\theta _{i+1}}J(\theta _{i})+(\theta _{i+1}-\theta _{i})^{T}\nabla _{\theta }J(\theta _{i})\\{\bar {D}}_{KL}(\pi _{\theta _{i+1}}\|\pi _{\theta _{i}})\leq \epsilon \end{cases}}}
+  
+where the KL divergence between two policies is averaged over the state distribution under policy 
+  
+    
+      
+        
+          π
+          
+            
+              θ
+              
+                i
+              
+            
+          
+        
+      
+    
+    {\displaystyle \pi _{\theta _{i}}}
+  
+. That is,
+  
+    
+      
+        
+          
+            
+              
+                D
+                ¯
+              
+            
+          
+          
+            K
+            L
+          
+        
+        (
+        
+          π
+          
+            
+              θ
+              
+                i
+                +
+                1
+              
+            
+          
+        
+        ‖
+        
+          π
+          
+            
+              θ
+              
+                i
+              
+            
+          
+        
+        )
+        :=
+        
+          
+            E
+          
+          
+            s
+            ∼
+            
+              π
+              
+                
+                  θ
+                  
+                    i
+                  
+                
+              
+            
+          
+        
+        [
+        
+          D
+          
+            K
+            L
+          
+        
+        (
+        
+          π
+          
+            
+              θ
+              
+                i
+                +
+                1
+              
+            
+          
+        
+        (
+        ⋅
+        
+          |
+        
+        s
+        )
+        ‖
+        
+          π
+          
+            
+              θ
+              
+                i
+              
+            
+          
+        
+        (
+        ⋅
+        
+          |
+        
+        s
+        )
+        )
+        ]
+      
+    
+    {\displaystyle {\bar {D}}_{KL}(\pi _{\theta _{i+1}}\|\pi _{\theta _{i}}):=\mathbb {E} _{s\sim \pi _{\theta _{i}}}[D_{KL}(\pi _{\theta _{i+1}}(\cdot |s)\|\pi _{\theta _{i}}(\cdot |s))]}
+  
+ This ensures updates are invariant to invertible affine parameter transformations.
+
+
+=== Fisher information approximation ===
+For small 
+  
+    
+      
+        ϵ
+      
+    
+    {\displaystyle \epsilon }
+  
+, the KL divergence is approximated by the Fisher information metric:
+  
+    
+      
+        
+          
+            
+              
+                D
+                ¯
+              
+            
+          
+          
+            K
+            L
+          
+        
+        (
+        
+          π
+          
+            
+              θ
+              
+                i
+                +
+                1
+              
+            
+          
+        
+        ‖
+        
+          π
+          
+            
+              θ
+              
+                i
+              
+            
+          
+        
+        )
+        ≈
+        
+          
+            1
+            2
+          
+        
+        (
+        
+          θ
+          
+            i
+            +
+            1
+          
+        
+        −
+        
+          θ
+          
+            i
+          
+        
+        
+          )
+          
+            T
+          
+        
+        F
+        (
+        
+          θ
+          
+            i
+          
+        
+        )
+        (
+        
+          θ
+          
+            i
+            +
+            1
+          
+        
+        −
+        
+          θ
+          
+            i
+          
+        
+        )
+      
+    
+    {\displaystyle {\bar {D}}_{KL}(\pi _{\theta _{i+1}}\|\pi _{\theta _{i}})\approx {\frac {1}{2}}(\theta _{i+1}-\theta _{i})^{T}F(\theta _{i})(\theta _{i+1}-\theta _{i})}
+  
+where 
+  
+    
+      
+        F
+        (
+        θ
+        )
+      
+    
+    {\displaystyle F(\theta )}
+  
+ is the Fisher information matrix of the policy, defined as:
+  
+    
+      
+        F
+        (
+        θ
+        )
+        =
+        
+          
+            E
+          
+          
+            s
+            ,
+            a
+            ∼
+            
+              π
+              
+                θ
+              
+            
+          
+        
+        
+          [
+          
+            
+              ∇
+              
+                θ
+              
+            
+            ln
+            ⁡
+            
+              π
+              
+                θ
+              
+            
+            (
+            a
+            
+              |
+            
+            s
+            )
+            
+              
+                (
+                
+                  
+                    ∇
+                    
+                      θ
+                    
+                  
+                  ln
+                  ⁡
+                  
+                    π
+                    
+                      θ
+                    
+                  
+                  (
+                  a
+                  
+                    |
+                  
+                  s
+                  )
+                
+                )
+              
+              
+                T
+              
+            
+          
+          ]
+        
+      
+    
+    {\displaystyle F(\theta )=\mathbb {E} _{s,a\sim \pi _{\theta }}\left[\nabla _{\theta }\ln \pi _{\theta }(a|s)\left(\nabla _{\theta }\ln \pi _{\theta }(a|s)\right)^{T}\right]}
+  
+ This transforms the problem into a problem in quadratic programming, yielding the natural policy gradient update:
+  
+    
+      
+        
+          θ
+          
+            i
+            +
+            1
+          
+        
+        =
+        
+          θ
+          
+            i
+          
+        
+        +
+        α
+        F
+        (
+        
+          θ
+          
+            i
+          
+        
+        
+          )
+          
+            −
+            1
+          
+        
+        
+          ∇
+          
+            θ
+          
+        
+        J
+        (
+        
+          θ
+          
+            i
+          
+        
+        )
+      
+    
+    {\displaystyle \theta _{i+1}=\theta _{i}+\alpha F(\theta _{i})^{-1}\nabla _{\theta }J(\theta _{i})}
+  
+The step size 
+  
+    
+      
+        α
+      
+    
+    {\displaystyle \alpha }
+  
+ is typically adjusted to maintain the KL constraint, with 
+  
+    
+      
+        α
+        ≈
+        
+          
+            
+              
+                2
+                ϵ
+              
+              
+                (
+                
+                  ∇
+                  
+                    θ
+                  
+                
+                J
+                (
+                
+                  θ
+                  
+                    i
+                  
+                
+                )
+                
+                  )
+                  
+                    T
+                  
+                
+                F
+                (
+                
+                  θ
+                  
+                    i
+                  
+                
+                
+                  )
+                  
+                    −
+                    1
+                  
+                
+                
+                  ∇
+                  
+                    θ
+                  
+                
+                J
+                (
+                
+                  θ
+                  
+                    i
+                  
+                
+                )
+              
+            
+          
+        
+      
+    
+    {\textstyle \alpha \approx {\sqrt {\frac {2\epsilon }{(\nabla _{\theta }J(\theta _{i}))^{T}F(\theta _{i})^{-1}\nabla _{\theta }J(\theta _{i})}}}}
+  
+.
+Inverting 
+  
+    
+      
+        F
+        (
+        θ
+        )
+      
+    
+    {\displaystyle F(\theta )}
+  
+ is computationally intensive, especially for high-dimensional parameters (e.g., neural networks). Practical implementations often use approximations.
+
+
+== Trust Region Policy Optimization (TRPO) ==
+
+Trust Region Policy Optimization (TRPO) is a policy gradient method that extends the natural policy gradient approach by enforcing a trust region constraint on policy updates. Developed by Schulman et al. in 2015, TRPO improves upon the natural policy gradient method.
+The natural gradient descent is theoretically optimal, if the objective is truly a quadratic function, but this is only an approximation. TRPO's line search and KL constraint attempts to restrict the solution to within a "trust region" in which this approximation does not break down. This makes TRPO more robust in practice.
+
+
+=== Formulation ===
+Like natural policy gradient, TRPO iteratively updates the policy parameters 
+  
+    
+      
+        θ
+      
+    
+    {\displaystyle \theta }
+  
+ by solving a constrained optimization problem specified coordinate-free:
+  
+    
+      
+        
+          
+            {
+            
+              
+                
+                  
+                    max
+                    
+                      θ
+                    
+                  
+                  L
+                  (
+                  θ
+                  ,
+                  
+                    θ
+                    
+                      i
+                    
+                  
+                  )
+                
+              
+              
+                
+                  
+                    
+                      
+                        
+                          D
+                          ¯
+                        
+                      
+                    
+                    
+                      K
+                      L
+                    
+                  
+                  (
+                  
+                    π
+                    
+                      θ
+                    
+                  
+                  ‖
+                  
+                    π
+                    
+                      
+                        θ
+                        
+                          i
+                        
+                      
+                    
+                  
+                  )
+                  ≤
+                  ϵ
+                
+              
+            
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{cases}\max _{\theta }L(\theta ,\theta _{i})\\{\bar {D}}_{KL}(\pi _{\theta }\|\pi _{\theta _{i}})\leq \epsilon \end{cases}}}
+  
+where
+
+  
+    
+      
+        L
+        (
+        θ
+        ,
+        
+          θ
+          
+            i
+          
+        
+        )
+        =
+        
+          
+            E
+          
+          
+            s
+            ,
+            a
+            ∼
+            
+              π
+              
+                
+                  θ
+                  
+                    i
+                  
+                
+              
+            
+          
+        
+        
+          [
+          
+            
+              
+                
+                  
+                    π
+                    
+                      θ
+                    
+                  
+                  (
+                  a
+                  
+                    |
+                  
+                  s
+                  )
+                
+                
+                  
+                    π
+                    
+                      
+                        θ
+                        
+                          i
+                        
+                      
+                    
+                  
+                  (
+                  a
+                  
+                    |
+                  
+                  s
+                  )
+                
+              
+            
+            
+              A
+              
+                
+                  π
+                  
+                    
+                      θ
+                      
+                        i
+                      
+                    
+                  
+                
+              
+            
+            (
+            s
+            ,
+            a
+            )
+          
+          ]
+        
+      
+    
+    {\displaystyle L(\theta ,\theta _{i})=\mathbb {E} _{s,a\sim \pi _{\theta _{i}}}\left[{\frac {\pi _{\theta }(a|s)}{\pi _{\theta _{i}}(a|s)}}A^{\pi _{\theta _{i}}}(s,a)\right]}
+  
+ is the surrogate advantage, measuring the performance of 
+  
+    
+      
+        
+          π
+          
+            θ
+          
+        
+      
+    
+    {\displaystyle \pi _{\theta }}
+  
+ relative to the old policy 
+  
+    
+      
+        
+          π
+          
+            
+              θ
+              
+                i
+              
+            
+          
+        
+      
+    
+    {\displaystyle \pi _{\theta _{i}}}
+  
+.
+
+  
+    
+      
+        ϵ
+      
+    
+    {\displaystyle \epsilon }
+  
+ is the trust region radius.
+Note that in general, other surrogate advantages are possible:
+  
+    
+      
+        L
+        (
+        θ
+        ,
+        
+          θ
+          
+            i
+          
+        
+        )
+        =
+        
+          
+            E
+          
+          
+            s
+            ,
+            a
+            ∼
+            
+              π
+              
+                
+                  θ
+                  
+                    i
+                  
+                
+              
+            
+          
+        
+        
+          [
+          
+            
+              
+                
+                  
+                    π
+                    
+                      θ
+                    
+                  
+                  (
+                  a
+                  
+                    |
+                  
+                  s
+                  )
+                
+                
+                  
+                    π
+                    
+                      
+                        θ
+                        
+                          i
+                        
+                      
+                    
+                  
+                  (
+                  a
+                  
+                    |
+                  
+                  s
+                  )
+                
+              
+            
+            
+              Ψ
+              
+                
+                  π
+                  
+                    
+                      θ
+                      
+                        i
+                      
+                    
+                  
+                
+              
+            
+            (
+            s
+            ,
+            a
+            )
+          
+          ]
+        
+      
+    
+    {\displaystyle L(\theta ,\theta _{i})=\mathbb {E} _{s,a\sim \pi _{\theta _{i}}}\left[{\frac {\pi _{\theta }(a|s)}{\pi _{\theta _{i}}(a|s)}}\Psi ^{\pi _{\theta _{i}}}(s,a)\right]}
+  
+where 
+  
+    
+      
+        Ψ
+      
+    
+    {\displaystyle \Psi }
+  
+ is any linear sum of the previously mentioned type. Indeed, OpenAI recommended using the Generalized Advantage Estimate, instead of the plain advantage 
+  
+    
+      
+        
+          A
+          
+            
+              π
+              
+                θ
+              
+            
+          
+        
+      
+    
+    {\displaystyle A^{\pi _{\theta }}}
+  
+.
+The surrogate advantage 
+  
+    
+      
+        L
+        (
+        θ
+        ,
+        
+          θ
+          
+            t
+          
+        
+        )
+      
+    
+    {\displaystyle L(\theta ,\theta _{t})}
+  
+ is designed to align with the policy gradient 
+  
+    
+      
+        
+          ∇
+          
+            θ
+          
+        
+        J
+        (
+        θ
+        )
+      
+    
+    {\displaystyle \nabla _{\theta }J(\theta )}
+  
+. Specifically, when 
+  
+    
+      
+        θ
+        =
+        
+          θ
+          
+            t
+          
+        
+      
+    
+    {\displaystyle \theta =\theta _{t}}
+  
+, 
+  
+    
+      
+        
+          ∇
+          
+            θ
+          
+        
+        L
+        (
+        θ
+        ,
+        
+          θ
+          
+            t
+          
+        
+        )
+      
+    
+    {\displaystyle \nabla _{\theta }L(\theta ,\theta _{t})}
+  
+ equals the policy gradient derived from the advantage function:
+
+  
+    
+      
+        
+          ∇
+          
+            θ
+          
+        
+        J
+        (
+        θ
+        )
+        =
+        
+          
+            E
+          
+          
+            (
+            s
+            ,
+            a
+            )
+            ∼
+            
+              π
+              
+                θ
+              
+            
+          
+        
+        
+          [
+          
+            
+              ∇
+              
+                θ
+              
+            
+            ln
+            ⁡
+            
+              π
+              
+                θ
+              
+            
+            (
+            a
+            
+              |
+            
+            s
+            )
+            ⋅
+            
+              A
+              
+                
+                  π
+                  
+                    θ
+                  
+                
+              
+            
+            (
+            s
+            ,
+            a
+            )
+          
+          ]
+        
+        =
+        
+          ∇
+          
+            θ
+          
+        
+        L
+        (
+        θ
+        ,
+        
+          θ
+          
+            t
+          
+        
+        )
+      
+    
+    {\displaystyle \nabla _{\theta }J(\theta )=\mathbb {E} _{(s,a)\sim \pi _{\theta }}\left[\nabla _{\theta }\ln \pi _{\theta }(a|s)\cdot A^{\pi _{\theta }}(s,a)\right]=\nabla _{\theta }L(\theta ,\theta _{t})}
+  
+However, when 
+  
+    
+      
+        θ
+        ≠
+        
+          θ
+          
+            i
+          
+        
+      
+    
+    {\displaystyle \theta \neq \theta _{i}}
+  
+, this is not necessarily true. Thus it is a "surrogate" of the real objective.
+As with natural policy gradient, for small policy updates, TRPO approximates the surrogate advantage and KL divergence using Taylor expansions around 
+  
+    
+      
+        
+          θ
+          
+            t
+          
+        
+      
+    
+    {\displaystyle \theta _{t}}
+  
+:
+  
+    
+      
+        
+          
+            
+              
+                L
+                (
+                θ
+                ,
+                
+                  θ
+                  
+                    i
+                  
+                
+                )
+              
+              
+                
+                ≈
+                
+                  g
+                  
+                    T
+                  
+                
+                (
+                θ
+                −
+                
+                  θ
+                  
+                    i
+                  
+                
+                )
+                ,
+              
+            
+            
+              
+                
+                  
+                    
+                      
+                        D
+                        ¯
+                      
+                    
+                  
+                  
+                    KL
+                  
+                
+                (
+                
+                  π
+                  
+                    θ
+                  
+                
+                ‖
+                
+                  π
+                  
+                    
+                      θ
+                      
+                        i
+                      
+                    
+                  
+                
+                )
+              
+              
+                
+                ≈
+                
+                  
+                    1
+                    2
+                  
+                
+                (
+                θ
+                −
+                
+                  θ
+                  
+                    i
+                  
+                
+                
+                  )
+                  
+                    T
+                  
+                
+                H
+                (
+                θ
+                −
+                
+                  θ
+                  
+                    i
+                  
+                
+                )
+                ,
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{aligned}L(\theta ,\theta _{i})&\approx g^{T}(\theta -\theta _{i}),\\{\bar {D}}_{\text{KL}}(\pi _{\theta }\|\pi _{\theta _{i}})&\approx {\frac {1}{2}}(\theta -\theta _{i})^{T}H(\theta -\theta _{i}),\end{aligned}}}
+  
+  
+where:  
+
+  
+    
+      
+        g
+        =
+        
+          ∇
+          
+            θ
+          
+        
+        L
+        (
+        θ
+        ,
+        
+          θ
+          
+            i
+          
+        
+        )
+        
+          
+            
+              |
+            
+          
+          
+            θ
+            =
+            
+              θ
+              
+                i
+              
+            
+          
+        
+      
+    
+    {\displaystyle g=\nabla _{\theta }L(\theta ,\theta _{i}){\big |}_{\theta =\theta _{i}}}
+  
+ is the policy gradient.
+
+  
+    
+      
+        F
+        =
+        
+          ∇
+          
+            θ
+          
+          
+            2
+          
+        
+        
+          
+            
+              
+                D
+                ¯
+              
+            
+          
+          
+            KL
+          
+        
+        (
+        
+          π
+          
+            θ
+          
+        
+        ‖
+        
+          π
+          
+            
+              θ
+              
+                i
+              
+            
+          
+        
+        )
+        
+          
+            
+              |
+            
+          
+          
+            θ
+            =
+            
+              θ
+              
+                i
+              
+            
+          
+        
+      
+    
+    {\displaystyle F=\nabla _{\theta }^{2}{\bar {D}}_{\text{KL}}(\pi _{\theta }\|\pi _{\theta _{i}}){\big |}_{\theta =\theta _{i}}}
+  
+ is the Fisher information matrix.
+This reduces the problem to a quadratic optimization, yielding the natural policy gradient update:  
+
+  
+    
+      
+        
+          θ
+          
+            i
+            +
+            1
+          
+        
+        =
+        
+          θ
+          
+            i
+          
+        
+        +
+        
+          
+            
+              
+                2
+                ϵ
+              
+              
+                
+                  g
+                  
+                    T
+                  
+                
+                
+                  F
+                  
+                    −
+                    1
+                  
+                
+                g
+              
+            
+          
+        
+        
+          F
+          
+            −
+            1
+          
+        
+        g
+        .
+      
+    
+    {\displaystyle \theta _{i+1}=\theta _{i}+{\sqrt {\frac {2\epsilon }{g^{T}F^{-1}g}}}F^{-1}g.}
+  
+So far, this is essentially the same as natural gradient method. However, TRPO improves upon it by two modifications:
+
+Use conjugate gradient method to solve for 
+  
+    
+      
+        x
+      
+    
+    {\displaystyle x}
+  
+ in 
+  
+    
+      
+        F
+        x
+        =
+        g
+      
+    
+    {\displaystyle Fx=g}
+  
+ iteratively without explicit matrix inversion.
+Use backtracking line search to ensure the trust-region constraint is satisfied. Specifically, it backtracks the step size to ensure the KL constraint and policy improvement. That is, it tests each of the following test-solutions
+  
+    
+      
+        
+          θ
+          
+            i
+            +
+            1
+          
+        
+        =
+        
+          θ
+          
+            i
+          
+        
+        +
+        
+          
+            
+              
+                2
+                ϵ
+              
+              
+                
+                  x
+                  
+                    T
+                  
+                
+                F
+                x
+              
+            
+          
+        
+        x
+        ,
+        
+        
+          θ
+          
+            i
+          
+        
+        +
+        α
+        
+          
+            
+              
+                2
+                ϵ
+              
+              
+                
+                  x
+                  
+                    T
+                  
+                
+                F
+                x
+              
+            
+          
+        
+        x
+        ,
+        
+        
+          θ
+          
+            i
+          
+        
+        +
+        
+          α
+          
+            2
+          
+        
+        
+          
+            
+              
+                2
+                ϵ
+              
+              
+                
+                  x
+                  
+                    T
+                  
+                
+                F
+                x
+              
+            
+          
+        
+        x
+        ,
+        
+        …
+      
+    
+    {\displaystyle \theta _{i+1}=\theta _{i}+{\sqrt {\frac {2\epsilon }{x^{T}Fx}}}x,\;\theta _{i}+\alpha {\sqrt {\frac {2\epsilon }{x^{T}Fx}}}x,\;\theta _{i}+\alpha ^{2}{\sqrt {\frac {2\epsilon }{x^{T}Fx}}}x,\;\dots }
+  
+ until it finds one that both satisfies the KL constraint 
+  
+    
+      
+        
+          
+            
+              
+                D
+                ¯
+              
+            
+          
+          
+            K
+            L
+          
+        
+        (
+        
+          π
+          
+            
+              θ
+              
+                i
+                +
+                1
+              
+            
+          
+        
+        ‖
+        
+          π
+          
+            
+              θ
+              
+                i
+              
+            
+          
+        
+        )
+        ≤
+        ϵ
+      
+    
+    {\displaystyle {\bar {D}}_{KL}(\pi _{\theta _{i+1}}\|\pi _{\theta _{i}})\leq \epsilon }
+  
+ and results in a higher 
+  
+    
+      
+        L
+        (
+        
+          θ
+          
+            i
+            +
+            1
+          
+        
+        ,
+        
+          θ
+          
+            i
+          
+        
+        )
+        ≥
+        L
+        (
+        
+          θ
+          
+            i
+          
+        
+        ,
+        
+          θ
+          
+            i
+          
+        
+        )
+      
+    
+    {\displaystyle L(\theta _{i+1},\theta _{i})\geq L(\theta _{i},\theta _{i})}
+  
+. Here, 
+  
+    
+      
+        α
+        ∈
+        (
+        0
+        ,
+        1
+        )
+      
+    
+    {\displaystyle \alpha \in (0,1)}
+  
+ is the backtracking coefficient.
+
+
+== Proximal Policy Optimization (PPO) ==
+
+A further improvement is proximal policy optimization (PPO), which avoids even computing 
+  
+    
+      
+        F
+        (
+        θ
+        )
+      
+    
+    {\displaystyle F(\theta )}
+  
+ and 
+  
+    
+      
+        F
+        (
+        θ
+        
+          )
+          
+            −
+            1
+          
+        
+      
+    
+    {\displaystyle F(\theta )^{-1}}
+  
+ via a first-order approximation using clipped probability ratios.
+Specifically, instead of maximizing the surrogate advantage
+  
+    
+      
+        
+          max
+          
+            θ
+          
+        
+        L
+        (
+        θ
+        ,
+        
+          θ
+          
+            t
+          
+        
+        )
+        =
+        
+          
+            E
+          
+          
+            s
+            ,
+            a
+            ∼
+            
+              π
+              
+                
+                  θ
+                  
+                    t
+                  
+                
+              
+            
+          
+        
+        
+          [
+          
+            
+              
+                
+                  
+                    π
+                    
+                      θ
+                    
+                  
+                  (
+                  a
+                  
+                    |
+                  
+                  s
+                  )
+                
+                
+                  
+                    π
+                    
+                      
+                        θ
+                        
+                          t
+                        
+                      
+                    
+                  
+                  (
+                  a
+                  
+                    |
+                  
+                  s
+                  )
+                
+              
+            
+            
+              A
+              
+                
+                  π
+                  
+                    
+                      θ
+                      
+                        t
+                      
+                    
+                  
+                
+              
+            
+            (
+            s
+            ,
+            a
+            )
+          
+          ]
+        
+      
+    
+    {\displaystyle \max _{\theta }L(\theta ,\theta _{t})=\mathbb {E} _{s,a\sim \pi _{\theta _{t}}}\left[{\frac {\pi _{\theta }(a|s)}{\pi _{\theta _{t}}(a|s)}}A^{\pi _{\theta _{t}}}(s,a)\right]}
+  
+ under a KL divergence constraint, it directly inserts the constraint into the surrogate advantage:
+  
+    
+      
+        
+          max
+          
+            θ
+          
+        
+        
+          
+            E
+          
+          
+            s
+            ,
+            a
+            ∼
+            
+              π
+              
+                
+                  θ
+                  
+                    t
+                  
+                
+              
+            
+          
+        
+        
+          [
+          
+            
+              {
+              
+                
+                  
+                    min
+                    
+                      (
+                      
+                        
+                          
+                            
+                              
+                                π
+                                
+                                  θ
+                                
+                              
+                              (
+                              a
+                              
+                                |
+                              
+                              s
+                              )
+                            
+                            
+                              
+                                π
+                                
+                                  
+                                    θ
+                                    
+                                      t
+                                    
+                                  
+                                
+                              
+                              (
+                              a
+                              
+                                |
+                              
+                              s
+                              )
+                            
+                          
+                        
+                        ,
+                        1
+                        +
+                        ϵ
+                      
+                      )
+                    
+                    
+                      A
+                      
+                        
+                          π
+                          
+                            
+                              θ
+                              
+                                t
+                              
+                            
+                          
+                        
+                      
+                    
+                    (
+                    s
+                    ,
+                    a
+                    )
+                  
+                  
+                    
+                       if 
+                    
+                    
+                      A
+                      
+                        
+                          π
+                          
+                            
+                              θ
+                              
+                                t
+                              
+                            
+                          
+                        
+                      
+                    
+                    (
+                    s
+                    ,
+                    a
+                    )
+                    >
+                    0
+                  
+                
+                
+                  
+                    max
+                    
+                      (
+                      
+                        
+                          
+                            
+                              
+                                π
+                                
+                                  θ
+                                
+                              
+                              (
+                              a
+                              
+                                |
+                              
+                              s
+                              )
+                            
+                            
+                              
+                                π
+                                
+                                  
+                                    θ
+                                    
+                                      t
+                                    
+                                  
+                                
+                              
+                              (
+                              a
+                              
+                                |
+                              
+                              s
+                              )
+                            
+                          
+                        
+                        ,
+                        1
+                        −
+                        ϵ
+                      
+                      )
+                    
+                    
+                      A
+                      
+                        
+                          π
+                          
+                            
+                              θ
+                              
+                                t
+                              
+                            
+                          
+                        
+                      
+                    
+                    (
+                    s
+                    ,
+                    a
+                    )
+                  
+                  
+                    
+                       if 
+                    
+                    
+                      A
+                      
+                        
+                          π
+                          
+                            
+                              θ
+                              
+                                t
+                              
+                            
+                          
+                        
+                      
+                    
+                    (
+                    s
+                    ,
+                    a
+                    )
+                    <
+                    0
+                  
+                
+              
+              
+            
+          
+          ]
+        
+      
+    
+    {\displaystyle \max _{\theta }\mathbb {E} _{s,a\sim \pi _{\theta _{t}}}\left[{\begin{cases}\min \left({\frac {\pi _{\theta }(a|s)}{\pi _{\theta _{t}}(a|s)}},1+\epsilon \right)A^{\pi _{\theta _{t}}}(s,a)&{\text{ if }}A^{\pi _{\theta _{t}}}(s,a)>0\\\max \left({\frac {\pi _{\theta }(a|s)}{\pi _{\theta _{t}}(a|s)}},1-\epsilon \right)A^{\pi _{\theta _{t}}}(s,a)&{\text{ if }}A^{\pi _{\theta _{t}}}(s,a)<0\end{cases}}\right]}
+  
+ and PPO maximizes the surrogate advantage by stochastic gradient descent, as usual.
+In words, gradient-ascending the new surrogate advantage function means that, at some state 
+  
+    
+      
+        s
+        ,
+        a
+      
+    
+    {\displaystyle s,a}
+  
+, if the advantage is positive: 
+  
+    
+      
+        
+          A
+          
+            
+              π
+              
+                
+                  θ
+                  
+                    t
+                  
+                
+              
+            
+          
+        
+        (
+        s
+        ,
+        a
+        )
+        >
+        0
+      
+    
+    {\displaystyle A^{\pi _{\theta _{t}}}(s,a)>0}
+  
+, then the gradient should direct 
+  
+    
+      
+        θ
+      
+    
+    {\displaystyle \theta }
+  
+ towards the direction that increases the probability of performing action 
+  
+    
+      
+        a
+      
+    
+    {\displaystyle a}
+  
+ under the state 
+  
+    
+      
+        s
+      
+    
+    {\displaystyle s}
+  
+. However, as soon as 
+  
+    
+      
+        θ
+      
+    
+    {\displaystyle \theta }
+  
+ has changed so much that 
+  
+    
+      
+        
+          π
+          
+            θ
+          
+        
+        (
+        a
+        
+          |
+        
+        s
+        )
+        ≥
+        (
+        1
+        +
+        ϵ
+        )
+        
+          π
+          
+            
+              θ
+              
+                t
+              
+            
+          
+        
+        (
+        a
+        
+          |
+        
+        s
+        )
+      
+    
+    {\displaystyle \pi _{\theta }(a|s)\geq (1+\epsilon )\pi _{\theta _{t}}(a|s)}
+  
+, then the gradient should stop pointing it in that direction. And similarly if 
+  
+    
+      
+        
+          A
+          
+            
+              π
+              
+                
+                  θ
+                  
+                    t
+                  
+                
+              
+            
+          
+        
+        (
+        s
+        ,
+        a
+        )
+        <
+        0
+      
+    
+    {\displaystyle A^{\pi _{\theta _{t}}}(s,a)<0}
+  
+. Thus, PPO avoids pushing the parameter update too hard, and avoids changing the policy too much.
+To be more precise, to update 
+  
+    
+      
+        
+          θ
+          
+            t
+          
+        
+      
+    
+    {\displaystyle \theta _{t}}
+  
+ to 
+  
+    
+      
+        
+          θ
+          
+            t
+            +
+            1
+          
+        
+      
+    
+    {\displaystyle \theta _{t+1}}
+  
+ requires multiple update steps on the same batch of data. It would initialize 
+  
+    
+      
+        θ
+        =
+        
+          θ
+          
+            t
+          
+        
+      
+    
+    {\displaystyle \theta =\theta _{t}}
+  
+, then repeatedly apply gradient descent (such as the Adam optimizer) to update 
+  
+    
+      
+        θ
+      
+    
+    {\displaystyle \theta }
+  
+ until the surrogate advantage has stabilized. It would then assign 
+  
+    
+      
+        
+          θ
+          
+            t
+            +
+            1
+          
+        
+      
+    
+    {\displaystyle \theta _{t+1}}
+  
+ to 
+  
+    
+      
+        θ
+      
+    
+    {\displaystyle \theta }
+  
+, and do it again.
+During this inner-loop, the first update to 
+  
+    
+      
+        θ
+      
+    
+    {\displaystyle \theta }
+  
+ would not hit the 
+  
+    
+      
+        1
+        −
+        ϵ
+        ,
+        1
+        +
+        ϵ
+      
+    
+    {\displaystyle 1-\epsilon ,1+\epsilon }
+  
+ bounds, but as 
+  
+    
+      
+        θ
+      
+    
+    {\displaystyle \theta }
+  
+ is updated further and further away from 
+  
+    
+      
+        
+          θ
+          
+            t
+          
+        
+      
+    
+    {\displaystyle \theta _{t}}
+  
+, it eventually starts hitting the bounds. For each such bound hit, the corresponding gradient becomes zero, and thus PPO avoid updating 
+  
+    
+      
+        θ
+      
+    
+    {\displaystyle \theta }
+  
+ too far away from 
+  
+    
+      
+        
+          θ
+          
+            t
+          
+        
+      
+    
+    {\displaystyle \theta _{t}}
+  
+.
+This is important, because the surrogate loss assumes that the state-action pair 
+  
+    
+      
+        s
+        ,
+        a
+      
+    
+    {\displaystyle s,a}
+  
+ is sampled from what the agent would see if the agent runs the policy 
+  
+    
+      
+        
+          π
+          
+            
+              θ
+              
+                t
+              
+            
+          
+        
+      
+    
+    {\displaystyle \pi _{\theta _{t}}}
+  
+, but policy gradient should be on-policy. So, as 
+  
+    
+      
+        θ
+      
+    
+    {\displaystyle \theta }
+  
+ changes, the surrogate loss becomes more and more off-policy. This is why keeping 
+  
+    
+      
+        θ
+      
+    
+    {\displaystyle \theta }
+  
+ proximal to 
+  
+    
+      
+        
+          θ
+          
+            t
+          
+        
+      
+    
+    {\displaystyle \theta _{t}}
+  
+ is necessary.
+If there is a reference policy 
+  
+    
+      
+        
+          π
+          
+            ref
+          
+        
+      
+    
+    {\displaystyle \pi _{\text{ref}}}
+  
+ that the trained policy should not diverge too far from, then additional KL divergence penalty can be added:
+  
+    
+      
+        −
+        β
+        
+          
+            E
+          
+          
+            s
+            ,
+            a
+            ∼
+            
+              π
+              
+                
+                  θ
+                  
+                    t
+                  
+                
+              
+            
+          
+        
+        
+          [
+          
+            log
+            ⁡
+            
+              (
+              
+                
+                  
+                    
+                      π
+                      
+                        θ
+                      
+                    
+                    (
+                    a
+                    
+                      |
+                    
+                    s
+                    )
+                  
+                  
+                    
+                      π
+                      
+                        ref
+                      
+                    
+                    (
+                    a
+                    
+                      |
+                    
+                    s
+                    )
+                  
+                
+              
+              )
+            
+          
+          ]
+        
+      
+    
+    {\displaystyle -\beta \mathbb {E} _{s,a\sim \pi _{\theta _{t}}}\left[\log \left({\frac {\pi _{\theta }(a|s)}{\pi _{\text{ref}}(a|s)}}\right)\right]}
+  
+where 
+  
+    
+      
+        β
+      
+    
+    {\displaystyle \beta }
+  
+ adjusts the strength of the penalty. This has been used in training reasoning language models with reinforcement learning from human feedback. The KL divergence penalty term can be estimated with lower variance using the equivalent form (see f-divergence for details):
+  
+    
+      
+        −
+        β
+        
+          
+            E
+          
+          
+            s
+            ,
+            a
+            ∼
+            
+              π
+              
+                
+                  θ
+                  
+                    t
+                  
+                
+              
+            
+          
+        
+        
+          [
+          
+            log
+            ⁡
+            
+              (
+              
+                
+                  
+                    
+                      π
+                      
+                        θ
+                      
+                    
+                    (
+                    a
+                    
+                      |
+                    
+                    s
+                    )
+                  
+                  
+                    
+                      π
+                      
+                        ref
+                      
+                    
+                    (
+                    a
+                    
+                      |
+                    
+                    s
+                    )
+                  
+                
+              
+              )
+            
+            +
+            
+              
+                
+                  
+                    π
+                    
+                      ref
+                    
+                  
+                  (
+                  a
+                  
+                    |
+                  
+                  s
+                  )
+                
+                
+                  
+                    π
+                    
+                      θ
+                    
+                  
+                  (
+                  a
+                  
+                    |
+                  
+                  s
+                  )
+                
+              
+            
+            −
+            1
+          
+          ]
+        
+      
+    
+    {\displaystyle -\beta \mathbb {E} _{s,a\sim \pi _{\theta _{t}}}\left[\log \left({\frac {\pi _{\theta }(a|s)}{\pi _{\text{ref}}(a|s)}}\right)+{\frac {\pi _{\text{ref}}(a|s)}{\pi _{\theta }(a|s)}}-1\right]}
+  
+
+
+=== Group Relative Policy Optimization (GRPO) ===
+
+The Group Relative Policy Optimization (GRPO) is a minor variant of PPO that omits the value function estimator 
+  
+    
+      
+        V
+      
+    
+    {\displaystyle V}
+  
+. Instead, for each state 
+  
+    
+      
+        s
+      
+    
+    {\displaystyle s}
+  
+, it samples multiple actions 
+  
+    
+      
+        
+          a
+          
+            1
+          
+        
+        ,
+        …
+        ,
+        
+          a
+          
+            G
+          
+        
+      
+    
+    {\displaystyle a_{1},\dots ,a_{G}}
+  
+ from the policy 
+  
+    
+      
+        
+          π
+          
+            
+              θ
+              
+                t
+              
+            
+          
+        
+      
+    
+    {\displaystyle \pi _{\theta _{t}}}
+  
+, then calculate the group-relative advantage
+  
+    
+      
+        
+          A
+          
+            
+              π
+              
+                
+                  θ
+                  
+                    t
+                  
+                
+              
+            
+          
+        
+        (
+        s
+        ,
+        
+          a
+          
+            j
+          
+        
+        )
+        =
+        
+          
+            
+              r
+              (
+              s
+              ,
+              
+                a
+                
+                  j
+                
+              
+              )
+              −
+              μ
+            
+            σ
+          
+        
+      
+    
+    {\displaystyle A^{\pi _{\theta _{t}}}(s,a_{j})={\frac {r(s,a_{j})-\mu }{\sigma }}}
+  
+ where 
+  
+    
+      
+        μ
+        ,
+        σ
+      
+    
+    {\displaystyle \mu ,\sigma }
+  
+ are the mean and standard deviation of 
+  
+    
+      
+        r
+        (
+        s
+        ,
+        
+          a
+          
+            1
+          
+        
+        )
+        ,
+        …
+        ,
+        r
+        (
+        s
+        ,
+        
+          a
+          
+            G
+          
+        
+        )
+      
+    
+    {\displaystyle r(s,a_{1}),\dots ,r(s,a_{G})}
+  
+. That is, it is the standard score of the rewards.
+Then, it maximizes the PPO objective, averaged over all actions:
+  
+    
+      
+        
+          max
+          
+            θ
+          
+        
+        
+          
+            1
+            G
+          
+        
+        
+          ∑
+          
+            i
+            =
+            1
+          
+          
+            G
+          
+        
+        
+          
+            E
+          
+          
+            (
+            s
+            ,
+            
+              a
+              
+                1
+              
+            
+            ,
+            …
+            ,
+            
+              a
+              
+                G
+              
+            
+            )
+            ∼
+            
+              π
+              
+                
+                  θ
+                  
+                    t
+                  
+                
+              
+            
+          
+        
+        
+          [
+          
+            
+              {
+              
+                
+                  
+                    min
+                    
+                      (
+                      
+                        
+                          
+                            
+                              
+                                π
+                                
+                                  θ
+                                
+                              
+                              (
+                              
+                                a
+                                
+                                  i
+                                
+                              
+                              
+                                |
+                              
+                              s
+                              )
+                            
+                            
+                              
+                                π
+                                
+                                  
+                                    θ
+                                    
+                                      t
+                                    
+                                  
+                                
+                              
+                              (
+                              
+                                a
+                                
+                                  i
+                                
+                              
+                              
+                                |
+                              
+                              s
+                              )
+                            
+                          
+                        
+                        ,
+                        1
+                        +
+                        ϵ
+                      
+                      )
+                    
+                    
+                      A
+                      
+                        
+                          π
+                          
+                            
+                              θ
+                              
+                                t
+                              
+                            
+                          
+                        
+                      
+                    
+                    (
+                    s
+                    ,
+                    
+                      a
+                      
+                        i
+                      
+                    
+                    )
+                  
+                  
+                    
+                       if 
+                    
+                    
+                      A
+                      
+                        
+                          π
+                          
+                            
+                              θ
+                              
+                                t
+                              
+                            
+                          
+                        
+                      
+                    
+                    (
+                    s
+                    ,
+                    
+                      a
+                      
+                        i
+                      
+                    
+                    )
+                    >
+                    0
+                  
+                
+                
+                  
+                    max
+                    
+                      (
+                      
+                        
+                          
+                            
+                              
+                                π
+                                
+                                  θ
+                                
+                              
+                              (
+                              
+                                a
+                                
+                                  i
+                                
+                              
+                              
+                                |
+                              
+                              s
+                              )
+                            
+                            
+                              
+                                π
+                                
+                                  
+                                    θ
+                                    
+                                      t
+                                    
+                                  
+                                
+                              
+                              (
+                              
+                                a
+                                
+                                  i
+                                
+                              
+                              
+                                |
+                              
+                              s
+                              )
+                            
+                          
+                        
+                        ,
+                        1
+                        −
+                        ϵ
+                      
+                      )
+                    
+                    
+                      A
+                      
+                        
+                          π
+                          
+                            
+                              θ
+                              
+                                t
+                              
+                            
+                          
+                        
+                      
+                    
+                    (
+                    s
+                    ,
+                    
+                      a
+                      
+                        i
+                      
+                    
+                    )
+                  
+                  
+                    
+                       if 
+                    
+                    
+                      A
+                      
+                        
+                          π
+                          
+                            
+                              θ
+                              
+                                t
+                              
+                            
+                          
+                        
+                      
+                    
+                    (
+                    s
+                    ,
+                    
+                      a
+                      
+                        i
+                      
+                    
+                    )
+                    <
+                    0
+                  
+                
+              
+              
+            
+          
+          ]
+        
+      
+    
+    {\displaystyle \max _{\theta }{\frac {1}{G}}\sum _{i=1}^{G}\mathbb {E} _{(s,a_{1},\dots ,a_{G})\sim \pi _{\theta _{t}}}\left[{\begin{cases}\min \left({\frac {\pi _{\theta }(a_{i}|s)}{\pi _{\theta _{t}}(a_{i}|s)}},1+\epsilon \right)A^{\pi _{\theta _{t}}}(s,a_{i})&{\text{ if }}A^{\pi _{\theta _{t}}}(s,a_{i})>0\\\max \left({\frac {\pi _{\theta }(a_{i}|s)}{\pi _{\theta _{t}}(a_{i}|s)}},1-\epsilon \right)A^{\pi _{\theta _{t}}}(s,a_{i})&{\text{ if }}A^{\pi _{\theta _{t}}}(s,a_{i})<0\end{cases}}\right]}
+  
+Intuitively, each policy update step in GRPO makes the policy more likely to respond to each state with an action that performed relatively better than other actions tried at that state, and less likely to respond with one that performed relatively worse.
+As before, the KL penalty term can be applied to encourage the trained policy to stay close to a reference policy. GRPO was first proposed in the context of training reasoning language models by researchers at DeepSeek.
+
+
+== Policy Optimization and the Mirror Descent perspective (MDPO) ==
+
+Methods like TRPO, PPO and natural policy gradient share a common idea - while the policy should be updated in the direction of the policy gradient, the update should be done in a safe and stable manner, typically measured by some distance with respect to the policy before the update.
+A similar notion of update stability is found in proximal convex optimization techniques like Mirror Descent. There, 
+  
+    
+      
+        
+          x
+        
+      
+    
+    {\textstyle \mathbf {x} }
+  
+, the proposed minimizer of 
+  
+    
+      
+        f
+      
+    
+    {\textstyle f}
+  
+ in some constraint set 
+  
+    
+      
+        
+          
+            C
+          
+        
+      
+    
+    {\textstyle {\mathcal {C}}}
+  
+, is iteratively updated in the direction of the gradient 
+  
+    
+      
+        ∇
+        f
+      
+    
+    {\textstyle \nabla f}
+  
+, with a proximity penalty with respect to the current 
+  
+    
+      
+        
+          
+            x
+          
+          
+            t
+          
+        
+      
+    
+    {\textstyle \mathbf {x} _{t}}
+  
+ measured by some Bregman divergence 
+  
+    
+      
+        
+          B
+          
+            ω
+          
+        
+      
+    
+    {\textstyle B_{\omega }}
+  
+, which can formalized by the following formula:
+  
+    
+      
+        
+          
+            x
+          
+          
+            t
+            +
+            1
+          
+        
+        ∈
+        arg
+        ⁡
+        
+          min
+          
+            
+              x
+            
+            ∈
+            
+              
+                C
+              
+            
+          
+        
+        ∇
+        f
+        (
+        
+          
+            x
+          
+          
+            t
+          
+        
+        
+          )
+          
+            T
+          
+        
+        (
+        
+          x
+        
+        −
+        
+          
+            x
+          
+          
+            t
+          
+        
+        )
+        +
+        
+          
+            1
+            
+              η
+              
+                t
+              
+            
+          
+        
+        
+          B
+          
+            ω
+          
+        
+        (
+        x
+        ,
+        
+          x
+          
+            t
+          
+        
+        )
+        ,
+      
+    
+    {\displaystyle \mathbf {x} _{t+1}\in \arg \min _{\mathbf {x} \in {\mathcal {C}}}\nabla f(\mathbf {x} _{t})^{T}(\mathbf {x} -\mathbf {x} _{t})+{\frac {1}{\eta _{t}}}B_{\omega }(x,x_{t}),}
+  
+ where  
+  
+    
+      
+        
+          η
+          
+            t
+          
+        
+      
+    
+    {\textstyle \eta _{t}}
+  
+ controls the proximity between consecutive iterates, similar to the learning rate in gradient descent.
+This leads to reconsidering the policy update procedure as an optimization procedure aimed at finding an optimal policy, in the (non-convex) optimization landscape of the underlying Markov decision process (MDP). This optimization viewpoint of using the policy gradient is termed Mirror Descent Policy Optimization (MDPO), leading to the following update when the KL is the chosen Bregman divergence:
+  
+    
+      
+        
+          π
+          
+            t
+            +
+            1
+          
+        
+        ∈
+        arg
+        ⁡
+        
+          max
+          
+            π
+          
+        
+        
+          
+            E
+          
+          
+            s
+            ,
+            a
+            ∼
+            π
+          
+        
+        
+          [
+          
+            
+              A
+              
+                
+                  π
+                  
+                    t
+                  
+                
+              
+            
+            (
+            s
+            ,
+            a
+            )
+          
+          ]
+        
+        +
+        
+          
+            1
+            
+              η
+              
+                t
+              
+            
+          
+        
+        
+          D
+          
+            K
+            L
+          
+        
+        (
+        π
+        
+          |
+        
+        
+          |
+        
+        
+          π
+          
+            t
+          
+        
+        )
+      
+    
+    {\displaystyle \pi _{t+1}\in \arg \max _{\pi }\mathbb {E} _{s,a\sim \pi }\left[A^{\pi _{t}}(s,a)\right]+{\frac {1}{\eta _{t}}}D_{KL}(\pi ||\pi _{t})}
+  
+With a parameterized policy 
+  
+    
+      
+        
+          π
+          
+            θ
+          
+        
+      
+    
+    {\textstyle \pi _{\theta }}
+  
+, the MDPO loss becomes:
+  
+    
+      
+        
+          max
+          
+            θ
+          
+        
+        L
+        (
+        θ
+        ,
+        
+          θ
+          
+            t
+          
+        
+        )
+        =
+        
+          
+            E
+          
+          
+            s
+            ,
+            a
+            ∼
+            
+              π
+              
+                
+                  θ
+                  
+                    t
+                  
+                
+              
+            
+          
+        
+        
+          [
+          
+            
+              
+                
+                  
+                    π
+                    
+                      θ
+                    
+                  
+                  (
+                  a
+                  
+                    |
+                  
+                  s
+                  )
+                
+                
+                  
+                    π
+                    
+                      
+                        θ
+                        
+                          t
+                        
+                      
+                    
+                  
+                  (
+                  a
+                  
+                    |
+                  
+                  s
+                  )
+                
+              
+            
+            
+              A
+              
+                
+                  π
+                  
+                    
+                      θ
+                      
+                        t
+                      
+                    
+                  
+                
+              
+            
+            (
+            s
+            ,
+            a
+            )
+          
+          ]
+        
+        +
+        
+          
+            1
+            
+              η
+              
+                t
+              
+            
+          
+        
+        
+          D
+          
+            K
+            L
+          
+        
+        (
+        
+          π
+          
+            θ
+          
+        
+        
+          |
+        
+        
+          |
+        
+        
+          π
+          
+            
+              θ
+              
+                t
+              
+            
+          
+        
+        )
+      
+    
+    {\displaystyle \max _{\theta }L(\theta ,\theta _{t})=\mathbb {E} _{s,a\sim \pi _{\theta _{t}}}\left[{\frac {\pi _{\theta }(a|s)}{\pi _{\theta _{t}}(a|s)}}A^{\pi _{\theta _{t}}}(s,a)\right]+{\frac {1}{\eta _{t}}}D_{KL}(\pi _{\theta }||\pi _{\theta _{t}})}
+  
+This objective can be used together with other common techniques like the clipping done in PPO. In fact, the KL divergence penalty also appears in the original PPO paper, suggesting the MDPO perspective as a theoretical unification of the main derivation concepts behind many concurrent policy gradient techniques.
+
+
+== See also ==
+Reinforcement learning
+Deep reinforcement learning
+Actor-critic method
+
+
+== References ==
+
+Sutton, Richard S.; Barto, Andrew G. (2018). Reinforcement learning: an introduction. Adaptive computation and machine learning series (2 ed.). Cambridge, Massachusetts: The MIT Press. ISBN 978-0-262-03924-6.
+Bertsekas, Dimitri P. (2019). Reinforcement learning and optimal control (2 ed.). Belmont, Massachusetts: Athena Scientific. ISBN 978-1-886529-39-7.
+Grossi, Csaba (2010). Algorithms for Reinforcement Learning. Synthesis Lectures on Artificial Intelligence and Machine Learning (1 ed.). Cham: Springer International Publishing. ISBN 978-3-031-00423-0.
+Mohamed, Shakir; Rosca, Mihaela; Figurnov, Michael; Mnih, Andriy (2020). "Monte Carlo Gradient Estimation in Machine Learning". Journal of Machine Learning Research. 21 (132): 1–62. arXiv:1906.10652. ISSN 1533-7928.
+
+
+== External links ==
+Weng, Lilian (2018-04-08). "Policy Gradient Algorithms". lilianweng.github.io. Retrieved 2025-01-25.
+"Vanilla Policy Gradient — Spinning Up documentation". spinningup.openai.com. Retrieved 2025-01-25.

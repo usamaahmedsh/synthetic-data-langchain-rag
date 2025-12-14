@@ -1,0 +1,87 @@
+Core War is a programming game introduced in 1984 by D. G. Jones and A. K. Dewdney. In the game, two or more battle programs, known as warriors, compete for control of a virtual computer. These programs are written in an abstract assembly language called Redcode. Initial standards for Redcode and the virtual machine were established by the International Core Wars Society (ICWS), with later revisions shaped by community consensus.
+
+
+== Gameplay ==
+At the start of a match, each warrior is loaded into a random memory location. Programs take turns executing one instruction at a time. A program wins by terminating all opponents, typically by causing them to execute invalid instructions, leaving the victorious program in sole possession of the machine.
+Early versions of Redcode featured only eight instructions. This number increased to 10 in the ICWS-86 standard, 11 in ICWS-88, and 16 in the 1994 draft standard, which is still widely used. With various addressing modes and instruction modifiers introduced in the 1994 draft, the total number of possible operations is 7168. Redcode does not define how instructions are represented in memory, nor does it allow programs to inspect their own code structure beyond copying and equality comparisons. Arithmetic operations are limited to the instruction’s two address fields.
+
+Constant instruction length and time
+Each Redcode instruction occupies exactly one memory slot and takes exactly one cycle to execute. The rate at which a process executes instructions, however, depends on the number of other processes in the queue, as processing time is shared equally.
+Circular memory
+The memory is addressed in units of one instruction. The memory space (or core) is of finite size, but only relative addressing is used, that is, address 0 always refers to the currently executing instruction, address 1 to the instruction after it, and so on. The maximum address value is set to equal one less than the number of memory locations and will wrap around if necessary. As a result, there is a one-to-one correspondence between addresses and memory locations, but it is impossible for a Redcode program to determine any absolute address. A process that encounters no invalid or jump instructions will continue executing successive instructions endlessly, eventually returning to the instruction where it started.
+Low-level multiprocessing
+Instead of a single instruction pointer a Redcode simulator has a process queue for each program containing a variable number of instruction pointers which the simulator cycles through. Each program starts with only one process, but new processes may be added to the queue using the SPL instruction. A process dies when it executes a DAT instruction or performs a division by zero. A program is considered dead when it has no more processes left.
+No external access
+Redcode and the MARS architecture provide no input or output functions. The simulator is a closed system, with the only input being the initial values of the memory and the process queues, and the only output being the outcome of the battle, i.e., which programs had surviving processes. Of course, the simulator may still allow external inspections and modification of the memory while the simulation is running.
+
+
+=== Versions of Redcode ===
+A number of versions of Redcode exist. The earliest version described by A. K. Dewdney differs in many respects from the later standards established by the International Core War Society, and could be considered a different, albeit related, language. The form of Redcode most commonly used today is based on a draft standard submitted to the ICWS in 1994 that was never formally accepted, as the ICWS had become effectively defunct around that time. Development of Redcode, however, has continued in an informal manner, chiefly via online forums such as the rec.games.corewar newsgroup.
+
+
+=== Strategy ===
+Warriors are commonly divided into a number of broad categories, although actual warriors may often combine the behavior of two or more of these. Three of the common strategies (replicator, scanner and bomber) are also known as paper, scissors and stone, since their performance against each other approximates that of their namesakes in the well-known playground game.
+
+Paper (or replicator)
+A replicator makes repeated copies of itself and executes them in parallel, eventually filling the entire core with copies of its code. Replicators are hard to kill, but often have difficulty killing their opponents. Replicators therefore tend to score a lot of ties, particularly against other replicators.
+A silk is a special type of very rapid replicator, named after Silk Warrior by Juha Pohjalainen. Most modern replicators are of this type. Silk replicators use parallel execution to copy their entire code with one instruction, and begin execution of the copy before it is finished.
+Scissors (or scanner)
+A scanner is designed to beat replicators. A scanner does not attack blindly, but tries to locate its enemy before launching a targeted attack. This makes it more effective against hard-to-kill opponents like replicators, but also leaves it vulnerable to decoys. A scanner usually bombs memory with SPL 0 instructions. This causes the enemy to create a huge number of processes which do nothing but create more processes, slowing down useful processes. When the enemy becomes so slow that it is unable to do anything useful, the memory is then bombed with DAT instructions. Scanners are also generally more complex, and therefore are larger and more fragile, than other types of warriors.
+A one-shot is a very simple scanner that only scans the core until it finds the first target, and then permanently switches to an attack strategy, usually a core clear. Myrmidon by Roy van Rijn is an example of a oneshot.
+Stone (or bomber)
+A bomber blindly copies a "bomb" at regular intervals in the core, hoping to hit the enemy. The bomb is often a DAT instruction, although other instructions, or even multi-instruction bombs, may be used. A bomber can be small and fast, and they gain an extra edge over scanning opponents since the bombs also serve as convenient distractions. Bombers are often combined with imp spirals to gain extra resiliency against replicators.
+Vampire (or pit-trapper)
+A vampire tries to make its opponent's processes jump into a piece of its own code called a "pit". Vampires can be based on either bombers or scanners. A major weakness of vampires is that they can be easily attacked indirectly, since they must by necessity scatter pointers to their code all over the core. Their attacks are also slow, as it takes an extra round for the processes to reach the pit. myVamp by Paulsson is an example of a vampire.
+Imp
+Imps are named after the first ever published warrior, Imp by A. K. Dewdney, a trivial one-instruction mobile warrior that continually copies its sole instruction just ahead of its instruction pointer. Imps are hard to kill but next to useless for offense. Their use lies in the fact that they can easily be spawned in large numbers, and may survive even if the rest of the warriors are killed.
+An imp ring (or imp spiral) consists of imps spaced at equal intervals around the core and executing alternately. The imps at each arm of the ring/spiral copy their instructions to the next arm, where it is immediately executed again. Rings and spirals are even harder to kill than simple imps, and they even have a (small) chance of killing warriors not protected against them. The number of arms in an imp ring or spiral must be relatively prime with the size of the core.
+Hydra
+Hydras launch multiple copies of tiny bombers or core clears.
+Quickscanner (or q-scan)
+A quickscanner attempts to catch its opponent early by using a very fast unrolled scanning loop. Quickscanning is an early-game strategy, and always requires some other strategy as a backup. Adding a quickscanning component to a warrior can improve its score against long warriors such as other quickscanners. However, the unrolled scan can only target a limited number of locations, and is unlikely to catch a small opponent.
+Bootstrap
+Bootstraps copy one or more of their components away from their original location, leaving a decoy to attract Scanners and Quickscanners.
+Mixed warriors
+Some warriors are of different strategies at the same or different time/times.
+For example, Stone/Imp. Stone/Imps are Imps that have been paired with Stones to reduce some of the losses against paper.
+Some of the most successful warriors of all time are Stone/Imps.
+Core clear
+A core clear sequentially overwrites every instruction in the core, sometimes even including itself. Core clears are not very common as stand-alone warriors, but are often used as an end-game strategy by bombers and scanners.
+
+
+=== Core War programming ===
+With an understanding of Core War strategies, a programmer can create a warrior to achieve certain goals. Revolutionary ideas come once in a while; most of the time, however, programmers base their programs on already published warriors. Using optimizers such as OptiMax or core-step optimizer tools, a more effective warrior can be created.
+Warriors can also be generated by genetic algorithms or genetic programming. Programs that integrate this evolutionary technique are known as evolvers. Several evolvers were introduced by the Core War community and tend to focus on generating warriors for smaller core settings. The latest evolver with significant success was μGP which produced some of the most successful nano and tiny warriors. Nevertheless, evolutionary strategy still needs to prove its effectiveness on larger core settings.
+
+
+== Development ==
+Core War was inspired by a self-replicating program called Creeper and a subsequent program called Reaper that destroyed copies of Creeper. Creeper was created by Bob Thomas at BBN. Dewdney was not aware of the origin of Creeper and Reaper and refers to them as a rumor originating from Darwin and the worm experiments of Shoch and Hupp. The 1984 Scientific American article on Core War nevertheless cites the game Darwin, played by Victor A. Vyssotsky, Robert Morris, and Douglas McIlroy at Bell Labs in 1961.
+The word "Core" in the name comes from magnetic-core memory, an obsolete random-access memory technology. This term was then, and still today, typically in use as the term for working memory in working memory dumps, called core dumps, on Unix and most Unix-like systems. Additionally, the default filename used for core dumps on such systems is usually "core" or contains the word core.
+The first description of the Redcode language was published in March 1984, in Core War Guidelines by D. G. Jones and A. K. Dewdney. The game was introduced to the public in May 1984, in an article written by Dewdney in Scientific American. Dewdney revisited Core War in his "Computer Recreations" column in March 1985, and again in January 1987.
+The International Core Wars Society (ICWS) was founded in 1985, one year after Dewdney's original article. The ICWS published new standards for the Redcode language in 1986 and 1988, and proposed an update in 1994 that was never formally set as the new standard. Nonetheless, the 1994 draft was commonly adopted and extended, and forms the basis of the de facto standard for Redcode today. The ICWS was directed by Mark Clarkson (1985–1987), William R. Buckley (1987–1992), and Jon Newman (1992–); currently the ICWS is defunct.
+
+
+=== Redcode ===
+
+Redcode is the programming language used in Core War. It is executed by a virtual machine known as a Memory Array Redcode Simulator, or MARS. The design of Redcode is loosely based on actual CISC assembly languages of the early 1980s, but contains several features not usually found in actual computer systems.
+Both Redcode and the MARS environment are designed to provide a simple and abstract platform without the complexity of actual computers and processors. Although Redcode is meant to resemble an ordinary CISC assembly language, it is quite simplified relative to "real" assembly, and has no absolute memory addressing
+The original 8 instructions are described as follows. Later versions added NOP, multiply and more complex comparisons.
+
+The ICWS '94 draft standard added more addressing modes, mostly to deal with A-field indirection, to give a total of 8 modes:
+
+
+== Implementations ==
+Development of implementations of the game continued over the years by several authors. 
+There are multiple versions of the game available, ported to several platforms. For instance pMARS which is open source software with source code on SourceForge, or the SDL based SDL pMARS for Windows. 
+The common implementation pMars was downloaded from SourceForge over 35,000 times between 2000 and 2021.
+
+
+== References ==
+
+
+== External links ==
+Core War - the Ultimate Programming Game
+The Core War Info Page
+The beginner's guide to Redcode
+Annotated Draft of the Proposed 1994 Core War Standard
+Corewar Bibliography

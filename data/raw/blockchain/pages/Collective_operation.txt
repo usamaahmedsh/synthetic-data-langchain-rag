@@ -1,0 +1,1740 @@
+Collective operations are building blocks for interaction patterns, that are often used in SPMD algorithms in the parallel programming context. Hence, there is an interest in efficient realizations of these operations.
+A realization of the collective operations is provided by the Message Passing Interface (MPI).
+
+
+== Definitions ==
+In all asymptotic runtime functions, we denote the latency 
+  
+    
+      
+        α
+      
+    
+    {\displaystyle \alpha }
+  
+ (or startup time per message, independent of message size), the communication cost per word 
+  
+    
+      
+        β
+      
+    
+    {\displaystyle \beta }
+  
+, the number of processing units 
+  
+    
+      
+        p
+      
+    
+    {\displaystyle p}
+  
+ and the input size per node 
+  
+    
+      
+        n
+      
+    
+    {\displaystyle n}
+  
+. In cases where we have initial messages on more than one node we assume that all local messages are of the same size. To address individual processing units we use 
+  
+    
+      
+        
+          p
+          
+            i
+          
+        
+        ∈
+        {
+        
+          p
+          
+            0
+          
+        
+        ,
+        
+          p
+          
+            1
+          
+        
+        ,
+        …
+        ,
+        
+          p
+          
+            p
+            −
+            1
+          
+        
+        }
+      
+    
+    {\displaystyle p_{i}\in \{p_{0},p_{1},\dots ,p_{p-1}\}}
+  
+.
+If we do not have an equal distribution, i.e. node 
+  
+    
+      
+        
+          p
+          
+            i
+          
+        
+      
+    
+    {\displaystyle p_{i}}
+  
+ has a message of size 
+  
+    
+      
+        
+          n
+          
+            i
+          
+        
+      
+    
+    {\displaystyle n_{i}}
+  
+, we get an upper bound for the runtime by setting 
+  
+    
+      
+        n
+        =
+        max
+        (
+        
+          n
+          
+            0
+          
+        
+        ,
+        
+          n
+          
+            1
+          
+        
+        ,
+        …
+        ,
+        
+          n
+          
+            p
+            −
+            1
+          
+        
+        )
+      
+    
+    {\displaystyle n=\max(n_{0},n_{1},\dots ,n_{p-1})}
+  
+.
+A distributed memory model is assumed. The concepts are similar for the shared memory model. However, shared memory systems can provide hardware support for some operations like broadcast (§ Broadcast) for example, which allows convenient concurrent read. Thus, new algorithmic possibilities can become available.
+
+
+== Broadcast ==
+
+The broadcast pattern is used to distribute data from one processing unit to all processing units, which is often needed in SPMD parallel programs to dispense input or global values. Broadcast can be interpreted as an inverse version of the reduce pattern (§ Reduce). Initially only root 
+  
+    
+      
+        r
+      
+    
+    {\displaystyle r}
+  
+ with 
+  
+    
+      
+        i
+        d
+      
+    
+    {\displaystyle id}
+  
+ 
+  
+    
+      
+        0
+      
+    
+    {\displaystyle 0}
+  
+ stores message 
+  
+    
+      
+        m
+      
+    
+    {\displaystyle m}
+  
+. During broadcast 
+  
+    
+      
+        m
+      
+    
+    {\displaystyle m}
+  
+ is sent to the remaining processing units, so that eventually 
+  
+    
+      
+        m
+      
+    
+    {\displaystyle m}
+  
+ is available to all processing units.
+Since an implementation by means of a sequential for-loop with 
+  
+    
+      
+        p
+        −
+        1
+      
+    
+    {\displaystyle p-1}
+  
+ iterations becomes a bottleneck, divide-and-conquer approaches are common. One possibility is to utilize a binomial tree structure with the requirement that 
+  
+    
+      
+        p
+      
+    
+    {\displaystyle p}
+  
+ has to be a power of two. When a processing unit is responsible for sending 
+  
+    
+      
+        m
+      
+    
+    {\displaystyle m}
+  
+ to processing units 
+  
+    
+      
+        i
+        .
+        .
+        j
+      
+    
+    {\displaystyle i..j}
+  
+, it sends 
+  
+    
+      
+        m
+      
+    
+    {\displaystyle m}
+  
+ to processing unit 
+  
+    
+      
+        
+          ⌈
+          
+            (
+            i
+            +
+            j
+            )
+            
+              /
+            
+            2
+          
+          ⌉
+        
+      
+    
+    {\displaystyle \left\lceil (i+j)/2\right\rceil }
+  
+ and delegates responsibility for the processing units 
+  
+    
+      
+        
+          ⌈
+          
+            (
+            i
+            +
+            j
+            )
+            
+              /
+            
+            2
+          
+          ⌉
+        
+        .
+        .
+        j
+      
+    
+    {\displaystyle \left\lceil (i+j)/2\right\rceil ..j}
+  
+ to it, while its own responsibility is cut down to 
+  
+    
+      
+        i
+        .
+        .
+        
+          ⌈
+          
+            (
+            i
+            +
+            j
+            )
+            
+              /
+            
+            2
+          
+          ⌉
+        
+        −
+        1
+      
+    
+    {\displaystyle i..\left\lceil (i+j)/2\right\rceil -1}
+  
+.
+Binomial trees have a problem with long messages 
+  
+    
+      
+        m
+      
+    
+    {\displaystyle m}
+  
+. The receiving unit of 
+  
+    
+      
+        m
+      
+    
+    {\displaystyle m}
+  
+ can only propagate the message to other units, after it received the whole message. In the meantime, the communication network is not utilized. Therefore pipelining on binary trees is used, where 
+  
+    
+      
+        m
+      
+    
+    {\displaystyle m}
+  
+ is split into an array of 
+  
+    
+      
+        k
+      
+    
+    {\displaystyle k}
+  
+ packets of size 
+  
+    
+      
+        
+          ⌈
+          
+            n
+            
+              /
+            
+            k
+          
+          ⌉
+        
+      
+    
+    {\displaystyle \left\lceil n/k\right\rceil }
+  
+. The packets are then broadcast one after another, so that data is distributed fast in the communication network.
+Pipelined broadcast on balanced binary tree is possible in 
+  
+    
+      
+        
+          
+            O
+          
+        
+        (
+        α
+        log
+        ⁡
+        p
+        +
+        β
+        n
+        )
+      
+    
+    {\displaystyle {\mathcal {O}}(\alpha \log p+\beta n)}
+  
+, whereas for the non-pipelined case it takes 
+  
+    
+      
+        
+          
+            O
+          
+        
+        (
+        (
+        α
+        +
+        β
+        n
+        )
+        log
+        ⁡
+        p
+        )
+      
+    
+    {\displaystyle {\mathcal {O}}((\alpha +\beta n)\log p)}
+  
+ cost.
+
+
+== Reduce ==
+
+The reduce pattern is used to collect data or partial results from different processing units and to combine them into a global result by a chosen operator.  Given 
+  
+    
+      
+        p
+      
+    
+    {\displaystyle p}
+  
+ processing units, message 
+  
+    
+      
+        
+          m
+          
+            i
+          
+        
+      
+    
+    {\displaystyle m_{i}}
+  
+ is on processing unit 
+  
+    
+      
+        
+          p
+          
+            i
+          
+        
+      
+    
+    {\displaystyle p_{i}}
+  
+ initially. All 
+  
+    
+      
+        
+          m
+          
+            i
+          
+        
+      
+    
+    {\displaystyle m_{i}}
+  
+ are aggregated by 
+  
+    
+      
+        ⊗
+      
+    
+    {\displaystyle \otimes }
+  
+ and the result is eventually stored on 
+  
+    
+      
+        
+          p
+          
+            0
+          
+        
+      
+    
+    {\displaystyle p_{0}}
+  
+. The reduction operator 
+  
+    
+      
+        ⊗
+      
+    
+    {\displaystyle \otimes }
+  
+ must be associative at least. Some algorithms require a commutative operator with a neutral element. Operators like 
+  
+    
+      
+        s
+        u
+        m
+      
+    
+    {\displaystyle sum}
+  
+, 
+  
+    
+      
+        m
+        i
+        n
+      
+    
+    {\displaystyle min}
+  
+, 
+  
+    
+      
+        m
+        a
+        x
+      
+    
+    {\displaystyle max}
+  
+ are common.
+Implementation considerations are similar to broadcast (§ Broadcast). For pipelining on binary trees the message must be representable as a vector of smaller object for component-wise reduction.
+Pipelined reduce on a balanced binary tree is possible in 
+  
+    
+      
+        
+          
+            O
+          
+        
+        (
+        α
+        log
+        ⁡
+        p
+        +
+        β
+        n
+        )
+      
+    
+    {\displaystyle {\mathcal {O}}(\alpha \log p+\beta n)}
+  
+.
+
+
+== All-Reduce ==
+
+The all-reduce pattern (also called allreduce) is used if the result of a reduce operation (§ Reduce) must be distributed to all processing units. Given 
+  
+    
+      
+        p
+      
+    
+    {\displaystyle p}
+  
+ processing units, message 
+  
+    
+      
+        
+          m
+          
+            i
+          
+        
+      
+    
+    {\displaystyle m_{i}}
+  
+ is on processing unit 
+  
+    
+      
+        
+          p
+          
+            i
+          
+        
+      
+    
+    {\displaystyle p_{i}}
+  
+ initially. All 
+  
+    
+      
+        
+          m
+          
+            i
+          
+        
+      
+    
+    {\displaystyle m_{i}}
+  
+ are aggregated by an operator 
+  
+    
+      
+        ⊗
+      
+    
+    {\displaystyle \otimes }
+  
+ and the result is eventually stored on all 
+  
+    
+      
+        
+          p
+          
+            i
+          
+        
+      
+    
+    {\displaystyle p_{i}}
+  
+. Analog to the reduce operation, the operator 
+  
+    
+      
+        ⊗
+      
+    
+    {\displaystyle \otimes }
+  
+ must be at least associative.
+All-reduce can be interpreted as a reduce operation with a subsequent broadcast (§ Broadcast). For long messages a corresponding implementation is suitable, whereas for short messages, the latency can be reduced by using a hypercube (Hypercube (communication pattern) § All-Gather/ All-Reduce) topology, if 
+  
+    
+      
+        p
+      
+    
+    {\displaystyle p}
+  
+ is a power of two. All-reduce can also be implemented with a butterfly algorithm and achieve optimal latency and bandwidth.
+All-reduce is possible in 
+  
+    
+      
+        
+          
+            O
+          
+        
+        (
+        α
+        log
+        ⁡
+        p
+        +
+        β
+        n
+        )
+      
+    
+    {\displaystyle {\mathcal {O}}(\alpha \log p+\beta n)}
+  
+, since reduce and broadcast are possible in 
+  
+    
+      
+        
+          
+            O
+          
+        
+        (
+        α
+        log
+        ⁡
+        p
+        +
+        β
+        n
+        )
+      
+    
+    {\displaystyle {\mathcal {O}}(\alpha \log p+\beta n)}
+  
+ with pipelining on balanced binary trees. All-reduce implemented with a butterfly algorithm achieves the same asymptotic runtime.
+
+
+== Prefix-Sum/Scan ==
+
+The prefix-sum or scan operation is used to collect data or partial results from different processing units and to compute intermediate results by an operator, which are stored on those processing units. It can be seen as a generalization of the reduce operation (§ Reduce). Given 
+  
+    
+      
+        p
+      
+    
+    {\displaystyle p}
+  
+ processing units, message 
+  
+    
+      
+        
+          m
+          
+            i
+          
+        
+      
+    
+    {\displaystyle m_{i}}
+  
+ is on processing unit 
+  
+    
+      
+        
+          p
+          
+            i
+          
+        
+      
+    
+    {\displaystyle p_{i}}
+  
+. The operator 
+  
+    
+      
+        ⊗
+      
+    
+    {\displaystyle \otimes }
+  
+ must be at least associative, whereas some algorithms require also a commutative operator and a neutral element. Common operators are 
+  
+    
+      
+        s
+        u
+        m
+      
+    
+    {\displaystyle sum}
+  
+, 
+  
+    
+      
+        m
+        i
+        n
+      
+    
+    {\displaystyle min}
+  
+ and 
+  
+    
+      
+        m
+        a
+        x
+      
+    
+    {\displaystyle max}
+  
+. Eventually processing unit 
+  
+    
+      
+        
+          p
+          
+            i
+          
+        
+      
+    
+    {\displaystyle p_{i}}
+  
+ stores the prefix sum 
+  
+    
+      
+        
+          ⊗
+          
+            
+              i
+              ′
+            
+            <=
+            i
+          
+        
+      
+    
+    {\displaystyle \otimes _{i'<=i}}
+  
+
+  
+    
+      
+        
+          m
+          
+            
+              i
+              ′
+            
+          
+        
+      
+    
+    {\displaystyle m_{i'}}
+  
+. In the case of the so-called exclusive prefix sum, processing unit 
+  
+    
+      
+        
+          p
+          
+            i
+          
+        
+      
+    
+    {\displaystyle p_{i}}
+  
+ stores the prefix sum 
+  
+    
+      
+        
+          ⊗
+          
+            
+              i
+              ′
+            
+            <
+            i
+          
+        
+      
+    
+    {\displaystyle \otimes _{i'<i}}
+  
+
+  
+    
+      
+        
+          m
+          
+            
+              i
+              ′
+            
+          
+        
+      
+    
+    {\displaystyle m_{i'}}
+  
+. Some algorithms require to store the overall sum at each processing unit in addition to the prefix sums.
+For short messages, this can be achieved with a hypercube topology if 
+  
+    
+      
+        p
+      
+    
+    {\displaystyle p}
+  
+ is a power of two. For long messages, the hypercube (Hypercube (communication pattern) § Prefix sum, Prefix sum § Distributed memory: Hypercube algorithm) topology is not suitable, since all processing units are active in every step and therefore pipelining can't be used. A binary tree topology is better suited for arbitrary 
+  
+    
+      
+        p
+      
+    
+    {\displaystyle p}
+  
+ and long messages (Prefix sum § Large Message Sizes: Pipelined Binary Tree).
+Prefix-sum on a binary tree can be implemented with an upward and downward phase. In the upward phase reduction is performed, while the downward phase is similar to broadcast, where the prefix sums are computed by sending different data to the left and right children. With this approach pipelining is possible, because the operations are equal to reduction (§ Reduce) and broadcast (§ Broadcast).
+Pipelined prefix sum on a binary tree is possible in 
+  
+    
+      
+        
+          
+            O
+          
+        
+        (
+        α
+        log
+        ⁡
+        p
+        +
+        β
+        n
+        )
+      
+    
+    {\displaystyle {\mathcal {O}}(\alpha \log p+\beta n)}
+  
+.
+
+
+== Barrier ==
+
+The barrier as a collective operation is a generalization of the concept of a barrier, that can be used in distributed computing. When a processing unit calls barrier, it waits until all other processing units have called barrier as well. Barrier is thus used to achieve global synchronization in distributed computing.
+One way to implement barrier is to call all-reduce (§ All-Reduce) with an empty/ dummy operand. We know the runtime of All-reduce is 
+  
+    
+      
+        
+          
+            O
+          
+        
+        (
+        α
+        log
+        ⁡
+        p
+        +
+        β
+        n
+        )
+      
+    
+    {\displaystyle {\mathcal {O}}(\alpha \log p+\beta n)}
+  
+. Using a dummy operand reduces size 
+  
+    
+      
+        n
+      
+    
+    {\displaystyle n}
+  
+ to a constant factor and leads to a runtime of 
+  
+    
+      
+        
+          
+            O
+          
+        
+        (
+        α
+        log
+        ⁡
+        p
+        )
+      
+    
+    {\displaystyle {\mathcal {O}}(\alpha \log p)}
+  
+.
+
+
+== Gather ==
+
+The gather communication pattern is used to store data from all processing units on a single processing unit. Given 
+  
+    
+      
+        p
+      
+    
+    {\displaystyle p}
+  
+ processing units, message 
+  
+    
+      
+        
+          m
+          
+            i
+          
+        
+      
+    
+    {\displaystyle m_{i}}
+  
+ on processing unit 
+  
+    
+      
+        
+          p
+          
+            i
+          
+        
+      
+    
+    {\displaystyle p_{i}}
+  
+. For a fixed processing unit 
+  
+    
+      
+        
+          p
+          
+            j
+          
+        
+      
+    
+    {\displaystyle p_{j}}
+  
+, we want to store the message 
+  
+    
+      
+        
+          m
+          
+            1
+          
+        
+        ⋅
+        
+          m
+          
+            2
+          
+        
+        ⋅
+        …
+        ⋅
+        
+          m
+          
+            p
+          
+        
+      
+    
+    {\displaystyle m_{1}\cdot m_{2}\cdot \ldots \cdot m_{p}}
+  
+ on 
+  
+    
+      
+        
+          p
+          
+            j
+          
+        
+      
+    
+    {\displaystyle p_{j}}
+  
+. Gather can be thought of as a reduce operation (§ Reduce) that uses the concatenation operator. This works due to the fact that concatenation is associative. By using the same binomial tree reduction algorithm we get a runtime of 
+  
+    
+      
+        
+          
+            O
+          
+        
+        (
+        α
+        log
+        ⁡
+        p
+        +
+        β
+        p
+        n
+        )
+      
+    
+    {\displaystyle {\mathcal {O}}(\alpha \log p+\beta pn)}
+  
+. We see that the asymptotic runtime is similar to the asymptotic runtime of reduce 
+  
+    
+      
+        
+          
+            O
+          
+        
+        (
+        α
+        log
+        ⁡
+        p
+        +
+        β
+        n
+        )
+      
+    
+    {\displaystyle {\mathcal {O}}(\alpha \log p+\beta n)}
+  
+, but with the addition of a factor p to the term 
+  
+    
+      
+        β
+        n
+      
+    
+    {\displaystyle \beta n}
+  
+. This additional factor is due to the message size increasing in each step as messages get concatenated. Compare this to reduce where message size is a constant for operators like 
+  
+    
+      
+        m
+        i
+        n
+      
+    
+    {\displaystyle min}
+  
+.
+
+
+== All-Gather ==
+
+The all-gather communication pattern is used to collect data from all processing units and to store the collected data on all processing units. Given 
+  
+    
+      
+        p
+      
+    
+    {\displaystyle p}
+  
+ processing units 
+  
+    
+      
+        
+          p
+          
+            i
+          
+        
+      
+    
+    {\displaystyle p_{i}}
+  
+, message 
+  
+    
+      
+        
+          m
+          
+            i
+          
+        
+      
+    
+    {\displaystyle m_{i}}
+  
+ initially stored on 
+  
+    
+      
+        
+          p
+          
+            i
+          
+        
+      
+    
+    {\displaystyle p_{i}}
+  
+, we want to store the message 
+  
+    
+      
+        
+          m
+          
+            1
+          
+        
+        ⋅
+        
+          m
+          
+            2
+          
+        
+        ⋅
+        …
+        ⋅
+        
+          m
+          
+            p
+          
+        
+      
+    
+    {\displaystyle m_{1}\cdot m_{2}\cdot \ldots \cdot m_{p}}
+  
+ on each 
+  
+    
+      
+        
+          p
+          
+            j
+          
+        
+      
+    
+    {\displaystyle p_{j}}
+  
+.
+It can be thought of in multiple ways. The first is as an all-reduce operation (§ All-Reduce) with concatenation as the operator, in the same way that gather can be represented by reduce. The second is as a gather-operation followed by a broadcast of the new message of size 
+  
+    
+      
+        p
+        n
+      
+    
+    {\displaystyle pn}
+  
+. With this we see that all-gather in 
+  
+    
+      
+        
+          
+            O
+          
+        
+        (
+        α
+        log
+        ⁡
+        p
+        +
+        β
+        p
+        n
+        )
+      
+    
+    {\displaystyle {\mathcal {O}}(\alpha \log p+\beta pn)}
+  
+ is possible.
+
+
+== Scatter ==
+
+The scatter communication pattern is used to distribute data from one processing unit to all the processing units. It differs from broadcast, in that it does not send the same message to all processing units. Instead it splits the message and delivers one part of it to each processing unit.
+Given 
+  
+    
+      
+        p
+      
+    
+    {\displaystyle p}
+  
+ processing units 
+  
+    
+      
+        
+          p
+          
+            i
+          
+        
+      
+    
+    {\displaystyle p_{i}}
+  
+, a fixed processing unit 
+  
+    
+      
+        
+          p
+          
+            j
+          
+        
+      
+    
+    {\displaystyle p_{j}}
+  
+ that holds the message 
+  
+    
+      
+        m
+        =
+        
+          m
+          
+            1
+          
+        
+        ⋅
+        
+          m
+          
+            2
+          
+        
+        ⋅
+        …
+        ⋅
+        
+          m
+          
+            p
+          
+        
+      
+    
+    {\displaystyle m=m_{1}\cdot m_{2}\cdot \ldots \cdot m_{p}}
+  
+. We want to transport the message 
+  
+    
+      
+        
+          m
+          
+            i
+          
+        
+      
+    
+    {\displaystyle m_{i}}
+  
+ onto 
+  
+    
+      
+        
+          p
+          
+            i
+          
+        
+      
+    
+    {\displaystyle p_{i}}
+  
+. The same implementation concerns as for gather (§ Gather) apply. This leads to an optimal runtime in 
+  
+    
+      
+        
+          
+            O
+          
+        
+        (
+        α
+        log
+        ⁡
+        p
+        +
+        β
+        p
+        n
+        )
+      
+    
+    {\displaystyle {\mathcal {O}}(\alpha \log p+\beta pn)}
+  
+.
+
+
+== All-to-all ==
+
+All-to-all is the most general communication pattern. For 
+  
+    
+      
+        0
+        ≤
+        i
+        ,
+        j
+        <
+        p
+      
+    
+    {\displaystyle 0\leq i,j<p}
+  
+, message 
+  
+    
+      
+        
+          m
+          
+            i
+            ,
+            j
+          
+        
+      
+    
+    {\displaystyle m_{i,j}}
+  
+ is the message that is initially stored on node 
+  
+    
+      
+        i
+      
+    
+    {\displaystyle i}
+  
+ and has to be delivered to node 
+  
+    
+      
+        j
+      
+    
+    {\displaystyle j}
+  
+. We can express all communication primitives that do not use operators through all-to-all. For example, broadcast of message 
+  
+    
+      
+        m
+      
+    
+    {\displaystyle m}
+  
+ from node 
+  
+    
+      
+        
+          p
+          
+            k
+          
+        
+      
+    
+    {\displaystyle p_{k}}
+  
+ is emulated by setting 
+  
+    
+      
+        
+          m
+          
+            i
+            ,
+            j
+          
+        
+        =
+        m
+      
+    
+    {\displaystyle m_{i,j}=m}
+  
+ for 
+  
+    
+      
+        i
+        =
+        k
+      
+    
+    {\displaystyle i=k}
+  
+ and setting 
+  
+    
+      
+        
+          m
+          
+            l
+            ,
+            j
+          
+        
+      
+    
+    {\displaystyle m_{l,j}}
+  
+ empty for 
+  
+    
+      
+        l
+        ≠
+        k
+      
+    
+    {\displaystyle l\neq k}
+  
+.
+Assuming we have a fully connected network, the best possible runtime for all-to-all is in 
+  
+    
+      
+        
+          
+            O
+          
+        
+        (
+        p
+        (
+        α
+        +
+        β
+        n
+        )
+        )
+      
+    
+    {\displaystyle {\mathcal {O}}(p(\alpha +\beta n))}
+  
+ . This is achieved through 
+  
+    
+      
+        p
+      
+    
+    {\displaystyle p}
+  
+  rounds of direct message exchange. For 
+  
+    
+      
+        p
+      
+    
+    {\displaystyle p}
+  
+ power of 2, in communication round 
+  
+    
+      
+        k
+      
+    
+    {\displaystyle k}
+  
+ , node 
+  
+    
+      
+        
+          p
+          
+            i
+          
+        
+      
+    
+    {\displaystyle p_{i}}
+  
+ exchanges messages with node 
+  
+    
+      
+        
+          p
+          
+            j
+          
+        
+        ,
+        j
+        =
+        i
+        ⊕
+        k
+      
+    
+    {\displaystyle p_{j},j=i\oplus k}
+  
+ .
+
+If the message size is small and latency dominates the communication, a hypercube algorithm can be used to distribute the messages in time 
+  
+    
+      
+        
+          
+            O
+          
+        
+        (
+        log
+        ⁡
+        p
+        (
+        α
+        +
+        β
+        p
+        n
+        )
+        )
+      
+    
+    {\displaystyle {\mathcal {O}}(\log p(\alpha +\beta pn))}
+  
+ .
+
+
+== Runtime Overview ==
+This table gives an overview over the best known asymptotic runtimes, assuming we have free choice of network topology. Example topologies we want for optimal runtime are binary tree, binomial tree, hypercube. In practice, we have to adjust to the available physical topologies, e.g. dragonfly, fat tree, grid network (references other topologies, too).
+For each operation, the optimal algorithm can depend on the input sizes 
+  
+    
+      
+        n
+      
+    
+    {\displaystyle n}
+  
+. For example, broadcast for short messages is best implemented using a binomial tree whereas for long messages a pipelined communication on a balanced binary tree is optimal.
+The complexities stated in the table depend on the latency 
+  
+    
+      
+        α
+      
+    
+    {\displaystyle \alpha }
+  
+ and the communication cost per word 
+  
+    
+      
+        β
+      
+    
+    {\displaystyle \beta }
+  
+ in addition to the number of processing units 
+  
+    
+      
+        p
+      
+    
+    {\displaystyle p}
+  
+ and the input message size per node 
+  
+    
+      
+        n
+      
+    
+    {\displaystyle n}
+  
+. The # senders and # receivers columns represent the number of senders and receivers that are involved in the operation respectively. The # messages column lists the number of input messages and the Computations? column indicates if any computations are done on the messages or if the messages are just delivered without processing. Complexity gives the asymptotic runtime complexity of an optimal implementation under free choice of topology.
+
+
+== Notes ==
+
+
+== References ==
+Sanders, Peter; Mehlhorn, Kurt; Dietzfelbinger, Martin; Dementiev, Roman (2019). Sequential and Parallel Algorithms and Data Structures - The Basic Toolbox. Springer Nature Switzerland AG. ISBN 978-3-030-25208-3.

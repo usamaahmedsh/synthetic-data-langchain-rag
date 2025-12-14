@@ -1,0 +1,74 @@
+SCHED_DEADLINE is a CPU scheduler available in the Linux kernel since version 3.14, based on the earliest deadline first (EDF) and constant bandwidth server (CBS) algorithms, supporting resource reservations: each task scheduled under such policy is associated with a budget Q (aka runtime), and a period P, corresponding to a declaration to the kernel that Q time units are required by that task every P time units, on any processor. This makes SCHED_DEADLINE particularly suitable for real-time applications, like multimedia or industrial control, where P corresponds to the minimum time elapsing between subsequent activations of the task, and Q corresponds to the worst-case execution time needed by each activation of the task.
+
+
+== Background on CPU schedulers in the Linux kernel ==
+The Linux kernel contains different scheduler classes. By default, the kernel uses a scheduler mechanism called the Completely Fair Scheduler (CFS) introduced in the 2.6.23 version of the kernel. Internally, this default scheduler class is also known as SCHED_NORMAL, and the kernel also contains two POSIX-compliant real-time scheduling classes named SCHED_FIFO (realtime first-in-first-out) and SCHED_RR (realtime round-robin) both of which take precedence over the default class. The SCHED_DEADLINE scheduling class was added to the Linux scheduler in version 3.14 of the Linux kernel mainline, released on 30 March 2014,
+and takes precedence over all the other scheduling classes.
+The default scheduler, CFS, makes a very good job in coping with different use cases. For example, when mixing batch workloads such as long-running code compilations or number crunching, and interactive applications such as desktop applications, multi-media or others, the CFS dynamically de-prioritizes batch tasks in favour of interactive ones. However, when an application needs a predictable and precise schedule, normally it has to recur to one of the other real-time schedulers, SCHED_RR or SCHED_FIFO, which apply fixed-priority to schedule tasks by priorities, and whose tasks are scheduled before any task in the SCHED_NORMAL class.
+
+
+== Operation ==
+
+When mixing real-time workloads with heterogeneous timing requirements on the same system, a well-known problem of SCHED_RR and SCHED_FIFO is that, as these are based on tasks priorities, higher-priority tasks running for longer than expected may arbitrarily delay lower-priority tasks in an uncontrolled way.
+With SCHED_DEADLINE, instead, tasks declare independently their timing requirements, in terms of a per-task runtime needed every per-task period (and due within a per-task deadline since each period start), and the kernel accepts them in the scheduler after a schedulability test. Now, if a task tries to run for longer than its assigned budget, the kernel will suspend that task and defer its execution to its next activation period. This non-work conserving property of the scheduler allows it to provide temporal isolation among the tasks. This results in the important property that, on single-processor systems, or on partitioned multi-processor systems (where tasks are partitioned among available CPUs, so each task is pinned down on a specific CPU and cannot migrate), all accepted SCHED_DEADLINE tasks are guaranteed to be scheduled for an overall time equal to their budget in every time window as long as their period, unless the task itself blocks and doesn't need to run. Also, a peculiar property of the CBS algorithm is that it guarantees temporal isolation also in presence of tasks blocking and resuming execution: this is done by resetting a task scheduling deadline to a whole period apart, whenever a task wakes up too late. In the general case of tasks free to migrate on a multi-processor, as SCHED_DEADLINE implements global EDF, the general tardiness bound for global EDF applies, as explained in.
+In order to better understand how the scheduler works, consider a set of SCHED_DEADLINE tasks with potentially different periods, having the deadline equal to the period. For each task, in addition to the configured runtime and (relative) period, the kernel keeps track of a current runtime and a current (absolute) deadline. Tasks are scheduled on CPUs based on their current deadlines, using global EDF. When a task scheduling policy is initially set to SCHED_DEADLINE, the current deadline is initialized to the current time plus the configured period, and the current budget is set equal to the configured budget. Each time a task is scheduled to run on any CPU, the kernel lets it run for at most the available current budget, and whenever the task is descheduled its current budget is decreased by the amount of time it has been run. Once the current budget goes to zero, the task is suspended (throttled) till the next activation period, when the current budget is refilled again to the configured value, and the deadline is moved forward by a value equal to the task period.
+This is not sufficient to guarantee temporal isolation. A task suspending itself shortly after its activation, and then waking up close to its current deadline or even beyond, would wake up with nearly the whole of its configured budget, with a current deadline that is very close to expire, or even in the past. In such condition, that task would be scheduled before any other one, and on a single-processor system it would be able to delay execution of any other deadline task for as long as its budget. In order to avoid this problem, SCHED_DEADLINE adopts the wake-up scheduling rule defined in the CBS algorithm. When a task wakes up, if a relatively small time has elapsed since the task blocked, then the previous current deadline and budget are kept unchanged for the task. However, if an excessive amount of time has elapsed, then the kernel resets the current deadline to the current time plus the reservation period, and the current budget to the allocated reservation budget. For a longer explanation with examples, see.
+On a multi-processor or multi-core system, SCHED_DEADLINE implements global EDF, so tasks are able to migrate across available CPUs. In such a case, the configured budget is the total cumulative amount of time the task is allowed to run on any CPU during each period. However, the scheduler also respects tasks' affinity masks, so one can easily create partitioned scheduling scenarios, partitioning tasks in groups where each group is restricted to a specific CPU, or clustered scheduling scenarios, obtained by also partitioning CPUs and each tasks partition is pinned down to a specific CPUs partition.
+For technical details about SCHED_DEADLINE, refer to the documentation available within the kernel source tree.
+For further details on the CBS and how it enables temporal isolation, refer to the original CBS paper, or the section about the CBS in this article  appeared on lwn.net.
+
+
+== History ==
+The initial idea of a Linux scheduling class based on the Earliest Deadline First (EDF) algorithm was born in the small context of the Real-Time Systems (ReTiS) Lab of Scuola Superiore Sant'Anna and its Spin-Off company Evidence Srl. Then, Evidence Srl leveraged the funding of the ACTORS project, supported by the European Commission through the FP7 framework programme, for financing and promoting the development of the first versions of the patch.
+The original version has been developed by Dario Faggioli (contract by Evidence Srl for the development of the first three versions) and Juri Lelli (since the fourth version)  with sporadic help from Michael Trimarchi and Fabio Checconi.  Johan Eker has been in charge of coordination within ACTORS and supporting from Ericsson. Juri Lelli, Luca Abeni and Claudio Scordino have collaborated to the development of the reclaiming (i.e. GRUB) and frequency-scaling (i.e. GRUB-PA) features.
+The patch has been periodically released to the kernel community through the Linux kernel mailing list (LKML). Each release aligned the code to the latest version of the kernel and took into account comments received at the previous submission.
+As the popularity of the scheduler increased, a higher number of kernel developers started providing their feedback and their contribution.
+The project was originally called SCHED_EDF and presented to the Linux kernel community in 2009. With this name was also presented to the Real-Time Linux Workshop after a few weeks. The name has been then changed to SCHED_DEADLINE after the request of the Linux kernel community.
+In the course of the years, the following versions have been released:
+
+The first version of the scheduler was submitted on September 22, 2009, with the name of SCHED_EDF.
+The first version of the scheduler after the name changed to SCHED_DEADLINE was submitted to LKML on October 16, 2009.
+The second version of the scheduler has been submitted to LKML on February 28, 2010, and had a first implementation of the Deadline Inheritance protocol.
+The third version of the scheduler has been submitted to LKML on October 29, 2010, and it added support for global/clustered multiprocessor scheduling through dynamic task migrations.
+The fourth version of the scheduler has been submitted to LKML on April 6, 2012, and has better handling of rq selection for dynamic task migration and better integration with PREEMPT_RT.
+The fifth version of the scheduler has been submitted to LKML on May 23, 2012.
+The sixth version of the scheduler has been submitted to LKML on October 24, 2012.
+The seventh version of the scheduler has been submitted to LKML on February 11, 2013. Internal math has been restricted to microseconds resolution (to avoid overflows) and the RFC tag has been removed.
+The eighth version of the scheduler has been submitted to LKML on October 14, 2013.
+The ninth version of the scheduler has been submitted to LKML on November 7, 2013.
+The last version was merged into the mainline Linux kernel (commit number a0fa1dd3cdbccec9597fe53b6177a9aa6e20f2f8), and is since then a regular part of it.
+Articles on Linux Weekly News and Phoronix websites argued that SCHED_DEADLINE may be merged into the mainline kernel in the very next releases. 
+Finally, after more than four years and the submission of nine releases, the patch has been accepted and merged into the Linux kernel 3.14.
+Before SCHED_DEADLINE, the Real-Time Systems (ReTiS) Lab of Scuola Superiore Sant'Anna had provided various other open-source implementations of CBS and its variants within the Linux kernel, in the context of other European research projects, including OCERA, the AQuoSA architecture within the FRESCOR project, and IRMOS. However, these prior efforts started with an academic approach where the main aim was to gather experimental results for research projects, rather than providing an implementation suitable for integration within the mainline kernel. With IRMOS, the lab had a first serious contact with Linux kernel developers.
+Since kernel 4.13, SCHED_DEADLINE completed CBS with the Greedy Reclamation of Unused Bandwidth (GRUB) algorithm. The support has been developed by ReTiS Lab with the collaboration of Evidence Srl.
+Since kernel 4.16, SCHED_DEADLINE has been further evolved to reduce energy consumption on ARM platforms by implementing the GRUB-PA algorithm. The work has been done by ARM Ltd. in collaboration with Evidence Srl and Scuola Superiore Sant'Anna.
+
+
+== Academic background ==
+SCHED_DEADLINE has been presented through some academic workshops, conferences and journals:
+
+Dario Faggioli, Fabio Checconi, Michael Trimarchi, Claudio Scordino, An EDF scheduling class for the Linux kernel, 11th Real-Time Linux Workshop (RTLWS), Dresden, Germany, September 2009
+Nicola Manica, Luca Abeni, Luigi Palopoli, Dario Faggioli, Claudio Scordino, Schedulable Device Drivers: Implementation and Experimental Results, International Workshop on Operating Systems Platforms for Embedded Real-Time Applications (OSPERT), Brussels, Belgium, July 2010
+Juri Lelli, Giuseppe Lipari, Dario Faggioli, Tommaso Cucinotta, An efficient and scalable implementation of global EDF in Linux, International Workshop on Operating Systems Platforms for Embedded Real-Time Applications (OSPERT), Porto (Portugal), July 2011.
+Enrico Bini, Giorgio Buttazzo, Johan Eker, Stefan Schorr, Raphael Guerra, Gerhard Fohler, Karl-Erik Arzen, Vanessa Romero Segovia, Claudio Scordino, Resource Management on Multicore Systems: The ACTORS Approach, IEEE Micro, vol. 31, no. 3, pp. 72–81, May/June 2011.
+Andrea Parri, Juri Lelli, Mauro Marinoni, Giuseppe Lipari, Design and Implementation of the Multiprocessor Bandwidth Inheritance Protocol on Linux, 15th Real-Time Linux Workshop (RTLWS), Lugano-Manno, Switzerland, October 2013.
+Luca Abeni, Juri Lelli, Claudio Scordino, Luigi Paolopoli, Greedy CPU reclaiming for SCHED_DEADLINE, Proceedings of 16th Real-Time Linux Workshop (RTLWS), Düsseldorf, Germany, October 2014.
+Juri Lelli, Claudio Scordino, Luca Abeni, Dario Faggioli, Deadline scheduling in the Linux kernel, Software: Practice and Experience, 46(6): 821–839, June 2016.
+Claudio Scordino, Luca Abeni, Juri Lelli, Energy-Aware Real-Time Scheduling in the Linux Kernel, 33rd ACM/SIGAPP Symposium On Applied Computing (SAC 2018), Pau, France, April 2018.
+Claudio Scordino, Luca Abeni, Juri Lelli, Real-time and Energy Efficiency in Linux: Theory and Practice, ACM SIGAPP Applied Computing Review (ACR) Vol. 18 No. 4, 2018.
+The project has been also presented at the Kernel Summit in 2010, at the Linux Plumbers Conference 2012, and at the Embedded Linux Conference 2013.
+
+
+== Other information ==
+The project has an official page. Before mainline integration, the code used to be publicly available on a GitHub website, which replaced the previous repository on Gitorious. Since mainline integration, the official code is included in the Linux kernel source tree.
+Several articles have appeared on Linux Weekly News, Slashdot, OSNews and LinuxToday.
+A video has been uploaded on YouTube as well.
+Before integration in the mainline kernel, SCHED_DEADLINE was already integrated into the Yocto Project.
+and there had also been some interest for inclusion in Linaro projects.
+
+
+== See also ==
+Earliest eligible virtual deadline first scheduling (EEVDF)
+
+
+== References ==

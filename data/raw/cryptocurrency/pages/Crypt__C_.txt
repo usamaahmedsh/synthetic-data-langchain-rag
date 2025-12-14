@@ -1,0 +1,123 @@
+crypt is a POSIX C library function. It is typically used to compute the hash of user account passwords. The function outputs a text string which also encodes the salt (usually the first two characters are the salt itself and the rest is the hashed result), and identifies the hash algorithm used (defaulting to the "traditional" one explained below). This output string forms a password record, which is usually stored in a text file.
+More formally, crypt provides cryptographic key derivation functions for password validation and storage on Unix systems.
+
+
+== Relationship to Unix crypt utility ==
+There is an unrelated crypt utility in Unix, which is often confused with the C library function.  To distinguish between the two, writers often refer to the utility program as crypt(1), because it is documented in section 1 of the Unix manual pages, and refer to the C library function as crypt(3), because its documentation is in manual section 3.
+
+
+== Details ==
+This same crypt function is used both to generate a new hash for storage and also to hash a proffered password with a recorded salt for comparison.
+Modern Unix implementations of the crypt library routine support a variety of hash schemes. The particular hash algorithm used can be identified by a unique code prefix in the resulting hashtext, following a de facto standard called Modular Crypt Format.
+The crypt() library function is also included in the Perl, PHP, Pike, Python (although it is now deprecated as of 3.11), and Ruby programming languages.
+
+
+== Key derivation functions supported by crypt ==
+Over time various algorithms have been introduced. To enable backward compatibility, each scheme started using some convention of serializing the password hashes that was later called the Modular Crypt Format (MCF). Old crypt(3) hashes generated before the de facto MCF standard may vary from scheme to scheme. A well-defined subset of the Modular Crypt Format was created during the Password Hashing Competition. The format is defined as:
+$<id>[$<param>=<value>(,<param>=<value>)*][$<salt>[$<hash>]]
+where
+
+id: an identifier representing the hashing algorithm (such as 1 for MD5, 5 for SHA-256 etc.)
+param name and its value: hash complexity parameters, like rounds/iterations count
+salt: salt following the radix-64 alphabet (DES uses the decoded value)
+hash: radix-64 encoded result of hashing the password and salt
+The radix-64 encoding in crypt is called B64 and uses the alphabet ./0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz which is different than the more common RFC 4648 base64 
+
+The PHC subset covers a majority of MCF hashes. A number of extra application-defined methods exist.
+
+
+=== Original implementation using the password as a key ===
+The original implementation of the crypt() library function in Third Edition Unix mimicked the M-209 cipher machine. Rather than encrypting the password with a key, which would have allowed the password to be recovered from the encrypted value and the key, it used the password itself as a key, and the password database contained the result of encrypting the password with this key.
+
+
+=== Traditional DES-based scheme ===
+The original password encryption scheme was found to be too fast and thus subject to brute force enumeration of the most likely passwords. In Seventh Edition Unix, the scheme was changed to a modified form of the DES algorithm.  A goal of this change was to make encryption slower.  In addition, the algorithm incorporated a 12-bit salt in order to ensure that an attacker would be forced to crack each password independently as opposed to being able to target the entire password database simultaneously.
+In detail, the user's password is truncated to eight characters, and those are coerced down to only 7-bits each; this forms the 56-bit DES key.  That key is then used to encrypt an all-bits-zero block, and then the ciphertext is encrypted again with the same key, and so on for a total of 25 DES encryptions.  A 12-bit salt is used to perturb the encryption algorithm, so standard DES implementations can't be used to implement crypt().  The salt and the final ciphertext are encoded into a printable string in a form of base64.
+This is technically not encryption since the data (all bits zero) is not being kept secret; it's widely known to all in advance.  However, one of the properties of DES is that it was designed to be resistant to key recovery even in the face of known plaintext situations.  It is theoretically possible that two different passwords could result in exactly the same hash.  Thus the password is never "decrypted": it is merely used to compute a result, and the matching results are presumed to be proof that the passwords were "the same."
+The advantages of this method have been that the hashtext can be stored and copied among Unix systems without exposing the corresponding plaintext password to the system administrators or other users. This portability has worked for over 30 years across many generations of computing architecture, and across many versions of Unix from many vendors.
+
+
+==== Weaknesses of the traditional scheme ====
+The traditional DES-based crypt algorithm was originally chosen because DES was resistant to key recovery even in the face of "known plaintext" attacks, and because it was computationally expensive.  On the earliest Unix machines it took over a full second to compute a password hash.  This also made it reasonably resistant to dictionary attacks in that era.  At that time password hashes were commonly stored in an account file (/etc/passwd) which was readable to anyone on the system.  (This account file was also used to map user ID numbers into names, and user names into full names, etc.).
+In the three decades since that time, computers have become vastly more powerful.  Moore's Law has generally held true, so the computer speed and capacity available for a given financial investment has doubled over 20 times since Unix was first written.  This has long since left the DES-based algorithm vulnerable to dictionary attacks, and Unix and Unix-like systems such as Linux have used "shadow" files for a long time, migrating just the password hash values out of the account file (/etc/passwd) and into a file (conventionally named /etc/shadow) which can only be read by privileged processes.
+To increase the computational cost of password breaking, some Unix sites privately started increasing the number of encryption rounds on an ad hoc basis.  This had the side effect of making their crypt() incompatible with the standard crypt(): the hashes had the same textual form, but were now calculated using a different algorithm.  Some sites also took advantage of this incompatibility effect, by modifying the initial block from the standard all-bits-zero.  This did not increase the cost of hashing, but meant that precomputed hash dictionaries based on the standard crypt() could not be applied.
+
+
+=== BSDi extended DES-based scheme ===
+BSDi used a slight modification of the classic DES-based scheme.  BSDi extended the salt to 24 bits and made the number of rounds variable (up to 224-1).  The chosen number of rounds is encoded in the stored password hash, avoiding the incompatibility that occurred when sites modified the number of rounds used by the original scheme.  These hashes are identified by starting with an underscore (_), which is followed by 4 characters representing the number of rounds then 4 characters for the salt.
+The BSDi algorithm also supports longer passwords, using DES to fold the initial long password down to the eight 7-bit bytes supported by the original algorithm.
+
+
+=== MD5-based scheme ===
+Poul-Henning Kamp designed a baroque and (at the time) computationally expensive algorithm based on the MD5 message digest algorithm.  MD5 itself would provide good cryptographic strength for the password hash, but it is designed to be quite quick to calculate relative to the strength it provides.  The crypt() scheme is designed to be expensive to calculate, to slow down dictionary attacks.  The printable form of MD5 password hashes starts with $1$.
+This scheme allows users to have any length password, and they can use any characters supported by their platform (not just 7-bit ASCII).  (In practice many implementations limit the password length, but they generally support passwords far longer than any person would be willing to type.)  The salt is also an arbitrary string, limited only by character set considerations.
+First the passphrase and salt are hashed together, yielding an MD5 message digest.  Then a new digest is constructed, hashing together the passphrase, the salt, and the first digest, all in a rather complex form.  Then this digest is passed through a thousand iterations of a function which rehashes it together with the passphrase and salt in a manner that varies between rounds.  The output of the last of these rounds is the resulting passphrase hash.
+The fixed iteration count has caused this scheme to lose the computational expense that it once enjoyed and variable numbers of rounds are now favoured. In June 2012, Poul-Henning Kamp declared the algorithm insecure and encouraged users to migrate to stronger password scramblers.
+
+
+=== Blowfish-based scheme ===
+
+Niels Provos and David Mazières designed a crypt() scheme called bcrypt based on Blowfish, and presented it at USENIX in 1999. The printable form of these hashes starts with $2$, $2a$, $2b$, $2x$ or $2y$ depending on which variant of the algorithm is used:
+
+$2$ –  Obsolete.
+$2a$ –  The current key used to identify this scheme.  Since a major security flaw was discovered in 2011 in a non-OpenBSD crypt_blowfish implementation of the algorithm, hashes indicated by this string are now ambiguous and might have been generated by the flawed implementation, or a subsequent fixed, implementation. The flaw may be triggered by some password strings containing non-ASCII (8th-bit-set) characters.
+$2b$ –  Used by recent OpenBSD implementations to include a mitigation to a wraparound problem. Previous versions of the algorithm have a problem with long passwords. By design, long passwords are truncated at 72 characters, but there is a byte integer wraparound problem with certain password lengths resulting in weak hashes.
+$2x$ –  A flag added after the crypt_blowfish bug discovery. Old hashes can be renamed to be $2x$ to indicate that they were generated with the broken algorithm. These hashes are still weak, but at least it's clear which algorithm was used to generate them.
+$2y$ –  A flag in crypt_blowfish to unambiguously use the new, corrected algorithm.  On an older implementation suffering from the bug, $2y$ simply won't work.  On a newer, fixed implementation, it will produce the same result as using $2b$.
+Blowfish is notable among block ciphers for its expensive key setup phase.  It starts off with subkeys in a standard state, then uses this state to perform a block encryption using part of the key, and uses the result of that encryption (really, a hashing) to replace some of the subkeys.  Then it uses this modified state to encrypt another part of the key, and uses the result to replace more of the subkeys.  It proceeds in this fashion, using a progressively modified state to hash the key and replace bits of state, until all subkeys have been set.
+The number of rounds of keying is a power of two, which is an input to the algorithm.  The number is encoded in the textual hash, e.g. $2y$10...
+
+
+=== NT hash scheme ===
+FreeBSD implemented support for the NT LAN Manager hash algorithm to provide easier compatibility with NT accounts via MS-CHAP.  The NT-Hash algorithm is known to be weak, as it uses the deprecated md4 hash algorithm without any salting. FreeBSD used the $3$ prefix for this. Its use is not recommended, as it is easily broken.
+
+
+=== SHA2-based scheme ===
+The commonly used MD5 based scheme has become easier to attack as computer power has increased. Although the Blowfish-based system has the option of adding rounds and thus remain a challenging password algorithm, it does not use a NIST-approved algorithm. In light of these facts, Ulrich Drepper of Red Hat led an effort to create a scheme based on the SHA-2 (SHA-256 and SHA-512) hash functions. The printable form of these hashes starts with $5$ (for SHA-256) or $6$ (for SHA-512) depending on which SHA variant is used. Its design is similar to the MD5-based crypt, with a few notable differences:
+
+It avoids adding constant data in a few steps.
+The MD5 algorithm would repeatedly add the first letter of the password; this step was changed significantly.
+Inspired by Sun's crypt() implementation, functionality to specify the number of iterations (rounds) the main loop in the algorithm performs was added
+The number of iterations is 5000 by default, with a minimum of 1000, and a maximum of 999,999,999.
+The specification and sample code have been released into the public domain; it is often referred to as "SHAcrypt".
+
+
+=== Other hashes ===
+$y$
+yescrypt is an extension of scrypt ($7$) and a PHC finalist. It is used in several Linux distributions as an alternative to the existing schemes. To use this hash, the libcrypt from glibc is replaced with a backward-compatible one from the "libxcrypt" project.
+$argon2d$, $argon2i$, $argon2ds$
+These are PHC-assigned names for the Argon2 algorithm, but do not seem to be widely used.
+Additional formats, if any, are described in the man pages of implementations.
+
+
+==== Archaic Unix schemes ====
+BigCrypt is the modified version of DES-Crypt used on HP-UX, Digital Unix, and OSF/1. The main difference between it and DES is that BigCrypt uses all the characters of a password, not just the first 8, and has a variable length hash.
+Crypt16 is the minor modification of DES, which allows passwords of up to 16 characters. Used on Ultrix and Tru64.
+
+
+== Support in operating systems ==
+
+
+=== Linux ===
+The GNU C Library (glibc) used by almost all Linux distributions provides an implementation of the crypt function which supports the DES, MD5, and (since version 2.7) SHA-2 based hashing algorithms mentioned above.
+Ulrich Drepper, the glibc maintainer, rejected bcrypt (scheme 2) support since it isn't approved by NIST. A public domain crypt_blowfish library is available for systems without bcrypt. It has been integrated into glibc in SUSE Linux.
+In August 2017, glibc announced plans to remove its crypt implementation completely. In response, a number of Linux distributions (including, but not limited to, Fedora and Debian) have switched to libxcrypt, an ABI-compatible implementation that additionally supports new algorithms, including bcrypt and yescrypt.
+The musl C library supports schemes 1, 2, 5, and 6, plus the tradition DES scheme. The traditional DES code is based on the BSD FreeSec, with modification to be compatible with the glibc UFC-Crypt.
+
+
+=== macOS ===
+Darwin's native crypt() provides limited functionality, supporting only DES and BSDi. OS X uses a few systems for its own password hashes, ranging from the old NeXTStep netinfo to the newer directory services (ds) system.
+
+
+== See also ==
+Key derivation function
+Salt (cryptography)
+
+
+== References ==
+
+
+== External links ==
+Source code for crypt(3) from Seventh Edition Unix (implements proposed DES)
+Sample password hash encoding strings
+.NET crypt implementation

@@ -1,0 +1,37 @@
+In February 2024, a malicious backdoor was introduced to the Linux build of the xz utility within the liblzma library in versions 5.6.0 and 5.6.1 by an account using the name "Jia Tan". The backdoor gives an attacker who possesses a specific Ed448 private key remote code execution through OpenSSH on the affected Linux system. The issue has been given the Common Vulnerabilities and Exposures number CVE-2024-3094 and has been assigned a CVSS score of 10.0, the highest possible score.
+While xz is commonly present in most Linux distributions, at the time of discovery the backdoored version had not yet been widely deployed to production systems, but was present in development versions of major distributions. The backdoor was discovered by the software developer Andres Freund, who announced his findings on 29 March 2024.
+
+
+== Background ==
+Microsoft employee and PostgreSQL developer Andres Freund reported the backdoor after investigating a performance regression in Debian Sid. Freund noticed that SSH connections were generating an unexpectedly high amount of CPU usage as well as causing errors in Valgrind, a memory debugging tool. Freund reported his finding to Openwall Project's open source security mailing list, which brought it to the attention of various software vendors. The attacker made efforts to obfuscate the code, as the backdoor consists of multiple stages that act together. 
+Once the compromised version is incorporated into the operating system, it alters the behavior of OpenSSH's SSH server daemon by abusing the systemd library, allowing the attacker to gain administrator access. According to the analysis by Red Hat, the backdoor can "enable a malicious actor to break sshd authentication and gain unauthorized access to the entire system remotely".
+A subsequent investigation found that the campaign to insert the backdoor into the XZ Utils project was a culmination of approximately three years of effort, between November 2021 and February 2024, by a user going by the name Jia Tan and the nickname JiaT75 to gain access to a position of trust within the project. After a period of pressure on the founder and head maintainer to hand over the control of the project via apparent sock puppetry, Jia Tan gained the position of co-maintainer of XZ Utils and was able to sign off on version 5.6.0, which introduced the backdoor, and version 5.6.1, which patched some anomalous behavior that could have been apparent during software testing of the operating system. 
+Some of the suspected sock puppetry pseudonyms include accounts with usernames like Jigar Kumar, krygorin4545, and misoeater91. It is suspected that the names Jia Tan, as well as the supposed code author Hans Jansen (for versions 5.6.0 and 5.6.1), are pseudonyms chosen by the participants of the campaign. Neither have any sort of visible public presence in software development beyond the short few years of the campaign.
+The backdoor was notable for its level of sophistication and for the fact that the perpetrator practiced a high level of operational security for a long period of time while working to attain a position of trust. American security researcher Dave Aitel has suggested that it fits the pattern attributable to APT29, an advanced persistent threat actor believed to be working on behalf of the Russian Foreign Intelligence Service (SVR). Journalist Thomas Claburn suggested that it could be any state actor or a non-state actor with considerable resources.
+
+
+== Mechanism ==
+The malicious code is known to be in 5.6.0 and 5.6.1 releases of the XZ Utils software package. The exploit remains dormant unless a specific third-party patch of the SSH server is used. Under the right circumstances this interference could potentially enable a malicious actor to break sshd authentication and gain unauthorized access to the entire system remotely. The malicious mechanism consists of two compressed test files that contain the malicious binary code. These files are available in the git repository, but remain dormant unless extracted and injected into the program. The code uses the glibc IFUNC mechanism to replace an existing function in OpenSSH called RSA_public_decrypt with a malicious version. OpenSSH normally does not load liblzma, but a common third-party patch used by several Linux distributions causes it to load libsystemd, which in turn loads lzma. A modified version of build-to-host.m4 was included in the release tar file uploaded on GitHub, which extracts a script that performs the actual injection into liblzma. This modified m4 file was not present in the git repository; it was only available from tar files released by the maintainer separate from git. The script appears to perform the injection only when the system is being built on an x86-64 Linux system that uses glibc and GCC and is being built via dpkg or rpm.
+
+
+== Response ==
+
+
+=== Remediation ===
+The US federal Cybersecurity and Infrastructure Security Agency issued a security advisory recommending that the affected devices should roll back to a previous uncompromised version. Linux software vendors, including Red Hat, SUSE, and Debian, reverted the affected packages to older versions. GitHub disabled the mirrors for the xz repository before subsequently restoring them.
+Canonical postponed the beta release of Ubuntu 24.04 LTS and its flavours by a week and opted for a complete binary rebuild of all the distribution's packages. Although the stable version of Ubuntu was not affected, upstream versions were. This precautionary measure was taken because Canonical could not guarantee by the original release deadline that the discovered backdoor did not affect additional packages during compilation.
+In August 2025, Binarly researchers found several Debian Docker images on Docker Hub that still have the XZ Utils backdoor. The Debian development team declined to remove the affected images, stating that they were development builds that should not be used on real systems in place of newer, clean container versions.
+
+
+=== Broader response ===
+Computer scientist Alex Stamos opined that "this could have been the most widespread and effective backdoor ever planted in any software product", noting that had the backdoor remained undetected, it would have "given its creators a master key to any of the hundreds of millions of computers around the world that run SSH". In addition, the incident also started a discussion regarding the viability of having critical pieces of cyberinfrastructure depend on unpaid volunteers.
+
+
+== Notes ==
+
+
+== References ==
+
+
+== External links ==
+Official website

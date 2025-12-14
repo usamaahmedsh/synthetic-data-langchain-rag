@@ -1,0 +1,1204 @@
+Count sketch is a type of dimensionality reduction that is particularly efficient in statistics, machine learning and algorithms.
+It was invented by Moses Charikar, Kevin Chen and Martin Farach-Colton in an effort to speed up the AMS Sketch by Alon, Matias and Szegedy for approximating the frequency moments of streams (these calculations require counting of the number of occurrences for the distinct elements of the stream).
+The sketch is nearly identical to the Feature hashing algorithm by John Moody, but differs in its use of hash functions with low dependence, which makes it more practical.
+In order to still have a high probability of success, the median trick is used to aggregate multiple count sketches, rather than the mean.
+These properties allow use for explicit kernel methods, bilinear pooling in neural networks and is a cornerstone in many numerical linear algebra algorithms.
+
+
+== Intuitive explanation ==
+The inventors of this data structure offer the following iterative explanation of its operation:
+
+at the simplest level, the output of a single hash function s mapping stream elements q into {+1, -1} is feeding a single up/down counter C. After a single pass over the data, the frequency 
+  
+    
+      
+        n
+        (
+        q
+        )
+      
+    
+    {\displaystyle n(q)}
+  
+ of a stream element q can be approximated, although extremely poorly, by the expected value 
+  
+    
+      
+        
+          
+            E
+          
+        
+        [
+        C
+        ⋅
+        s
+        (
+        q
+        )
+        ]
+      
+    
+    {\displaystyle {\mathbf {E}}[C\cdot s(q)]}
+  
+;
+a straightforward way to improve the variance of the previous estimate is to use an array of different hash functions 
+  
+    
+      
+        
+          s
+          
+            i
+          
+        
+      
+    
+    {\displaystyle s_{i}}
+  
+, each connected to its own counter 
+  
+    
+      
+        
+          C
+          
+            i
+          
+        
+      
+    
+    {\displaystyle C_{i}}
+  
+. For each element q, the 
+  
+    
+      
+        
+          
+            E
+          
+        
+        [
+        
+          C
+          
+            i
+          
+        
+        ⋅
+        
+          s
+          
+            i
+          
+        
+        (
+        q
+        )
+        ]
+        =
+        n
+        (
+        q
+        )
+      
+    
+    {\displaystyle {\mathbf {E}}[C_{i}\cdot s_{i}(q)]=n(q)}
+  
+ still holds, so averaging across the i range will tighten the approximation;
+the previous construct still has a major deficiency: if a lower-frequency-but-still-important output element a exhibits a hash collision with a high-frequency element, 
+  
+    
+      
+        n
+        (
+        a
+        )
+      
+    
+    {\displaystyle n(a)}
+  
+ estimate can be significantly affected. Avoiding this requires reducing the frequency of collision counter updates between any two distinct elements. This is achieved by replacing each 
+  
+    
+      
+        
+          C
+          
+            i
+          
+        
+      
+    
+    {\displaystyle C_{i}}
+  
+ in the previous construct with an array of m counters (making the counter set into a two-dimensional matrix 
+  
+    
+      
+        
+          C
+          
+            i
+            ,
+            j
+          
+        
+      
+    
+    {\displaystyle C_{i,j}}
+  
+), with index j of a particular counter to be incremented/decremented selected via another set of hash functions 
+  
+    
+      
+        
+          h
+          
+            i
+          
+        
+      
+    
+    {\displaystyle h_{i}}
+  
+ that map element q into the range {1..m}. Since 
+  
+    
+      
+        
+          
+            E
+          
+        
+        [
+        
+          C
+          
+            i
+            ,
+            
+              h
+              
+                i
+              
+            
+            (
+            q
+            )
+          
+        
+        ⋅
+        
+          s
+          
+            i
+          
+        
+        (
+        q
+        )
+        ]
+        =
+        n
+        (
+        q
+        )
+      
+    
+    {\displaystyle {\mathbf {E}}[C_{i,h_{i}(q)}\cdot s_{i}(q)]=n(q)}
+  
+, averaging across all values of i will work.
+
+
+== Mathematical definition ==
+1. For constants 
+  
+    
+      
+        w
+      
+    
+    {\displaystyle w}
+  
+ and 
+  
+    
+      
+        t
+      
+    
+    {\displaystyle t}
+  
+ (to be defined later) independently choose 
+  
+    
+      
+        d
+        =
+        2
+        t
+        +
+        1
+      
+    
+    {\displaystyle d=2t+1}
+  
+ random hash functions
+
+  
+    
+      
+        
+          h
+          
+            1
+          
+        
+        ,
+        …
+        ,
+        
+          h
+          
+            d
+          
+        
+      
+    
+    {\displaystyle h_{1},\dots ,h_{d}}
+  
+ and 
+  
+    
+      
+        
+          s
+          
+            1
+          
+        
+        ,
+        …
+        ,
+        
+          s
+          
+            d
+          
+        
+      
+    
+    {\displaystyle s_{1},\dots ,s_{d}}
+  
+ such that
+
+  
+    
+      
+        
+          h
+          
+            i
+          
+        
+        :
+        [
+        n
+        ]
+        →
+        [
+        w
+        ]
+      
+    
+    {\displaystyle h_{i}:[n]\to [w]}
+  
+ and
+
+  
+    
+      
+        
+          s
+          
+            i
+          
+        
+        :
+        [
+        n
+        ]
+        →
+        {
+        ±
+        1
+        }
+      
+    
+    {\displaystyle s_{i}:[n]\to \{\pm 1\}}
+  
+.
+It is necessary that the hash families from which 
+  
+    
+      
+        
+          h
+          
+            i
+          
+        
+      
+    
+    {\displaystyle h_{i}}
+  
+ and 
+  
+    
+      
+        
+          s
+          
+            i
+          
+        
+      
+    
+    {\displaystyle s_{i}}
+  
+ are chosen be pairwise independent.
+2. For each item 
+  
+    
+      
+        
+          q
+          
+            i
+          
+        
+      
+    
+    {\displaystyle q_{i}}
+  
+ in the stream, add 
+  
+    
+      
+        
+          s
+          
+            j
+          
+        
+        (
+        
+          q
+          
+            i
+          
+        
+        )
+      
+    
+    {\displaystyle s_{j}(q_{i})}
+  
+ to the 
+  
+    
+      
+        
+          h
+          
+            j
+          
+        
+        (
+        
+          q
+          
+            i
+          
+        
+        )
+      
+    
+    {\displaystyle h_{j}(q_{i})}
+  
+th bucket of the 
+  
+    
+      
+        j
+      
+    
+    {\displaystyle j}
+  
+th hash.
+At the end of this process, one has 
+  
+    
+      
+        w
+        d
+      
+    
+    {\displaystyle wd}
+  
+ sums 
+  
+    
+      
+        (
+        
+          C
+          
+            i
+            j
+          
+        
+        )
+      
+    
+    {\displaystyle (C_{ij})}
+  
+ where
+
+  
+    
+      
+        
+          C
+          
+            i
+            ,
+            j
+          
+        
+        =
+        
+          ∑
+          
+            
+              h
+              
+                i
+              
+            
+            (
+            k
+            )
+            =
+            j
+          
+        
+        
+          s
+          
+            i
+          
+        
+        (
+        k
+        )
+        .
+      
+    
+    {\displaystyle C_{i,j}=\sum _{h_{i}(k)=j}s_{i}(k).}
+  
+
+To estimate the count of 
+  
+    
+      
+        q
+      
+    
+    {\displaystyle q}
+  
+s one computes the following value:
+
+  
+    
+      
+        
+          r
+          
+            q
+          
+        
+        =
+        
+          
+            median
+          
+          
+            i
+            =
+            1
+          
+          
+            d
+          
+        
+        
+        
+          s
+          
+            i
+          
+        
+        (
+        q
+        )
+        ⋅
+        
+          C
+          
+            i
+            ,
+            
+              h
+              
+                i
+              
+            
+            (
+            q
+            )
+          
+        
+        .
+      
+    
+    {\displaystyle r_{q}={\text{median}}_{i=1}^{d}\,s_{i}(q)\cdot C_{i,h_{i}(q)}.}
+  
+
+The values 
+  
+    
+      
+        
+          s
+          
+            i
+          
+        
+        (
+        q
+        )
+        ⋅
+        
+          C
+          
+            i
+            ,
+            
+              h
+              
+                i
+              
+            
+            (
+            q
+            )
+          
+        
+      
+    
+    {\displaystyle s_{i}(q)\cdot C_{i,h_{i}(q)}}
+  
+ are unbiased estimates of how many times 
+  
+    
+      
+        q
+      
+    
+    {\displaystyle q}
+  
+ has appeared in the stream.
+The estimate 
+  
+    
+      
+        
+          r
+          
+            q
+          
+        
+      
+    
+    {\displaystyle r_{q}}
+  
+ has variance 
+  
+    
+      
+        O
+        (
+        
+          m
+          i
+          n
+        
+        {
+        
+          m
+          
+            1
+          
+          
+            2
+          
+        
+        
+          /
+        
+        
+          w
+          
+            2
+          
+        
+        ,
+        
+          m
+          
+            2
+          
+          
+            2
+          
+        
+        
+          /
+        
+        w
+        }
+        )
+      
+    
+    {\displaystyle O(\mathrm {min} \{m_{1}^{2}/w^{2},m_{2}^{2}/w\})}
+  
+, where
+
+  
+    
+      
+        
+          m
+          
+            1
+          
+        
+      
+    
+    {\displaystyle m_{1}}
+  
+ is the length of the stream and 
+  
+    
+      
+        
+          m
+          
+            2
+          
+          
+            2
+          
+        
+      
+    
+    {\displaystyle m_{2}^{2}}
+  
+ is 
+  
+    
+      
+        
+          ∑
+          
+            q
+          
+        
+        (
+        
+          ∑
+          
+            i
+          
+        
+        [
+        
+          q
+          
+            i
+          
+        
+        =
+        q
+        ]
+        
+          )
+          
+            2
+          
+        
+      
+    
+    {\displaystyle \sum _{q}(\sum _{i}[q_{i}=q])^{2}}
+  
+.
+Furthermore, 
+  
+    
+      
+        
+          r
+          
+            q
+          
+        
+      
+    
+    {\displaystyle r_{q}}
+  
+ is guaranteed to never be more than 
+  
+    
+      
+        2
+        
+          m
+          
+            2
+          
+        
+        
+          /
+        
+        
+          
+            w
+          
+        
+      
+    
+    {\displaystyle 2m_{2}/{\sqrt {w}}}
+  
+ off from the true value, with probability 
+  
+    
+      
+        1
+        −
+        
+          e
+          
+            −
+            O
+            (
+            t
+            )
+          
+        
+      
+    
+    {\displaystyle 1-e^{-O(t)}}
+  
+.
+
+
+=== Vector formulation ===
+Alternatively Count-Sketch can be seen as a linear mapping with a non-linear reconstruction function.
+Let 
+  
+    
+      
+        
+          M
+          
+            (
+            i
+            ∈
+            [
+            d
+            ]
+            )
+          
+        
+        ∈
+        {
+        −
+        1
+        ,
+        0
+        ,
+        1
+        
+          }
+          
+            w
+            ×
+            n
+          
+        
+      
+    
+    {\displaystyle M^{(i\in [d])}\in \{-1,0,1\}^{w\times n}}
+  
+, be a collection of 
+  
+    
+      
+        d
+        =
+        2
+        t
+        +
+        1
+      
+    
+    {\displaystyle d=2t+1}
+  
+ matrices, defined by
+
+  
+    
+      
+        
+          M
+          
+            
+              h
+              
+                i
+              
+            
+            (
+            j
+            )
+            ,
+            j
+          
+          
+            (
+            i
+            )
+          
+        
+        =
+        
+          s
+          
+            i
+          
+        
+        (
+        j
+        )
+      
+    
+    {\displaystyle M_{h_{i}(j),j}^{(i)}=s_{i}(j)}
+  
+
+for 
+  
+    
+      
+        j
+        ∈
+        [
+        w
+        ]
+      
+    
+    {\displaystyle j\in [w]}
+  
+ and 0 everywhere else.
+Then a vector 
+  
+    
+      
+        v
+        ∈
+        
+          
+            R
+          
+          
+            n
+          
+        
+      
+    
+    {\displaystyle v\in \mathbb {R} ^{n}}
+  
+ is sketched by 
+  
+    
+      
+        
+          C
+          
+            (
+            i
+            )
+          
+        
+        =
+        
+          M
+          
+            (
+            i
+            )
+          
+        
+        v
+        ∈
+        
+          
+            R
+          
+          
+            w
+          
+        
+      
+    
+    {\displaystyle C^{(i)}=M^{(i)}v\in \mathbb {R} ^{w}}
+  
+.
+To reconstruct 
+  
+    
+      
+        v
+      
+    
+    {\displaystyle v}
+  
+ we take 
+  
+    
+      
+        
+          v
+          
+            j
+          
+          
+            ∗
+          
+        
+        =
+        
+          
+            median
+          
+          
+            i
+          
+        
+        
+          C
+          
+            j
+          
+          
+            (
+            i
+            )
+          
+        
+        
+          s
+          
+            i
+          
+        
+        (
+        j
+        )
+      
+    
+    {\displaystyle v_{j}^{*}={\text{median}}_{i}C_{j}^{(i)}s_{i}(j)}
+  
+.
+This gives the same guarantees as stated above, if we take 
+  
+    
+      
+        
+          m
+          
+            1
+          
+        
+        =
+        ‖
+        v
+        
+          ‖
+          
+            1
+          
+        
+      
+    
+    {\displaystyle m_{1}=\|v\|_{1}}
+  
+ and 
+  
+    
+      
+        
+          m
+          
+            2
+          
+        
+        =
+        ‖
+        v
+        
+          ‖
+          
+            2
+          
+        
+      
+    
+    {\displaystyle m_{2}=\|v\|_{2}}
+  
+.
+
+
+== Relation to Tensor sketch ==
+The count sketch projection of the outer product of two vectors is equivalent to the convolution of two component count sketches. 
+The count sketch computes a vector convolution 
+
+  
+    
+      
+        
+          C
+          
+            (
+            1
+            )
+          
+        
+        x
+        ∗
+        
+          C
+          
+            (
+            2
+            )
+          
+        
+        
+          x
+          
+            T
+          
+        
+      
+    
+    {\displaystyle C^{(1)}x\ast C^{(2)}x^{T}}
+  
+, where 
+  
+    
+      
+        
+          C
+          
+            (
+            1
+            )
+          
+        
+      
+    
+    {\displaystyle C^{(1)}}
+  
+ and 
+  
+    
+      
+        
+          C
+          
+            (
+            2
+            )
+          
+        
+      
+    
+    {\displaystyle C^{(2)}}
+  
+ are independent count sketch matrices.
+Pham and Pagh  show that this equals 
+  
+    
+      
+        C
+        (
+        x
+        ⊗
+        
+          x
+          
+            T
+          
+        
+        )
+      
+    
+    {\displaystyle C(x\otimes x^{T})}
+  
+ – a count sketch 
+  
+    
+      
+        C
+      
+    
+    {\displaystyle C}
+  
+ of the outer product of vectors, where 
+  
+    
+      
+        ⊗
+      
+    
+    {\displaystyle \otimes }
+  
+ denotes Kronecker product.
+The fast Fourier transform can be used to do fast convolution of count sketches.
+By using the face-splitting product such structures can be  computed much faster than normal matrices.
+
+
+== See also ==
+Count–min sketch is a version of algorithm with smaller memory requirements (and weaker error guarantees as a tradeoff).
+Tensor sketch
+
+
+== References ==
+
+
+== Further reading ==
+Charikar, Moses; Chen, Kevin; Farach-Colton, Martin (2004). "Finding frequent items in data streams" (PDF). Theoretical Computer Science. 312 (1). Elsevier BV: 3–15. doi:10.1016/s0304-3975(03)00400-6. ISSN 0304-3975.
+Faisal M. Algashaam; Kien Nguyen; Mohamed Alkanhal; Vinod Chandran; Wageeh Boles. "Multispectral Periocular Classification WithMultimodal Compact Multi-Linear Pooling" [1]. IEEE Access, Vol. 5. 2017.
+Ahle, Thomas; Knudsen, Jakob (2019-09-03). "Almost Optimal Tensor Sketch". ResearchGate. Retrieved 2020-07-11.

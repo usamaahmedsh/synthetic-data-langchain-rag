@@ -1,0 +1,125 @@
+UUCP (Unix-to-Unix Copy) is a suite of computer programs and protocols allowing remote execution of commands and transfer of files, email and netnews between computers.
+A command named uucp is one of the programs in the suite; it provides a user interface for requesting file copy operations.  The UUCP suite also includes uux (user interface for remote command execution), uucico (the communication program that performs the file transfers), uustat (reports statistics on recent activity), uuxqt (execute commands sent from remote machines), and uuname (reports the UUCP name of the local system).  Some versions of the suite include uuencode/uudecode (convert 8-bit binary files to 7-bit text format and vice versa).
+Although UUCP was originally developed on Unix in the 1970s and 1980s, and is most closely associated with Unix-like systems, UUCP implementations exist for several non-Unix-like operating systems, including DOS, OS/2, OpenVMS (for VAX hardware only), AmigaOS, classic Mac OS, and even CP/M.
+
+
+== History ==
+UUCP was originally written at AT&T Bell Laboratories by Mike Lesk. By 1978, it was in use on 82 UNIX machines inside the Bell system, primarily for software distribution.  It was released in 1979 as part of Version 7 Unix.
+The first UUCP emails from the U.S. arrived in the United Kingdom in 1979 and email between the UK, the Netherlands and Denmark started in 1980, becoming a regular service via EUnet in 1982.
+The original UUCP was rewritten by AT&T researchers Peter Honeyman, David A. Nowitz, and Brian E. Redman around 1983.  The rewrite is referred to as HDB or HoneyDanBer uucp, which was later enhanced, bug fixed, and repackaged as BNU UUCP ("Basic Network Utilities"). 
+Each of these versions was distributed as proprietary software, which inspired Ian Lance Taylor to write a new free software version from scratch in 1991.
+Taylor UUCP was released under the GNU General Public License.  Taylor UUCP addressed security holes which allowed some of the original network worms to remotely execute unexpected shell commands. Taylor UUCP also incorporated features of all previous versions of UUCP, allowing it to communicate with any other version and even use similar config file formats from other versions.
+UUCP was also implemented for non-UNIX operating systems, most-notably DOS systems. Packages such as UUSLAVE/GNUUCP (John Gilmore, Garry Paxinos, Tim Pozar), UUPC/extended (Drew Derbyshire of Kendra Electronic Wonderworks) and FSUUCP (Christopher Ambler of IODesign), brought early Internet connectivity to personal computers, expanding the network beyond the interconnected university systems. FSUUCP formed the basis for many bulletin board system (BBS) packages such as Galacticomm's Major BBS and Mustang Software's Wildcat! BBS to connect to the UUCP network and exchange email and Usenet traffic.  As an example, UFGATE (John Galvin, Garry Paxinos, Tim Pozar) was a package that provided a gateway between networks running Fidonet and UUCP protocols.
+FSUUCP was the only other implementation of Taylor's enhanced 'i' protocol, a significant improvement over the standard 'g' protocol used by most UUCP implementations.
+
+
+== Technology ==
+Before the widespread availability of Internet access, computers were only connected by smaller local area networks within a company or organization. They were also often equipped with modems so they could be used remotely from character-mode terminals via dial-up telephone lines. UUCP used the computers' modems to dial out to other computers, establishing temporary, point-to-point links between them. Each system in a UUCP network has a list of neighbor systems, with phone numbers, login names and passwords, etc.  When work (file transfer or command execution requests) is queued for a neighbor system, the uucico program typically calls that system to process the work. The uucico program can also poll its neighbors periodically to check for work queued on their side; this permits neighbors without dial-out capability to participate.
+Over time, dial-up links were replaced by Internet connections, and UUCP added a number of new link layer protocols. These newer connections also reduced the need for UUCP at all, as newer application protocols developed to take advantage of the new networks. Today, UUCP is rarely used over dial-up links, but is occasionally used over TCP/IP. 
+The number of systems involved, as of early 2006, ran between 1500 and 2000 sites across 60 enterprises. UUCP's longevity can be attributed to its low cost, extensive logging, native failover to dialup, and persistent queue management.
+
+
+=== Sessions ===
+UUCP is normally started by having a user log into the target system and then running the UUCP program. In most cases, this is automated by logging into a known user account used for transfers, whose account's shell has been set to uucico. Thus, for automated transfers, another machine simply has to open a modem connection to the called machine and log into the known account.
+When uucico runs, it will expect to receive commands from another UUCP program on the caller's machine and begin a session. The session has three distinct stages:
+
+Initial handshake
+File request(s)
+Final handshake
+
+
+==== Initial handshake ====
+On starting, uucico will respond by sending an identification string, \20Shere=hostname\0, where \20 is the control-P character, and \0 is a trailing null. The caller's UUCP responds with \20Scallername options\0, where options is a string containing zero or more Unix-like option switches. These can include packet and window sizes, the maximum supported file size, debugging options, and others.
+Depending on the setup of the two systems, the call may end here. For instance, when the caller responds with their system name, the called system may optionally hang up if it does not recognize the caller, sending the RYou are unknown to me\0 response string and then disconnecting.
+
+
+==== File requests ====
+If the two systems successfully handshake, the caller will now begin to send a series of file requests. There are four types:
+
+S causes a file to be Sent from the caller to the called system (upload). The from and to names are provided, allowing the filename to be changed on the receiver. When the S command is received on the called system, it responds with SY if it succeeded and it is ready to accept the file, or SNx if it failed, where x is a failure code. If an SY is received by the caller, it begins uploading the file using the protocol selected during the initial handshake (see below). When the transfer is complete, the called system responds with CY if it successfully received the file, or CN5 if it failed.
+R is a Request for the called system to send a file to the caller (download). It is otherwise similar to S, using RY and RN to indicate the command was accepted and it will begin to send data or had a problem, and expecting a CY and CN5 from the caller at the end of the transfer.
+X uploads commands to be eXecuted on the called system. This can be used to make that system call another and deliver files to it. The called system responds with XY if it succeeded, or XN if it failed.
+H, for Hangup, indicates the caller is done. The called system responds with HY if it succeeded, or HN if it failed.
+
+
+==== Final handshake ====
+After sending an H command, the calling system sends a final packet \20OOOOOO\0 (control-P, six ohs, null-terminator) and the called system responds with \20OOOOOO\0 (control-P, seven ohs, null-terminator). Some systems will simply hang up on the successful reception of the H command and not bother with the final handshake.
+
+
+=== g-protocol ===
+Within the suite of protocols in UUCP, the underlying g-protocol is responsible for transferring information in an error-free form. The protocol originated as a general-purpose system for packet delivery, and thus offers a number of features that are not used by the UUCP package as a whole. These include a secondary channel that can send command data interspersed with a file transfer, and the ability to renegotiate the packet and window sizes during transmission. These extra features may not be available in some implementations of the UUCP stack.
+The packet format consisted of a 6-byte header and then between zero and 4096 bytes in the payload. The packet starts with a single \020 (control-P). This is followed by a single byte, known as "K", containing a value of 1 to 8 indicating a packet size from 32 to 4096 bytes, or a 9 indicating a control packet. Many systems only supported K=2, meaning 64 bytes. The next two bytes were a 16-bit checksum of the payload, not including the header. The next byte is the data type and finally, the last byte is the XOR of the header, allowing it to be checked separately from the payload.
+The control byte consists of three bit-fields in the format TTXXXYYY. TT is the packet type, 0 for control packets (which also requires K=9 to be valid), 1 for alternate data (not used in UUCP), 2 for data, and 3 indicates a short packet that re-defines the meaning of K. In a data packet, XXX is the packet number for this packet from 0 to 7, and YYY is the last that was received correctly. This provides up to 8 packets in a window. In a control packet, XXX indicates the command and YYY is used for various parameters. For instance, transfers are started by sending a short control packet with TT=0 (control), XXX=7 and YYY the number of packets in a window, then sending another packet with XXX=6 and YYY as the packet length (encoded as it would be in K) and then a third packet that is identical to the first but XXX=5.
+g-protocol uses a simple sliding window system to deal with potentially long latencies between endpoints. The protocol allows packets to size from 32 to 4096 8-bit bytes, and windows that include 1 to 7 packets. In theory, a system using 4k packets and 7 packet windows (4096x7) would offer performance matching or beating the best file-transfer protocols like ZMODEM. In practice, many early implementations only supported a single setting of 64x3. As a result, the g-protocol has an undeserved reputation for poor performance. Confusion over the packet and window sizes led to the G-protocol, differing only in that it always used 4096x3. Taylor UUCP did not support G, but did support any valid requested window or packet size, so remote systems starting G would work fine with Taylor's g, while two Taylor systems could negotiate even faster connections.
+Telebit modems used protocol spoofing to improve the performance of g-protocol transfers by noticing end-of-packet markers being sent to the remote system and immediately sending an ACK back to the local host, pretending that the remote system had already received the packet and decoded it correctly. This triggered the software stack on the local computer to send the next packet, so rapidly that the transfer became almost continuous. The data between the two modems was error-corrected using a proprietary protocol based on MNP that ran over Telebit's half-duplex connections much better than g-protocol would normally, because in the common 64x3 case the remote system would be sending a constant stream of ACKs that would overflow the low-speed return channel. Combined with the modem's naturally higher data rates, up to 23 kbps, they greatly improved overall throughput and generally performed about seven times the speed of a 2400 bit/s modem. They were widely used on UUCP hosts as they could quickly pay for themselves in reduced long-distance charges.
+
+
+=== Other protocols ===
+UUCP implementations also include other transfer protocols for use over certain links.
+f-protocol is designed to run over 7-bit error-corrected links. This was originally intended for use on X.25 links, which were popular for a time in the 1980s. It does not packetize data, instead, the entire file is sent as a single long string followed by a whole-file checksum. The similar x-protocol appears to have seen little or no use. d-protocol was similar to x, but intended for use on Datakit networks that connected many of Bell Labs offices.
+t-protocol originated in the BSD versions of UUCP and like some similar ones, is designed to run over 8-bit error-free TCP/IP links. It has no error correction at all, and the protocol consists simply of breaking up command and file data into 512 or 1024-byte packets to easily fit within typical TCP frames.
+e-protocol ("e" for Ethernet) was developed by Clem Cole at MASSCOMP and was widely released by Brian Redman in the later HoneyDanBer versions.  It was developed and released before the t-protocol, but the t-protocol was more commonly used because the BSD version of UUCP was the dominant implementation. The e-protocol differs from the t-protocol only in that commands are not packetized and are instead sent as normal strings, while files are padded to the nearest 20 bytes.
+
+
+== Mail routing ==
+
+The uucp and uuxqt capabilities could be used to send email between machines, with suitable mail user interfaces and delivery agent programs.  A simple UUCP mail address was formed from the adjacent machine name, an exclamation mark (often pronounced bang), followed by the user name on the adjacent machine.  For example, the address barbox!user would refer to user user on adjacent machine barbox.
+Mail could furthermore be routed through the network, traversing any number of intermediate nodes before arriving at its destination.  Initially, this had to be done by specifying the complete path, with a list of intermediate host names separated by bangs.  For example, if machine barbox is not connected to the local machine, but it is known that barbox is connected to machine foovax which does communicate with the local machine, the appropriate address to send mail to would be foovax!barbox!user.
+User barbox!user would generally publish their UUCP email address in a form such as …!bigsite!foovax!barbox!user.  This directs people to route their mail to machine bigsite (presumably a well-known and well-connected machine accessible to everybody) and from there through the machine foovax to the account of user user on barbox. Publishing a full path would be pointless, because it would be different, depending on where the sender was. (e.g. Ann at one site may have to send via path gway!tcol!canty!uoh!bigsite!foovax!barbox!user, whereas from somewhere else, Bill has to send via the path pdp10!router22!bigsite!foovax!barbox!user). Many users would suggest multiple routes from various large well-known sites, providing even better and perhaps faster connection service from the mail sender.
+
+
+=== Bang path ===
+An email address of this form was known as a bang path.
+Bang paths of eight to ten machines (or hops) were not uncommon in 1981, and late-night dial-up UUCP links could cause week-long transmission times. Bang paths were often selected by both transmission time and reliability, as messages would often get lost.  Some hosts went so far as to try to "rewrite" the path, sending mail via "faster" routes—this practice tended to be frowned upon.
+The "pseudo-domain" ending .uucp was sometimes used to designate a hostname as being reachable by UUCP networking, although this was never formally registered in the domain name system (DNS) as a top-level domain.  The uucp community administered itself and did not mesh well with the administration methods and regulations governing the DNS; .uucp works where it needs to; some hosts punt mail out of SMTP queue into uucp queues on gateway machines if a .uucp address is recognized on an incoming SMTP connection.
+Usenet traffic was originally transmitted over the UUCP protocol, typically over dialup modems. At each receiving node, each Usenet article's Path header line would have the current node's name prepended to the path, separated by "!".  For example, an article that came in from node utzoo to node decvax with Path: utzoo!henry would have that line change to Path: decvax!utzoo!henry).  Usenet software would then send a copy of each article to every neighbor node which had been configured to receive the newsgroup(s) that the article had been posted to -- unless that neighbor was already in the Path line.  These paths were thus used to ensure that articles did not "loop" back to a node that already had them.
+In general, like other older e-mail address formats, bang paths have now been superseded by the "@ notation", even by sites still using UUCP.  A UUCP-only site can register a DNS domain name, and have the DNS server that handles that domain provide MX records that cause Internet mail to that site to be delivered to a UUCP host on the Internet that can then deliver the mail to the UUCP site.
+
+
+== UUCPNET and mapping ==
+UUCPNET was the name for the totality of the network of computers connected through UUCP. This network was very informal, maintained in a spirit of mutual cooperation between systems owned by thousands of private companies, universities, and so on.  Often, particularly in the private sector, UUCP links were established without official approval from the companies' upper management.  The UUCP network was constantly changing as new systems and dial-up links were added, others were removed, etc.
+The UUCP Mapping Project was a volunteer, largely successful effort to build a map of the connections between machines that were open mail relays and establish a managed namespace. Each system administrator would submit, by e-mail, a list of the systems to which theirs would connect, along with a ranking for each such connection.  These submitted map entries were processed by an automatic program that combined them into a single set of files describing all connections in the network.  These files were then published monthly in a newsgroup dedicated to this purpose.  The UUCP map files could then be used by software such as "pathalias" to compute the best route path from one machine to another for mail, and to supply this route automatically.  The UUCP maps also listed contact information for the sites, and so gave sites seeking to join UUCPNET an easy way to find prospective neighbors.
+
+
+== Connections with the Internet ==
+Many UUCP hosts, particularly those at universities, were also connected to the Internet in its early years, and e-mail gateways between Internet SMTP-based mail and UUCP mail were developed. A user at a system with UUCP connections could thereby exchange mail with Internet users, and the Internet links could be used to bypass large portions of the slow UUCP network.  A "UUCP zone" was defined within the Internet domain namespace to facilitate these interfaces.
+With this infrastructure in place, UUCP's strength was that it permitted a site to gain Internet e-mail and Usenet connectivity with only a dial-up modem link to another cooperating computer.  This was at a time when true Internet access required a leased data line providing a connection to an Internet Point of Presence, both of which were expensive and difficult to arrange.  By contrast, a link to the UUCP network could usually be established with a few phone calls to the administrators of prospective neighbor systems. Neighbor systems were often close enough to avoid all but the most basic charges for telephone calls.
+
+
+== Remote commands ==
+uux is remote command execution over UUCP. The uux command is used to execute a command on a remote system, or to execute a command on the local system using files from remote systems. The command is run by the uucico daemon, which handles remote execution requests as simply another kind of file to batch-send to the remote system whenever a next-hop node is available. The remote system will then execute the requested command and return the result, when the original system is available. Both of these transfers may be indirect, via multi-hop paths, with arbitrary windows of availability. Even when executing a command on an always-available neighbor, uux is not instant.
+
+
+== Decline ==
+UUCP usage began to die out with the rise of Internet service providers offering inexpensive SLIP and PPP services. The UUCP Mapping Project was formally shut down in late 2000.
+The UUCP protocol has now mostly been replaced by the Internet TCP/IP based protocols SMTP for mail and NNTP for Usenet news.
+In July 2012, Dutch Internet provider XS4ALL closed down its UUCP service, claiming it was "probably one of the last providers in the world that still offered it"; it had only 13 users at that time (prior to its shut-down it had refused requests from new users for several years).
+
+
+== Current uses and legacy ==
+One surviving feature of UUCP is the chat file format, largely inherited by the Expect software package.
+UUCP was in use over special-purpose high cost links (e.g. marine satellite links) long after its disappearance elsewhere, and still remains in legacy use. In addition to legacy use, in 2021 new and innovative UUCP uses are growing, especially for telecommunications in the HF band, for example, for communities in the Amazon rainforest for email exchange and other uses. A patch to Ian's UUCP was contributed to UUCP Debian Linux package to adapt for the HERMES (High-Frequency Emergency and Rural Multimedia Exchange System) project, which provides UUCP HF connectivity.
+In the mid 2000s, UUCP over TCP/IP (often encrypted, using the SSH protocol) was proposed for use when a computer does not have any fixed IP addresses but is still willing to run a standard mail transfer agent (MTA) like Sendmail or Postfix.
+Bang-like paths are still in use within the Usenet network, though not for routing; they are used to record, in the header of a message, the nodes through which that message has passed, rather than to direct where it will go next. "Bang path" is also used as an expression for any explicitly specified routing path between network hosts. That usage is not necessarily limited to UUCP, IP routing, email messaging, or Usenet.
+The concept of delay-tolerant networking protocols was revisited in the early 2000s. Similar techniques as those used by UUCP can apply to other networks that experience delay or significant disruption.
+
+
+== See also ==
+Routing
+Sitename
+Mesh networking
+Berknet
+BITNET
+FidoNet
+History of email
+History of the Internet
+
+
+== References ==
+
+
+== External links ==
+Using & Managing UUCP.  Ed Ravin, Tim O'Reilly, Dale Doughtery, and Grace Todino.  1996, O'Reilly & Associates, Inc. ISBN 1-56592-153-4
+Mark Horton (1986).  RFC 976: UUCP Mail Interchange Format Standard. Internet Engineering Task Force Requests for Comment.
+Taylor UUCP Documentation – useful information about UUCP in general and various uucp protocols.
+The UUCP Project: History at the Wayback Machine (archived January 6, 2014)

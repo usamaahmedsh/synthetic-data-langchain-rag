@@ -1,0 +1,53 @@
+In computer science, processor affinity, also called CPU pinning or cache affinity, enables the binding and unbinding of a process or a thread to a central processing unit (CPU) or a range of CPUs, so that the process or thread will execute only on the designated CPU or CPUs rather than any CPU. This can be viewed as a modification of the native central queue scheduling algorithm in a symmetric multiprocessing operating system. Each item in the queue has a tag indicating its kin processor. At the time of resource allocation, each task is allocated to its kin processor in preference to others.
+Scheduling-algorithm implementations vary in adherence to processor affinity. Under certain circumstances, some implementations will allow a task to change to another processor if it results in higher efficiency. For example, when two processor-intensive tasks (A and B) have affinity to one processor while another processor remains unused, many schedulers will shift task B to the second processor in order to maximize processor use. Task B will then acquire affinity with the second processor, while task A will continue to have affinity with the original processor.
+On most operating systems, the set of processors a process or thread is allowed (or preferred) to run on is expressed as an affinity mask, which is a bit mask corresponding to the system's cores. 
+
+
+== Purpose ==
+There are several reasons for processor affinity to be used.
+
+
+=== Locality of cache and memory ===
+The execution of a thread may be interrupted by the OS scheduler to make space for other programs or threads during an interrupt. If the thread was later dispatched to the processor it was previously running on, there may be some remaining data in the CPU cache that can be reused, allowing for fewer cache misses. Setting the processor affinity would make sure the thread always runs on the same processor(s), but at the same time forces it to wait for the processor(s) to become available again. This feature is especially useful for CPU-intensive processes with few interrupts. Doing the same to an ordinary program might instead slow it down as they tend to be interrupted more frequently and end up waiting more. A practical example of processor affinity is executing multiple instances of a single-threaded application, such as some graphics-rendering software.
+On CPUs with simultaneous multi-threading (SMT, also loosely known as hyper-threading, a genericized trademark of Intel), the two or more "threads" (logical processors, "virtual cores") on a physical core share the L1 and L2 caches. As far as affinity for locality purposes is concerned, they are identical.
+On non-uniform memory access (NUMA) systems a similar problem exists, except the latency comes not from L1/L2 cache misses, but from L3 misses and cross-node memory access. Constraining all threads of a program to the same NUMA node (or at least the same CPU socket) would ensure they can share their L3 caches. Additional configuration may be necessary to ensure that memory is allocated from the local NUMA node.
+
+
+=== Division of resources ===
+Processor affinity also enforces a static division of processing resources. As a result, it can be used to limit the amount of CPU cores used by a CPU-intensive process, leaving other cores available for the other programs to use. This is, of course, not optimal, as it would leave resources completely unused when there are no other programs running as well as still allow other programs to compete with the CPU-intensive program for resources on the few cores it's allowed to run on. More advanced methods to divide resources include CPU priority settings, CPU utilization shares, and hard utilization percentage limits.
+Again on CPUs with SMT, non-SMT-aware schedulers might make the mistake of scheduling work on a non-busy core with a busy partner when non-busy physical cores are present. This would cause unnecessary competition for resources between the two threads. As a result, multithreaded CPU-intensive programs often manually assign the affinity of its threads to make sure they do not end fighting over the same physical core.
+
+
+== Specific operating systems ==
+
+
+=== Unix-like ===
+On Linux, the CPU affinity of a process can be altered with the taskset(1) program and the sched_setaffinity(2) system call. The affinity of a thread can be altered with one of the library functions: pthread_setaffinity_np(3) or pthread_attr_setaffinity_np(3).
+On SGI systems, dplace binds a process to a set of CPUs.
+On NetBSD 5.0, FreeBSD 7.2, DragonFly BSD 4.7 and later versions can use pthread_setaffinity_np and pthread_getaffinity_np. In NetBSD, the psrset utility to set a thread's affinity to a certain CPU set. In FreeBSD, cpuset utility is used to create CPU sets and to assign processes to these sets.
+On DragonFly BSD 1.9 (2007) and later versions, usched_set system call can be used to control the affinity of a process. In DragonFly BSD 3.1 (2012) and later, usched utility can be used for assigning processes to a certain CPU set.
+On Solaris it is possible to control bindings of processes and LWPs to processor using the pbind(1) program. To control the affinity programmatically processor_bind(2) can be used. There are more generic interfaces available such as pset_bind(2) or lgrp_affinity_get(3LGRP) using processor set and locality groups concepts.
+On AIX it is possible to control bindings of processes using the bindprocessor command and the bindprocessor() API. The AIX scheduler is SMT-aware and is able to switch the SMT states of the POWER7/8/9 cores from 1 to 8 threads to maximize throughput.
+
+
+==== macOS ====
+macOS does not offer an API that manages the set of processors a process, task, or thread is allowed to run on. Instead it offers the Thread Affinity API, which tells the kernel which threads should be scheduled to share the same L2 cache, i.e. run on the same physical CPU core. The XNU kernel internally translates each affinity tag to a set of allowed logical cores corresponding to a physical core. When a tag is set, it creates a Thread Affinity namespace when there is not one already. It then becomes bound to the core with the fewest tags already bound. A tag do not migrate between cores in XNU version 8792; as a result, so long as there are not more tags than there are physical cores, each tag will correspond to exactly one physical core. Namespaces as well as tags are inherited between parent and child processes.
+The API is not available on arm64 (Apple Silicon), where ml_get_max_affinity_sets is hardcoded to return 0.
+
+
+=== Windows NT ===
+On Windows NT and its successors, thread and process CPU affinities can be set separately by using SetThreadAffinityMask and SetProcessAffinityMask API calls or via the Task Manager interface (for process affinity only).
+Forcing of each OpenMP thread to distinct logical cores in Windows can be accomplished by means of the following C code, with the <Windows.h> header:
+
+
+== See also ==
+hwloc
+
+
+== References ==
+
+
+== External links ==
+MSDN article on SetThreadAffinityMask function
+Taskset, a tool to set the affinity mask on Linux
+CPU Balancer, a free, open-source utility that distributes Windows XP processes uniformly over logical processors using the affinity mask

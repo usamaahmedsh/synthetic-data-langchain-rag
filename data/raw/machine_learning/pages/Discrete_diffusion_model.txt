@@ -1,0 +1,9325 @@
+In machine learning, discrete diffusion models are a class of diffusion models, which themselves are a class of latent variable generative models. Each discrete diffusion model consists of two major components: the forward jump diffusion process, and the reverse jump diffusion process. The goal of diffusion modeling is, given a given dataset and a forward process, to learn a model for the reverse process, such that the reverse process can generate new elements that are distributed similarly as the original dataset. A trained discrete diffusion model can be sampled in many ways, which trades off computational efficiency and sample quality. In general, higher quality data can be obtained, but at the price of higher computational cost.
+In standard diffusion modeling, the diffusion process takes place over a state space that is continuous space of 
+  
+    
+      
+        
+          
+            R
+          
+          
+            n
+          
+        
+      
+    
+    {\displaystyle \mathbb {R} ^{n}}
+  
+, but over a discrete set 
+  
+    
+      
+        S
+      
+    
+    {\displaystyle S}
+  
+. A discrete set is simply a set where one cannot speak of "infinitesimally close" points. Points can be more or less separated from each other, but the separation is always a finite number. This in particular means the standard framework of continuous diffusion does not apply, since it uses gaussian noise, which is continuous. Nevertheless, an analogous theory can be produced.
+Discrete diffusion is usually used for language modeling. In practice, the state space 
+  
+    
+      
+        S
+      
+    
+    {\displaystyle S}
+  
+ is not only discrete, but finite, so this is what we will assume from now on.
+
+
+== Continuous time Markov process ==
+In the case of continuous state space, during the forward discrete diffusion process, at each step 
+  
+    
+      
+        t
+        →
+        t
+        +
+        d
+        t
+      
+    
+    {\displaystyle t\to t+dt}
+  
+, we mix in an infinitesimal amount of gaussian noise 
+  
+    
+      
+        d
+        
+          x
+          
+            t
+          
+        
+        =
+        −
+        
+          
+            1
+            2
+          
+        
+        β
+        (
+        t
+        )
+        
+          x
+          
+            t
+          
+        
+        d
+        t
+        +
+        
+          
+            β
+            (
+            t
+            )
+          
+        
+        d
+        
+          W
+          
+            t
+          
+        
+      
+    
+    {\displaystyle dx_{t}=-{\frac {1}{2}}\beta (t)x_{t}dt+{\sqrt {\beta (t)}}dW_{t}}
+  
+. This changes the probability density function, by first a convolution with the density of a gaussian, followed by a scaling.
+In the case of discrete state space, the gaussian noise must be replaced by a noise that takes values over a finite set. For example, if the noise is the uniform distribution over 
+  
+    
+      
+        S
+      
+    
+    {\displaystyle S}
+  
+, then the probability distribution at time 
+  
+    
+      
+        t
+        +
+        d
+        t
+      
+    
+    {\displaystyle t+dt}
+  
+ satisfies
+  
+    
+      
+        
+          q
+          
+            t
+            +
+            d
+            t
+          
+        
+        (
+        x
+        )
+        =
+        (
+        1
+        −
+        d
+        t
+        )
+        
+          q
+          
+            t
+          
+        
+        (
+        x
+        )
+        +
+        d
+        t
+        
+          (
+          
+            
+              
+                1
+                
+                  
+                    |
+                  
+                  S
+                  
+                    |
+                  
+                
+              
+            
+            
+              ∑
+              
+                y
+                ∈
+                S
+              
+            
+            
+              q
+              
+                t
+              
+            
+            (
+            y
+            )
+          
+          )
+        
+      
+    
+    {\displaystyle q_{t+dt}(x)=(1-dt)q_{t}(x)+dt\left({\frac {1}{|S|}}\sum _{y\in S}q_{t}(y)\right)}
+  
+More succinctly,
+  
+    
+      
+        
+          ∂
+          
+            t
+          
+        
+        
+          q
+          
+            t
+          
+        
+        (
+        x
+        )
+        =
+        −
+        
+          (
+          
+            1
+            −
+            
+              
+                1
+                
+                  
+                    |
+                  
+                  S
+                  
+                    |
+                  
+                
+              
+            
+          
+          )
+        
+        
+          q
+          
+            t
+          
+        
+        (
+        x
+        )
+        +
+        
+          ∑
+          
+            y
+            ∈
+            S
+            ,
+            y
+            ≠
+            x
+          
+        
+        
+          
+            1
+            
+              
+                |
+              
+              S
+              
+                |
+              
+            
+          
+        
+        
+          q
+          
+            t
+          
+        
+        (
+        y
+        )
+      
+    
+    {\displaystyle \partial _{t}q_{t}(x)=-\left(1-{\frac {1}{|S|}}\right)q_{t}(x)+\sum _{y\in S,y\neq x}{\frac {1}{|S|}}q_{t}(y)}
+  
+In general, we do not need to convolve with a uniformly distributed noise, but with an arbitrary noise process. That is, we use an arbitrary matrix 
+  
+    
+      
+        
+          Q
+          
+            t
+          
+        
+      
+    
+    {\displaystyle Q_{t}}
+  
+ such that
+  
+    
+      
+        
+          ∂
+          
+            t
+          
+        
+        
+          q
+          
+            t
+          
+        
+        (
+        y
+        )
+        =
+        
+          ∑
+          
+            x
+            ∈
+            S
+          
+        
+        
+          Q
+          
+            t
+          
+        
+        (
+        y
+        ,
+        x
+        )
+        
+          q
+          
+            t
+          
+        
+        (
+        x
+        )
+      
+    
+    {\displaystyle \partial _{t}q_{t}(y)=\sum _{x\in S}Q_{t}(y,x)q_{t}(x)}
+  
+where 
+  
+    
+      
+        
+          Q
+          
+            t
+          
+        
+      
+    
+    {\displaystyle Q_{t}}
+  
+ is called the rate matrix. Any matrix may be used as a rate matrix if it has non-negative off-diagonals, and each column sums to 0:
+  
+    
+      
+        
+          Q
+          
+            t
+          
+        
+        (
+        y
+        ,
+        x
+        )
+        ≥
+        0
+        
+        ∀
+        y
+        ≠
+        x
+        ,
+        
+        
+          ∑
+          
+            y
+            ∈
+            S
+          
+        
+        
+          Q
+          
+            t
+          
+        
+        (
+        y
+        ,
+        x
+        )
+        =
+        0
+        
+        ∀
+        x
+      
+    
+    {\displaystyle Q_{t}(y,x)\geq 0\quad \forall y\neq x,\quad \sum _{y\in S}Q_{t}(y,x)=0\quad \forall x}
+  
+A continuous time Markov chain (CTMC) is defined by a continuous function 
+  
+    
+      
+        Q
+      
+    
+    {\displaystyle Q}
+  
+ that maps any time 
+  
+    
+      
+        t
+        ∈
+        [
+        0
+        ,
+        T
+        )
+      
+    
+    {\displaystyle t\in [0,T)}
+  
+ to a rate matrix 
+  
+    
+      
+        
+          Q
+          
+            t
+          
+        
+      
+    
+    {\displaystyle Q_{t}}
+  
+. Given the function 
+  
+    
+      
+        Q
+      
+    
+    {\displaystyle Q}
+  
+, time-evolution under the CTMC is done as follows: Given state 
+  
+    
+      
+        
+          x
+          
+            t
+          
+        
+      
+    
+    {\displaystyle x_{t}}
+  
+ at time 
+  
+    
+      
+        t
+      
+    
+    {\displaystyle t}
+  
+, and given an infinitesimal 
+  
+    
+      
+        d
+        t
+      
+    
+    {\displaystyle dt}
+  
+, the state at 
+  
+    
+      
+        t
+        +
+        d
+        t
+      
+    
+    {\displaystyle t+dt}
+  
+ is 
+  
+    
+      
+        
+          x
+          
+            t
+            +
+            d
+            t
+          
+        
+      
+    
+    {\displaystyle x_{t+dt}}
+  
+, such that
+  
+    
+      
+        Pr
+        (
+        
+          x
+          
+            t
+            +
+            d
+            t
+          
+        
+        
+          |
+        
+        
+          x
+          
+            t
+          
+        
+        )
+        =
+        
+          
+            {
+            
+              
+                
+                  1
+                  +
+                  
+                    Q
+                    
+                      t
+                    
+                  
+                  (
+                  
+                    x
+                    
+                      t
+                      +
+                      d
+                      t
+                    
+                  
+                  ,
+                  
+                    x
+                    
+                      t
+                    
+                  
+                  )
+                  d
+                  t
+                
+                
+                  
+                    if 
+                  
+                  
+                    x
+                    
+                      t
+                      +
+                      d
+                      t
+                    
+                  
+                  =
+                  
+                    x
+                    
+                      t
+                    
+                  
+                
+              
+              
+                
+                  
+                    Q
+                    
+                      t
+                    
+                  
+                  (
+                  
+                    x
+                    
+                      t
+                      +
+                      d
+                      t
+                    
+                  
+                  ,
+                  
+                    x
+                    
+                      t
+                    
+                  
+                  )
+                  d
+                  t
+                
+                
+                  
+                    else
+                  
+                
+              
+            
+            
+          
+        
+      
+    
+    {\displaystyle \Pr(x_{t+dt}|x_{t})={\begin{cases}1+Q_{t}(x_{t+dt},x_{t})dt&{\text{if }}x_{t+dt}=x_{t}\\Q_{t}(x_{t+dt},x_{t})dt&{\text{else}}\end{cases}}}
+  
+This implies that the probability distribution function evolves according to
+  
+    
+      
+        
+          ∂
+          
+            t
+          
+        
+        
+          q
+          
+            t
+          
+        
+        (
+        y
+        )
+        =
+        
+          ∑
+          
+            x
+            ∈
+            S
+          
+        
+        
+          Q
+          
+            t
+          
+        
+        (
+        y
+        ,
+        x
+        )
+        
+          q
+          
+            t
+          
+        
+        (
+        x
+        )
+      
+    
+    {\displaystyle \partial _{t}q_{t}(y)=\sum _{x\in S}Q_{t}(y,x)q_{t}(x)}
+  
+which is what we previously specified.
+
+
+=== Backward process ===
+Similarly to the case of continuous diffusion, in discrete diffusion, there exists a backward diffusion process 
+  
+    
+      
+        
+          
+            
+              
+                Q
+                ¯
+              
+            
+          
+          
+            t
+          
+        
+      
+    
+    {\displaystyle {\bar {Q}}_{t}}
+  
+:
+  
+    
+      
+        s
+        (
+        x
+        ,
+        t
+        
+          )
+          
+            y
+          
+        
+        :=
+        
+          
+            
+              
+                q
+                
+                  t
+                
+              
+              (
+              y
+              )
+            
+            
+              
+                q
+                
+                  t
+                
+              
+              (
+              x
+              )
+            
+          
+        
+        ,
+        
+        
+          
+            
+              
+                Q
+                ¯
+              
+            
+          
+          
+            t
+          
+        
+        (
+        y
+        ,
+        x
+        )
+        :=
+        
+          
+            {
+            
+              
+                
+                  s
+                  (
+                  x
+                  ,
+                  t
+                  
+                    )
+                    
+                      y
+                    
+                  
+                  
+                    Q
+                    
+                      t
+                    
+                  
+                  (
+                  x
+                  ,
+                  y
+                  )
+                
+                
+                  
+                    if 
+                  
+                  y
+                  ≠
+                  x
+                
+              
+              
+                
+                  −
+                  
+                    ∑
+                    
+                      y
+                      :
+                      y
+                      ≠
+                      x
+                    
+                  
+                  
+                    
+                      
+                        
+                          Q
+                          ¯
+                        
+                      
+                    
+                    
+                      t
+                    
+                  
+                  (
+                  y
+                  ,
+                  x
+                  )
+                
+                
+                  
+                    if 
+                  
+                  y
+                  =
+                  x
+                
+              
+            
+            
+          
+        
+      
+    
+    {\displaystyle s(x,t)_{y}:={\frac {q_{t}(y)}{q_{t}(x)}},\quad {\bar {Q}}_{t}(y,x):={\begin{cases}s(x,t)_{y}Q_{t}(x,y)&{\text{if }}y\neq x\\-\sum _{y:y\neq x}{\bar {Q}}_{t}(y,x)&{\text{if }}y=x\end{cases}}}
+  
+where 
+  
+    
+      
+        s
+        (
+        x
+        ,
+        t
+        
+          )
+          
+            y
+          
+        
+      
+    
+    {\displaystyle s(x,t)_{y}}
+  
+ should be interpreted as the discrete score or concrete score, since, abusing notation a bit, the score function is 
+  
+    
+      
+        ∇
+        ln
+        ⁡
+        
+          ρ
+          
+            t
+          
+        
+        (
+        x
+        )
+        =
+        
+          
+            1
+            
+              d
+              x
+            
+          
+        
+        
+          (
+          
+            
+              
+                
+                  
+                    ρ
+                    
+                      t
+                    
+                  
+                  (
+                  x
+                  +
+                  d
+                  x
+                  )
+                
+                
+                  
+                    ρ
+                    
+                      t
+                    
+                  
+                  (
+                  x
+                  )
+                
+              
+            
+            −
+            1
+          
+          )
+        
+      
+    
+    {\displaystyle \nabla \ln \rho _{t}(x)={\frac {1}{dx}}\left({\frac {\rho _{t}(x+dx)}{\rho _{t}(x)}}-1\right)}
+  
+.
+If we picture the distribution 
+  
+    
+      
+        
+          q
+          
+            t
+          
+        
+      
+    
+    {\displaystyle q_{t}}
+  
+ as a bunch of point-masses, one per state 
+  
+    
+      
+        x
+        ∈
+        S
+      
+    
+    {\displaystyle x\in S}
+  
+, then the forward diffusion from time 
+  
+    
+      
+        t
+      
+    
+    {\displaystyle t}
+  
+ to 
+  
+    
+      
+        t
+        +
+        d
+        t
+      
+    
+    {\displaystyle t+dt}
+  
+ is performed by removing 
+  
+    
+      
+        
+          Q
+          
+            t
+          
+        
+        (
+        x
+        ,
+        y
+        )
+        
+          q
+          
+            t
+          
+        
+        (
+        y
+        )
+        d
+        t
+      
+    
+    {\displaystyle Q_{t}(x,y)q_{t}(y)dt}
+  
+ from the mass at 
+  
+    
+      
+        y
+      
+    
+    {\displaystyle y}
+  
+ and moving it to the mass at 
+  
+    
+      
+        x
+      
+    
+    {\displaystyle x}
+  
+, for each pair 
+  
+    
+      
+        x
+        ≠
+        y
+      
+    
+    {\displaystyle x\neq y}
+  
+. Thus, the process is reversed in detail by the CTMC defined by 
+  
+    
+      
+        
+          
+            
+              Q
+              ¯
+            
+          
+        
+      
+    
+    {\displaystyle {\bar {Q}}}
+  
+, since 
+  
+    
+      
+        
+          
+            
+              
+                Q
+                ¯
+              
+            
+          
+          
+            t
+          
+        
+        (
+        y
+        ,
+        x
+        )
+        
+          q
+          
+            t
+          
+        
+        (
+        x
+        )
+        =
+        
+          Q
+          
+            t
+          
+        
+        (
+        x
+        ,
+        y
+        )
+        
+          q
+          
+            t
+          
+        
+        (
+        y
+        )
+      
+    
+    {\displaystyle {\bar {Q}}_{t}(y,x)q_{t}(x)=Q_{t}(x,y)q_{t}(y)}
+  
+.
+Given 
+  
+    
+      
+        
+          
+            
+              
+                Q
+                ¯
+              
+            
+          
+          
+            t
+          
+        
+      
+    
+    {\displaystyle {\bar {Q}}_{t}}
+  
+, if we have a way to sample from 
+  
+    
+      
+        
+          q
+          
+            t
+          
+        
+      
+    
+    {\displaystyle q_{t}}
+  
+, then we can sample from 
+  
+    
+      
+        
+          q
+          
+            t
+            −
+            d
+            t
+          
+        
+      
+    
+    {\displaystyle q_{t-dt}}
+  
+ by first sampling 
+  
+    
+      
+        
+          x
+          
+            t
+          
+        
+        ∼
+        
+          q
+          
+            t
+          
+        
+      
+    
+    {\displaystyle x_{t}\sim q_{t}}
+  
+, then sampling 
+  
+    
+      
+        
+          x
+          
+            t
+            −
+            d
+            t
+          
+        
+      
+    
+    {\displaystyle x_{t-dt}}
+  
+ according to
+  
+    
+      
+        Pr
+        (
+        
+          x
+          
+            t
+            −
+            d
+            t
+          
+        
+        
+          |
+        
+        
+          x
+          
+            t
+          
+        
+        )
+        =
+        
+          
+            {
+            
+              
+                
+                  1
+                  +
+                  
+                    
+                      
+                        
+                          Q
+                          ¯
+                        
+                      
+                    
+                    
+                      t
+                    
+                  
+                  (
+                  
+                    x
+                    
+                      t
+                      −
+                      d
+                      t
+                    
+                  
+                  ,
+                  
+                    x
+                    
+                      t
+                    
+                  
+                  )
+                  d
+                  t
+                
+                
+                  
+                    if 
+                  
+                  
+                    x
+                    
+                      t
+                      −
+                      d
+                      t
+                    
+                  
+                  =
+                  
+                    x
+                    
+                      t
+                    
+                  
+                
+              
+              
+                
+                  
+                    
+                      
+                        
+                          Q
+                          ¯
+                        
+                      
+                    
+                    
+                      t
+                    
+                  
+                  (
+                  
+                    x
+                    
+                      t
+                      −
+                      d
+                      t
+                    
+                  
+                  ,
+                  
+                    x
+                    
+                      t
+                    
+                  
+                  )
+                  d
+                  t
+                
+                
+                  
+                    else
+                  
+                
+              
+            
+            
+          
+        
+      
+    
+    {\displaystyle \Pr(x_{t-dt}|x_{t})={\begin{cases}1+{\bar {Q}}_{t}(x_{t-dt},x_{t})dt&{\text{if }}x_{t-dt}=x_{t}\\{\bar {Q}}_{t}(x_{t-dt},x_{t})dt&{\text{else}}\end{cases}}}
+  
+
+
+=== Overall plan of score-matching discrete diffusion modeling ===
+Similar to score-matching continuous diffusion, score-matching discrete diffusion is a method to sample an initial distribution.
+If we have a certain function 
+  
+    
+      
+        
+          s
+          
+            θ
+          
+        
+      
+    
+    {\displaystyle s_{\theta }}
+  
+ that approximates the true score function 
+  
+    
+      
+        
+          s
+          
+            θ
+          
+        
+        (
+        x
+        ,
+        t
+        
+          )
+          
+            y
+          
+        
+        ≈
+        s
+        (
+        x
+        ,
+        t
+        
+          )
+          
+            y
+          
+        
+      
+    
+    {\displaystyle s_{\theta }(x,t)_{y}\approx s(x,t)_{y}}
+  
+, then it allows a corresponding 
+  
+    
+      
+        
+          
+            
+              
+                Q
+                ¯
+              
+            
+          
+          
+            θ
+          
+        
+      
+    
+    {\displaystyle {\bar {Q}}^{\theta }}
+  
+ to be defined in the same way.
+If we also have a base distribution 
+  
+    
+      
+        
+          q
+          
+            base
+          
+        
+      
+    
+    {\displaystyle q_{\text{base}}}
+  
+ such that it is easy to sample from, and approximately equal to the true terminal distribution 
+  
+    
+      
+        
+          q
+          
+            base
+          
+        
+        ≈
+        
+          q
+          
+            T
+          
+        
+      
+    
+    {\displaystyle q_{\text{base}}\approx q_{T}}
+  
+, then we can perform the backward CTMC with 
+  
+    
+      
+        
+          
+            
+              
+                Q
+                ¯
+              
+            
+          
+          
+            θ
+          
+        
+      
+    
+    {\displaystyle {\bar {Q}}^{\theta }}
+  
+ and 
+  
+    
+      
+        
+          q
+          
+            T
+          
+          
+            θ
+          
+        
+        :=
+        
+          q
+          
+            terminal
+          
+        
+      
+    
+    {\displaystyle q_{T}^{\theta }:=q_{\text{terminal}}}
+  
+.
+When both approximations are good, the backward CTMC would give 
+  
+    
+      
+        
+          q
+          
+            0
+          
+          
+            θ
+          
+        
+        ≈
+        
+          q
+          
+            0
+          
+        
+      
+    
+    {\displaystyle q_{0}^{\theta }\approx q_{0}}
+  
+. This is the idea of score-matching discrete diffusion modeling.
+If 
+  
+    
+      
+        
+          q
+          
+            data
+          
+        
+      
+    
+    {\displaystyle q_{\text{data}}}
+  
+ is sharp, in the sense that for some 
+  
+    
+      
+        x
+        ,
+        
+          x
+          ′
+        
+      
+    
+    {\displaystyle x,x'}
+  
+, we have 
+  
+    
+      
+        
+          q
+          
+            data
+          
+        
+        (
+        x
+        )
+        ≫
+        
+          q
+          
+            data
+          
+        
+        (
+        
+          x
+          ′
+        
+        )
+      
+    
+    {\displaystyle q_{\text{data}}(x)\gg q_{\text{data}}(x')}
+  
+, then the score function would diverge as 
+  
+    
+      
+        1
+        
+          /
+        
+        t
+      
+    
+    {\displaystyle 1/t}
+  
+ at the 
+  
+    
+      
+        t
+        →
+        0
+      
+    
+    {\displaystyle t\to 0}
+  
+ limit. To avoid this in practice, it is common to use early stopping, which is to stop the backward process at some time 
+  
+    
+      
+        δ
+        >
+        0
+      
+    
+    {\displaystyle \delta >0}
+  
+, and sample from 
+  
+    
+      
+        
+          q
+          
+            δ
+          
+          
+            θ
+          
+        
+      
+    
+    {\displaystyle q_{\delta }^{\theta }}
+  
+ instead of 
+  
+    
+      
+        
+          q
+          
+            0
+          
+          
+            θ
+          
+        
+      
+    
+    {\displaystyle q_{0}^{\theta }}
+  
+.
+
+
+=== Tractable forward processes ===
+The theory of CTMC works for any continuous choice of rate matrices 
+  
+    
+      
+        Q
+      
+    
+    {\displaystyle Q}
+  
+. However, most choices are computationally expensive and cannot be used in practice.
+In the case of continuous diffusion, the gaussian noise is used for the simple reason that the sum of any number of gaussians is still a gaussian. This allows one to sample any 
+  
+    
+      
+        
+          x
+          
+            t
+          
+        
+        ∼
+        
+          ρ
+          
+            t
+          
+        
+      
+    
+    {\displaystyle x_{t}\sim \rho _{t}}
+  
+ by sampling a single 
+  
+    
+      
+        
+          x
+          
+            0
+          
+        
+        ∼
+        
+          ρ
+          
+            0
+          
+        
+      
+    
+    {\displaystyle x_{0}\sim \rho _{0}}
+  
+, followed by a single gaussian noise 
+  
+    
+      
+        z
+        ∼
+        
+          
+            N
+          
+        
+        (
+        0
+        ,
+        I
+        )
+      
+    
+    {\displaystyle z\sim {\mathcal {N}}(0,I)}
+  
+, and let 
+  
+    
+      
+        
+          x
+          
+            t
+          
+        
+        =
+        
+          
+            
+              
+                
+                  
+                    α
+                    ¯
+                  
+                
+              
+              
+                t
+              
+            
+          
+        
+        
+          x
+          
+            0
+          
+        
+        +
+        
+          σ
+          
+            t
+          
+        
+        z
+      
+    
+    {\displaystyle x_{t}={\sqrt {{\bar {\alpha }}_{t}}}x_{0}+\sigma _{t}z}
+  
+, without needing any 
+  
+    
+      
+        
+          x
+          
+            s
+          
+        
+      
+    
+    {\displaystyle x_{s}}
+  
+ for any 
+  
+    
+      
+        0
+        <
+        s
+        <
+        t
+      
+    
+    {\displaystyle 0<s<t}
+  
+.
+Similarly, the choice of rate matrices should also allow us to "skip forward" without needing any intermediate steps.
+The uniform noising process is defined by
+  
+    
+      
+        
+          ∂
+          
+            t
+          
+        
+        
+          q
+          
+            t
+          
+        
+        (
+        x
+        )
+        =
+        −
+        
+          (
+          
+            1
+            −
+            
+              
+                1
+                
+                  
+                    |
+                  
+                  S
+                  
+                    |
+                  
+                
+              
+            
+          
+          )
+        
+        
+          q
+          
+            t
+          
+        
+        (
+        x
+        )
+        +
+        
+          ∑
+          
+            y
+            ∈
+            S
+            ,
+            y
+            ≠
+            x
+          
+        
+        
+          
+            1
+            
+              
+                |
+              
+              S
+              
+                |
+              
+            
+          
+        
+        
+          q
+          
+            t
+          
+        
+        (
+        y
+        )
+      
+    
+    {\displaystyle \partial _{t}q_{t}(x)=-\left(1-{\frac {1}{|S|}}\right)q_{t}(x)+\sum _{y\in S,y\neq x}{\frac {1}{|S|}}q_{t}(y)}
+  
+To see how to skip forward, note that the uniform noising process is equivalent to the following process: to evolve from time 
+  
+    
+      
+        t
+      
+    
+    {\displaystyle t}
+  
+ to time 
+  
+    
+      
+        t
+        +
+        d
+        t
+      
+    
+    {\displaystyle t+dt}
+  
+, either don't change anything with probability 
+  
+    
+      
+        1
+        −
+        d
+        t
+      
+    
+    {\displaystyle 1-dt}
+  
+, or sample a random state uniformly with probability 
+  
+    
+      
+        d
+        t
+      
+    
+    {\displaystyle dt}
+  
+. Since sampling uniform random states twice is the same as sampling it once, we see that the only question is whether we have ever sampled a random state. As time goes on, the probability of not sampling a random state decays exponentially. Therefore,
+  
+    
+      
+        
+          q
+          
+            t
+          
+        
+        (
+        y
+        
+          |
+        
+        
+          x
+          
+            0
+          
+        
+        )
+        =
+        
+          1
+          
+            y
+            =
+            
+              x
+              
+                0
+              
+            
+          
+        
+        
+          e
+          
+            −
+            t
+          
+        
+        +
+        
+          
+            1
+            
+              
+                |
+              
+              S
+              
+                |
+              
+            
+          
+        
+        (
+        1
+        −
+        
+          e
+          
+            −
+            t
+          
+        
+        )
+      
+    
+    {\displaystyle q_{t}(y|x_{0})=1_{y=x_{0}}e^{-t}+{\frac {1}{|S|}}(1-e^{-t})}
+  
+Time may be rescaled as desired. For example, the CTMC defined for 
+  
+    
+      
+        t
+        ∈
+        [
+        0
+        ,
+        1
+        )
+      
+    
+    {\displaystyle t\in [0,1)}
+  
+
+  
+    
+      
+        
+          q
+          
+            t
+          
+        
+        (
+        y
+        
+          |
+        
+        
+          x
+          
+            0
+          
+        
+        )
+        =
+        
+          1
+          
+            y
+            =
+            
+              x
+              
+                0
+              
+            
+          
+        
+        (
+        1
+        −
+        t
+        )
+        +
+        
+          
+            1
+            
+              
+                |
+              
+              S
+              
+                |
+              
+            
+          
+        
+        t
+      
+    
+    {\displaystyle q_{t}(y|x_{0})=1_{y=x_{0}}(1-t)+{\frac {1}{|S|}}t}
+  
+is produced by the scaled-time uniform noising process
+  
+    
+      
+        
+          ∂
+          
+            t
+          
+        
+        
+          q
+          
+            t
+          
+        
+        (
+        x
+        )
+        =
+        −
+        
+          
+            1
+            
+              1
+              −
+              t
+            
+          
+        
+        
+          (
+          
+            1
+            −
+            
+              
+                1
+                
+                  
+                    |
+                  
+                  S
+                  
+                    |
+                  
+                
+              
+            
+          
+          )
+        
+        
+          q
+          
+            t
+          
+        
+        (
+        x
+        )
+        +
+        
+          
+            1
+            
+              1
+              −
+              t
+            
+          
+        
+        
+          ∑
+          
+            y
+            ∈
+            S
+            ,
+            y
+            ≠
+            x
+          
+        
+        
+          
+            1
+            
+              
+                |
+              
+              S
+              
+                |
+              
+            
+          
+        
+        
+          q
+          
+            t
+          
+        
+        (
+        y
+        )
+      
+    
+    {\displaystyle \partial _{t}q_{t}(x)=-{\frac {1}{1-t}}\left(1-{\frac {1}{|S|}}\right)q_{t}(x)+{\frac {1}{1-t}}\sum _{y\in S,y\neq x}{\frac {1}{|S|}}q_{t}(y)}
+  
+The construction works in general for arbitrary rescaled time, and arbitrary noisy distribution on 
+  
+    
+      
+        S
+      
+    
+    {\displaystyle S}
+  
+. The idea is that if we have a fixed reference noise distribution 
+  
+    
+      
+        
+          q
+          
+            noise
+          
+        
+      
+    
+    {\displaystyle q_{\text{noise}}}
+  
+, then sampling from it twice is the same as sampling from it once. Therefore, the noising process 
+  
+    
+      
+        
+          ∂
+          
+            t
+          
+        
+        
+          q
+          
+            t
+          
+        
+        (
+        x
+        )
+        =
+        −
+        
+          σ
+          ′
+        
+        (
+        t
+        )
+        
+          q
+          
+            t
+          
+        
+        (
+        x
+        )
+        +
+        
+          σ
+          ′
+        
+        (
+        t
+        )
+        
+          q
+          
+            noise
+          
+        
+        (
+        x
+        )
+      
+    
+    {\textstyle \partial _{t}q_{t}(x)=-\sigma '(t)q_{t}(x)+\sigma '(t)q_{\text{noise}}(x)}
+  
+ produces 
+  
+    
+      
+        
+          q
+          
+            t
+          
+        
+        (
+        y
+        
+          |
+        
+        
+          x
+          
+            0
+          
+        
+        )
+        =
+        
+          e
+          
+            −
+            σ
+            (
+            t
+            )
+          
+        
+        
+          1
+          
+            y
+            =
+            
+              x
+              
+                0
+              
+            
+          
+        
+        +
+        (
+        1
+        −
+        
+          e
+          
+            −
+            σ
+            (
+            t
+            )
+          
+        
+        )
+        
+          q
+          
+            noise
+          
+        
+        (
+        y
+        )
+      
+    
+    {\displaystyle q_{t}(y|x_{0})=e^{-\sigma (t)}1_{y=x_{0}}+(1-e^{-\sigma (t)})q_{\text{noise}}(y)}
+  
+. Here, the time-rescaling function 
+  
+    
+      
+        σ
+        (
+        t
+        )
+      
+    
+    {\displaystyle \sigma (t)}
+  
+ must be strictly monotonic.
+More generally, if 
+  
+    
+      
+        
+          Q
+          
+            t
+          
+        
+        =
+        
+          σ
+          ′
+        
+        (
+        t
+        )
+        Q
+      
+    
+    {\displaystyle Q_{t}=\sigma '(t)Q}
+  
+, then 
+  
+    
+      
+        
+          q
+          
+            t
+          
+        
+        (
+        ⋅
+        
+          |
+        
+        
+          x
+          
+            0
+          
+        
+        )
+      
+    
+    {\displaystyle q_{t}(\cdot |x_{0})}
+  
+ is the 
+  
+    
+      
+        
+          x
+          
+            0
+          
+        
+      
+    
+    {\displaystyle x_{0}}
+  
+-th column of the matrix 
+  
+    
+      
+        
+          e
+          
+            −
+            σ
+            (
+            t
+            )
+            Q
+          
+        
+      
+    
+    {\displaystyle e^{-\sigma (t)Q}}
+  
+. If 
+  
+    
+      
+        σ
+        (
+        t
+        )
+        →
+        ∞
+      
+    
+    {\displaystyle \sigma (t)\to \infty }
+  
+, then 
+  
+    
+      
+        
+          q
+          
+            t
+          
+        
+        (
+        ⋅
+        
+          |
+        
+        
+          x
+          
+            0
+          
+        
+        )
+        →
+        
+          q
+          
+            noise
+          
+        
+      
+    
+    {\displaystyle q_{t}(\cdot |x_{0})\to q_{\text{noise}}}
+  
+.
+In practice, when 
+  
+    
+      
+        
+          |
+        
+        S
+        
+          |
+        
+      
+    
+    {\displaystyle |S|}
+  
+ is sufficiently large, only two processes are efficient enough for training in practice: the uniform process and the absorbing process:
+  
+    
+      
+        
+          
+            
+              
+                
+                  Q
+                  
+                    uniform
+                  
+                
+              
+              
+                
+                =
+                
+                  
+                    1
+                    
+                      
+                        |
+                      
+                      S
+                      
+                        |
+                      
+                    
+                  
+                
+                
+                  
+                    [
+                    
+                      
+                        
+                          1
+                          −
+                          
+                            |
+                          
+                          S
+                          
+                            |
+                          
+                        
+                        
+                          1
+                        
+                        
+                          ⋯
+                        
+                        
+                          1
+                        
+                      
+                      
+                        
+                          1
+                        
+                        
+                          1
+                          −
+                          
+                            |
+                          
+                          S
+                          
+                            |
+                          
+                        
+                        
+                          ⋯
+                        
+                        
+                          1
+                        
+                      
+                      
+                        
+                          ⋮
+                        
+                        
+                          ⋮
+                        
+                        
+                          ⋱
+                        
+                        
+                          ⋮
+                        
+                      
+                      
+                        
+                          1
+                        
+                        
+                          1
+                        
+                        
+                          ⋯
+                        
+                        
+                          1
+                          −
+                          
+                            |
+                          
+                          S
+                          
+                            |
+                          
+                        
+                      
+                    
+                    ]
+                  
+                
+                =
+                
+                  
+                    1
+                    
+                      
+                        |
+                      
+                      S
+                      
+                        |
+                      
+                    
+                  
+                
+                
+                  
+                    1
+                  
+                  
+                    
+                      |
+                    
+                    S
+                    
+                      |
+                    
+                  
+                
+                
+                  
+                    1
+                  
+                  
+                    
+                      |
+                    
+                    S
+                    
+                      |
+                    
+                  
+                  
+                    T
+                  
+                
+                −
+                
+                  I
+                  
+                    
+                      
+                        |
+                      
+                      S
+                      
+                        |
+                      
+                    
+                    ×
+                    
+                      
+                        |
+                      
+                      S
+                      
+                        |
+                      
+                    
+                  
+                
+                ,
+              
+            
+            
+              
+                
+                  Q
+                  
+                    absorb
+                  
+                
+              
+              
+                
+                =
+                
+                  
+                    [
+                    
+                      
+                        
+                          −
+                          1
+                        
+                        
+                          0
+                        
+                        
+                          ⋯
+                        
+                        
+                          0
+                        
+                        
+                          0
+                        
+                      
+                      
+                        
+                          0
+                        
+                        
+                          −
+                          1
+                        
+                        
+                          ⋯
+                        
+                        
+                          0
+                        
+                        
+                          0
+                        
+                      
+                      
+                        
+                          ⋮
+                        
+                        
+                          ⋮
+                        
+                        
+                          ⋱
+                        
+                        
+                          ⋮
+                        
+                        
+                          ⋮
+                        
+                      
+                      
+                        
+                          0
+                        
+                        
+                          0
+                        
+                        
+                          ⋯
+                        
+                        
+                          −
+                          1
+                        
+                        
+                          0
+                        
+                      
+                      
+                        
+                          1
+                        
+                        
+                          1
+                        
+                        
+                          ⋯
+                        
+                        
+                          1
+                        
+                        
+                          0
+                        
+                      
+                    
+                    ]
+                  
+                
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{aligned}Q^{\text{uniform}}&={\frac {1}{|S|}}{\begin{bmatrix}1-|S|&1&\cdots &1\\1&1-|S|&\cdots &1\\\vdots &\vdots &\ddots &\vdots \\1&1&\cdots &1-|S|\end{bmatrix}}={\frac {1}{|S|}}\mathbf {1} _{|S|}\mathbf {1} _{|S|}^{T}-I_{{|S|}\times {|S|}},\\Q^{\text{absorb}}&={\begin{bmatrix}-1&0&\cdots &0&0\\0&-1&\cdots &0&0\\\vdots &\vdots &\ddots &\vdots &\vdots \\0&0&\cdots &-1&0\\1&1&\cdots &1&0\end{bmatrix}}\end{aligned}}}
+  
+The uniform process is simply the uniform noising process with a rescalable time, converging to the uniform distribution on 
+  
+    
+      
+        S
+      
+    
+    {\displaystyle S}
+  
+.
+The absorbing process means that there is a special absorbing state 
+  
+    
+      
+        
+          s
+          
+            absorbing
+          
+        
+      
+    
+    {\displaystyle s_{\text{absorbing}}}
+  
+,  converging to the point distribution on the absorbing state 
+  
+    
+      
+        
+          δ
+          
+            
+              s
+              
+                absorbing
+              
+            
+          
+        
+      
+    
+    {\displaystyle \delta _{s_{\text{absorbing}}}}
+  
+. During time 
+  
+    
+      
+        [
+        t
+        ,
+        t
+        +
+        d
+        t
+        ]
+      
+    
+    {\displaystyle [t,t+dt]}
+  
+, if the state 
+  
+    
+      
+        
+          x
+          
+            t
+          
+        
+        ≠
+        
+          s
+          
+            absorbing
+          
+        
+      
+    
+    {\displaystyle x_{t}\neq s_{\text{absorbing}}}
+  
+, then it transitions into 
+  
+    
+      
+        
+          x
+          
+            t
+            +
+            d
+            t
+          
+        
+        =
+        
+          s
+          
+            absorbing
+          
+        
+      
+    
+    {\displaystyle x_{t+dt}=s_{\text{absorbing}}}
+  
+ with probability 
+  
+    
+      
+        d
+        t
+      
+    
+    {\displaystyle dt}
+  
+, and stays unchanged with probability 
+  
+    
+      
+        1
+        −
+        d
+        t
+      
+    
+    {\displaystyle 1-dt}
+  
+, but if the 
+  
+    
+      
+        
+          x
+          
+            t
+          
+        
+        =
+        
+          s
+          
+            absorbing
+          
+        
+      
+    
+    {\displaystyle x_{t}=s_{\text{absorbing}}}
+  
+, then 
+  
+    
+      
+        
+          x
+          
+            t
+            +
+            d
+            t
+          
+        
+        =
+        
+          s
+          
+            absorbing
+          
+        
+      
+    
+    {\displaystyle x_{t+dt}=s_{\text{absorbing}}}
+  
+ always. In diffusion language modeling, that special state is usually called [MASK], which originated from masked language modeling.
+
+
+== Score matching ==
+A discrete diffusion model is usually a score-matching network. That is, it is a neural network that takes as input 
+  
+    
+      
+        x
+        ,
+        t
+        ,
+        y
+      
+    
+    {\displaystyle x,t,y}
+  
+, and approximately computes the discrete score function:
+  
+    
+      
+        
+          s
+          
+            θ
+          
+        
+        (
+        x
+        ,
+        t
+        
+          )
+          
+            y
+          
+        
+        ≈
+        s
+        (
+        x
+        ,
+        t
+        
+          )
+          
+            y
+          
+        
+        =
+        
+          
+            
+              
+                q
+                
+                  t
+                
+              
+              (
+              y
+              )
+            
+            
+              
+                q
+                
+                  t
+                
+              
+              (
+              x
+              )
+            
+          
+        
+      
+    
+    {\displaystyle s_{\theta }(x,t)_{y}\approx s(x,t)_{y}={\frac {q_{t}(y)}{q_{t}(x)}}}
+  
+where 
+  
+    
+      
+        θ
+      
+    
+    {\displaystyle \theta }
+  
+ is the weights of the network. Once some good weights are found, the score network can be used to produce the backward diffusion process
+  
+    
+      
+        
+          
+            
+              
+                Q
+                ¯
+              
+            
+          
+          
+            t
+          
+          
+            θ
+          
+        
+        (
+        y
+        ,
+        x
+        )
+        :=
+        
+          
+            {
+            
+              
+                
+                  
+                    s
+                    
+                      θ
+                    
+                  
+                  (
+                  x
+                  ,
+                  t
+                  
+                    )
+                    
+                      y
+                    
+                  
+                  
+                    Q
+                    
+                      t
+                    
+                  
+                  (
+                  x
+                  ,
+                  y
+                  )
+                
+                
+                  
+                    if 
+                  
+                  y
+                  ≠
+                  x
+                
+              
+              
+                
+                  −
+                  
+                    ∑
+                    
+                      y
+                      :
+                      y
+                      ≠
+                      x
+                    
+                  
+                  
+                    
+                      
+                        
+                          Q
+                          ¯
+                        
+                      
+                    
+                    
+                      t
+                    
+                    
+                      θ
+                    
+                  
+                  (
+                  y
+                  ,
+                  x
+                  )
+                
+                
+                  
+                    if 
+                  
+                  y
+                  =
+                  x
+                
+              
+            
+            
+          
+        
+      
+    
+    {\displaystyle {\bar {Q}}_{t}^{\theta }(y,x):={\begin{cases}s_{\theta }(x,t)_{y}Q_{t}(x,y)&{\text{if }}y\neq x\\-\sum _{y:y\neq x}{\bar {Q}}_{t}^{\theta }(y,x)&{\text{if }}y=x\end{cases}}}
+  
+and produce samples that are approximately distributed as 
+  
+    
+      
+        
+          q
+          
+            0
+          
+        
+        :=
+        
+          q
+          
+            data
+          
+        
+      
+    
+    {\displaystyle q_{0}:=q_{\text{data}}}
+  
+. There are different algorithms for training a score-matching network.
+The concrete score matching algorithm minimizes the L2 loss by stochastic gradient descent
+  
+    
+      
+        
+          L
+          
+            C
+            S
+            M
+          
+        
+        (
+        θ
+        )
+        :=
+        
+          
+            E
+          
+          
+            t
+          
+        
+        
+          [
+          
+            
+              
+                E
+              
+              
+                
+                  x
+                  
+                    0
+                  
+                
+                ∼
+                
+                  q
+                  
+                    data
+                  
+                
+                ,
+                
+                  x
+                  
+                    t
+                  
+                
+                ∼
+                
+                  q
+                  
+                    t
+                    
+                      |
+                    
+                    0
+                  
+                
+                (
+                ⋅
+                
+                  |
+                
+                
+                  x
+                  
+                    0
+                  
+                
+                )
+              
+            
+            
+              [
+              
+                
+                  ∑
+                  
+                    y
+                    :
+                    y
+                    ≠
+                    
+                      x
+                      
+                        t
+                      
+                    
+                  
+                
+                
+                  
+                    (
+                    
+                      
+                        s
+                        
+                          θ
+                        
+                      
+                      (
+                      
+                        x
+                        
+                          t
+                        
+                      
+                      ,
+                      t
+                      
+                        )
+                        
+                          y
+                        
+                      
+                      −
+                      
+                        
+                          
+                            
+                              q
+                              
+                                t
+                              
+                            
+                            (
+                            y
+                            )
+                          
+                          
+                            
+                              q
+                              
+                                t
+                              
+                            
+                            (
+                            
+                              x
+                              
+                                t
+                              
+                            
+                            )
+                          
+                        
+                      
+                    
+                    )
+                  
+                  
+                    2
+                  
+                
+              
+              ]
+            
+          
+          ]
+        
+      
+    
+    {\displaystyle L_{CSM}(\theta ):=\mathbb {E} _{t}\left[\mathbb {E} _{x_{0}\sim q_{\text{data}},x_{t}\sim q_{t|0}(\cdot |x_{0})}\left[\sum _{y:y\neq x_{t}}\left(s_{\theta }(x_{t},t)_{y}-{\frac {q_{t}(y)}{q_{t}(x_{t})}}\right)^{2}\right]\right]}
+  
+where the outer expectation 
+  
+    
+      
+        
+          
+            E
+          
+          
+            t
+          
+        
+      
+    
+    {\displaystyle \mathbb {E} _{t}}
+  
+ means averaging over a randomly sampled time-instance. For example, if we allow 
+  
+    
+      
+        t
+        ∈
+        [
+        0
+        ,
+        1
+        )
+      
+    
+    {\displaystyle t\in [0,1)}
+  
+ in the definition of the forward CTMC process, then a common choice is to sample 
+  
+    
+      
+        t
+        ∼
+        
+          Uniform
+        
+        (
+        [
+        0
+        ,
+        1
+        ]
+        )
+      
+    
+    {\displaystyle t\sim {\text{Uniform}}([0,1])}
+  
+ during training.
+The L2 loss has the problem that 
+  
+    
+      
+        
+          s
+          
+            θ
+          
+        
+      
+    
+    {\displaystyle s_{\theta }}
+  
+ should never be negative, but the L2 loss does not prevent 
+  
+    
+      
+        
+          s
+          
+            θ
+          
+        
+      
+    
+    {\displaystyle s_{\theta }}
+  
+ from becoming negative.
+
+
+=== SEDD ===
+The Score Entropy Discrete Diffusion (SEDD) algorithm minimizes a certain score entropy loss:
+  
+    
+      
+        
+          L
+          
+            SE
+          
+        
+        (
+        θ
+        )
+        :=
+        
+          
+            E
+          
+          
+            t
+          
+        
+        
+          [
+          
+            
+              
+                E
+              
+              
+                
+                  x
+                  
+                    0
+                  
+                
+                ∼
+                
+                  q
+                  
+                    data
+                  
+                
+                ,
+                
+                  x
+                  
+                    t
+                  
+                
+                ∼
+                
+                  q
+                  
+                    t
+                    
+                      |
+                    
+                    0
+                  
+                
+                (
+                ⋅
+                
+                  |
+                
+                
+                  x
+                  
+                    0
+                  
+                
+                )
+              
+            
+            
+              [
+              
+                
+                  ∑
+                  
+                    y
+                    :
+                    y
+                    ≠
+                    
+                      x
+                      
+                        t
+                      
+                    
+                  
+                
+                
+                  w
+                  
+                    t
+                    ,
+                    
+                      x
+                      
+                        t
+                      
+                    
+                    ,
+                    y
+                  
+                
+                
+                  (
+                  
+                    
+                      s
+                      
+                        θ
+                      
+                    
+                    (
+                    
+                      x
+                      
+                        t
+                      
+                    
+                    ,
+                    t
+                    
+                      )
+                      
+                        y
+                      
+                    
+                    −
+                    
+                      
+                        
+                          
+                            q
+                            
+                              t
+                            
+                          
+                          (
+                          y
+                          )
+                        
+                        
+                          
+                            q
+                            
+                              t
+                            
+                          
+                          (
+                          
+                            x
+                            
+                              t
+                            
+                          
+                          )
+                        
+                      
+                    
+                    ln
+                    ⁡
+                    
+                      s
+                      
+                        θ
+                      
+                    
+                    (
+                    
+                      x
+                      
+                        t
+                      
+                    
+                    ,
+                    t
+                    
+                      )
+                      
+                        y
+                      
+                    
+                    +
+                    K
+                    
+                      (
+                      
+                        
+                          
+                            
+                              q
+                              
+                                t
+                              
+                            
+                            (
+                            y
+                            )
+                          
+                          
+                            
+                              q
+                              
+                                t
+                              
+                            
+                            (
+                            
+                              x
+                              
+                                t
+                              
+                            
+                            )
+                          
+                        
+                      
+                      )
+                    
+                  
+                  )
+                
+              
+              ]
+            
+          
+          ]
+        
+      
+    
+    {\displaystyle L_{\text{SE}}(\theta ):=\mathbb {E} _{t}\left[\mathbb {E} _{x_{0}\sim q_{\text{data}},x_{t}\sim q_{t|0}(\cdot |x_{0})}\left[\sum _{y:y\neq x_{t}}w_{t,x_{t},y}\left(s_{\theta }(x_{t},t)_{y}-{\frac {q_{t}(y)}{q_{t}(x_{t})}}\ln s_{\theta }(x_{t},t)_{y}+K\left({\frac {q_{t}(y)}{q_{t}(x_{t})}}\right)\right)\right]\right]}
+  
+where 
+  
+    
+      
+        K
+        (
+        a
+        )
+        :=
+        a
+        (
+        ln
+        ⁡
+        a
+        −
+        1
+        )
+      
+    
+    {\displaystyle K(a):=a(\ln a-1)}
+  
+ is just a function, and 
+  
+    
+      
+        
+          w
+          
+            t
+            ,
+            x
+            ,
+            y
+          
+        
+      
+    
+    {\displaystyle w_{t,x,y}}
+  
+ is an arbitrary array of positive numbers that can be adjusted as hyperparameters of the training algorithm. In the next section, we will see that setting 
+  
+    
+      
+        
+          w
+          
+            t
+            ,
+            
+              x
+              
+                t
+              
+            
+            ,
+            y
+          
+        
+        =
+        
+          Q
+          
+            t
+          
+        
+        (
+        y
+        ,
+        
+          x
+          
+            t
+          
+        
+        )
+      
+    
+    {\displaystyle w_{t,x_{t},y}=Q_{t}(y,x_{t})}
+  
+ is a z
+The expression within the brackets is proportional to the Bregman divergence for 
+  
+    
+      
+        −
+        ln
+      
+    
+    {\displaystyle -\ln }
+  
+, the negative logarithmic function:
+  
+    
+      
+        
+          s
+          
+            θ
+          
+        
+        (
+        
+          x
+          
+            t
+          
+        
+        ,
+        t
+        
+          )
+          
+            y
+          
+        
+        −
+        
+          
+            
+              
+                q
+                
+                  t
+                
+              
+              (
+              y
+              )
+            
+            
+              
+                q
+                
+                  t
+                
+              
+              (
+              
+                x
+                
+                  t
+                
+              
+              )
+            
+          
+        
+        ln
+        ⁡
+        
+          s
+          
+            θ
+          
+        
+        (
+        
+          x
+          
+            t
+          
+        
+        ,
+        t
+        
+          )
+          
+            y
+          
+        
+        +
+        K
+        
+          (
+          
+            
+              
+                
+                  q
+                  
+                    t
+                  
+                
+                (
+                y
+                )
+              
+              
+                
+                  q
+                  
+                    t
+                  
+                
+                (
+                
+                  x
+                  
+                    t
+                  
+                
+                )
+              
+            
+          
+          )
+        
+        =
+        
+          
+            
+              
+                q
+                
+                  t
+                
+              
+              (
+              y
+              )
+            
+            
+              
+                q
+                
+                  t
+                
+              
+              (
+              
+                x
+                
+                  t
+                
+              
+              )
+            
+          
+        
+        
+          D
+          
+            −
+            ln
+          
+        
+        
+          (
+          
+            
+              s
+              
+                θ
+              
+            
+            (
+            
+              x
+              
+                t
+              
+            
+            ,
+            t
+            
+              )
+              
+                y
+              
+            
+            ,
+            
+              
+                
+                  
+                    q
+                    
+                      t
+                    
+                  
+                  (
+                  y
+                  )
+                
+                
+                  
+                    q
+                    
+                      t
+                    
+                  
+                  (
+                  
+                    x
+                    
+                      t
+                    
+                  
+                  )
+                
+              
+            
+          
+          )
+        
+      
+    
+    {\displaystyle s_{\theta }(x_{t},t)_{y}-{\frac {q_{t}(y)}{q_{t}(x_{t})}}\ln s_{\theta }(x_{t},t)_{y}+K\left({\frac {q_{t}(y)}{q_{t}(x_{t})}}\right)={\frac {q_{t}(y)}{q_{t}(x_{t})}}D_{-\ln }\left(s_{\theta }(x_{t},t)_{y},{\frac {q_{t}(y)}{q_{t}(x_{t})}}\right)}
+  
+Since 
+  
+    
+      
+        −
+        ln
+      
+    
+    {\displaystyle -\ln }
+  
+ is used in definition of entropy, this explains why 
+  
+    
+      
+        
+          L
+          
+            SE
+          
+        
+      
+    
+    {\displaystyle L_{\text{SE}}}
+  
+ is called the "score entropy loss". Since the loss approaches infinity where 
+  
+    
+      
+        
+          s
+          
+            θ
+          
+        
+      
+    
+    {\displaystyle s_{\theta }}
+  
+ approaches zero, the score entropy loss prevents negative values of 
+  
+    
+      
+        
+          s
+          
+            θ
+          
+        
+      
+    
+    {\displaystyle s_{\theta }}
+  
+
+Since the Bregman divergence is zero only when the two terms are equal, the score entropy loss is minimized to a value of zero iff the score matching is perfect: 
+  
+    
+      
+        
+          s
+          
+            θ
+          
+        
+        (
+        x
+        ,
+        t
+        
+          )
+          
+            y
+          
+        
+        =
+        
+          
+            
+              
+                q
+                
+                  t
+                
+              
+              (
+              y
+              )
+            
+            
+              
+                q
+                
+                  t
+                
+              
+              (
+              x
+              )
+            
+          
+        
+      
+    
+    {\displaystyle s_{\theta }(x,t)_{y}={\frac {q_{t}(y)}{q_{t}(x)}}}
+  
+.
+There are 2 losses equivalent to SEDD. The implicit score entropy loss is 
+  
+    
+      
+        
+          L
+          
+            ISE
+          
+        
+        (
+        θ
+        )
+        :=
+        
+          
+            E
+          
+          
+            t
+          
+        
+        
+          [
+          
+            
+              
+                E
+              
+              
+                
+                  x
+                  
+                    0
+                  
+                
+                ∼
+                
+                  q
+                  
+                    data
+                  
+                
+                ,
+                
+                  x
+                  
+                    t
+                  
+                
+                ∼
+                
+                  q
+                  
+                    t
+                    
+                      |
+                    
+                    0
+                  
+                
+                (
+                ⋅
+                
+                  |
+                
+                
+                  x
+                  
+                    0
+                  
+                
+                )
+              
+            
+            
+              [
+              
+                
+                  ∑
+                  
+                    y
+                    :
+                    y
+                    ≠
+                    
+                      x
+                      
+                        t
+                      
+                    
+                  
+                
+                
+                  (
+                  
+                    
+                      w
+                      
+                        
+                          x
+                          
+                            t
+                          
+                        
+                        ,
+                        y
+                      
+                    
+                    
+                      s
+                      
+                        θ
+                      
+                    
+                    (
+                    
+                      x
+                      
+                        t
+                      
+                    
+                    ,
+                    t
+                    
+                      )
+                      
+                        y
+                      
+                    
+                    −
+                    
+                      w
+                      
+                        y
+                        ,
+                        
+                          x
+                          
+                            t
+                          
+                        
+                      
+                    
+                    
+                      s
+                      
+                        θ
+                      
+                    
+                    (
+                    y
+                    ,
+                    t
+                    
+                      )
+                      
+                        
+                          x
+                          
+                            t
+                          
+                        
+                      
+                    
+                  
+                  )
+                
+              
+              ]
+            
+          
+          ]
+        
+      
+    
+    {\displaystyle L_{\text{ISE}}(\theta ):=\mathbb {E} _{t}\left[\mathbb {E} _{x_{0}\sim q_{\text{data}},x_{t}\sim q_{t|0}(\cdot |x_{0})}\left[\sum _{y:y\neq x_{t}}\left(w_{x_{t},y}s_{\theta }(x_{t},t)_{y}-w_{y,x_{t}}s_{\theta }(y,t)_{x_{t}}\right)\right]\right]}
+  
+which is equal to 
+  
+    
+      
+        
+          L
+          
+            S
+            E
+          
+        
+        (
+        θ
+        )
+        +
+        C
+      
+    
+    {\displaystyle L_{SE}(\theta )+C}
+  
+, where 
+  
+    
+      
+        C
+        =
+        
+          E
+        
+        [
+        K
+        ]
+      
+    
+    {\displaystyle C=\mathbb {E} [K]}
+  
+ is independent of 
+  
+    
+      
+        θ
+      
+    
+    {\displaystyle \theta }
+  
+, and therefore optimization of 
+  
+    
+      
+        
+          L
+          
+            S
+            E
+          
+        
+      
+    
+    {\displaystyle L_{SE}}
+  
+ is equivalent to the optimization of 
+  
+    
+      
+        
+          L
+          
+            I
+            S
+            E
+          
+        
+      
+    
+    {\displaystyle L_{ISE}}
+  
+. However, the ISE loss requires evaluating the score network for 
+  
+    
+      
+        
+          |
+        
+        S
+        
+          |
+        
+      
+    
+    {\displaystyle |S|}
+  
+ times per sample of 
+  
+    
+      
+        t
+        ,
+        
+          x
+          
+            0
+          
+        
+        ,
+        
+          x
+          
+            t
+          
+        
+      
+    
+    {\displaystyle t,x_{0},x_{t}}
+  
+. This does not scale.
+The denoising score entropy loss is 
+  
+    
+      
+        
+          L
+          
+            DSE
+          
+        
+        (
+        θ
+        )
+        :=
+        
+          
+            E
+          
+          
+            t
+          
+        
+        
+          [
+          
+            
+              
+                E
+              
+              
+                
+                  x
+                  
+                    0
+                  
+                
+                ∼
+                
+                  q
+                  
+                    data
+                  
+                
+                ,
+                
+                  x
+                  
+                    t
+                  
+                
+                ∼
+                
+                  q
+                  
+                    t
+                    
+                      |
+                    
+                    0
+                  
+                
+                (
+                ⋅
+                
+                  |
+                
+                
+                  x
+                  
+                    0
+                  
+                
+                )
+              
+            
+            
+              [
+              
+                
+                  ∑
+                  
+                    y
+                    :
+                    y
+                    ≠
+                    
+                      x
+                      
+                        t
+                      
+                    
+                  
+                
+                
+                  w
+                  
+                    
+                      x
+                      
+                        t
+                      
+                    
+                    ,
+                    y
+                  
+                
+                
+                  (
+                  
+                    
+                      s
+                      
+                        θ
+                      
+                    
+                    (
+                    
+                      x
+                      
+                        t
+                      
+                    
+                    ,
+                    t
+                    
+                      )
+                      
+                        y
+                      
+                    
+                    −
+                    
+                      
+                        
+                          
+                            q
+                            
+                              t
+                              
+                                |
+                              
+                              0
+                            
+                          
+                          (
+                          y
+                          
+                            |
+                          
+                          
+                            x
+                            
+                              0
+                            
+                          
+                          )
+                        
+                        
+                          
+                            q
+                            
+                              t
+                              
+                                |
+                              
+                              0
+                            
+                          
+                          (
+                          
+                            x
+                            
+                              t
+                            
+                          
+                          
+                            |
+                          
+                          
+                            x
+                            
+                              0
+                            
+                          
+                          )
+                        
+                      
+                    
+                    ln
+                    ⁡
+                    
+                      s
+                      
+                        θ
+                      
+                    
+                    (
+                    
+                      x
+                      
+                        t
+                      
+                    
+                    ,
+                    t
+                    
+                      )
+                      
+                        y
+                      
+                    
+                  
+                  )
+                
+              
+              ]
+            
+          
+          ]
+        
+      
+    
+    {\displaystyle L_{\text{DSE}}(\theta ):=\mathbb {E} _{t}\left[\mathbb {E} _{x_{0}\sim q_{\text{data}},x_{t}\sim q_{t|0}(\cdot |x_{0})}\left[\sum _{y:y\neq x_{t}}w_{x_{t},y}\left(s_{\theta }(x_{t},t)_{y}-{\frac {q_{t|0}(y|x_{0})}{q_{t|0}(x_{t}|x_{0})}}\ln s_{\theta }(x_{t},t)_{y}\right)\right]\right]}
+  
+which is equal to 
+  
+    
+      
+        
+          L
+          
+            I
+            S
+            E
+          
+        
+      
+    
+    {\displaystyle L_{ISE}}
+  
+. This can be derived by using the identity 
+  
+    
+      
+        
+          
+            E
+          
+          
+            
+              x
+              
+                0
+              
+            
+            
+              |
+            
+            
+              x
+              
+                t
+              
+            
+          
+        
+        
+          [
+          
+            
+              
+                
+                  q
+                  
+                    t
+                    
+                      |
+                    
+                    0
+                  
+                
+                (
+                y
+                
+                  |
+                
+                
+                  x
+                  
+                    0
+                  
+                
+                )
+              
+              
+                
+                  q
+                  
+                    t
+                    
+                      |
+                    
+                    0
+                  
+                
+                (
+                
+                  x
+                  
+                    t
+                  
+                
+                
+                  |
+                
+                
+                  x
+                  
+                    0
+                  
+                
+                )
+              
+            
+          
+          ]
+        
+        =
+        
+          
+            
+              
+                q
+                
+                  t
+                
+              
+              (
+              y
+              )
+            
+            
+              
+                q
+                
+                  t
+                
+              
+              (
+              
+                x
+                
+                  t
+                
+              
+              )
+            
+          
+        
+      
+    
+    {\displaystyle \mathbb {E} _{x_{0}|x_{t}}\left[{\frac {q_{t|0}(y|x_{0})}{q_{t|0}(x_{t}|x_{0})}}\right]={\frac {q_{t}(y)}{q_{t}(x_{t})}}}
+  
+. Since it only evaluates the score network once per sample of 
+  
+    
+      
+        t
+        ,
+        
+          x
+          
+            0
+          
+        
+        ,
+        
+          x
+          
+            t
+          
+        
+      
+    
+    {\displaystyle t,x_{0},x_{t}}
+  
+. This does scale.
+
+
+=== Variational inference ===
+The score entropy objectives can be cast into the variational inference form. Given a base distribution 
+  
+    
+      
+        
+          q
+          
+            base
+          
+        
+      
+    
+    {\displaystyle q_{\text{base}}}
+  
+ on 
+  
+    
+      
+        S
+      
+    
+    {\displaystyle S}
+  
+ and a backward CTMC defined by 
+  
+    
+      
+        
+          
+            
+              
+                Q
+                ¯
+              
+            
+          
+          
+            t
+          
+          
+            θ
+          
+        
+      
+    
+    {\displaystyle {\bar {Q}}_{t}^{\theta }}
+  
+ and 
+  
+    
+      
+        
+          q
+          
+            base
+          
+        
+      
+    
+    {\displaystyle q_{\text{base}}}
+  
+, let 
+  
+    
+      
+        
+          q
+          
+            0
+          
+          
+            θ
+          
+        
+      
+    
+    {\displaystyle q_{0}^{\theta }}
+  
+ denote the resulting model distribution over 
+  
+    
+      
+        
+          x
+          
+            0
+          
+        
+      
+    
+    {\displaystyle x_{0}}
+  
+. For a fixed data point 
+  
+    
+      
+        
+          x
+          
+            0
+          
+        
+      
+    
+    {\displaystyle x_{0}}
+  
+, the diffusion weighted denoising score entropy (DWDSE) loss is defined as
+  
+    
+      
+        
+          L
+          
+            DWDSE
+          
+        
+        (
+        
+          x
+          
+            0
+          
+        
+        )
+        :=
+        
+          ∫
+          
+            0
+          
+          
+            T
+          
+        
+        
+          
+            E
+          
+          
+            
+              x
+              
+                t
+              
+            
+            ∼
+            
+              q
+              
+                t
+                
+                  |
+                
+                0
+              
+            
+            (
+            ⋅
+            
+              |
+            
+            
+              x
+              
+                0
+              
+            
+            )
+          
+        
+        
+          [
+          
+            
+              ∑
+              
+                y
+                :
+                y
+                ≠
+                
+                  x
+                  
+                    t
+                  
+                
+              
+            
+            
+              Q
+              
+                t
+              
+            
+            (
+            y
+            ,
+            
+              x
+              
+                t
+              
+            
+            )
+            
+              (
+              
+                
+                  s
+                  
+                    θ
+                  
+                
+                (
+                
+                  x
+                  
+                    t
+                  
+                
+                ,
+                t
+                
+                  )
+                  
+                    y
+                  
+                
+                −
+                
+                  
+                    
+                      
+                        q
+                        
+                          t
+                          
+                            |
+                          
+                          0
+                        
+                      
+                      (
+                      y
+                      
+                        |
+                      
+                      
+                        x
+                        
+                          0
+                        
+                      
+                      )
+                    
+                    
+                      
+                        q
+                        
+                          t
+                          
+                            |
+                          
+                          0
+                        
+                      
+                      (
+                      
+                        x
+                        
+                          t
+                        
+                      
+                      
+                        |
+                      
+                      
+                        x
+                        
+                          0
+                        
+                      
+                      )
+                    
+                  
+                
+                ln
+                ⁡
+                
+                  s
+                  
+                    θ
+                  
+                
+                (
+                
+                  x
+                  
+                    t
+                  
+                
+                ,
+                t
+                
+                  )
+                  
+                    y
+                  
+                
+                +
+                K
+                
+                  (
+                  
+                    
+                      
+                        
+                          q
+                          
+                            t
+                            
+                              |
+                            
+                            0
+                          
+                        
+                        (
+                        y
+                        
+                          |
+                        
+                        
+                          x
+                          
+                            0
+                          
+                        
+                        )
+                      
+                      
+                        
+                          q
+                          
+                            t
+                            
+                              |
+                            
+                            0
+                          
+                        
+                        (
+                        
+                          x
+                          
+                            t
+                          
+                        
+                        
+                          |
+                        
+                        
+                          x
+                          
+                            0
+                          
+                        
+                        )
+                      
+                    
+                  
+                  )
+                
+              
+              )
+            
+          
+          ]
+        
+        d
+        t
+        ,
+      
+    
+    {\displaystyle L_{\text{DWDSE}}(x_{0}):=\int _{0}^{T}\mathbb {E} _{x_{t}\sim q_{t|0}(\cdot |x_{0})}\left[\sum _{y:y\neq x_{t}}Q_{t}(y,x_{t})\left(s_{\theta }(x_{t},t)_{y}-{\frac {q_{t|0}(y|x_{0})}{q_{t|0}(x_{t}|x_{0})}}\ln s_{\theta }(x_{t},t)_{y}+K\left({\frac {q_{t|0}(y|x_{0})}{q_{t|0}(x_{t}|x_{0})}}\right)\right)\right]dt,}
+  
+where 
+  
+    
+      
+        
+          q
+          
+            t
+            
+              |
+            
+            0
+          
+        
+        (
+        ⋅
+        
+          |
+        
+        
+          x
+          
+            0
+          
+        
+        )
+      
+    
+    {\displaystyle q_{t|0}(\cdot |x_{0})}
+  
+ is the forward CTMC kernel defined by 
+  
+    
+      
+        
+          Q
+          
+            t
+          
+        
+      
+    
+    {\displaystyle Q_{t}}
+  
+, and 
+  
+    
+      
+        K
+      
+    
+    {\displaystyle K}
+  
+ is the function introduced above. It is minimized when 
+  
+    
+      
+        
+          
+            
+              
+                q
+                
+                  t
+                
+              
+              (
+              y
+              )
+            
+            
+              
+                q
+                
+                  t
+                
+              
+              (
+              
+                x
+                
+                  t
+                
+              
+              )
+            
+          
+        
+        =
+        
+          s
+          
+            θ
+          
+        
+        (
+        
+          x
+          
+            t
+          
+        
+        ,
+        t
+        
+          )
+          
+            y
+          
+        
+      
+    
+    {\displaystyle {\frac {q_{t}(y)}{q_{t}(x_{t})}}=s_{\theta }(x_{t},t)_{y}}
+  
+ for all 
+  
+    
+      
+        y
+        :
+        y
+        ≠
+        
+          x
+          
+            t
+          
+        
+      
+    
+    {\displaystyle y:y\neq x_{t}}
+  
+ such that 
+  
+    
+      
+        
+          Q
+          
+            t
+          
+        
+        (
+        y
+        ,
+        
+          x
+          
+            t
+          
+        
+        )
+        >
+        0
+      
+    
+    {\displaystyle Q_{t}(y,x_{t})>0}
+  
+. If 
+  
+    
+      
+        
+          Q
+          
+            t
+          
+        
+      
+    
+    {\displaystyle Q_{t}}
+  
+ is a sparse matrix, then the expression for 
+  
+    
+      
+        
+          L
+          
+            DWDSE
+          
+        
+      
+    
+    {\displaystyle L_{\text{DWDSE}}}
+  
+ accordingly can be simplified, since most state transitions are impossible.
+For the diffusion and forward probabilities defined above,
+  
+    
+      
+        −
+        ln
+        ⁡
+        
+          q
+          
+            0
+          
+          
+            θ
+          
+        
+        (
+        
+          x
+          
+            0
+          
+        
+        )
+        ≤
+        
+          L
+          
+            DWDSE
+          
+        
+        (
+        
+          x
+          
+            0
+          
+        
+        )
+        +
+        
+          D
+          
+            KL
+          
+        
+        
+          (
+          
+            
+              q
+              
+                T
+                
+                  |
+                
+                0
+              
+            
+            (
+            ⋅
+            
+              |
+            
+            
+              x
+              
+                0
+              
+            
+            )
+            ‖
+            
+              q
+              
+                base
+              
+            
+          
+          )
+        
+        ,
+      
+    
+    {\displaystyle -\ln q_{0}^{\theta }(x_{0})\leq L_{\text{DWDSE}}(x_{0})+D_{\text{KL}}\left(q_{T|0}(\cdot |x_{0})\|q_{\text{base}}\right),}
+  
+where 
+  
+    
+      
+        
+          D
+          
+            KL
+          
+        
+      
+    
+    {\displaystyle D_{\text{KL}}}
+  
+ is the Kullback–Leibler divergence. In particular, when 
+  
+    
+      
+        
+          q
+          
+            base
+          
+        
+        =
+        
+          q
+          
+            T
+            
+              |
+            
+            0
+          
+        
+      
+    
+    {\displaystyle q_{\text{base}}=q_{T|0}}
+  
+, minimizing the expectation of 
+  
+    
+      
+        
+          L
+          
+            DWDSE
+          
+        
+      
+    
+    {\displaystyle L_{\text{DWDSE}}}
+  
+ over 
+  
+    
+      
+        
+          x
+          
+            0
+          
+        
+        ∼
+        
+          q
+          
+            data
+          
+        
+      
+    
+    {\displaystyle x_{0}\sim q_{\text{data}}}
+  
+ minimizes an upper bound on the expected negative log-likelihood 
+  
+    
+      
+        −
+        
+          
+            E
+          
+          
+            
+              x
+              
+                0
+              
+            
+            ∼
+            
+              q
+              
+                data
+              
+            
+          
+        
+        [
+        ln
+        ⁡
+        
+          q
+          
+            0
+          
+          
+            θ
+          
+        
+        (
+        
+          x
+          
+            0
+          
+        
+        )
+        ]
+      
+    
+    {\displaystyle -\mathbb {E} _{x_{0}\sim q_{\text{data}}}[\ln q_{0}^{\theta }(x_{0})]}
+  
+.
+
+
+== Adaption to sequence modeling ==
+The most common application of discrete diffusion is for sequence modeling. For these, the discrete state space 
+  
+    
+      
+        S
+      
+    
+    {\displaystyle S}
+  
+ usually has a particular structure that can and must be exploited. For example, in language modeling, there are only finitely many different tokens allowed. The set of allowed tokens is called the vocabulary 
+  
+    
+      
+        Σ
+      
+    
+    {\displaystyle \Sigma }
+  
+, and its size is the vocabulary size 
+  
+    
+      
+        
+          |
+        
+        Σ
+        
+          |
+        
+      
+    
+    {\displaystyle |\Sigma |}
+  
+, which is always finite. For a given sequence length 
+  
+    
+      
+        n
+      
+    
+    {\displaystyle n}
+  
+, the state space is the space of all length-
+  
+    
+      
+        n
+      
+    
+    {\displaystyle n}
+  
+ sequences of tokens, which is 
+  
+    
+      
+        S
+        =
+        
+          Σ
+          
+            n
+          
+        
+      
+    
+    {\displaystyle S=\Sigma ^{n}}
+  
+ of size 
+  
+    
+      
+        
+          |
+        
+        S
+        
+          |
+        
+        =
+        
+          |
+        
+        Σ
+        
+          
+            |
+          
+          
+            n
+          
+        
+      
+    
+    {\displaystyle |S|=|\Sigma |^{n}}
+  
+.
+
+
+=== Forward process ===
+Since the size of the state space grows exponentially with sequence length, it is too large to be directly modeled. For example, if a sequence has 10 tokens, and each token can be chosen from a list of 100 valid tokens, then the full state space has size 
+  
+    
+      
+        
+          100
+          
+            10
+          
+        
+      
+    
+    {\displaystyle 100^{10}}
+  
+, which is intractable.
+Because of this, the standard method is to consider only tokenwise forward processes, i.e. those that factor into independent forward processes over each token. Tokenwise forward processes do not need each token to undergo the same forward process, though in practice, often all tokens undergo the same forward process.
+Let the sequence 
+  
+    
+      
+        
+          x
+          
+            t
+          
+        
+      
+    
+    {\displaystyle x_{t}}
+  
+ have 
+  
+    
+      
+        n
+      
+    
+    {\displaystyle n}
+  
+ tokens. Let 
+  
+    
+      
+        i
+        ∈
+        1
+        :
+        n
+      
+    
+    {\displaystyle i\in 1:n}
+  
+ index over the tokens in the sequence, so that 
+  
+    
+      
+        
+          x
+          
+            t
+          
+        
+        =
+        
+          x
+          
+            t
+            ,
+            1
+          
+        
+        ,
+        
+          x
+          
+            t
+            ,
+            2
+          
+        
+        ,
+        …
+        ,
+        
+          x
+          
+            t
+            ,
+            n
+          
+        
+      
+    
+    {\displaystyle x_{t}=x_{t,1},x_{t,2},\dots ,x_{t,n}}
+  
+. Let the forward process for token 
+  
+    
+      
+        i
+      
+    
+    {\displaystyle i}
+  
+ be defined by the rate matrix 
+  
+    
+      
+        
+          Q
+          
+            t
+            ,
+            i
+          
+        
+        (
+        
+          y
+          
+            i
+          
+        
+        ,
+        
+          x
+          
+            i
+          
+        
+        )
+      
+    
+    {\displaystyle Q_{t,i}(y_{i},x_{i})}
+  
+, then the rate matrix for the full sequence 
+  
+    
+      
+        
+          Q
+          
+            t
+          
+        
+        (
+        y
+        ,
+        x
+        )
+      
+    
+    {\displaystyle Q_{t}(y,x)}
+  
+ satisfies
+  
+    
+      
+        
+          Q
+          
+            t
+          
+        
+        (
+        y
+        ,
+        x
+        )
+        =
+        
+          
+            {
+            
+              
+                
+                  −
+                  
+                    ∑
+                    
+                      i
+                      ∈
+                      1
+                      :
+                      n
+                    
+                  
+                  
+                    ∑
+                    
+                      
+                        y
+                        
+                          i
+                        
+                      
+                      :
+                      
+                        y
+                        
+                          i
+                        
+                      
+                      ≠
+                      
+                        x
+                        
+                          i
+                        
+                      
+                    
+                  
+                  
+                    Q
+                    
+                      t
+                      ,
+                      i
+                    
+                  
+                  (
+                  
+                    y
+                    
+                      i
+                    
+                  
+                  ,
+                  
+                    x
+                    
+                      i
+                    
+                  
+                  )
+                
+                
+                  
+                    if 
+                  
+                  y
+                  =
+                  x
+                
+              
+              
+                
+                  
+                    Q
+                    
+                      t
+                      ,
+                      i
+                    
+                  
+                  (
+                  
+                    y
+                    
+                      i
+                    
+                  
+                  ,
+                  
+                    x
+                    
+                      i
+                    
+                  
+                  )
+                
+                
+                  
+                    if 
+                  
+                  y
+                  ,
+                  x
+                  
+                     differ at index 
+                  
+                  i
+                
+              
+              
+                
+                  0
+                
+                
+                  
+                    if 
+                  
+                  y
+                  ,
+                  x
+                  
+                     differ by more than 1 token
+                  
+                
+              
+            
+            
+          
+        
+      
+    
+    {\displaystyle Q_{t}(y,x)={\begin{cases}-\sum _{i\in 1:n}\sum _{y_{i}:y_{i}\neq x_{i}}Q_{t,i}(y_{i},x_{i})&{\text{if }}y=x\\Q_{t,i}(y_{i},x_{i})&{\text{if }}y,x{\text{ differ at index }}i\\0&{\text{if }}y,x{\text{ differ by more than 1 token}}\end{cases}}}
+  
+Intuitively, the rate matrices are simply added together, since the probability that two jumps occur during the same infinitesimal slice of time 
+  
+    
+      
+        [
+        t
+        ,
+        t
+        +
+        d
+        t
+        ]
+      
+    
+    {\displaystyle [t,t+dt]}
+  
+ is on the order of 
+  
+    
+      
+        d
+        
+          t
+          
+            2
+          
+        
+      
+    
+    {\displaystyle dt^{2}}
+  
+, which is infinitesimal compared to the probability that one jump occurs, which is on the order of 
+  
+    
+      
+        d
+        t
+      
+    
+    {\displaystyle dt}
+  
+.
+In language modeling, usually the vocabulary size is on the order of 100,000, which means that an arbitrary matrix is too large to fit into memory, so the only case in common use is where all tokens use the exact same rate matrix 
+  
+    
+      
+        
+          Q
+          
+            tok
+          
+        
+      
+    
+    {\displaystyle Q^{\text{tok}}}
+  
+, which is equal to one of the aforementioned cases 
+  
+    
+      
+        
+          Q
+          
+            uniform
+          
+        
+        ,
+        
+          Q
+          
+            absorb
+          
+        
+      
+    
+    {\displaystyle Q^{\text{uniform}},Q^{\text{absorb}}}
+  
+. That is, there exists some function 
+  
+    
+      
+        
+          σ
+          ′
+        
+        (
+        t
+        )
+        >
+        0
+      
+    
+    {\displaystyle \sigma '(t)>0}
+  
+ such that 
+  
+    
+      
+        
+          Q
+          
+            t
+            ,
+            i
+          
+        
+        =
+        
+          σ
+          ′
+        
+        (
+        t
+        )
+        
+          Q
+          
+            tok
+          
+        
+      
+    
+    {\displaystyle Q_{t,i}=\sigma '(t)Q^{\text{tok}}}
+  
+ for all token indices 
+  
+    
+      
+        i
+        ∈
+        1
+        :
+        n
+      
+    
+    {\displaystyle i\in 1:n}
+  
+ and all times 
+  
+    
+      
+        t
+        ∈
+        [
+        0
+        ,
+        T
+        )
+      
+    
+    {\displaystyle t\in [0,T)}
+  
+.
+Given this set up, the forward process factors tokenwise
+  
+    
+      
+        
+          q
+          
+            t
+            
+              |
+            
+            0
+          
+        
+        (
+        
+          x
+          
+            t
+          
+        
+        
+          |
+        
+        
+          x
+          
+            0
+          
+        
+        )
+        =
+        exp
+        ⁡
+        (
+        σ
+        (
+        t
+        )
+        Q
+        
+          )
+          
+            
+              x
+              
+                t
+              
+            
+            ,
+            
+              x
+              
+                0
+              
+            
+          
+        
+        =
+        
+          ∏
+          
+            i
+            ∈
+            1
+            :
+            n
+          
+        
+        exp
+        ⁡
+        (
+        σ
+        (
+        t
+        )
+        
+          Q
+          
+            tok
+          
+        
+        
+          )
+          
+            
+              x
+              
+                t
+                ,
+                i
+              
+            
+            ,
+            
+              x
+              
+                0
+                ,
+                i
+              
+            
+          
+        
+      
+    
+    {\displaystyle q_{t|0}(x_{t}|x_{0})=\exp(\sigma (t)Q)_{x_{t},x_{0}}=\prod _{i\in 1:n}\exp(\sigma (t)Q^{\text{tok}})_{x_{t,i},x_{0,i}}}
+  
+Note that the factorization is conditional on 
+  
+    
+      
+        
+          x
+          
+            0
+          
+        
+      
+    
+    {\displaystyle x_{0}}
+  
+. Without the conditioning, it fails, because the initial distribution 
+  
+    
+      
+        
+          q
+          
+            0
+          
+        
+        (
+        x
+        )
+      
+    
+    {\displaystyle q_{0}(x)}
+  
+ does not factor tokenwise as 
+  
+    
+      
+        
+          q
+          
+            0
+          
+        
+        (
+        x
+        )
+        =
+        
+          ∏
+          
+            i
+            ∈
+            1
+            :
+            n
+          
+        
+        
+          q
+          
+            0
+            ,
+            i
+          
+        
+        (
+        
+          x
+          
+            i
+          
+        
+        )
+      
+    
+    {\displaystyle q_{0}(x)=\prod _{i\in 1:n}q_{0,i}(x_{i})}
+  
+. Thus, the following does not factorize: the backward process 
+  
+    
+      
+        
+          q
+          
+            0
+            
+              |
+            
+            t
+          
+        
+        (
+        
+          x
+          
+            0
+          
+        
+        
+          |
+        
+        
+          x
+          
+            t
+          
+        
+        )
+      
+    
+    {\displaystyle q_{0|t}(x_{0}|x_{t})}
+  
+, the marginalized distribution 
+  
+    
+      
+        
+          q
+          
+            t
+          
+        
+        (
+        
+          x
+          
+            t
+          
+        
+        )
+      
+    
+    {\displaystyle q_{t}(x_{t})}
+  
+, and the score 
+  
+    
+      
+        s
+        (
+        
+          x
+          
+            t
+          
+        
+        ,
+        t
+        
+          )
+          
+            y
+          
+        
+      
+    
+    {\displaystyle s(x_{t},t)_{y}}
+  
+.
+
+
+=== Score function ===
+In general, the discrete score 
+  
+    
+      
+        s
+        (
+        
+          x
+          
+            t
+          
+        
+        ,
+        t
+        
+          )
+          
+            y
+          
+        
+      
+    
+    {\displaystyle s(x_{t},t)_{y}}
+  
+ is not tokenwise, i.e. in general, there does not exist some function 
+  
+    
+      
+        f
+      
+    
+    {\displaystyle f}
+  
+ such that
+  
+    
+      
+        
+          
+            
+              
+                q
+                
+                  t
+                  
+                    |
+                  
+                  0
+                
+              
+              (
+              y
+              )
+            
+            
+              
+                q
+                
+                  t
+                  
+                    |
+                  
+                  0
+                
+              
+              (
+              
+                x
+                
+                  t
+                
+              
+              )
+            
+          
+        
+        =
+        f
+        
+          (
+          
+            
+              
+                
+                  
+                    q
+                    
+                      t
+                      
+                        |
+                      
+                      0
+                    
+                  
+                  (
+                  
+                    y
+                    
+                      1
+                    
+                  
+                  )
+                
+                
+                  
+                    q
+                    
+                      t
+                      
+                        |
+                      
+                      0
+                    
+                  
+                  (
+                  
+                    x
+                    
+                      t
+                      ,
+                      1
+                    
+                  
+                  )
+                
+              
+            
+            ,
+            …
+            ,
+            
+              
+                
+                  
+                    q
+                    
+                      t
+                      
+                        |
+                      
+                      0
+                    
+                  
+                  (
+                  
+                    y
+                    
+                      n
+                    
+                  
+                  )
+                
+                
+                  
+                    q
+                    
+                      t
+                      
+                        |
+                      
+                      0
+                    
+                  
+                  (
+                  
+                    x
+                    
+                      t
+                      ,
+                      n
+                    
+                  
+                  )
+                
+              
+            
+          
+          )
+        
+      
+    
+    {\displaystyle {\frac {q_{t|0}(y)}{q_{t|0}(x_{t})}}=f\left({\frac {q_{t|0}(y_{1})}{q_{t|0}(x_{t,1})}},\dots ,{\frac {q_{t|0}(y_{n})}{q_{t|0}(x_{t,n})}}\right)}
+  
+Nevertheless, in this case, variational inference allows a simplification. Specifically, since 
+  
+    
+      
+        
+          Q
+          
+            t
+          
+        
+        (
+        y
+        ,
+        
+          x
+          
+            t
+          
+        
+        )
+        =
+        0
+      
+    
+    {\displaystyle Q_{t}(y,x_{t})=0}
+  
+ when 
+  
+    
+      
+        y
+        ,
+        
+          x
+          
+            t
+          
+        
+      
+    
+    {\displaystyle y,x_{t}}
+  
+ differ at more than 1 token, the summation 
+  
+    
+      
+        
+          ∑
+          
+            y
+            :
+            y
+            ≠
+            
+              x
+              
+                t
+              
+            
+          
+        
+      
+    
+    {\displaystyle \sum _{y:y\neq x_{t}}}
+  
+ in the definition of 
+  
+    
+      
+        
+          L
+          
+            DWDSE
+          
+        
+      
+    
+    {\displaystyle L_{\text{DWDSE}}}
+  
+ need only include the cases where 
+  
+    
+      
+        y
+        ,
+        
+          x
+          
+            t
+          
+        
+      
+    
+    {\displaystyle y,x_{t}}
+  
+ differ at exactly 1 token. That is, the training process need only minimize the following loss:
+  
+    
+      
+        
+          L
+          
+            DWDSE
+          
+        
+        (
+        θ
+        )
+        :=
+        
+          ∫
+          
+            0
+          
+          
+            T
+          
+        
+        
+          
+            E
+          
+          
+            
+              x
+              
+                0
+              
+            
+            ∼
+            
+              q
+              
+                data
+              
+            
+            ,
+            
+              x
+              
+                t
+              
+            
+            ∼
+            
+              q
+              
+                t
+                
+                  |
+                
+                0
+              
+            
+            (
+            ⋅
+            
+              |
+            
+            
+              x
+              
+                0
+              
+            
+            )
+          
+        
+        
+          [
+          
+            
+              ∑
+              
+                i
+                ∈
+                1
+                :
+                n
+                ,
+                
+                  
+                    
+                      
+                        x
+                        ^
+                      
+                    
+                  
+                  
+                    i
+                  
+                
+                ∈
+                Σ
+                ,
+                
+                  
+                    
+                      
+                        x
+                        ^
+                      
+                    
+                  
+                  
+                    i
+                  
+                
+                ≠
+                
+                  x
+                  
+                    t
+                    ,
+                    i
+                  
+                
+              
+            
+            
+              Q
+              
+                t
+                ,
+                i
+              
+            
+            (
+            
+              
+                
+                  
+                    x
+                    ^
+                  
+                
+              
+              
+                i
+              
+            
+            ,
+            
+              x
+              
+                t
+                ,
+                i
+              
+            
+            )
+            
+              (
+              
+                
+                  s
+                  
+                    θ
+                  
+                
+                (
+                
+                  x
+                  
+                    t
+                    ,
+                    i
+                  
+                
+                ,
+                t
+                ,
+                i
+                
+                  )
+                  
+                    
+                      
+                        
+                          
+                            x
+                            ^
+                          
+                        
+                      
+                      
+                        i
+                      
+                    
+                  
+                
+                −
+                
+                  
+                    
+                      
+                        q
+                        
+                          t
+                          
+                            |
+                          
+                          0
+                        
+                      
+                      (
+                      
+                        x
+                        
+                          t
+                        
+                      
+                      
+                        ⊙
+                        
+                          i
+                        
+                      
+                      
+                        
+                          
+                            
+                              x
+                              ^
+                            
+                          
+                        
+                        
+                          i
+                        
+                      
+                      
+                        |
+                      
+                      
+                        x
+                        
+                          0
+                        
+                      
+                      )
+                    
+                    
+                      
+                        q
+                        
+                          t
+                          
+                            |
+                          
+                          0
+                        
+                      
+                      (
+                      
+                        x
+                        
+                          t
+                        
+                      
+                      
+                        |
+                      
+                      
+                        x
+                        
+                          0
+                        
+                      
+                      )
+                    
+                  
+                
+                ln
+                ⁡
+                
+                  s
+                  
+                    θ
+                  
+                
+                (
+                
+                  x
+                  
+                    t
+                    ,
+                    i
+                  
+                
+                ,
+                t
+                ,
+                i
+                
+                  )
+                  
+                    
+                      
+                        
+                          
+                            x
+                            ^
+                          
+                        
+                      
+                      
+                        i
+                      
+                    
+                  
+                
+              
+              )
+            
+          
+          ]
+        
+        d
+        t
+      
+    
+    {\displaystyle L_{\text{DWDSE}}(\theta ):=\int _{0}^{T}\mathbb {E} _{x_{0}\sim q_{\text{data}},x_{t}\sim q_{t|0}(\cdot |x_{0})}\left[\sum _{i\in 1:n,{\hat {x}}_{i}\in \Sigma ,{\hat {x}}_{i}\neq x_{t,i}}Q_{t,i}({\hat {x}}_{i},x_{t,i})\left(s_{\theta }(x_{t,i},t,i)_{{\hat {x}}_{i}}-{\frac {q_{t|0}(x_{t}\odot _{i}{\hat {x}}_{i}|x_{0})}{q_{t|0}(x_{t}|x_{0})}}\ln s_{\theta }(x_{t,i},t,i)_{{\hat {x}}_{i}}\right)\right]dt}
+  
+where in the notation, 
+  
+    
+      
+        
+          x
+          
+            t
+          
+        
+        
+          ⊙
+          
+            i
+          
+        
+        
+          
+            
+              
+                x
+                ^
+              
+            
+          
+          
+            i
+          
+        
+      
+    
+    {\displaystyle x_{t}\odot _{i}{\hat {x}}_{i}}
+  
+ means the sequence obtained by replacing the 
+  
+    
+      
+        i
+      
+    
+    {\displaystyle i}
+  
+-th entry of 
+  
+    
+      
+        
+          x
+          
+            t
+          
+        
+      
+    
+    {\displaystyle x_{t}}
+  
+ by 
+  
+    
+      
+        
+          
+            
+              
+                x
+                ^
+              
+            
+          
+          
+            i
+          
+        
+      
+    
+    {\displaystyle {\hat {x}}_{i}}
+  
+. Consequently, the score-matching model 
+  
+    
+      
+        
+          s
+          
+            θ
+          
+        
+      
+    
+    {\displaystyle s_{\theta }}
+  
+ need to output only 
+  
+    
+      
+        n
+        (
+        
+          |
+        
+        Σ
+        
+          |
+        
+        −
+        1
+        )
+      
+    
+    {\displaystyle n(|\Sigma |-1)}
+  
+ scores for each 1-token modification, instead of 
+  
+    
+      
+        
+          |
+        
+        Σ
+        
+          
+            |
+          
+          
+            n
+          
+        
+        −
+        1
+      
+    
+    {\displaystyle |\Sigma |^{n}-1}
+  
+ for each full-sequence modification. If 
+  
+    
+      
+        
+          Q
+          
+            t
+            ,
+            i
+          
+        
+      
+    
+    {\displaystyle Q_{t,i}}
+  
+ is sparse, then the expression can be simplified further, such as when 
+  
+    
+      
+        
+          Q
+          
+            t
+            ,
+            i
+          
+        
+        =
+        
+          σ
+          ′
+        
+        (
+        t
+        )
+        
+          Q
+          
+            tok
+          
+        
+      
+    
+    {\displaystyle Q_{t,i}=\sigma '(t)Q^{\text{tok}}}
+  
+, since most single-token transitions are impossible.
+The theoretical minimum 
+  
+    
+      
+        
+          L
+          
+            DWDSE
+          
+        
+      
+    
+    {\displaystyle L_{\text{DWDSE}}}
+  
+ is achieved when 
+  
+    
+      
+        
+          s
+          
+            θ
+          
+        
+        (
+        
+          x
+          
+            t
+            ,
+            i
+          
+        
+        ,
+        t
+        ,
+        i
+        
+          )
+          
+            
+              
+                
+                  
+                    x
+                    ^
+                  
+                
+              
+              
+                i
+              
+            
+          
+        
+        =
+        s
+        (
+        
+          x
+          
+            t
+            ,
+            i
+          
+        
+        ,
+        t
+        ,
+        i
+        
+          )
+          
+            
+              
+                
+                  
+                    x
+                    ^
+                  
+                
+              
+              
+                i
+              
+            
+          
+        
+        =
+        
+          
+            
+              
+                q
+                
+                  t
+                
+              
+              (
+              
+                x
+                
+                  t
+                
+              
+              
+                ⊙
+                
+                  i
+                
+              
+              
+                
+                  
+                    
+                      x
+                      ^
+                    
+                  
+                
+                
+                  i
+                
+              
+              )
+            
+            
+              
+                q
+                
+                  t
+                
+              
+              (
+              
+                x
+                
+                  t
+                
+              
+              )
+            
+          
+        
+      
+    
+    {\displaystyle s_{\theta }(x_{t,i},t,i)_{{\hat {x}}_{i}}=s(x_{t,i},t,i)_{{\hat {x}}_{i}}={\frac {q_{t}(x_{t}\odot _{i}{\hat {x}}_{i})}{q_{t}(x_{t})}}}
+  
+for all 
+  
+    
+      
+        t
+        ∈
+        [
+        0
+        ,
+        T
+        )
+        ,
+        i
+        ∈
+        1
+        :
+        n
+        ,
+        
+          x
+          
+            t
+          
+        
+        ,
+        
+          
+            
+              
+                x
+                ^
+              
+            
+          
+          
+            i
+          
+        
+        ≠
+        
+          x
+          
+            t
+            ,
+            i
+          
+        
+      
+    
+    {\displaystyle t\in [0,T),i\in 1:n,x_{t},{\hat {x}}_{i}\neq x_{t,i}}
+  
+ such that 
+  
+    
+      
+        p
+        (
+        
+          x
+          
+            t
+          
+        
+        )
+        >
+        0
+      
+    
+    {\displaystyle p(x_{t})>0}
+  
+ and 
+  
+    
+      
+        
+          Q
+          
+            t
+            ,
+            i
+          
+        
+        (
+        
+          
+            
+              
+                x
+                ^
+              
+            
+          
+          
+            i
+          
+        
+        ,
+        
+          x
+          
+            t
+            ,
+            i
+          
+        
+        )
+        >
+        0
+      
+    
+    {\displaystyle Q_{t,i}({\hat {x}}_{i},x_{t,i})>0}
+  
+.
+
+
+=== Backward process ===
+Ideally, if the model learns the score exactly, then it defines a backward diffusion process that exactly reverses the forward diffusion process. Its rate matrix is
+  
+    
+      
+        
+          
+            
+              
+                Q
+                ¯
+              
+            
+          
+          
+            t
+          
+        
+        (
+        y
+        ,
+        x
+        )
+        :=
+        
+          
+            {
+            
+              
+                
+                  −
+                  
+                    ∑
+                    
+                      y
+                      :
+                      y
+                      ≠
+                      x
+                    
+                  
+                  
+                    
+                      
+                        
+                          Q
+                          ¯
+                        
+                      
+                    
+                    
+                      t
+                    
+                  
+                  (
+                  y
+                  ,
+                  x
+                  )
+                
+                
+                  
+                    if 
+                  
+                  y
+                  =
+                  x
+                
+              
+              
+                
+                  s
+                  (
+                  
+                    x
+                    
+                      i
+                    
+                  
+                  ,
+                  t
+                  
+                    )
+                    
+                      
+                        y
+                        
+                          t
+                        
+                      
+                    
+                  
+                  
+                    Q
+                    
+                      t
+                    
+                  
+                  (
+                  
+                    x
+                    
+                      i
+                    
+                  
+                  ,
+                  
+                    y
+                    
+                      i
+                    
+                  
+                  )
+                
+                
+                  
+                    if 
+                  
+                  y
+                  ,
+                  x
+                  
+                     differ at index 
+                  
+                  i
+                
+              
+              
+                
+                  0
+                
+                
+                  
+                    if 
+                  
+                  y
+                  ,
+                  x
+                  
+                     differ by more than 1 token
+                  
+                
+              
+            
+            
+          
+        
+      
+    
+    {\displaystyle {\bar {Q}}_{t}(y,x):={\begin{cases}-\sum _{y:y\neq x}{\bar {Q}}_{t}(y,x)&{\text{if }}y=x\\s(x_{i},t)_{y_{t}}Q_{t}(x_{i},y_{i})&{\text{if }}y,x{\text{ differ at index }}i\\0&{\text{if }}y,x{\text{ differ by more than 1 token}}\\\end{cases}}}
+  
+Intuitively, since the forward process only changes 0 or 1 tokens at any moment in time, so does the backward process.
+However, if the score is not exactly matched 
+  
+    
+      
+        
+          s
+          
+            θ
+          
+        
+        (
+        
+          x
+          
+            t
+            ,
+            i
+          
+        
+        ,
+        t
+        ,
+        i
+        
+          )
+          
+            
+              
+                
+                  
+                    x
+                    ^
+                  
+                
+              
+              
+                i
+              
+            
+          
+        
+        ≈
+        
+          
+            
+              
+                q
+                
+                  t
+                
+              
+              (
+              
+                x
+                
+                  t
+                
+              
+              
+                ⊙
+                
+                  i
+                
+              
+              
+                
+                  
+                    
+                      x
+                      ^
+                    
+                  
+                
+                
+                  i
+                
+              
+              )
+            
+            
+              
+                q
+                
+                  t
+                
+              
+              (
+              
+                x
+                
+                  t
+                
+              
+              )
+            
+          
+        
+      
+    
+    {\textstyle s_{\theta }(x_{t,i},t,i)_{{\hat {x}}_{i}}\approx {\frac {q_{t}(x_{t}\odot _{i}{\hat {x}}_{i})}{q_{t}(x_{t})}}}
+  
+, then it produces a score-matching error.
+Furthermore, the backward process in practice cannot be performed in continuous time, but only in discrete time. This produces a time-discretization error. The Gillespie algorithm cannot in general perform the backward process exactly, since for fixed 
+  
+    
+      
+        i
+        ,
+        x
+        ,
+        
+          
+            
+              
+                x
+                ^
+              
+            
+          
+          
+            i
+          
+        
+      
+    
+    {\displaystyle i,x,{\hat {x}}_{i}}
+  
+, the score 
+  
+    
+      
+        s
+        (
+        x
+        ,
+        t
+        ,
+        i
+        
+          )
+          
+            
+              
+                
+                  
+                    x
+                    ^
+                  
+                
+              
+              
+                i
+              
+            
+          
+        
+      
+    
+    {\displaystyle s(x,t,i)_{{\hat {x}}_{i}}}
+  
+ changes as 
+  
+    
+      
+        t
+      
+    
+    {\displaystyle t}
+  
+ changes. That is, the backward CTMC cannot be solved exactly as a backward discrete-time Markov chain. This contrasts with the forward process, where for 
+  
+    
+      
+        
+          Q
+          
+            uniform
+          
+        
+        ,
+        
+          Q
+          
+            absorb
+          
+        
+      
+    
+    {\displaystyle Q^{\text{uniform}},Q^{\text{absorb}}}
+  
+, the forward CTMC is exactly solvable as a discrete-time Markov chain. This is similar to how in continuous diffusion, the forward diffusion is exactly computable at discrete time instances, but the backward process requires integration over continuous time.
+Using the Gillespie algorithm, or other discrete-time algorithms, produces a Euler method approximation error. It can be improved by using better stochastic integrators and using more integration steps in the backward process.
+Similar to how the Gillespie algorithm can be accelerated by tau-leaping, the backward process can be accelerated by changing more than 1 token per discretized time-step.
+Given the noising process 
+  
+    
+      
+        
+          Q
+          
+            t
+          
+        
+        =
+        
+          σ
+          ′
+        
+        (
+        t
+        )
+        Q
+      
+    
+    {\displaystyle Q_{t}=\sigma '(t)Q}
+  
+, we have 
+  
+    
+      
+        
+          q
+          
+            t
+            
+              |
+            
+            0
+          
+        
+        (
+        
+          x
+          
+            t
+          
+        
+        
+          |
+        
+        
+          x
+          
+            0
+          
+        
+        )
+        =
+        exp
+        ⁡
+        (
+        σ
+        (
+        t
+        )
+        Q
+        
+          )
+          
+            
+              x
+              
+                t
+              
+            
+            ,
+            
+              x
+              
+                0
+              
+            
+          
+        
+      
+    
+    {\displaystyle q_{t|0}(x_{t}|x_{0})=\exp(\sigma (t)Q)_{x_{t},x_{0}}}
+  
+. By Bayes's theorem, it is inverted by the discrete Tweedie's formula:
+  
+    
+      
+        
+          
+            
+              
+                
+                  q
+                  
+                    0
+                    
+                      |
+                    
+                    t
+                  
+                
+                (
+                
+                  x
+                  
+                    0
+                  
+                
+                
+                  |
+                
+                
+                  x
+                  
+                    t
+                  
+                
+                )
+              
+              
+                
+                =
+                exp
+                ⁡
+                (
+                σ
+                (
+                t
+                )
+                Q
+                
+                  )
+                  
+                    
+                      x
+                      
+                        t
+                      
+                    
+                    ,
+                    
+                      x
+                      
+                        0
+                      
+                    
+                  
+                
+                
+                  ∑
+                  
+                    y
+                    ∈
+                    S
+                  
+                
+                exp
+                ⁡
+                (
+                −
+                σ
+                (
+                t
+                )
+                Q
+                
+                  )
+                  
+                    
+                      x
+                      
+                        0
+                      
+                    
+                    ,
+                    y
+                  
+                
+                
+                  
+                    
+                      
+                        p
+                        
+                          t
+                        
+                      
+                      (
+                      y
+                      )
+                    
+                    
+                      
+                        p
+                        
+                          t
+                        
+                      
+                      (
+                      
+                        x
+                        
+                          t
+                        
+                      
+                      )
+                    
+                  
+                
+              
+            
+            
+              
+              
+                
+                =
+                exp
+                ⁡
+                (
+                σ
+                (
+                t
+                )
+                Q
+                
+                  )
+                  
+                    
+                      x
+                      
+                        t
+                      
+                    
+                    ,
+                    
+                      x
+                      
+                        0
+                      
+                    
+                  
+                
+                
+                  ∑
+                  
+                    y
+                    ∈
+                    S
+                  
+                
+                exp
+                ⁡
+                (
+                −
+                σ
+                (
+                t
+                )
+                Q
+                
+                  )
+                  
+                    
+                      x
+                      
+                        0
+                      
+                    
+                    ,
+                    y
+                  
+                
+                s
+                (
+                
+                  x
+                  
+                    t
+                  
+                
+                ,
+                t
+                
+                  )
+                  
+                    y
+                  
+                
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{aligned}q_{0|t}(x_{0}|x_{t})&=\exp(\sigma (t)Q)_{x_{t},x_{0}}\sum _{y\in S}\exp(-\sigma (t)Q)_{x_{0},y}{\frac {p_{t}(y)}{p_{t}(x_{t})}}\\&=\exp(\sigma (t)Q)_{x_{t},x_{0}}\sum _{y\in S}\exp(-\sigma (t)Q)_{x_{0},y}s(x_{t},t)_{y}\end{aligned}}}
+  
+This gives the Tweedie tau-leaping algorithm, which, for each backward time-interval 
+  
+    
+      
+        [
+        t
+        ,
+        t
+        −
+        Δ
+        t
+        ]
+      
+    
+    {\displaystyle [t,t-\Delta t]}
+  
+, randomly and independently transition each token 
+  
+    
+      
+        i
+        ∈
+        1
+        :
+        n
+      
+    
+    {\displaystyle i\in 1:n}
+  
+. That is, for each token 
+  
+    
+      
+        i
+        ∈
+        1
+        :
+        n
+      
+    
+    {\displaystyle i\in 1:n}
+  
+ individually, sample 
+  
+    
+      
+        
+          x
+          
+            t
+            −
+            Δ
+            t
+            ,
+            i
+          
+        
+      
+    
+    {\displaystyle x_{t-\Delta t,i}}
+  
+ independently of the other tokens, with the probability of transitioning from 
+  
+    
+      
+        
+          x
+          
+            t
+          
+        
+      
+    
+    {\displaystyle x_{t}}
+  
+ to 
+  
+    
+      
+        
+          
+            
+              
+                x
+                ^
+              
+            
+          
+          
+            t
+            −
+            Δ
+            t
+          
+        
+      
+    
+    {\displaystyle {\hat {x}}_{t-\Delta t}}
+  
+ equal to
+  
+    
+      
+        exp
+        ⁡
+        (
+        
+          σ
+          
+            t
+          
+          
+            Δ
+          
+        
+        Q
+        
+          )
+          
+            
+              x
+              
+                t
+                ,
+                i
+              
+            
+            ,
+            
+              x
+              
+                t
+                −
+                Δ
+                t
+                ,
+                i
+              
+            
+          
+        
+        
+          ∑
+          
+            
+              y
+              
+                t
+              
+            
+            ∈
+            Σ
+          
+        
+        exp
+        ⁡
+        (
+        
+          σ
+          
+            t
+          
+          
+            Δ
+          
+        
+        Q
+        
+          )
+          
+            
+              x
+              
+                t
+                −
+                Δ
+                t
+                ,
+                i
+              
+            
+            ,
+            y
+          
+        
+        
+          s
+          
+            θ
+          
+        
+        (
+        
+          x
+          
+            t
+            ,
+            i
+          
+        
+        ,
+        t
+        ,
+        i
+        
+          )
+          
+            
+              y
+              
+                t
+              
+            
+          
+        
+      
+    
+    {\displaystyle \exp(\sigma _{t}^{\Delta }Q)_{x_{t,i},x_{t-\Delta t,i}}\sum _{y_{t}\in \Sigma }\exp(\sigma _{t}^{\Delta }Q)_{x_{t-\Delta t,i},y}s_{\theta }(x_{t,i},t,i)_{y_{t}}}
+  
+where 
+  
+    
+      
+        
+          σ
+          
+            t
+          
+          
+            Δ
+            t
+          
+        
+        =
+        (
+        σ
+        (
+        t
+        )
+        −
+        σ
+        (
+        t
+        −
+        Δ
+        t
+        )
+        )
+      
+    
+    {\textstyle \sigma _{t}^{\Delta t}=(\sigma (t)-\sigma (t-\Delta t))}
+  
+.
+The lower accuracy of tau-leaping is due to the approximation by tokenwise independence. In general, given 
+  
+    
+      
+        i
+        ≠
+        j
+        ,
+        t
+        ,
+        x
+        ,
+        
+          
+            
+              
+                x
+                ^
+              
+            
+          
+          
+            i
+          
+        
+        ,
+        
+          
+            
+              
+                x
+                ^
+              
+            
+          
+          
+            j
+          
+        
+      
+    
+    {\displaystyle i\neq j,t,x,{\hat {x}}_{i},{\hat {x}}_{j}}
+  
+, the score 
+  
+    
+      
+        s
+        (
+        x
+        ,
+        t
+        ,
+        j
+        
+          )
+          
+            
+              
+                
+                  
+                    x
+                    ^
+                  
+                
+              
+              
+                j
+              
+            
+          
+        
+        ≠
+        s
+        (
+        x
+        
+          ⊙
+          
+            i
+          
+        
+        
+          
+            
+              
+                x
+                ^
+              
+            
+          
+          
+            i
+          
+        
+        ,
+        t
+        ,
+        j
+        
+          )
+          
+            
+              
+                
+                  
+                    x
+                    ^
+                  
+                
+              
+              
+                j
+              
+            
+          
+        
+      
+    
+    {\displaystyle s(x,t,j)_{{\hat {x}}_{j}}\neq s(x\odot _{i}{\hat {x}}_{i},t,j)_{{\hat {x}}_{j}}}
+  
+. Concretely, suppose that in an exact backward simulation, exactly two tokens 
+  
+    
+      
+        
+          x
+          
+            t
+            ,
+            i
+          
+        
+        ,
+        
+          x
+          
+            t
+            ,
+            j
+          
+        
+      
+    
+    {\displaystyle x_{t,i},x_{t,j}}
+  
+ changes to 
+  
+    
+      
+        
+          
+            
+              
+                x
+                ^
+              
+            
+          
+          
+            i
+          
+        
+        ,
+        
+          
+            
+              
+                x
+                ^
+              
+            
+          
+          
+            j
+          
+        
+      
+    
+    {\displaystyle {\hat {x}}_{i},{\hat {x}}_{j}}
+  
+ during a backward time-interval 
+  
+    
+      
+        [
+        t
+        ,
+        t
+        −
+        Δ
+        t
+        ]
+      
+    
+    {\displaystyle [t,t-\Delta t]}
+  
+, then it matters whether tokens 
+  
+    
+      
+        i
+      
+    
+    {\displaystyle i}
+  
+ or token 
+  
+    
+      
+        j
+      
+    
+    {\displaystyle j}
+  
+ changed first, since that affects the rate of change at the other token.
+
+
+=== Conditional backward process ===
+The above framework considers unconditional generation. That is, sampling a full sequence 
+  
+    
+      
+        
+          x
+          
+            0
+          
+        
+      
+    
+    {\displaystyle x_{0}}
+  
+ approximately from the sample distribution 
+  
+    
+      
+        
+          p
+          
+            data
+          
+        
+      
+    
+    {\displaystyle p_{\text{data}}}
+  
+. Certain tasks require generating part of a sequence while holding other parts of a sequence fixed. For example, in prompt engineering or few-shot learning, the first few sentences are fixed, and only the rest of the sequence can be changed.
+In general, let 
+  
+    
+      
+        I
+        ∪
+        J
+      
+    
+    {\displaystyle I\cup J}
+  
+ be a partition of 
+  
+    
+      
+        1
+        :
+        n
+      
+    
+    {\displaystyle 1:n}
+  
+, then the problem is to generate 
+  
+    
+      
+        
+          x
+          
+            0
+            ,
+            I
+          
+        
+      
+    
+    {\displaystyle x_{0,I}}
+  
+ conditional on 
+  
+    
+      
+        
+          x
+          
+            0
+            ,
+            J
+          
+        
+      
+    
+    {\displaystyle x_{0,J}}
+  
+, that is, sampling 
+  
+    
+      
+        
+          x
+          
+            0
+            ,
+            I
+          
+        
+        ∼
+        
+          q
+          
+            0
+          
+        
+        (
+        ⋅
+        
+          |
+        
+        
+          x
+          
+            0
+            ,
+            J
+          
+        
+        )
+      
+    
+    {\displaystyle x_{0,I}\sim q_{0}(\cdot |x_{0,J})}
+  
+. By Bayes's theorem,
+  
+    
+      
+        
+          
+            
+              
+                q
+                
+                  t
+                
+              
+              (
+              
+                y
+                
+                  t
+                  ,
+                  I
+                
+              
+              
+                |
+              
+              
+                y
+                
+                  t
+                  ,
+                  J
+                
+              
+              )
+            
+            
+              
+                q
+                
+                  t
+                
+              
+              (
+              
+                x
+                
+                  t
+                  ,
+                  I
+                
+              
+              
+                |
+              
+              
+                x
+                
+                  t
+                  ,
+                  J
+                
+              
+              )
+            
+          
+        
+        =
+        
+          
+            
+              
+                q
+                
+                  t
+                
+              
+              (
+              
+                y
+                
+                  t
+                
+              
+              )
+            
+            
+              
+                q
+                
+                  t
+                
+              
+              (
+              
+                x
+                
+                  t
+                
+              
+              )
+            
+          
+        
+      
+    
+    {\displaystyle {\frac {q_{t}(y_{t,I}|y_{t,J})}{q_{t}(x_{t,I}|x_{t,J})}}={\frac {q_{t}(y_{t})}{q_{t}(x_{t})}}}
+  
+when 
+  
+    
+      
+        
+          x
+          
+            t
+            ,
+            J
+          
+        
+        =
+        
+          y
+          
+            t
+            ,
+            J
+          
+        
+      
+    
+    {\displaystyle x_{t,J}=y_{t,J}}
+  
+. Thus, a score-matching model for unconditional sequence generation is also a score-matching model for the conditional case:
+  
+    
+      
+        
+          s
+          
+            θ
+          
+        
+        (
+        
+          x
+          
+            t
+            ,
+            i
+          
+        
+        ,
+        t
+        ,
+        i
+        
+          )
+          
+            
+              
+                
+                  
+                    x
+                    ^
+                  
+                
+              
+              
+                i
+              
+            
+          
+        
+        ≈
+        s
+        (
+        
+          x
+          
+            t
+          
+        
+        ,
+        t
+        ,
+        i
+        
+          )
+          
+            
+              
+                
+                  
+                    x
+                    ^
+                  
+                
+              
+              
+                i
+              
+            
+          
+        
+        =
+        
+          
+            
+              
+                q
+                
+                  t
+                
+              
+              (
+              
+                x
+                
+                  t
+                  ,
+                  I
+                
+              
+              
+                ⊙
+                
+                  i
+                
+              
+              
+                
+                  
+                    
+                      x
+                      ^
+                    
+                  
+                
+                
+                  i
+                
+              
+              )
+            
+            
+              
+                q
+                
+                  t
+                
+              
+              (
+              
+                x
+                
+                  t
+                
+              
+              )
+            
+          
+        
+        =
+        
+          
+            
+              
+                q
+                
+                  t
+                
+              
+              (
+              
+                x
+                
+                  t
+                  ,
+                  I
+                
+              
+              
+                ⊙
+                
+                  i
+                
+              
+              
+                
+                  
+                    
+                      x
+                      ^
+                    
+                  
+                
+                
+                  i
+                
+              
+              
+                |
+              
+              
+                x
+                
+                  J
+                
+              
+              )
+            
+            
+              
+                q
+                
+                  t
+                
+              
+              (
+              
+                x
+                
+                  t
+                  ,
+                  I
+                
+              
+              
+                |
+              
+              
+                x
+                
+                  J
+                
+              
+              )
+            
+          
+        
+      
+    
+    {\displaystyle s_{\theta }(x_{t,i},t,i)_{{\hat {x}}_{i}}\approx s(x_{t},t,i)_{{\hat {x}}_{i}}={\frac {q_{t}(x_{t,I}\odot _{i}{\hat {x}}_{i})}{q_{t}(x_{t})}}={\frac {q_{t}(x_{t,I}\odot _{i}{\hat {x}}_{i}|x_{J})}{q_{t}(x_{t,I}|x_{J})}}}
+  
+for any 
+  
+    
+      
+        t
+        ,
+        i
+        ,
+        
+          
+            
+              
+                x
+                ^
+              
+            
+          
+          
+            i
+          
+        
+        ,
+        
+          x
+          
+            t
+          
+        
+      
+    
+    {\displaystyle t,i,{\hat {x}}_{i},x_{t}}
+  
+ such that 
+  
+    
+      
+        
+          x
+          
+            t
+            ,
+            J
+          
+        
+        =
+        
+          x
+          
+            J
+          
+        
+      
+    
+    {\displaystyle x_{t,J}=x_{J}}
+  
+. Thus, all previous conditional backward process sampling algorithms still work, simply by fixing 
+  
+    
+      
+        
+          x
+          
+            t
+            ,
+            J
+          
+        
+        =
+        
+          x
+          
+            J
+          
+        
+      
+    
+    {\displaystyle x_{t,J}=x_{J}}
+  
+.
+
+
+=== Error analysis ===
+In general, the backward process of a discrete diffusion samples a probability distribution that differs from 
+  
+    
+      
+        
+          q
+          
+            data
+          
+        
+      
+    
+    {\displaystyle q_{\text{data}}}
+  
+. This creates the following sources of error:
+
+The mixing error, due to beginning the backward diffusion process at 
+  
+    
+      
+        
+          q
+          
+            base
+          
+        
+      
+    
+    {\displaystyle q_{\text{base}}}
+  
+ rather than 
+  
+    
+      
+        
+          q
+          
+            T
+          
+        
+      
+    
+    {\displaystyle q_{T}}
+  
+.
+The score-matching error, due to using 
+  
+    
+      
+        
+          s
+          
+            θ
+          
+        
+      
+    
+    {\displaystyle s_{\theta }}
+  
+ rather than 
+  
+    
+      
+        s
+      
+    
+    {\displaystyle s}
+  
+ to define the rate matrix of the backward diffusion process.
+The time-discretization error, due to using discrete time, not continuous time, when integrating through the backward diffusion process. This is analogous to the error of the Euler algorithm.
+The independence error, due to using tau-leaping, which erroneously allows more than one token to change at a time in a probabilistically independent way.
+The early stopping error, due to ending the backward diffusion process at 
+  
+    
+      
+        
+          q
+          
+            δ
+          
+          
+            θ
+          
+        
+      
+    
+    {\displaystyle q_{\delta }^{\theta }}
+  
+ rather than at 
+  
+    
+      
+        
+          q
+          
+            0
+          
+          
+            θ
+          
+        
+      
+    
+    {\displaystyle q_{0}^{\theta }}
+  
+.
+Each error can be decreased or eliminated, usually at the price of increased cost of compute.
+
+Mixing error can be decreased by running the diffusion time for longer, or eliminated by the analog of the "zero SNR" fix for diffusion in continuous space.
+Score-matching error can be decreased by better training of the score-matching model.
+Time-discretization error can be decreased by making smaller time-steps, or essentially eliminated by numerical integration plus the uniformization trick for CTMC.
+Independence error can be eliminated by only changing one token at a time during backward diffusion.
+Early stopping can be eliminated if the score does not diverge as 
+  
+    
+      
+        t
+        →
+        0
+      
+    
+    {\displaystyle t\to 0}
+  
+. If the score does diverge, then the stopping time 
+  
+    
+      
+        δ
+      
+    
+    {\displaystyle \delta }
+  
+ can be decreased, but the time-steps would need to decrease in tandem.
+
+
+== See also ==
+Diffusion model
+Markov chain
+Variational inference
+Variational autoencoder
+
+
+== Further reading ==
+
+
+== References ==

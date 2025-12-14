@@ -1,0 +1,29 @@
+Kernel page-table isolation (KPTI or PTI, previously called KAISER) is a Linux kernel feature that mitigates the Meltdown security vulnerability (affecting mainly Intel's x86 CPUs) and improves kernel hardening against attempts to bypass kernel address space layout randomization (KASLR). It works by better isolating user space and kernel space memory. KPTI was merged into Linux kernel version 4.15, and backported to Linux kernels 4.14.11, 4.9.75, and 4.4.110. Windows and macOS released similar updates. KPTI does not address the related Spectre vulnerability.
+
+
+== Background on KAISER ==
+The KPTI patches were based on KAISER (short for Kernel Address Isolation to have Side-channels Efficiently Removed), a technique conceived in 2016 and published in June 2017 back when Meltdown was not known yet. KAISER makes it harder to defeat KASLR, a 2014 mitigation for a much less severe issue.
+In 2014, the Linux kernel adopted kernel address space layout randomization (KASLR), which makes it more difficult to exploit other kernel vulnerabilities, which relies on kernel address mappings remaining hidden from user space. Despite prohibiting access to these kernel mappings, it turns out that there are several side-channel attacks in modern processors that can leak the location of this memory, making it possible to work around KASLR.
+KAISER addressed these problems in KASLR by eliminating some sources of address leakage. Whereas KASLR merely prevents address mappings from leaking, KAISER also prevents the data from leaking, thereby covering the Meltdown case.
+KPTI is based on KAISER. Without KPTI enabled, whenever executing user-space code (applications), Linux would also keep its entire kernel memory mapped in page tables, although protected from access. The advantage is that when the application makes a system call into the kernel or an interrupt is received, kernel page tables are always present, so most context switching-related overheads (TLB flush, page-table swapping, etc) can be avoided.
+
+
+== Meltdown vulnerability and KPTI ==
+In January 2018, the Meltdown vulnerability was published, known to affect Intel's x86 CPUs and ARM Cortex-A75. It was a far more severe vulnerability than the KASLR bypass that KAISER originally intended to fix: It was found that contents of kernel memory could also be leaked, not just the locations of memory mappings, as previously thought.
+KPTI (conceptually based on KAISER) prevents Meltdown by preventing most protected locations from being mapped to user space.
+AMD x86 processors are not currently known to be affected by Meltdown and don't need KPTI to mitigate them. However, AMD processors are still susceptible to KASLR bypass when KPTI is disabled.
+
+
+== Implementation ==
+KPTI fixes these leaks by separating user-space and kernel-space page tables entirely. One set of page tables includes both kernel-space and user-space addresses same as before, but it is only used when the system is running in kernel mode. The second set of page tables for use in user mode contains a copy of user-space and a minimal set of kernel-space mappings that provides the information needed to enter or exit system calls, interrupts and exceptions.
+On processors that support the process-context identifiers (PCID), a translation lookaside buffer (TLB) flush can be avoided, but even then it comes at a significant performance cost, particularly in syscall-heavy and interrupt-heavy workloads.
+The overhead was measured to be 0.28% according to KAISER's original authors; a Linux developer measured it to be roughly 5% for most workloads and up to 30% in some cases, even with the PCID optimization; for database engine PostgreSQL the impact on read-only tests on an Intel Skylake processor was 7–17% (or 16–23% without PCID), while a full benchmark lost 13–19% (Coffee Lake vs. Broadwell-E). Many benchmarks have been done by Phoronix, Redis slowed by 6–7%. Linux kernel compilation slowed down by 5% on Haswell.
+KPTI can partially be disabled with the "nopti" kernel boot option. Also provisions were created to disable KPTI if newer processors fix the information leaks.
+
+
+== References ==
+
+
+== External links ==
+17. Page Table Isolation (PTI) - The Linux Kernel documentation
+KPTI documentation patch

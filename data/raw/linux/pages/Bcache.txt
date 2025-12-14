@@ -1,0 +1,64 @@
+bcache (abbreviated from block cache) is a cache mechanism in the Linux kernel's block layer, which is used for accessing secondary storage devices. It allows one or more fast storage devices, such as flash-based solid-state drives (SSDs), to act as a cache for one or more slower storage devices, such as hard disk drives (HDDs); this effectively creates hybrid volumes and provides performance improvements.
+Designed around the nature and performance characteristics of SSDs, bcache also minimizes write amplification by avoiding random writes and turning them into sequential writes instead. This merging of I/O operations is performed for both the cache and the primary storage, helping in extending the lifetime of flash-based devices used as caches, and in improving the performance of write-sensitive primary storages, such as RAID 5 sets.
+bcache is licensed under the GNU General Public License (GPL), and Kent Overstreet is its primary developer. Overstreet considers bcache as a "prototype" for the development of bcachefs, a filesystem with significant improvements over bcache.
+
+
+== Overview ==
+Using bcache makes it possible to have SSDs as another level of indirection within the data storage access paths, resulting in improved overall performance by using fast flash-based SSDs as caches for slower mechanical hard disk drives (HDDs) with rotational magnetic media. That way, the gap between SSDs and HDDs can be bridged –  the costly speed of SSDs gets combined with the cheap storage capacity of traditional HDDs.
+Caching is implemented by using SSDs for storing data associated with performed random reads and random writes, using near-zero seek times as the most prominent feature of SSDs. Sequential I/O is not cached, to avoid rapid SSD cache invalidation on such operations that are already suitable enough for HDDs; going around the cache for big sequential writes is known as the write-around policy. Not caching the sequential I/O also helps in extending the lifetime of SSDs used as caches. Write amplification is avoided by not performing random writes to SSDs; instead, all random writes to SSD caches are always combined into block-level writes, ending up with rewriting only the complete erase blocks on SSDs.
+Both write-back and write-through (which is the default) policies are supported for caching write operations. In case of the write-back policy, written data is stored inside the SSD caches first, and propagated to the HDDs later in a batched way while performing seek-friendly operations –  making bcache to act also as an I/O scheduler. For the write-through policy, which ensures that no write operation is marked as finished until the data requested to be written has reached both SSDs and HDDs, performance improvements are reduced by effectively performing only caching of the written data.
+Write-back policy with batched writes to HDDs provides additional benefits to write-sensitive redundant array of independent disks (RAID) layouts such as RAID 5 and RAID 6, which perform actual write operations as atomic read-modify-write sequences. That way, performance penalties of small random writes are reduced or avoided for such RAID layouts, by grouping them together and performing as batched sequential writes.
+Caching performed by bcache operates at the block device level, making itself file system–agnostic as long as the file system provides an embedded universally unique identifier (UUID); this requirement is satisfied by virtually all standard Linux file systems, as well as by swap partitions. Sizes of the logical blocks used internally by bcache as caching extents can go down to the size of a single HDD sector.
+
+
+== History ==
+bcache was first announced by Kent Overstreet in July 2010, as a completely working Linux kernel module, though at its early beta stage. The development continued for almost two years, until May 2012, at which point bcache reached its production-ready state.
+It was merged into the Linux kernel mainline in kernel version 3.10, released on June 30, 2013. Overstreet has since been developing the file system bcachefs, based on ideas first developed in bcache that he said began "evolving ... into a full blown, general-purpose POSIX filesystem". He describes bcache as a "prototype" for the ideas that became bcachefs and intends bcachefs to replace bcache. He officially announced bcachefs in 2015 and got it merged into the mainline Linux kernel in October 2023, however in June 2025, Linus Torvalds announced that bcachefs would be dropped from the mainline Linux kernel by version 6.17, following tensions between Torvalds and Overstreet.
+
+
+== Features ==
+As of version 3.10 of the Linux kernel, the following features are provided by bcache:
+
+The same cache device can be used for caching an arbitrary number of the primary storage devices
+Runtime attaching and detaching of primary storage devices from their caches, while mounted and in use (running in passthrough mode when not cached)
+Automated recovery from unclean shutdowns –  writes are not completed until the cache is consistent with respect to the primary storage device; internally, bcache makes no distinction between clean and unclean shutdowns
+Transparent handling of I/O errors generated by the cache devices
+Write barriers and associated cache flushes are properly handled
+Write-through (which is the default), write-back and write-around policies
+Sequential I/O is detected and bypassed, with configurable thresholds; bypassing can also be disabled
+Throttling of the I/O to the SSD if it becomes congested, as detected by measured latency of the SSD's I/O operations exceeding a configurable threshold; useful for configurations having one SSD providing caching for many HDDs
+Readahead on a cache miss (disabled by default)
+Highly efficient write-back implementation –  dirty data is always written out in sorted order, and optionally background write-back is smoothly throttled down to keeping configured percentage of the cache dirty
+High-performance B+ trees are used internally –  bcache is capable of around 1,000,000 IOPS on random reads, if the hardware is fast enough
+Various runtime statistics and configuration options are exposed through sysfs
+
+
+=== Improvements ===
+As of February 2014, the following new features are planned for the future releases of bcache:
+
+Awareness of data striping in RAID 5 and RAID 6 layouts –  adding awareness of the stripe layout to the write-back policy, so decisions on caching will be giving preference to already "dirty" stripes, and actual background flushes will be writing out complete stripes first
+Handling cache misses with already full B+ tree nodes –  as of the bcache version in Linux kernel 3.10, splits of the internally used B+ tree nodes happen on writes, making initial cache warm-ups hardly achievable
+Multiple SSDs in a cache set –  only dirty data (for the write-back policy) and metadata would be mirrored, without wasting SSD space for the clean data and read caches
+Data checksumming
+
+
+== See also ==
+
+dm-cache –  a Linux kernel's device mapper target that allows creation of hybrid volumes
+EnhanceIO –  a disk cache module for the Linux kernel.
+Flashcache –  a disk cache component for the Linux kernel, initially developed by Facebook
+Hybrid drive –  a storage device that combines flash-based and spinning magnetic media storage technologies
+ReadyBoost –  a disk caching software component of Windows Vista and later Microsoft operating systems
+Smart Response Technology (SRT) –  a proprietary disk storage caching mechanism, developed by Intel for its chipsets
+
+
+== References ==
+
+
+== External links ==
+Official website
+LSFMM: Caching –  dm-cache and bcache, LWN.net, May 1, 2013, by Jake Edge
+Linux Block Caching Choices in Stable Upstream Kernel (PDF), Dell, December 2013
+Testing bcache series: Throughput, IOPS, Metadata, and Large Files and a Wrap-Up, Linux Magazine, August–September 2010, by Jeffrey B. Layton
+Performance Comparison among EnhanceIO, bcache and dm-cache, LKML, June 11, 2013
+EnhanceIO, Bcache & DM-Cache Benchmarked, Phoronix, June 11, 2013, by Michael Larabel

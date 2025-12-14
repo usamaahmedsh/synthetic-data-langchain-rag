@@ -1,0 +1,358 @@
+MUltiple Sequence Comparison by Log-Expectation (MUSCLE) is a computer software for multiple sequence alignment of protein and nucleotide sequences. It is licensed as public domain. The method was published by Robert C. Edgar in two papers in 2004. The first paper, published in Nucleic Acids Research, introduced the sequence alignment algorithm. The second paper, published in BMC Bioinformatics, presented more technical details. MUSCLE up to version 3 uses a progressive-refinement method. Since version 5 it uses a hidden Markov model similar to ProbCons.
+
+
+== History ==
+
+
+=== Robert C. Edgar ===
+Edgar graduated in 1982 from University College London, BSc in Physics, PhD in Particle physics. He pursued software development post-graduation and founded his own company, Parity Software, in 1988. In 2001, he began working with coding algorithms after attending a seminar at the University of California Berkley. From 2001-present day Edgar has contributed to or been the sole creator of multiple software programs, including MUSCLE and USEARCH. He has written a total of 96 papers in the field of computational biology from 2002-present, with his most recent paper being Discovery and Validation of Alternatives to VSV-G for Pseudotyping of Lentiviral Vectors for In Vivo Delivery of Anti-Tumor Transgenes. As of April, 2025, his work has been cited over 143,126 times. The two originally published MUSCLE papers have been cited more than 58,979 times combined. The paper “MUSCLE: multiple sequence alignment with high accuracy and high throughput” has received more than 49,052 citations, while “MUSCLE: a multiple sequence alignment method with reduced time and space complexity” has been cited over 9,936 times.
+
+
+=== Muscle Versions History ===
+
+
+== Muscle5 ==
+
+
+=== Overview ===
+In late 2021, Edgar released Muscle5 (also referred to as Muscle v5), an updated version of the MUSCLE software. It introduces several innovations aimed at improving alignment accuracy and reducing bias found in other MSA algorithms. Traditional tools such as Clustal Omega, MAFFT, and earlier versions of MUSCLE rely on progressive alignment strategies that produce a single alignment. Muscle5, in contrast, generates an ensemble of high-accuracy alignments by perturbing a hidden Markov model and permuting its guide tree. At its core, the algorithm is a parallelized reimplementation of ProbCons, and is designed to scale efficiently to large datasets. Muscle5 has demonstrated improved benchmark performance compared to leading MSA methods across several datasets, including BAliBASE, BRAliBASE, and PREFAB.
+
+
+=== Ensembles ===
+A key innovation in Muscle5 is the use of alignment ensembles, which provide unbiased metrics of confidence in alignments. Each individual MSA (replicate) in the ensemble uses fixed but independently chosen parameters for the hidden Markov model and guide tree, allowing results to be averaged over a diverse set of replicates. This enables biologists to assess how sensitive their downstream analyses are to alignment uncertainty by comparing results across the ensemble.
+
+
+== Old algorithm ==
+The MUSCLE algorithm (before v5) proceeds in three stages: the draft progressive, improved progressive, and refinement stage.
+
+
+=== Stage 1: Draft Progressive ===
+In this first stage, the algorithm produces a multiple alignment, emphasizing speed over accuracy. This step begins by computing the k-mer distance for every pair of input sequences to create a distance matrix. UPGMA clusters the distance matrix to produce a binary tree. From this tree a progressive alignment is constructed, beginning with the creation of profiles for each leaf of the tree. For every node in the tree, a pairwise alignment is constructed of the two child profiles, creating a new profile to be assigned to that node. This continues until there is a multiple sequence alignment of all input sequences at the root of the tree.
+Given 
+  
+    
+      
+        N
+      
+    
+    {\displaystyle N}
+  
+ input sequences and 
+  
+    
+      
+        L
+      
+    
+    {\displaystyle L}
+  
+ as the average sequence length, the time complexity of the draft progressive stage is
+
+  
+    
+      
+        O
+        (
+        
+          N
+          
+            2
+          
+        
+        ⋅
+        L
+        +
+        N
+        ⋅
+        
+          L
+          
+            2
+          
+        
+        )
+      
+    
+    {\displaystyle O(N^{2}\cdot L+N\cdot L^{2})}
+  
+.
+Here, the pairwise 
+  
+    
+      
+        k
+      
+    
+    {\displaystyle k}
+  
+-mer distance calculation is computed as 
+  
+    
+      
+        O
+        (
+        
+          N
+          
+            2
+          
+        
+        ⋅
+        L
+        )
+      
+    
+    {\displaystyle O(N^{2}\cdot L)}
+  
+, and the progressive alignment steps take 
+  
+    
+      
+        O
+        (
+        N
+        ⋅
+        
+          L
+          
+            2
+          
+        
+        )
+      
+    
+    {\displaystyle O(N\cdot L^{2})}
+  
+, where 
+  
+    
+      
+        O
+      
+    
+    {\displaystyle O}
+  
+ denotes the asymptotic upper bound. The space complexity is 
+  
+    
+      
+        O
+        (
+        N
+        ⋅
+        L
+        )
+      
+    
+    {\displaystyle O(N\cdot L)}
+  
+ as the algorithm maintains profiles and alignments for each sequence across the tree.
+
+
+=== Stage 2: Improved Progressive ===
+This stage focuses on obtaining a more optimal tree by calculating the Kimura distance for each pair of input sequences using the multiple sequence alignment obtained in Stage one, and creates a second distance matrix. UPGMA clusters this distance matrix to obtain a second binary tree. A progressive alignment is performed to obtain a multiple sequence alignment like in Stage one, but it is optimized by only computing alignments in subtrees whose branching orders have changed from the first binary tree, resulting in a more accurate alignment.
+Refined alignments are made in the second stage by recalculating a more accurate tree via the Kimura distance. Thus, the algorithm analysis involves the initial subprocedures of pairwise distance calculations and progressive alignment; however, optimizations in computation are made by limiting re-alignment to only those subtrees with altered branching orders. The optimization is thus given as
+
+  
+    
+      
+        O
+        (
+        
+          N
+          
+            2
+          
+        
+        ⋅
+        L
+        +
+        m
+        ⋅
+        
+          L
+          
+            2
+          
+        
+        )
+      
+    
+    {\displaystyle O(N^{2}\cdot L+m\cdot L^{2})}
+  
+,
+where the variable 
+  
+    
+      
+        m
+      
+    
+    {\displaystyle m}
+  
+ denotes the number of subtree realignments. Similarly, the space complexity is
+
+  
+    
+      
+        O
+        (
+        N
+        ⋅
+        L
+        )
+      
+    
+    {\displaystyle O(N\cdot L)}
+  
+,
+as profiles and alignments for the input sequences are stored for the progressive alignment process.
+
+
+=== Stage 3: Refinement ===
+In this final stage, an edge is chosen from the second tree, with edges being visited in decreasing distance from the root. The chosen edge is deleted, dividing the tree into two subtrees. The profile of the multiple alignment is then computed for each subtree. A new multiple sequence alignment is produced by re-aligning the subtree profiles. If the SP score is improved, the new alignment is kept, otherwise, it is discarded. The process of deleting an edge and aligning is repeated until convergence, or until a user-defined limit is reached.
+The time complexity of the refinement stage is given as 
+  
+    
+      
+        O
+        (
+        k
+        ⋅
+        
+          L
+          
+            2
+          
+        
+        )
+      
+    
+    {\displaystyle O(k\cdot L^{2})}
+  
+. Here, 
+  
+    
+      
+        k
+      
+    
+    {\displaystyle k}
+  
+ denotes the number of edge deletions and 
+  
+    
+      
+        L
+      
+    
+    {\displaystyle L}
+  
+ denotes the average sequence length, where re-alignment of the subtree profiles is still the dominant cost per iteration. The space complexity remains the same as given in Stage one and two: 
+  
+    
+      
+        O
+        (
+        N
+        ⋅
+        L
+        )
+      
+    
+    {\displaystyle O(N\cdot L)}
+  
+. Since the same iterative refinement process occurs, the asymptotic complexity remains polynomial as the dominant term grows linearly with respect to the number of refinement steps.
+In comparison, the CLUSTALW algorithm includes an optimized iterative refinement step such that selective re-alignment of the tree occurs in order to maximize alignment accuracy without repeating the entire process. The time and space complexity, however, do not change for this optimized iterative refinement step. The time complexity is 
+  
+    
+      
+        O
+        (
+        k
+        ⋅
+        
+          L
+          
+            2
+          
+        
+        )
+      
+    
+    {\displaystyle O(k\cdot L^{2})}
+  
+, where 
+  
+    
+      
+        k
+      
+    
+    {\displaystyle k}
+  
+ is the number of refinement steps and 
+  
+    
+      
+        L
+      
+    
+    {\displaystyle L}
+  
+ is the average alignment length. The space complexity is given as 
+  
+    
+      
+        O
+        (
+        N
+        ⋅
+        L
+        )
+      
+    
+    {\displaystyle O(N\cdot L)}
+  
+, again, for alignment profiles and sequence data for all 
+  
+    
+      
+        N
+      
+    
+    {\displaystyle N}
+  
+ input sequences.
+
+
+=== Algorithm Flowchart ===
+
+
+=== Complexity and Comparison ===
+In the first two stages of the algorithm, the time complexity is O(N2L + NL2), the space complexity is O(N2 + NL + L2). The refinement stage adds to the time complexity another term, O(N3L). MUSCLE is often used as a replacement for Clustal, since it usually (but not always) gives better sequence alignments. Depending on the chosen options, MUSCLE is significantly faster than Clustal, more so for larger alignments.
+Most modern multiple sequence alignment programs are generally accepted when presenting aligned sequences but there are few differences amongst them. The main difference between programs is the method used to align the sequences. For instance, T-COFFEE and Clustal use the progressive method while MUSCLE and MAFFT perform using the iterative method of alignment. These two methods differ in their ability to handle low similarity sequences with the iterative method providing more accurate results. The other way methods differ is with their computational needs.
+Originally MUSCLE had middling CPU demands in comparison to other programs but was definitely higher than the progressive methods. Comparisons with modern versions of MSA programs reveal that many are quite similar in capabilities. The alignments were assessed based on their sum of pairs (SP), correctly matching two nucleotides/amino acids across two sequences, and their total columns (TC), matching columns divided by the total columns. In these cases, MUSCLE was average in its ability to maximize matching pairs and columns, being slightly worse than the ProbCons, T-Coffee, Probalign and MAFFT. Outside the alignment scores, MUSCLE was less computationally demanding in both time to execute the alignment and the memory demand.
+
+
+== Integration ==
+MUSCLE is widely supported across multiple bioinformatics platforms. It is fully integrated into software programs such as CodonCode Aligner, DNASTAR's Lasergene, Geneious, and MacVector, and is also available as a plug-in for Sequencher, MEGA, UGENE, and AliView. Users can also access MUSCLE as a web service via the European Molecular Biology Laboratory (EMBL)-European Bioinformatics Institute (EBI) or T-Coffee. MUSCLE can also be downloaded by users on their personal devices via the Official website.
+
+
+== See also ==
+Sequence alignment software
+CodonCode Aligner
+DNASTAR
+Clustal
+ProbCons
+AMAP
+T-COFFEE
+MAFFT
+
+
+== References ==
+
+
+== External links ==
+Official website
+MUSCLE Web Server (EMBL-EBI)

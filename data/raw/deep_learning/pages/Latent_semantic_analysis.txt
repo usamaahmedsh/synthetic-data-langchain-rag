@@ -1,0 +1,3001 @@
+Latent semantic analysis (LSA) is a technique in natural language processing, in particular distributional semantics, of analyzing relationships between a set of documents and the terms they contain by producing a set of concepts related to the documents and terms.  LSA assumes that words that are close in meaning will occur in similar pieces of text (the distributional hypothesis).  A matrix containing word counts per document (rows represent unique words and columns represent each document) is constructed from a large piece of text and a mathematical technique called singular value decomposition (SVD) is used to reduce the number of rows while preserving the similarity structure among columns.  Documents are then compared by cosine similarity between any two columns.  Values close to 1 represent very similar documents while values close to 0 represent very dissimilar documents.
+An information retrieval technique using latent semantic structure was patented in 1988 by Scott Deerwester, Susan Dumais, George Furnas, Richard Harshman, Thomas Landauer, Karen Lochbaum and Lynn Streeter. In the context of its application to information retrieval, it is sometimes called latent semantic indexing (LSI).
+
+
+== Overview ==
+
+
+=== Occurrence matrix ===
+LSA can use a document-term matrix which describes the occurrences of terms in documents; it is a sparse matrix whose rows correspond to terms and whose columns correspond to documents. A typical example of the weighting of the elements of the matrix is tf-idf (term frequency–inverse document frequency): the weight of an element of the matrix is proportional to the number of times the terms appear in each document, where rare terms are upweighted to reflect their relative importance.
+This matrix is also common to standard semantic models, though it is not necessarily explicitly expressed as a matrix, since the mathematical properties of matrices are not always used.
+
+
+=== Rank lowering ===
+After the construction of the occurrence matrix, LSA finds a low-rank approximation to the term-document matrix. There could be various reasons for these approximations:
+
+The original term-document matrix is presumed too large for the computing resources; in this case, the approximated low rank  matrix is interpreted as an approximation (a "least and necessary evil").
+The original term-document matrix is presumed noisy: for example, anecdotal instances of terms are to be eliminated. From this point of view, the approximated matrix is interpreted as a de-noisified matrix (a better matrix than the original).
+The original term-document matrix is presumed overly sparse relative to the "true" term-document matrix.  That is, the original matrix lists only the words actually in each document, whereas we might be interested in all words related to each document—generally a much larger set due to synonymy.
+The consequence of the rank lowering is that some dimensions are combined and depend on more than one term:
+
+{(car), (truck), (flower)} → {(1.3452 * car + 0.2828 * truck), (flower)}
+This mitigates the problem of identifying synonymy, as the rank lowering is expected to merge the dimensions associated with terms that have similar meanings. It also partially mitigates the problem with polysemy, since components of polysemous words that point in the "right" direction are added to the components of words that share a similar meaning. Conversely, components that point in other directions tend to either simply cancel out, or, at worst, to be smaller than components in the directions corresponding to the intended sense.
+
+
+=== Derivation ===
+Let 
+  
+    
+      
+        X
+      
+    
+    {\displaystyle X}
+  
+ be a matrix where element 
+  
+    
+      
+        (
+        i
+        ,
+        j
+        )
+      
+    
+    {\displaystyle (i,j)}
+  
+ describes the occurrence of term 
+  
+    
+      
+        i
+      
+    
+    {\displaystyle i}
+  
+ in document 
+  
+    
+      
+        j
+      
+    
+    {\displaystyle j}
+  
+ (this can be, for example, the frequency). 
+  
+    
+      
+        X
+      
+    
+    {\displaystyle X}
+  
+ will look like this:
+
+  
+    
+      
+        
+          
+            
+              
+              
+                
+                  
+                    
+                      d
+                    
+                  
+                  
+                    j
+                  
+                
+              
+            
+            
+              
+              
+                ↓
+              
+            
+            
+              
+                
+                  
+                    
+                      t
+                    
+                  
+                  
+                    i
+                  
+                  
+                    T
+                  
+                
+                →
+              
+              
+                
+                  
+                    [
+                    
+                      
+                        
+                          
+                            x
+                            
+                              1
+                              ,
+                              1
+                            
+                          
+                        
+                        
+                          …
+                        
+                        
+                          
+                            x
+                            
+                              1
+                              ,
+                              j
+                            
+                          
+                        
+                        
+                          …
+                        
+                        
+                          
+                            x
+                            
+                              1
+                              ,
+                              n
+                            
+                          
+                        
+                      
+                      
+                        
+                          ⋮
+                        
+                        
+                          ⋱
+                        
+                        
+                          ⋮
+                        
+                        
+                          ⋱
+                        
+                        
+                          ⋮
+                        
+                      
+                      
+                        
+                          
+                            x
+                            
+                              i
+                              ,
+                              1
+                            
+                          
+                        
+                        
+                          …
+                        
+                        
+                          
+                            x
+                            
+                              i
+                              ,
+                              j
+                            
+                          
+                        
+                        
+                          …
+                        
+                        
+                          
+                            x
+                            
+                              i
+                              ,
+                              n
+                            
+                          
+                        
+                      
+                      
+                        
+                          ⋮
+                        
+                        
+                          ⋱
+                        
+                        
+                          ⋮
+                        
+                        
+                          ⋱
+                        
+                        
+                          ⋮
+                        
+                      
+                      
+                        
+                          
+                            x
+                            
+                              m
+                              ,
+                              1
+                            
+                          
+                        
+                        
+                          …
+                        
+                        
+                          
+                            x
+                            
+                              m
+                              ,
+                              j
+                            
+                          
+                        
+                        
+                          …
+                        
+                        
+                          
+                            x
+                            
+                              m
+                              ,
+                              n
+                            
+                          
+                        
+                      
+                    
+                    ]
+                  
+                
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{matrix}&{\textbf {d}}_{j}\\&\downarrow \\{\textbf {t}}_{i}^{T}\rightarrow &{\begin{bmatrix}x_{1,1}&\dots &x_{1,j}&\dots &x_{1,n}\\\vdots &\ddots &\vdots &\ddots &\vdots \\x_{i,1}&\dots &x_{i,j}&\dots &x_{i,n}\\\vdots &\ddots &\vdots &\ddots &\vdots \\x_{m,1}&\dots &x_{m,j}&\dots &x_{m,n}\\\end{bmatrix}}\end{matrix}}}
+  
+
+Now a row in this matrix will be a vector corresponding to a term, giving its relation to each document:
+
+  
+    
+      
+        
+          
+            
+              t
+            
+          
+          
+            i
+          
+          
+            T
+          
+        
+        =
+        
+          
+            [
+            
+              
+                
+                  
+                    x
+                    
+                      i
+                      ,
+                      1
+                    
+                  
+                
+                
+                  …
+                
+                
+                  
+                    x
+                    
+                      i
+                      ,
+                      j
+                    
+                  
+                
+                
+                  …
+                
+                
+                  
+                    x
+                    
+                      i
+                      ,
+                      n
+                    
+                  
+                
+              
+            
+            ]
+          
+        
+      
+    
+    {\displaystyle {\textbf {t}}_{i}^{T}={\begin{bmatrix}x_{i,1}&\dots &x_{i,j}&\dots &x_{i,n}\end{bmatrix}}}
+  
+
+Likewise, a column in this matrix will be a vector corresponding to a document, giving its relation to each term:
+
+  
+    
+      
+        
+          
+            
+              d
+            
+          
+          
+            j
+          
+        
+        =
+        
+          
+            [
+            
+              
+                
+                  
+                    x
+                    
+                      1
+                      ,
+                      j
+                    
+                  
+                
+              
+              
+                
+                  ⋮
+                
+              
+              
+                
+                  
+                    x
+                    
+                      i
+                      ,
+                      j
+                    
+                  
+                
+              
+              
+                
+                  ⋮
+                
+              
+              
+                
+                  
+                    x
+                    
+                      m
+                      ,
+                      j
+                    
+                  
+                
+              
+            
+            ]
+          
+        
+      
+    
+    {\displaystyle {\textbf {d}}_{j}={\begin{bmatrix}x_{1,j}\\\vdots \\x_{i,j}\\\vdots \\x_{m,j}\\\end{bmatrix}}}
+  
+
+Now the dot product 
+  
+    
+      
+        
+          
+            
+              t
+            
+          
+          
+            i
+          
+          
+            T
+          
+        
+        
+          
+            
+              t
+            
+          
+          
+            p
+          
+        
+      
+    
+    {\displaystyle {\textbf {t}}_{i}^{T}{\textbf {t}}_{p}}
+  
+ between two term vectors gives the correlation between the terms over the set of documents. The matrix product 
+  
+    
+      
+        X
+        
+          X
+          
+            T
+          
+        
+      
+    
+    {\displaystyle XX^{T}}
+  
+ contains all these dot products. Element 
+  
+    
+      
+        (
+        i
+        ,
+        p
+        )
+      
+    
+    {\displaystyle (i,p)}
+  
+ (which is equal to element 
+  
+    
+      
+        (
+        p
+        ,
+        i
+        )
+      
+    
+    {\displaystyle (p,i)}
+  
+) contains the dot product 
+  
+    
+      
+        
+          
+            
+              t
+            
+          
+          
+            i
+          
+          
+            T
+          
+        
+        
+          
+            
+              t
+            
+          
+          
+            p
+          
+        
+      
+    
+    {\displaystyle {\textbf {t}}_{i}^{T}{\textbf {t}}_{p}}
+  
+ (
+  
+    
+      
+        =
+        
+          
+            
+              t
+            
+          
+          
+            p
+          
+          
+            T
+          
+        
+        
+          
+            
+              t
+            
+          
+          
+            i
+          
+        
+      
+    
+    {\displaystyle ={\textbf {t}}_{p}^{T}{\textbf {t}}_{i}}
+  
+). Likewise, the matrix 
+  
+    
+      
+        
+          X
+          
+            T
+          
+        
+        X
+      
+    
+    {\displaystyle X^{T}X}
+  
+ contains the dot products between all the document vectors, giving their correlation over the terms: 
+  
+    
+      
+        
+          
+            
+              d
+            
+          
+          
+            j
+          
+          
+            T
+          
+        
+        
+          
+            
+              d
+            
+          
+          
+            q
+          
+        
+        =
+        
+          
+            
+              d
+            
+          
+          
+            q
+          
+          
+            T
+          
+        
+        
+          
+            
+              d
+            
+          
+          
+            j
+          
+        
+      
+    
+    {\displaystyle {\textbf {d}}_{j}^{T}{\textbf {d}}_{q}={\textbf {d}}_{q}^{T}{\textbf {d}}_{j}}
+  
+.
+Now, from the theory of linear algebra, there exists a decomposition of 
+  
+    
+      
+        X
+      
+    
+    {\displaystyle X}
+  
+ such that 
+  
+    
+      
+        U
+      
+    
+    {\displaystyle U}
+  
+ and 
+  
+    
+      
+        V
+      
+    
+    {\displaystyle V}
+  
+ are orthogonal matrices and 
+  
+    
+      
+        Σ
+      
+    
+    {\displaystyle \Sigma }
+  
+ is a diagonal matrix. This is called a singular value decomposition (SVD):
+
+  
+    
+      
+        
+          
+            
+              
+                X
+                =
+                U
+                Σ
+                
+                  V
+                  
+                    T
+                  
+                
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{matrix}X=U\Sigma V^{T}\end{matrix}}}
+  
+
+The matrix products giving us the term and document correlations then become
+
+  
+    
+      
+        
+          
+            
+              
+                X
+                
+                  X
+                  
+                    T
+                  
+                
+              
+              
+                =
+              
+              
+                (
+                U
+                Σ
+                
+                  V
+                  
+                    T
+                  
+                
+                )
+                (
+                U
+                Σ
+                
+                  V
+                  
+                    T
+                  
+                
+                
+                  )
+                  
+                    T
+                  
+                
+                =
+                (
+                U
+                Σ
+                
+                  V
+                  
+                    T
+                  
+                
+                )
+                (
+                
+                  V
+                  
+                    
+                      T
+                      
+                        T
+                      
+                    
+                  
+                
+                
+                  Σ
+                  
+                    T
+                  
+                
+                
+                  U
+                  
+                    T
+                  
+                
+                )
+                =
+                U
+                Σ
+                
+                  V
+                  
+                    T
+                  
+                
+                V
+                
+                  Σ
+                  
+                    T
+                  
+                
+                
+                  U
+                  
+                    T
+                  
+                
+                =
+                U
+                Σ
+                
+                  Σ
+                  
+                    T
+                  
+                
+                
+                  U
+                  
+                    T
+                  
+                
+              
+            
+            
+              
+                
+                  X
+                  
+                    T
+                  
+                
+                X
+              
+              
+                =
+              
+              
+                (
+                U
+                Σ
+                
+                  V
+                  
+                    T
+                  
+                
+                
+                  )
+                  
+                    T
+                  
+                
+                (
+                U
+                Σ
+                
+                  V
+                  
+                    T
+                  
+                
+                )
+                =
+                (
+                
+                  V
+                  
+                    
+                      T
+                      
+                        T
+                      
+                    
+                  
+                
+                
+                  Σ
+                  
+                    T
+                  
+                
+                
+                  U
+                  
+                    T
+                  
+                
+                )
+                (
+                U
+                Σ
+                
+                  V
+                  
+                    T
+                  
+                
+                )
+                =
+                V
+                
+                  Σ
+                  
+                    T
+                  
+                
+                
+                  U
+                  
+                    T
+                  
+                
+                U
+                Σ
+                
+                  V
+                  
+                    T
+                  
+                
+                =
+                V
+                
+                  Σ
+                  
+                    T
+                  
+                
+                Σ
+                
+                  V
+                  
+                    T
+                  
+                
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{matrix}XX^{T}&=&(U\Sigma V^{T})(U\Sigma V^{T})^{T}=(U\Sigma V^{T})(V^{T^{T}}\Sigma ^{T}U^{T})=U\Sigma V^{T}V\Sigma ^{T}U^{T}=U\Sigma \Sigma ^{T}U^{T}\\X^{T}X&=&(U\Sigma V^{T})^{T}(U\Sigma V^{T})=(V^{T^{T}}\Sigma ^{T}U^{T})(U\Sigma V^{T})=V\Sigma ^{T}U^{T}U\Sigma V^{T}=V\Sigma ^{T}\Sigma V^{T}\end{matrix}}}
+  
+
+Since 
+  
+    
+      
+        Σ
+        
+          Σ
+          
+            T
+          
+        
+      
+    
+    {\displaystyle \Sigma \Sigma ^{T}}
+  
+ and 
+  
+    
+      
+        
+          Σ
+          
+            T
+          
+        
+        Σ
+      
+    
+    {\displaystyle \Sigma ^{T}\Sigma }
+  
+ are diagonal we see that 
+  
+    
+      
+        U
+      
+    
+    {\displaystyle U}
+  
+ must contain the eigenvectors of 
+  
+    
+      
+        X
+        
+          X
+          
+            T
+          
+        
+      
+    
+    {\displaystyle XX^{T}}
+  
+, while 
+  
+    
+      
+        V
+      
+    
+    {\displaystyle V}
+  
+ must be the eigenvectors of 
+  
+    
+      
+        
+          X
+          
+            T
+          
+        
+        X
+      
+    
+    {\displaystyle X^{T}X}
+  
+. Both products have the same non-zero eigenvalues, given by the non-zero entries of 
+  
+    
+      
+        Σ
+        
+          Σ
+          
+            T
+          
+        
+      
+    
+    {\displaystyle \Sigma \Sigma ^{T}}
+  
+, or equally, by the non-zero entries of 
+  
+    
+      
+        
+          Σ
+          
+            T
+          
+        
+        Σ
+      
+    
+    {\displaystyle \Sigma ^{T}\Sigma }
+  
+. Now the decomposition looks like this:
+
+  
+    
+      
+        
+          
+            
+              
+              
+                X
+              
+              
+              
+              
+                U
+              
+              
+              
+                Σ
+              
+              
+              
+                
+                  V
+                  
+                    T
+                  
+                
+              
+            
+            
+              
+              
+                (
+                
+                  
+                    
+                      d
+                    
+                  
+                  
+                    j
+                  
+                
+                )
+              
+              
+              
+              
+              
+              
+              
+              
+                (
+                
+                  
+                    
+                      
+                        
+                          d
+                        
+                        ^
+                      
+                    
+                  
+                  
+                    j
+                  
+                
+                )
+              
+            
+            
+              
+              
+                ↓
+              
+              
+              
+              
+              
+              
+              
+              
+                ↓
+              
+            
+            
+              
+                (
+                
+                  
+                    
+                      t
+                    
+                  
+                  
+                    i
+                  
+                  
+                    T
+                  
+                
+                )
+                →
+              
+              
+                
+                  
+                    [
+                    
+                      
+                        
+                          
+                            x
+                            
+                              1
+                              ,
+                              1
+                            
+                          
+                        
+                        
+                          …
+                        
+                        
+                          
+                            x
+                            
+                              1
+                              ,
+                              j
+                            
+                          
+                        
+                        
+                          …
+                        
+                        
+                          
+                            x
+                            
+                              1
+                              ,
+                              n
+                            
+                          
+                        
+                      
+                      
+                        
+                          ⋮
+                        
+                        
+                          ⋱
+                        
+                        
+                          ⋮
+                        
+                        
+                          ⋱
+                        
+                        
+                          ⋮
+                        
+                      
+                      
+                        
+                          
+                            x
+                            
+                              i
+                              ,
+                              1
+                            
+                          
+                        
+                        
+                          …
+                        
+                        
+                          
+                            x
+                            
+                              i
+                              ,
+                              j
+                            
+                          
+                        
+                        
+                          …
+                        
+                        
+                          
+                            x
+                            
+                              i
+                              ,
+                              n
+                            
+                          
+                        
+                      
+                      
+                        
+                          ⋮
+                        
+                        
+                          ⋱
+                        
+                        
+                          ⋮
+                        
+                        
+                          ⋱
+                        
+                        
+                          ⋮
+                        
+                      
+                      
+                        
+                          
+                            x
+                            
+                              m
+                              ,
+                              1
+                            
+                          
+                        
+                        
+                          …
+                        
+                        
+                          
+                            x
+                            
+                              m
+                              ,
+                              j
+                            
+                          
+                        
+                        
+                          …
+                        
+                        
+                          
+                            x
+                            
+                              m
+                              ,
+                              n
+                            
+                          
+                        
+                      
+                    
+                    ]
+                  
+                
+              
+              
+                =
+              
+              
+                (
+                
+                  
+                    
+                      
+                        
+                          t
+                        
+                        ^
+                      
+                    
+                  
+                  
+                    i
+                  
+                  
+                    T
+                  
+                
+                )
+                →
+              
+              
+                
+                  
+                    [
+                    
+                      
+                        
+                          
+                            
+                              [
+                              
+                                
+                                  
+                                    
+                                  
+                                
+                                
+                                  
+                                    
+                                  
+                                
+                                
+                                  
+                                    
+                                      
+                                        
+                                          u
+                                        
+                                      
+                                      
+                                        1
+                                      
+                                    
+                                  
+                                
+                                
+                                  
+                                    
+                                  
+                                
+                                
+                                  
+                                    
+                                  
+                                
+                              
+                              ]
+                            
+                          
+                          …
+                          
+                            
+                              [
+                              
+                                
+                                  
+                                    
+                                  
+                                
+                                
+                                  
+                                    
+                                  
+                                
+                                
+                                  
+                                    
+                                      
+                                        
+                                          u
+                                        
+                                      
+                                      
+                                        l
+                                      
+                                    
+                                  
+                                
+                                
+                                  
+                                    
+                                  
+                                
+                                
+                                  
+                                    
+                                  
+                                
+                              
+                              ]
+                            
+                          
+                        
+                      
+                    
+                    ]
+                  
+                
+              
+              
+                ⋅
+              
+              
+                
+                  
+                    [
+                    
+                      
+                        
+                          
+                            σ
+                            
+                              1
+                            
+                          
+                        
+                        
+                          …
+                        
+                        
+                          0
+                        
+                      
+                      
+                        
+                          ⋮
+                        
+                        
+                          ⋱
+                        
+                        
+                          ⋮
+                        
+                      
+                      
+                        
+                          0
+                        
+                        
+                          …
+                        
+                        
+                          
+                            σ
+                            
+                              l
+                            
+                          
+                        
+                      
+                    
+                    ]
+                  
+                
+              
+              
+                ⋅
+              
+              
+                
+                  
+                    [
+                    
+                      
+                        
+                          
+                            
+                              [
+                              
+                                
+                                  
+                                  
+                                  
+                                    
+                                      
+                                        
+                                          v
+                                        
+                                      
+                                      
+                                        1
+                                      
+                                    
+                                  
+                                  
+                                  
+                                
+                              
+                              ]
+                            
+                          
+                        
+                      
+                      
+                        
+                          ⋮
+                        
+                      
+                      
+                        
+                          
+                            
+                              [
+                              
+                                
+                                  
+                                  
+                                  
+                                    
+                                      
+                                        
+                                          v
+                                        
+                                      
+                                      
+                                        l
+                                      
+                                    
+                                  
+                                  
+                                  
+                                
+                              
+                              ]
+                            
+                          
+                        
+                      
+                    
+                    ]
+                  
+                
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{matrix}&X&&&U&&\Sigma &&V^{T}\\&({\textbf {d}}_{j})&&&&&&&({\hat {\textbf {d}}}_{j})\\&\downarrow &&&&&&&\downarrow \\({\textbf {t}}_{i}^{T})\rightarrow &{\begin{bmatrix}x_{1,1}&\dots &x_{1,j}&\dots &x_{1,n}\\\vdots &\ddots &\vdots &\ddots &\vdots \\x_{i,1}&\dots &x_{i,j}&\dots &x_{i,n}\\\vdots &\ddots &\vdots &\ddots &\vdots \\x_{m,1}&\dots &x_{m,j}&\dots &x_{m,n}\\\end{bmatrix}}&=&({\hat {\textbf {t}}}_{i}^{T})\rightarrow &{\begin{bmatrix}{\begin{bmatrix}\,\\\,\\{\textbf {u}}_{1}\\\,\\\,\end{bmatrix}}\dots {\begin{bmatrix}\,\\\,\\{\textbf {u}}_{l}\\\,\\\,\end{bmatrix}}\end{bmatrix}}&\cdot &{\begin{bmatrix}\sigma _{1}&\dots &0\\\vdots &\ddots &\vdots \\0&\dots &\sigma _{l}\\\end{bmatrix}}&\cdot &{\begin{bmatrix}{\begin{bmatrix}&&{\textbf {v}}_{1}&&\end{bmatrix}}\\\vdots \\{\begin{bmatrix}&&{\textbf {v}}_{l}&&\end{bmatrix}}\end{bmatrix}}\end{matrix}}}
+  
+
+The values 
+  
+    
+      
+        
+          σ
+          
+            1
+          
+        
+        ,
+        …
+        ,
+        
+          σ
+          
+            l
+          
+        
+      
+    
+    {\displaystyle \sigma _{1},\dots ,\sigma _{l}}
+  
+ are called the singular values, and 
+  
+    
+      
+        
+          u
+          
+            1
+          
+        
+        ,
+        …
+        ,
+        
+          u
+          
+            l
+          
+        
+      
+    
+    {\displaystyle u_{1},\dots ,u_{l}}
+  
+ and 
+  
+    
+      
+        
+          v
+          
+            1
+          
+        
+        ,
+        …
+        ,
+        
+          v
+          
+            l
+          
+        
+      
+    
+    {\displaystyle v_{1},\dots ,v_{l}}
+  
+ the left and right singular vectors.
+Notice the only part of 
+  
+    
+      
+        U
+      
+    
+    {\displaystyle U}
+  
+ that contributes to 
+  
+    
+      
+        
+          
+            
+              t
+            
+          
+          
+            i
+          
+        
+      
+    
+    {\displaystyle {\textbf {t}}_{i}}
+  
+ is the 
+  
+    
+      
+        i
+        
+          
+            'th
+          
+        
+      
+    
+    {\displaystyle i{\textrm {'th}}}
+  
+ row.
+Let this row vector be called 
+  
+    
+      
+        
+          
+            
+              
+                
+                  t
+                
+                ^
+              
+            
+          
+          
+            i
+          
+          
+            T
+          
+        
+      
+    
+    {\displaystyle {\hat {\textrm {t}}}_{i}^{T}}
+  
+.
+Likewise, the only part of 
+  
+    
+      
+        
+          V
+          
+            T
+          
+        
+      
+    
+    {\displaystyle V^{T}}
+  
+ that contributes to 
+  
+    
+      
+        
+          
+            
+              d
+            
+          
+          
+            j
+          
+        
+      
+    
+    {\displaystyle {\textbf {d}}_{j}}
+  
+ is the 
+  
+    
+      
+        j
+        
+          
+            'th
+          
+        
+      
+    
+    {\displaystyle j{\textrm {'th}}}
+  
+ column, 
+  
+    
+      
+        
+          
+            
+              
+                
+                  d
+                
+                ^
+              
+            
+          
+          
+            j
+          
+        
+      
+    
+    {\displaystyle {\hat {\textrm {d}}}_{j}}
+  
+.
+These are not the eigenvectors, but depend on all the eigenvectors.
+It turns out that when you select the 
+  
+    
+      
+        k
+      
+    
+    {\displaystyle k}
+  
+ largest singular values, and their corresponding singular vectors from 
+  
+    
+      
+        U
+      
+    
+    {\displaystyle U}
+  
+ and 
+  
+    
+      
+        V
+      
+    
+    {\displaystyle V}
+  
+, you get the rank 
+  
+    
+      
+        k
+      
+    
+    {\displaystyle k}
+  
+ approximation to 
+  
+    
+      
+        X
+      
+    
+    {\displaystyle X}
+  
+ with the smallest error (Frobenius norm). This approximation has a minimal error.  But more importantly we can now treat the term and document vectors as a "semantic space". The row "term" vector 
+  
+    
+      
+        
+          
+            
+              
+                
+                  t
+                
+                ^
+              
+            
+          
+          
+            i
+          
+          
+            T
+          
+        
+      
+    
+    {\displaystyle {\hat {\textbf {t}}}_{i}^{T}}
+  
+ then has 
+  
+    
+      
+        k
+      
+    
+    {\displaystyle k}
+  
+ entries mapping it to a lower-dimensional space. These new dimensions do not relate to any comprehensible concepts. They are a lower-dimensional approximation of the higher-dimensional space. Likewise, the "document" vector 
+  
+    
+      
+        
+          
+            
+              
+                
+                  d
+                
+                ^
+              
+            
+          
+          
+            j
+          
+        
+      
+    
+    {\displaystyle {\hat {\textbf {d}}}_{j}}
+  
+ is an approximation in this lower-dimensional space. We write this approximation as
+
+  
+    
+      
+        
+          X
+          
+            k
+          
+        
+        =
+        
+          U
+          
+            k
+          
+        
+        
+          Σ
+          
+            k
+          
+        
+        
+          V
+          
+            k
+          
+          
+            T
+          
+        
+      
+    
+    {\displaystyle X_{k}=U_{k}\Sigma _{k}V_{k}^{T}}
+  
+
+You can now do the following:
+
+See how related documents 
+  
+    
+      
+        j
+      
+    
+    {\displaystyle j}
+  
+ and 
+  
+    
+      
+        q
+      
+    
+    {\displaystyle q}
+  
+ are in the low-dimensional space by comparing the vectors 
+  
+    
+      
+        
+          Σ
+          
+            k
+          
+        
+        ⋅
+        
+          
+            
+              
+                
+                  d
+                
+                ^
+              
+            
+          
+          
+            j
+          
+        
+      
+    
+    {\displaystyle \Sigma _{k}\cdot {\hat {\textbf {d}}}_{j}}
+  
+ and 
+  
+    
+      
+        
+          Σ
+          
+            k
+          
+        
+        ⋅
+        
+          
+            
+              
+                
+                  d
+                
+                ^
+              
+            
+          
+          
+            q
+          
+        
+      
+    
+    {\displaystyle \Sigma _{k}\cdot {\hat {\textbf {d}}}_{q}}
+  
+ (typically by cosine similarity).
+Comparing terms 
+  
+    
+      
+        i
+      
+    
+    {\displaystyle i}
+  
+ and 
+  
+    
+      
+        p
+      
+    
+    {\displaystyle p}
+  
+ by comparing the vectors 
+  
+    
+      
+        
+          Σ
+          
+            k
+          
+        
+        ⋅
+        
+          
+            
+              
+                
+                  t
+                
+                ^
+              
+            
+          
+          
+            i
+          
+        
+      
+    
+    {\displaystyle \Sigma _{k}\cdot {\hat {\textbf {t}}}_{i}}
+  
+ and 
+  
+    
+      
+        
+          Σ
+          
+            k
+          
+        
+        ⋅
+        
+          
+            
+              
+                
+                  t
+                
+                ^
+              
+            
+          
+          
+            p
+          
+        
+      
+    
+    {\displaystyle \Sigma _{k}\cdot {\hat {\textbf {t}}}_{p}}
+  
+. Note that 
+  
+    
+      
+        
+          
+            
+              
+                t
+              
+              ^
+            
+          
+        
+      
+    
+    {\displaystyle {\hat {\textbf {t}}}}
+  
+ is now a column vector.
+Documents and term vector representations can be clustered using traditional clustering algorithms like k-means using similarity measures like cosine.
+Given a query, view this as a mini document, and compare it to your documents in the low-dimensional space.
+To do the latter, you must first translate your query into the low-dimensional space. It is then intuitive that you must use the same transformation that you use on your documents:
+
+  
+    
+      
+        
+          
+            
+              
+                
+                  d
+                
+                ^
+              
+            
+          
+          
+            j
+          
+        
+        =
+        
+          Σ
+          
+            k
+          
+          
+            −
+            1
+          
+        
+        
+          U
+          
+            k
+          
+          
+            T
+          
+        
+        
+          
+            
+              d
+            
+          
+          
+            j
+          
+        
+      
+    
+    {\displaystyle {\hat {\textbf {d}}}_{j}=\Sigma _{k}^{-1}U_{k}^{T}{\textbf {d}}_{j}}
+  
+
+Note here that the inverse of the diagonal matrix 
+  
+    
+      
+        
+          Σ
+          
+            k
+          
+        
+      
+    
+    {\displaystyle \Sigma _{k}}
+  
+ may be found by inverting each nonzero value within the matrix.
+This means that if you have a query vector 
+  
+    
+      
+        q
+      
+    
+    {\displaystyle q}
+  
+, you must do the translation 
+  
+    
+      
+        
+          
+            
+              
+                q
+              
+              ^
+            
+          
+        
+        =
+        
+          Σ
+          
+            k
+          
+          
+            −
+            1
+          
+        
+        
+          U
+          
+            k
+          
+          
+            T
+          
+        
+        
+          
+            q
+          
+        
+      
+    
+    {\displaystyle {\hat {\textbf {q}}}=\Sigma _{k}^{-1}U_{k}^{T}{\textbf {q}}}
+  
+ before you compare it with the document vectors in the low-dimensional space. You can do the same for pseudo term vectors:
+
+  
+    
+      
+        
+          
+            
+              t
+            
+          
+          
+            i
+          
+          
+            T
+          
+        
+        =
+        
+          
+            
+              
+                
+                  t
+                
+                ^
+              
+            
+          
+          
+            i
+          
+          
+            T
+          
+        
+        
+          Σ
+          
+            k
+          
+        
+        
+          V
+          
+            k
+          
+          
+            T
+          
+        
+      
+    
+    {\displaystyle {\textbf {t}}_{i}^{T}={\hat {\textbf {t}}}_{i}^{T}\Sigma _{k}V_{k}^{T}}
+  
+
+  
+    
+      
+        
+          
+            
+              
+                
+                  t
+                
+                ^
+              
+            
+          
+          
+            i
+          
+          
+            T
+          
+        
+        =
+        
+          
+            
+              t
+            
+          
+          
+            i
+          
+          
+            T
+          
+        
+        
+          V
+          
+            k
+          
+          
+            −
+            T
+          
+        
+        
+          Σ
+          
+            k
+          
+          
+            −
+            1
+          
+        
+        =
+        
+          
+            
+              t
+            
+          
+          
+            i
+          
+          
+            T
+          
+        
+        
+          V
+          
+            k
+          
+        
+        
+          Σ
+          
+            k
+          
+          
+            −
+            1
+          
+        
+      
+    
+    {\displaystyle {\hat {\textbf {t}}}_{i}^{T}={\textbf {t}}_{i}^{T}V_{k}^{-T}\Sigma _{k}^{-1}={\textbf {t}}_{i}^{T}V_{k}\Sigma _{k}^{-1}}
+  
+
+  
+    
+      
+        
+          
+            
+              
+                
+                  t
+                
+                ^
+              
+            
+          
+          
+            i
+          
+        
+        =
+        
+          Σ
+          
+            k
+          
+          
+            −
+            1
+          
+        
+        
+          V
+          
+            k
+          
+          
+            T
+          
+        
+        
+          
+            
+              t
+            
+          
+          
+            i
+          
+        
+      
+    
+    {\displaystyle {\hat {\textbf {t}}}_{i}=\Sigma _{k}^{-1}V_{k}^{T}{\textbf {t}}_{i}}
+  
+
+
+== Applications ==
+The new low-dimensional space typically can be used to:
+
+Compare the documents in the low-dimensional space (data clustering, document classification).
+Find similar documents across languages, after analyzing a base set of translated documents (cross-language information retrieval).
+Find relations between terms (synonymy and polysemy).
+Given a query of terms, translate it into the low-dimensional space, and find matching documents (information retrieval).
+Find the best similarity between small groups of terms, in a semantic way (i.e. in a context of a knowledge corpus), as for example in multi choice questions MCQ answering model.
+Expand the feature space of machine learning / text mining systems 
+Analyze word association in text corpus 
+Synonymy and polysemy are fundamental problems in natural language processing: 
+
+Synonymy is the phenomenon where different words describe the same idea. Thus, a query in a search engine may fail to retrieve a relevant document that does not contain the words which appeared in the query. For example, a search for "doctors" may not return a document containing the word "physicians", even though the words have the same meaning.
+Polysemy is the phenomenon where the same word has multiple meanings. So a search may retrieve irrelevant documents containing the desired words in the wrong meaning. For example, a botanist and a computer scientist looking for the word "tree" probably desire different sets of documents.
+
+
+=== Commercial applications ===
+LSA has been used to assist in performing prior art searches for patents.
+
+
+=== Applications in human memory ===
+The use of Latent Semantic Analysis has been prevalent in the study of human memory, especially in areas of free recall and memory search.  There is a positive correlation between the semantic similarity of two words (as measured by LSA) and the probability that the words would be recalled one after another in free recall tasks using study lists of random common nouns. They also noted that in these situations, the inter-response time between the similar words was much quicker than between dissimilar words.  These findings are referred to as the Semantic Proximity Effect.
+When participants made mistakes in recalling studied items, these mistakes tended to be items that were more semantically related to the desired item and found in a previously studied list.  These prior-list intrusions, as they have come to be called, seem to compete with items on the current list for recall.
+Another model, termed Word Association Spaces (WAS) is also used in memory studies by collecting free association data from a series of experiments and which includes measures of word relatedness for over 72,000 distinct word pairs.
+
+
+== Implementation ==
+The SVD is typically computed using large matrix methods (for example, Lanczos methods) but may also be computed incrementally and with greatly reduced resources via a neural network-like approach, which does not require the large, full-rank matrix to be held in memory.
+A fast, incremental, low-memory, large-matrix SVD algorithm has been developed. MATLAB and Python implementations of these fast algorithms are available. Unlike Gorrell and Webb's (2005) stochastic approximation, Brand's algorithm (2003) provides an exact solution.
+In recent years progress has been made to reduce the computational complexity of SVD; for instance, by using a parallel ARPACK algorithm to perform parallel eigenvalue decomposition it is possible to speed up the SVD computation cost while providing comparable prediction quality.
+
+
+== Limitations ==
+Some of LSA's drawbacks include:
+
+The resulting dimensions might be difficult to interpret. For instance, in
+{(car), (truck), (flower)} ↦  {(1.3452 * car + 0.2828 * truck), (flower)}
+the (1.3452 * car + 0.2828 * truck) component could be interpreted as "vehicle". However, it is very likely that cases close to
+{(car), (bottle), (flower)} ↦  {(1.3452 * car + 0.2828 * bottle), (flower)}
+will occur. This leads to results which can be justified on the mathematical level, but have no immediately obvious meaning in natural language. Though, the (1.3452 * car + 0.2828 * bottle) component could be justified because both bottles and cars have transparent and opaque parts, are man made and with high probability contain logos/words on their surface; thus, in many ways these two concepts "share semantics." That is, within a language in question, there may not be a readily available word to assign and explainability becomes an analysis task as opposed to simple word/class/concept assignment task.
+LSA can only partially capture polysemy (i.e., multiple meanings of a word) because each occurrence of a word is treated as having the same meaning due to the word being represented as a single point in space. For example, the occurrence of "chair" in a document containing "The Chair of the Board" and in a separate document containing "the chair maker" are considered the same.  The behavior results in the vector representation being an average of all the word's different meanings in the corpus, which can make it difficult for comparison.   However, the effect is often lessened due to words having a predominant sense throughout a corpus (i.e. not all meanings are equally likely).
+Limitations of bag of words model (BOW), where a text is represented as an unordered collection of words. To address some of the limitation of bag of words model (BOW), multi-gram dictionary can be used to find direct and indirect association as well as higher-order co-occurrences among terms.
+The probabilistic model of LSA does not match observed data: LSA assumes that words and documents form a joint Gaussian model (ergodic hypothesis), while a Poisson distribution has been observed.  Thus, a newer alternative is probabilistic latent semantic analysis, based on a multinomial model, which is reported to give better results than standard LSA.
+
+
+== Alternative methods ==
+
+
+=== Semantic hashing ===
+In semantic hashing  documents are mapped to memory addresses by means of a neural network in such a way that semantically similar documents are located at nearby addresses. Deep neural network essentially builds a graphical model of the word-count vectors obtained from a large set of documents. Documents similar to a query document can then be found by simply accessing all the addresses that differ by only a few bits from the address of the query document. This way of extending the efficiency of hash-coding to approximate matching is much faster than locality sensitive hashing, which is the fastest current method. 
+
+
+=== Latent semantic indexing ===
+Latent semantic indexing (LSI) is an indexing and retrieval method that uses a mathematical technique called singular value decomposition (SVD) to identify patterns in the relationships between the terms and concepts contained in an unstructured collection of text.  LSI is based on the principle that words that are used in the same contexts tend to have similar meanings.  A key feature of LSI is its ability to extract the conceptual content of a body of text by establishing associations between those terms that occur in similar contexts.
+LSI is also an application of correspondence analysis, a multivariate statistical technique developed by Jean-Paul Benzécri in the early 1970s, to a contingency table built from word counts in documents.
+Called "latent semantic indexing" because of its ability to correlate semantically related terms that are latent in a collection of text, it was first applied to text at Bellcore in the late 1980s.   The method, also called latent semantic analysis (LSA), uncovers the underlying latent semantic structure in the usage of words in a body of text and how it can be used to extract the meaning of the text in response to user queries, commonly referred to as concept searches.  Queries, or concept searches, against a set of documents that have undergone LSI will return results that are conceptually similar in meaning to the search criteria even if the results don’t share a specific word or words with the search criteria.
+
+
+== Benefits of LSI ==
+LSI helps overcome synonymy by increasing recall, one of the most problematic constraints of Boolean keyword queries and vector space models.  Synonymy is often the cause of mismatches in the vocabulary used by the authors of documents and the users of information retrieval systems.  As a result, Boolean or keyword queries often return irrelevant results and miss information that is relevant.
+LSI is also used to perform automated document categorization.  In fact, several experiments have demonstrated that there are a number of correlations between the way LSI and humans process and categorize text.    Document categorization is the assignment of documents to one or more predefined categories based on their similarity to the conceptual content of the categories.   LSI uses example documents to establish the conceptual basis for each category.  During categorization processing, the concepts contained in the documents being categorized are compared to the concepts contained in the example items, and a category (or categories) is assigned to the documents based on the similarities between the concepts they contain and the concepts that are contained in the example documents.
+Dynamic clustering based on the conceptual content of documents can also be accomplished using LSI.  Clustering is a way to group documents based on their conceptual similarity to each other without using example documents to establish the conceptual basis for each cluster.  This is very useful when dealing with an unknown collection of unstructured text.
+Because it uses a strictly mathematical approach, LSI is inherently independent of language.  This enables LSI to elicit the semantic content of information written in any language without requiring the use of auxiliary structures, such as dictionaries and thesauri.  LSI can also perform cross-linguistic concept searching and example-based categorization.  For example, queries can be made in one language, such as English, and conceptually similar results will be returned even if they are composed of an entirely different language or of multiple languages.
+LSI is not restricted to working only with words.  It can also process arbitrary character strings.  Any object that can be expressed as text can be represented in an LSI vector space. For example, tests with MEDLINE abstracts have shown that LSI is able to effectively classify genes based on conceptual modeling of the biological information contained in the titles and abstracts of the MEDLINE citations.
+LSI automatically adapts to new and changing terminology, and has been shown to be very tolerant of noise (i.e., misspelled words, typographical errors, unreadable characters, etc.).   This is especially important for applications using text derived from Optical Character Recognition (OCR) and speech-to-text conversion.  LSI also deals effectively with sparse, ambiguous, and contradictory data.
+Text does not need to be in sentence form for LSI to be effective.  It can work with lists, free-form notes, email, Web-based content, etc.  As long as a collection of text contains multiple terms, LSI can be used to identify patterns in the relationships between the important terms and concepts contained in the text.
+LSI has proven to be a useful solution to a number of conceptual matching problems.  The technique has been shown to capture key relationship information, including causal, goal-oriented, and taxonomic information.
+
+
+== LSI timeline ==
+Mid-1960s – Factor analysis technique first described and tested (H. Borko and M. Bernick)
+1988 – Seminal paper on LSI technique published 
+1989 – Original patent granted 
+1992 – First use of LSI to assign articles to reviewers
+1994 – Patent granted for the cross-lingual application of LSI (Landauer et al.)
+1995 – First use of LSI for grading essays (Foltz, et al., Landauer et al.)
+1999 – First implementation of LSI technology for intelligence community for analyzing unstructured text (SAIC).
+2002 – LSI-based product offering to intelligence-based government agencies (SAIC)
+
+
+== Mathematics of LSI ==
+LSI uses common linear algebra techniques to learn the conceptual correlations in a collection of text.  In general, the process involves constructing a weighted term-document matrix, performing a Singular Value Decomposition on the matrix, and using the matrix to identify the concepts contained in the text.
+
+
+=== Term-document matrix ===
+LSI begins by constructing a term-document matrix, 
+  
+    
+      
+        A
+      
+    
+    {\displaystyle A}
+  
+, to identify the occurrences of the 
+  
+    
+      
+        m
+      
+    
+    {\displaystyle m}
+  
+ unique terms within a collection of 
+  
+    
+      
+        n
+      
+    
+    {\displaystyle n}
+  
+ documents.  In a term-document matrix, each term is represented by a row, and each document is represented by a column, with each matrix cell, 
+  
+    
+      
+        
+          a
+          
+            i
+            j
+          
+        
+      
+    
+    {\displaystyle a_{ij}}
+  
+, initially representing the number of times the associated term appears in the indicated document, 
+  
+    
+      
+        
+          t
+          
+            f
+            
+              i
+              j
+            
+          
+        
+      
+    
+    {\displaystyle \mathrm {tf_{ij}} }
+  
+.  This matrix is usually very large and very sparse.
+Once a term-document matrix is constructed, local and global weighting functions can be applied to it to condition the data.  The weighting functions transform each cell, 
+  
+    
+      
+        
+          a
+          
+            i
+            j
+          
+        
+      
+    
+    {\displaystyle a_{ij}}
+  
+ of 
+  
+    
+      
+        A
+      
+    
+    {\displaystyle A}
+  
+, to be the product of a local term weight, 
+  
+    
+      
+        
+          l
+          
+            i
+            j
+          
+        
+      
+    
+    {\displaystyle l_{ij}}
+  
+, which describes the relative frequency of a term in a document, and a global weight, 
+  
+    
+      
+        
+          g
+          
+            i
+          
+        
+      
+    
+    {\displaystyle g_{i}}
+  
+, which describes the relative frequency of the term within the entire collection of documents.
+Some common local weighting functions are defined in the following table.
+
+Some common global weighting functions are defined in the following table.
+
+Empirical studies with LSI report that the Log and Entropy weighting functions work well, in practice, with many data sets.  In other words, each entry 
+  
+    
+      
+        
+          a
+          
+            i
+            j
+          
+        
+      
+    
+    {\displaystyle a_{ij}}
+  
+ of 
+  
+    
+      
+        A
+      
+    
+    {\displaystyle A}
+  
+ is computed as:
+
+  
+    
+      
+        
+          g
+          
+            i
+          
+        
+        =
+        1
+        +
+        
+          ∑
+          
+            j
+          
+        
+        
+          
+            
+              
+                p
+                
+                  i
+                  j
+                
+              
+              log
+              ⁡
+              
+                p
+                
+                  i
+                  j
+                
+              
+            
+            
+              log
+              ⁡
+              n
+            
+          
+        
+      
+    
+    {\displaystyle g_{i}=1+\sum _{j}{\frac {p_{ij}\log p_{ij}}{\log n}}}
+  
+
+  
+    
+      
+        
+          a
+          
+            i
+            j
+          
+        
+        =
+        
+          g
+          
+            i
+          
+        
+         
+        log
+        ⁡
+        (
+        
+          
+            t
+            f
+          
+          
+            i
+            j
+          
+        
+        +
+        1
+        )
+      
+    
+    {\displaystyle a_{ij}=g_{i}\ \log(\mathrm {tf} _{ij}+1)}
+  
+
+
+=== Rank-reduced singular value decomposition ===
+A rank-reduced, singular value decomposition is performed on the matrix to determine patterns in the relationships between the terms and concepts contained in the text.  The SVD forms the foundation for LSI.   It computes the term and document vector spaces by approximating the single term-frequency matrix, 
+  
+    
+      
+        A
+      
+    
+    {\displaystyle A}
+  
+, into three other matrices— an m by r  term-concept vector matrix 
+  
+    
+      
+        T
+      
+    
+    {\displaystyle T}
+  
+, an r by r singular values matrix 
+  
+    
+      
+        S
+      
+    
+    {\displaystyle S}
+  
+, and a n by r concept-document vector matrix, 
+  
+    
+      
+        D
+      
+    
+    {\displaystyle D}
+  
+, which satisfy the following relations:
+
+  
+    
+      
+        A
+        ≈
+        T
+        S
+        
+          D
+          
+            T
+          
+        
+      
+    
+    {\displaystyle A\approx TSD^{T}}
+  
+
+  
+    
+      
+        
+          T
+          
+            T
+          
+        
+        T
+        =
+        
+          I
+          
+            r
+          
+        
+        
+        
+          D
+          
+            T
+          
+        
+        D
+        =
+        
+          I
+          
+            r
+          
+        
+      
+    
+    {\displaystyle T^{T}T=I_{r}\quad D^{T}D=I_{r}}
+  
+
+  
+    
+      
+        
+          S
+          
+            1
+            ,
+            1
+          
+        
+        ≥
+        
+          S
+          
+            2
+            ,
+            2
+          
+        
+        ≥
+        …
+        ≥
+        
+          S
+          
+            r
+            ,
+            r
+          
+        
+        >
+        0
+        
+        
+          S
+          
+            i
+            ,
+            j
+          
+        
+        =
+        0
+        
+        
+          where
+        
+        
+        i
+        ≠
+        j
+      
+    
+    {\displaystyle S_{1,1}\geq S_{2,2}\geq \ldots \geq S_{r,r}>0\quad S_{i,j}=0\;{\text{where}}\;i\neq j}
+  
+
+In the formula, A is the supplied m by n weighted matrix of term frequencies in a collection of text where m is the number of unique terms, and n is the number of documents.  T is a computed m by r matrix of term vectors where r is the rank of A—a measure of its unique dimensions ≤ min(m,n).  S is a computed r by r diagonal matrix of decreasing singular values, and D is a computed n by r matrix of document vectors.
+The SVD is then truncated to reduce the rank by keeping only the largest k « r diagonal entries in the singular value matrix S,
+where k is typically on the order 100 to 300 dimensions.
+This effectively reduces the term and document vector matrix sizes to m by k and n by k respectively.  The SVD operation, along with this reduction, has the effect of preserving the most important semantic information in the text while reducing noise and other undesirable artifacts of the original space of A.  This reduced set of matrices is often denoted with a modified formula such as:
+
+A ≈ Ak = Tk Sk DkT
+Efficient LSI algorithms only compute the first k singular values and term and document vectors as opposed to computing a full SVD and then truncating it.
+Note that this rank reduction is essentially the same as doing Principal Component Analysis (PCA) on the matrix A, except that PCA subtracts off the means.  PCA loses the sparseness of the A matrix, which can make it infeasible for large lexicons.
+
+
+== Querying and augmenting LSI vector spaces ==
+The computed Tk and Dk matrices define the term and document vector spaces, which with the computed singular values, Sk, embody the conceptual information derived from the document collection.  The similarity of terms or documents within these spaces is a factor of how close they are to each other in these spaces, typically computed as a function of the angle between the corresponding vectors.
+The same steps are used to locate the vectors representing the text of queries and new documents within the document space of an existing LSI index.  By a simple transformation of the A = T S DT equation into the equivalent D = AT T S−1 equation, a new vector, d, for a query or for a new document can be created by computing a new column in A and then multiplying the new column by T S−1.  The new column in A is computed using the originally derived global term weights and applying the same local weighting function to the terms in the query or in the new document.
+A drawback to computing vectors in this way, when adding new searchable documents, is that terms that were not known during the SVD phase for the original index are ignored.  These terms will have no impact on the global weights and learned correlations derived from the original collection of text.  However, the computed vectors for the new text are still very relevant for similarity comparisons with all other document vectors.
+The process of augmenting the document vector spaces for an LSI index with new documents in this manner is called folding in.  Although the folding-in process does not account for the new semantic content of the new text, adding a substantial number of documents in this way will still provide good results for queries as long as the terms and concepts they contain are well represented within the LSI index to which they are being added.  When the terms and concepts of a new set of documents need to be included in an LSI index, either the term-document matrix, and the SVD, must be recomputed or an incremental update method (such as the one described in ) is needed.
+
+
+== Additional uses of LSI ==
+It is generally acknowledged that the ability to work with text on a semantic basis is essential to modern information retrieval systems.  As a result, the use of LSI has significantly expanded in recent years as earlier challenges in scalability and performance have been overcome.
+LSI is being used in a variety of information retrieval and text processing applications, although its primary application has been for concept searching and automated document categorization.   Below are some other ways in which LSI is being used:
+
+Information discovery  (eDiscovery, Government/Intelligence community, Publishing)
+Automated document classification (eDiscovery, Government/Intelligence community, Publishing)
+Text summarization  (eDiscovery, Publishing)
+Relationship discovery  (Government, Intelligence community, Social Networking)
+Automatic generation of link charts of individuals and organizations  (Government, Intelligence community)
+Matching technical papers and grants with reviewers  (Government)
+Online customer support  (Customer Management)
+Determining document authorship  (Education)
+Automatic keyword annotation of images
+Understanding software source code  (Software Engineering)
+Filtering spam  (System Administration)
+Information visualization
+Essay scoring  (Education)
+Literature-based discovery
+Stock returns prediction
+Dream Content Analysis (Psychology) 
+LSI is increasingly being used for electronic document discovery (eDiscovery) to help enterprises prepare for litigation.  In eDiscovery, the ability to cluster, categorize, and search large collections of unstructured text on a conceptual basis is essential.  Concept-based searching using LSI has been applied to the eDiscovery process by leading providers as early as 2003.
+
+
+== Challenges to LSI ==
+Early challenges to LSI focused on scalability and performance.  LSI requires relatively high computational performance and memory in comparison to other information retrieval techniques.  However, with the implementation of modern high-speed processors and the availability of inexpensive memory, these considerations have been largely overcome.  Real-world applications involving more than 30 million documents that were fully processed through the matrix and SVD computations are common in some LSI applications. A fully scalable (unlimited number of documents, online training) implementation of LSI is contained in the open source gensim software package.
+Another challenge to LSI has been the alleged difficulty in determining the optimal number of dimensions to use for performing the SVD.  As a general rule, fewer dimensions allow for broader comparisons of the concepts contained in a collection of text, while a higher number of dimensions enable more specific (or more relevant) comparisons of concepts.  The actual number of dimensions that can be used is limited by the number of documents in the collection.  Research has demonstrated that around 300 dimensions will usually provide the best results with moderate-sized document collections (hundreds of thousands of documents) and perhaps 400 dimensions for larger document collections (millions of documents).   However, recent studies indicate that 50-1000 dimensions are suitable depending on the size and nature of the document collection. Checking the proportion of variance retained, similar to PCA or factor analysis, to determine the optimal dimensionality is not suitable for LSI. Using a synonym test or prediction of missing words are two possible methods to find the correct dimensionality. When LSI topics are used as features in supervised learning methods, one can use prediction error measurements to find the ideal dimensionality.
+
+
+== See also ==
+Coh-Metrix
+Compound term processing
+Distributional semantics
+Explicit semantic analysis
+Latent semantic mapping
+Latent semantic structure indexing
+Principal components analysis
+Probabilistic latent semantic analysis
+Spamdexing
+Word vector
+Topic model
+Latent Dirichlet allocation
+
+
+== References ==
+
+
+== Further reading ==
+Landauer, Thomas; Foltz, Peter W.; Laham, Darrell (1998). "Introduction to Latent Semantic Analysis" (PDF). Discourse Processes. 25 (2–3): 259–284. CiteSeerX 10.1.1.125.109. doi:10.1080/01638539809545028. S2CID 16625196.
+Deerwester, Scott; Dumais, Susan T.; Furnas, George W.; Landauer, Thomas K.; Harshman, Richard (1990). "Indexing by Latent Semantic Analysis" (PDF). Journal of the American Society for Information Science. 41 (6): 391–407. CiteSeerX 10.1.1.33.2447. doi:10.1002/(SICI)1097-4571(199009)41:6<391::AID-ASI1>3.0.CO;2-9. Archived from the original (PDF) on 2012-07-17. Original article where the model was first exposed.
+Berry, Michael; Dumais, Susan T.; O'Brien, Gavin W. (1995). "Using Linear Algebra for Intelligent Information Retrieval". (PDF) Archived 2018-11-23 at the Wayback Machine. Illustration of the application of LSA to document retrieval.
+Chicco, D; Masseroli, M (2015). "Software suite for gene and protein annotation prediction and similarity search". IEEE/ACM Transactions on Computational Biology and Bioinformatics. 12 (4): 837–843. doi:10.1109/TCBB.2014.2382127. hdl:11311/959408. PMID 26357324. S2CID 14714823.
+"Latent Semantic Analysis". InfoVis. Archived from the original on 2020-02-18. Retrieved 2005-07-01.
+Fridolin Wild (November 23, 2005). "An Open Source LSA Package for R". CRAN. Retrieved November 20, 2006.
+Thomas Landauer, Susan T. Dumais. "A Solution to Plato's Problem: The Latent Semantic Analysis Theory of Acquisition, Induction, and Representation of Knowledge". Retrieved 2007-07-02.
+
+
+== External links ==
+
+
+=== Articles on LSA ===
+Latent Semantic Analysis, a scholarpedia article on LSA written by Tom Landauer, one of the creators of LSA.
+
+
+=== Talks and demonstrations ===
+LSA Overview, talk by Prof. Thomas Hofmann Archived 2017-12-22 at the Wayback Machine describing LSA, its applications in Information Retrieval, and its connections to probabilistic latent semantic analysis.
+Complete LSA sample code in C# for Windows. The demo code includes enumeration of text files, filtering stop words, stemming, making a document-term matrix and SVD.
+
+
+=== Implementations ===
+Due to its cross-domain applications in Information Retrieval, Natural Language Processing (NLP), Cognitive Science and Computational Linguistics, LSA has been implemented to support many different kinds of applications.
+
+Sense Clusters, an Information Retrieval-oriented perl implementation of LSA
+S-Space Package, a Computational Linguistics and Cognitive Science-oriented Java implementation of LSA
+Semantic Vectors applies Random Projection, LSA, and Reflective Random Indexing to Lucene term-document matrices
+Infomap Project, an NLP-oriented C implementation of LSA (superseded by semanticvectors project)
+Text to Matrix Generator Archived 2013-01-07 at archive.today, A MATLAB Toolbox for generating term-document matrices from text collections, with support for LSA
+Gensim contains a Python implementation of LSA for matrices larger than RAM.

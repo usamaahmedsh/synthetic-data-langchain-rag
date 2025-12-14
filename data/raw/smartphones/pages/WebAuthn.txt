@@ -1,0 +1,122 @@
+Web Authentication (WebAuthn) is a web standard published by the World Wide Web Consortium (W3C).
+It defines an API that websites use to authenticate with WebAuthn credentials (passkeys) and outlines what WebAuthn authenticators should do.
+It solves many of the issues of traditional password-based authentication by verifying the user's identity with digital signatures.
+Although WebAuthn is often touted as a complete replacement for passwords, most websites that implement it continue to use passwords in some capacity.
+To use WebAuthn, users require a compatible authenticator. The standard does not specify how to store the keys required for signing, so a variety of authenticator types can be used. The most common authenticator type is a platform authenticator, which is built into the operating system of the device. Common platform authenticators include Android, Apple Keychain and Windows Hello. These make use of hardware security features (such as TEE and TPM), and often sync credentials between devices for ease-of-use. Another common authenticator type is a roaming authenticator, where a separate hardware device authenticates the user by connecting over USB, Bluetooth Low Energy, or near-field communications (NFC). Most smartphones can be used as roaming authenticators, and dedicated physical security keys are also used. WebAuthn is effectively backward compatible with FIDO Universal 2nd Factor (U2F) as they both use the CTAP protocol. Password managers can also be used as an authenticator, often with cloud sync. Where credentials sync is not viable or possible, WebAuthn Hybrid Transport can be used to access credentials stored on another authenticator such as a smartphone.
+Like legacy U2F, WebAuthn is resistant to phishing attacks as the authenticator only offers credentials that were registered on the same website. However, unlike U2F, WebAuthn can be implemented in a passwordless manner. Moreover, a roaming hardware authenticator resists malware, since the keys are stored on a separate device, which prevents the malware from accessing them directly.
+The WebAuthn Level 1 and 2 standards were published as W3C Recommendations on 4 March 2019 and 8 April 2021 respectively. A Level 3 specification is currently a First Public Working Draft (FPWD).
+WebAuthn is a core component of the FIDO2 Project under the guidance of the FIDO Alliance.
+
+
+== Background ==
+FIDO2 is the successor to FIDO Universal 2nd Factor (U2F). Whereas U2F only supports multi-factor mode, having been designed to strengthen existing username/password-based login flows, FIDO2 adds support for single-factor mode. In multi-factor mode, the authenticator is activated by a test of user presence, which usually consists of a simple button push; no password is required. In single-factor mode, the authenticator (something you have) performs user verification. Depending on the authenticator capabilities, this can be:
+
+something you know: a secret such as a PIN, passcode or swipe pattern
+something you are: a biometric such as fingerprint, face, iris or voice
+Regardless of mode, the authenticator never shares its secrets or biometric data with the website. Moreover, a single user's secret or biometric works with all websites, as the authenticator selects the correct cryptographic key material to use for the service requesting authentication after user verification was completed successfully.
+A secret and biometric on the authenticator can be used together, similarly to how they would be used on a smartphone. For example, a fingerprint provides convenient access to user's smartphone, but occasionally fingerprint access fails, in which case user can use a PIN.
+
+
+== Reasons for its design and standardization ==
+The W3C designed and standardized WebAuthn to solve or mitigate many issues that are inherent to traditional password-based authentication:
+
+Secure credential generation and storage: WebAuthn generates unique credentials for each website using robust algorithms, storing them securely in trusted authenticators. This eliminates common vulnerabilities such as:
+Weak passwords that can be easily brute-forced due to insufficient length.
+Predictable passwords vulnerable to dictionary attacks (e.g., "password", "12345678").
+Guessable passwords based on personal information (e.g., birthdates, addresses).
+Poor client-side password storage (e.g., written down, stored in phone contacts).
+Password reuse across multiple websites, as WebAuthn credentials are specific to individual websites by design.
+Inadequate server-mandated password requirements (e.g., overly lax or restrictive criteria, arbitrary maximum length limits, limited charsets).
+Restrictions preventing password manager auto-fill features.
+No server-side credential storage: The private part of a credential is never stored on a server, eliminating risks and vulnerabilities such as:
+Insecure password storage in databases (e.g., plaintext or relying on weak hash-based algorithms/constructions).
+Database leaks exposing passwords.
+Mandatory, ineffective periodic password changes.
+Unique credentials for each website: WebAuthn ensures credentials are unique per website, eliminating the following risks and vulnerabilities:
+Credential stuffing attacks, where attackers use credentials from one data breach across multiple sites.
+Phishing attacks, as credentials cannot be reused or misapplied to different websites.
+
+
+== Passkey branding ==
+
+Passkey is the de facto non-technical term for a WebAuthn credential. Most user interfaces that support WebAuthn use only passkey to refer to WebAuthn credentials.
+When Apple first introduced passkeys to the public in 2022, they emphasized their first-party platform integrations. This, combined with the lack of clear communication from other industry leaders, led some to speculate that passkeys were proprietary to Apple, which was not the case. As browsers and websites began to implement WebAuthn, the inconsistent feature-sets resulted in a variety of understandings of what exactly counted as a passkey. Some people assumed that a passkey required management by a platform authenticator, or needed synchronization using the cloud. A better definition is that a passkey is any WebAuthn credential managed by any WebAuthn authenticator. This definition covers most of what different vendors refer to and accept as passkeys.
+
+
+== Overview ==
+Like its predecessor FIDO U2F, W3C Web Authentication (WebAuthn) involves a website, a web browser, and an authenticator:
+
+The website is a conforming WebAuthn Relying Party
+The browser is a conforming WebAuthn Client
+The authenticator is a FIDO2 authenticator, that is, it is assumed compatible with the WebAuthn Client
+WebAuthn specifies how a claimant demonstrates possession and control of a FIDO2 authenticator to a verifier called the WebAuthn Relying Party. The authentication process is mediated by an entity called the WebAuthn Client, which is little more than a conforming web browser.
+
+
+=== Authentication ===
+
+Authenticator is a multi-factor cryptographic authenticator that uses public-key cryptography to sign an authentication assertion targeted at the WebAuthn Relying Party. Assuming the authenticator uses either a facial recognition, fingerprint or PIN for user verification, the authenticator itself is something you have while the facial recognition and fingerprint (biometric) are something you are and the PIN is something you know.
+To initiate the WebAuthn authentication flow, the WebAuthn Relying Party indicates its intentions to the WebAuthn Client (i.e., the browser) via JavaScript. The WebAuthn Client communicates with the authenticator using a JavaScript API implemented in the browser. A roaming authenticator conforms to the FIDO Client to Authenticator Protocol (CTAP), and connected over USB, Bluetooth Low Energy, or near-field communications (NFC).
+WebAuthn does not strictly require a roaming hardware authenticator. Alternatively, a software authenticator (e.g., implemented on a smartphone) or a platform authenticator (i.e., an authenticator implemented directly on the WebAuthn Client Device) may be used. Relevant examples of platform authenticators include Windows Hello and the Android operating system.
+WebAuthn Hybrid Transport allows the WebAuthn Client to access credentials stored on another authenticator such as a smartphone, useful in certain situations where credential sync is not viable.
+There is a lingering misunderstanding among users that biometric data is transmitted over the network in the same manner as passwords, which is not the case.
+
+
+=== Registration ===
+When the WebAuthn Relying Party receives the signed authentication assertion from the browser, the digital signature on the assertion is verified using a trusted public key for the user.
+To obtain a public key for the user, the WebAuthn Relying Party initiates a WebAuthn registration flow that is similar to the authentication flow illustrated above. The primary difference is that the authenticator now signs an attestation statement with its attestation private key. The signed attestation statement contains a copy of the public key that the WebAuthn Relying Party ultimately uses to verify a signed authentication assertion. The attestation certificate contains metadata describing the authenticator itself.
+The digital signature on the attestation statement is verified with the trusted attestation public key for that particular model of authenticator. How the WebAuthn Relying Party obtains its store of trusted attestation public keys is unspecified. One option is to use the FIDO metadata service.
+The attestation type specified in the JavaScript determines the trust model. For instance, an attestation type called self-attestation may be desired, for which the trust model is essentially trust on first use.
+
+
+== Support ==
+
+The WebAuthn Level 1 standard was published as a W3C Recommendation by the Web Authentication Working Group on 4 March 2019. WebAuthn is supported by Google Chrome, Mozilla Firefox, Microsoft Edge, Apple Safari and Opera.
+The desktop version of Google Chrome has supported WebAuthn since version 67. Firefox, which had not fully supported the previous FIDO U2F standard, included and enabled WebAuthn in Firefox version 60, released on 9 May 2018. An early Windows Insider release of Microsoft Edge (Build 17682) implemented a version of WebAuthn that works with both Windows Hello as well as external security keys.
+Existing FIDO U2F security keys are largely compatible with the WebAuthn standard, though WebAuthn added the ability to reference a unique per-account "user handle" identifier, which older authenticators are unable to store.
+One of the first FIDO2-compatible authenticators was the second-generation Security Key by Yubico, announced on 10 April 2018. The first FIDO2-compatible authenticators with a display was Trezor Model T by SatoshiLabs, announced on 6 November 2019. Trezor Model T was also the first authenticator that allowed users to select which FIDO2 resident credential should be used directly on a device.
+The first Security Level 2 certified FIDO2 key, called "Goldengate" was announced one year later by eWBM on 8 April 2019.
+Dropbox announced support for WebAuthn logins (as a 2nd factor) on 8 May 2018.
+Apple announced that Face ID or Touch ID could be used as a WebAuthn platform authenticator with Safari on 24 June 2020.
+Several password managers such as Bitwarden and Dashlane supported WebAuthn.
+
+
+== API ==
+WebAuthn implements an extension of the W3C's more general Credential Management API, which is an attempt to formalize the interaction between websites and web browsers when exchanging user credentials. The Web Authentication API extends the Credential Management navigator.credentials.create() and navigator.credentials.get() JavaScript methods so they accept a publicKey parameter. The create() method is used for registering public key authenticators as part of associating them with user accounts (possibly at initial account creation time but more likely when adding a new security device to an existing account) while the get() method is used for authenticating (such as when logging in).
+To check if a browser supports WebAuthn, scripts should check if the window.PublicKeyCredential interface is defined. In addition to PublicKeyCredential, the standard also defines the AuthenticatorResponse, AuthenticatorAttestationResponse, and AuthenticatorAssertionResponse interfaces in addition to a variety of dictionaries and other datatypes.
+The API does not allow direct access to or manipulation of private keys, beyond requesting their initial creation.
+
+
+== Reception ==
+In August 2018, Paragon Initiative Enterprises conducted a security audit of the WebAuthn standard. While they could not find any specific exploits, they revealed some serious weaknesses in the way the underlying cryptography is used and mandated by the standard.
+Main points of criticism revolve around two potential issues that were problematic in other cryptographic systems in the past, and therefore should be avoided in order to not fall victim to the same class of attacks:
+
+Through the mandated use of COSE (RFC 8152) WebAuthn also supports RSA with PKCS1v1.5 padding. This particular scheme of padding has been known to be vulnerable to specific attacks for at least twenty years, and it has been successfully attacked in other protocols and implementations of the RSA cryptosystem in the past. It is difficult to exploit under given conditions in the context of WebAuthn, but since there are more secure cryptographic primitives and padding schemes, it is still a bad choice and cryptographers no longer consider it best practice.
+The FIDO Alliance standardized on the asymmetric cryptographic scheme ECDAA. This is a version of direct anonymous attestation based on elliptic curves and in the case of WebAuthn is used to verify the integrity of authenticators, while also preserving the privacy of users, as it does not allow for global correlation of handles. However, ECDAA does not incorporate some of the lessons that were learned in the last decades of research in the area of elliptic curve cryptography, as the chosen curve has some security deficits inherent to this type of curve, which reduces the security guarantees quite substantially. Furthermore, the ECDAA standard involves random, non-deterministic signatures, which already has been a problem in the past.
+Paragon Initiative Enterprises also criticized how the standard was initially developed, as the proposal was not made public in advance and experienced cryptographers were not asked for suggestions and feedback. Hence the standard was not subject to broad cryptographic research from the academic world.
+Despite these shortcomings, Paragon Initiative Enterprises still encourage users to continue to use WebAuthn but have come up with some recommendations for potential implementers and developers of the standard that they hope can be implemented before the standard is finalized. Avoiding such mistakes as early as possible would protect the industry from any challenges that are introduced by broken standards and the need for backwards compatibility.
+ECDAA was only designed to use in combination with device attestation. This particular feature of WebAuthn is not necessarily required for authentication to work. Current implementations allow the user to decide whether an attestation statement is sent during the registration ceremony. Independently, relying parties can choose to require attestation or not. ECDAA was removed from WebAuthn Level 2 as it was not implemented by browsers nor relying parties.
+
+
+== In the media ==
+WebAuthn, popularly referred to as "passkeys", has received mixed responses from the public:
+
+Troy Hunt: "Passkeys are one of the few security constructs that make your life easier, rather than harder." "That's a one-click sign-in, and clicking the purple button immediately grants me access to my account."
+Dan Goodin: "Passkey technology is elegant, but it’s most definitely not usable security."
+Bruce Davie: "...the implementation seems to have failed the 'make it easy for users' test, which in my view is the whole point of passkeys. I have been using public key cryptography for 30-plus years... If I find passkeys confusing to use, it doesn’t bode well for more typical users."
+
+
+== See also ==
+FIDO Alliance
+ssh-keygen
+
+
+== References ==
+
+
+== External links ==
+Web Authentication: An API for accessing Public Key Credentials
+Web Authentication Working Group
+Web Authentication API on MDN
+WebAuthn Awesome
+GitHub Docs: About passkeys
+Adam Langley: A Tour of WebAuthn

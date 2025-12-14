@@ -1,0 +1,119 @@
+Parabricks company started at the University of Michigan by Mehrzad Samadi, Ankit Sethia, and Scott Mahlke. It was acquired by Nvidia in 2020.
+Nvidia Parabricks is a suite of free software for genome analysis developed by Nvidia, designed to deliver high throughput by using graphics processing unit (GPU) acceleration.     
+Parabricks offers workflows for DNA and RNA analyses and the detection of germline and somatic mutations, using open-source tools. It is designed to improve the computing time of genomic data analysis while maintaining the flexibility required for various bioinformatics experiments. Along with the speed of GPU-based processing, Parabricks ensures high accuracy, compliance with standard genomic formats and the ability to scale in order to handle very large datasets. 
+Users can download and run Parabricks pipelines locally or directly deploy them on cloud providers, such as Amazon Web Services, Google Cloud, Oracle Cloud Infrastructure, and Microsoft Azure.
+
+
+== Accelerated genome analysis fundamentals ==
+
+The massive reduction in sequencing costs resulted in a significant increase in the size and the availability of genomics data with the potential of revolutionizing many fields, from medicine to drug design.       
+Starting from a biological sample (e.g., saliva or blood), it is possible to extract the individual's DNA and sequence it with sequencing machinery to translate the biological information into a textual sequence of bases. Then, once the entire genome is obtained through the genome assembly process, the DNA can be analyzed to extract information that is key in several domains, including personalized medicine and medical diagnostics.
+Typically, genomics data analysis is performed with tools based on Central Processing Units (CPUs) for processing. Recently, several researchers in this field have underlined the challenges in terms of computing power delivered by these tools and focused their efforts on finding ways to boost the performance of the applications. The issue has been addressed in two ways: developing more efficient algorithms or accelerating the compute-intensive part using hardware accelerators. Examples of accelerators used in the domain are GPUs, FPGAs, and ASICs 
+In this context, GPUs have revolutionized genomics by exploiting their parallel processing power to accelerate computationally intensive tasks. GPUs deliver promising results in these scenarios thanks to their architecture, composed of thousands of small cores capable of performing computations in parallel. This parallelism allows GPUs to process multiple tasks simultaneously, significantly speeding up computations that can be broken down into independent units. For instance, aligning millions of sequencing reads against a reference genome or performing statistical analyses on large genomic datasets can be completed much faster on GPUs than when using CPUs. This facilitates the rapid analysis of genomic data from diverse sources, ranging from individual genomes to large-scale population studies, accelerating the understanding of genetic diseases, genetic diversity, and more complex biological systems.
+
+
+== Featured pipelines ==
+Parabricks offers end users various collections of tools organized sequentially to analyze the raw data according to the user's requirements, called pipelines. Nevertheless, users can decide to run the tools provided by Parabricks as a standalone, still exploiting GPU acceleration to overcome possible computational bottlenecks. Only some of the provided tools in the suite are GPU-based.  
+
+Overall, all the pipelines share a standard structure. Most of the pipelines are built to analyze FASTQ data resulting from various sequencing technologies (e.g., short- or long-read). Input genomic sequences are firstly aligned and then undergo a quality control process. These two processes provide a BAM or a CRAM file as an intermediate result. Based on this data, the variant calling task that follows employs high-accuracy tools that are already widely used. As output, these pipelines provide the identified mutations in a VCF (or a gVCF).
+
+
+=== Germline pipeline ===
+The germline pipeline offered by Parabricks follows the best practices proposed by the Broad Institute in their Genome Analysis ToolKit (GATK). The germline pipeline operates on the FASTQ files provided as input by the user to call the variants that, belonging to the germ line, can be inherited.
+This pipeline analyzes data computing the read alignment with BWA-MEM and calling variants using GATK HaplotypeCaller, one of the most relevant tools in the domain for germline variant calling.  
+
+
+=== DeepVariant germline pipeline ===
+Besides the pipeline that resorts to HaplotypeCaller to call variants, Parabricks also offers an alternative pipeline that still calls germline variants but is based on DeepVariant. DeepVariant is a variant caller, developed and maintained by Google, capable of identifying mutations using a deep learning-based approach. The core of DeepVariant is a convolutional neural network (CNN) that identifies variants by transforming this task into an image classification operation. In Parabricks, the inference process is accelerated in hardware. For this pipeline, only T4, V100, and A100 GPUs are supported.
+Analyses performed according to this pipeline are compliant with the use of BWA-MEM for the alignment by Google's CNN for variant calling.
+
+
+=== Human_par pipeline ===
+Still compliant with GATK best practices, the human_par pipeline allows users to identify mutations in the entire human genome, including sex chromosomes X and Y, and, thus, it is compliant with their ploidy. For male samples, firstly, the pipeline runs HaplotypeCaller on all the regions that do not belong to the X and Y chromosomes and on the pseudoautosomal region with ploidy equal to 1. Then, HaplotypeCaller analyses the X and Y regions without the pseudoautosomal region with ploidy 2. Regarding female samples, instead, the pipeline runs HaplotypeCaller on the entire genome, with ploidy 2.
+The sex of the sample can be determined in two main ways: 
+
+Manually set with the --sample-sex option;
+Specify the X vs. Y ratio with range options --range-male and --range-female and let the tool automatically infer the sex of the samples based on the X and Y reads count.
+The pipeline requires the user to specify at least one of these three options.
+As for the germline case, since this pipeline targets the germline variants, the pipeline resorts to BWA-MEM for the alignment, followed by HaplotypeCaller for variant calling. 
+
+
+=== Somatic pipeline ===
+Parabricks' somatic pipeline is designed to call somatic variants, i.e., those mutations affecting non-reproductive (somatic) cells. This pipeline can analyze both tumor and non-tumor genomes, offering either tumor-only or tumor/normal analyses for comprehensive examinations.   
+As in the germline pipeline, the alignment task is carried out using BWA-MEM followed by GATK Mutect to identify the possible mutations. Mutect is used instead of HaplotypeCaller due to its focus on somatic mutations, as opposed to germline mutations targeted by HaplotypeCaller.  
+
+
+=== RNA pipeline ===
+This pipeline is optimized for short variant discovery (i.e., Single-nucleotide polymorphisms (SNPs) and indels) in RNAseq data. It follows the Broad Institute's best practices for these types of analyses.  
+It relies on the STAR aligner, a read aligner specialized for RNA sequences for aligning the reads, and HaplotypeCaller for calling variants. 
+
+
+== Parabricks tools ==
+Parabricks provides a collection of tools to perform genomics analyses, classified into six main categories related to their task. These tools combined constitutes Parabricks' pipelines, and can be also used as-is.  
+For FASTQ and BAM files processing, the proposed tools are: 
+
+applybsqr
+bam2fq
+bamsort
+bqsr
+fq2bam
+fq2bamfast
+fq2bam_meth
+markdup
+minimap2 (beta)
+For calling variants, the proposed tools are:
+
+deepsomatic
+deepvariant
+deepvariant_germline
+germline (GATK Germline Pipeline)
+haplotypecaller
+mutectcaller
+pacbio_germline (beta)
+postpon
+prepon
+somatic (Somatic Variant Caller)
+For RNA processing, the proposed tools are:
+
+rna_fq2bam
+starfusion
+For results quality control, the proposed tools are:
+
+bammetrics
+collectmultiplemetrics
+For processing variants, the proposed tools are:
+
+dbsnp
+For processing gVCF files, the proposed tools are:
+
+genotypegvcf
+indexgvcf
+Not all the listed tools are accelerated on GPU.
+
+
+== Hardware support ==
+Users can download and run Parabricks pipelines on their local servers, allowing for private, on-site data processing and analysis. They also can deploy Parabricks pipelines on cloud platforms, with improved scalability for larger datasets. Supported cloud providers include AWS, GCP, OCI, and Azure. 
+In the latest release (v4.3.1-1), Parabricks includes support for the Nvidia Grace Hopper super chip. The Nvidia GH200 Grace Hopper Superchip is a heterogeneous platform designed for high-performance computing and artificial intelligence, combining an Nvidia Grace and a Hopper on a single chip. This platform enhances application performance using both GPUs and CPUs, offering a programming model aimed at improving performance, portability, and productivity. 
+
+
+== Applications ==
+Due to the computational power required by genomics workloads, Parabricks has found application in several research studies with different applicative domains, especially in cancer research. 
+Scientists from Washington University used the Parabricks DeepVariant pipeline for identifying variants (e.g., SNPs and small indels) in long-read Hi-Fi whole-genome sequencing (WGS) data generated with PacBio's Revio SMRT Cell technology.
+In addition to the pipelines, individual components of Parabricks have been used as standalone tools in academic settings. For example, the accelerated DeepVariant has been employed in a novel process to reduce the processing time further for WGS Nanopore data.
+In 2022, Nvidia announced a collaboration with the Broad Institute to provide researchers with the benefits of accelerated computing. This partnership includes the entire suite of Nvidia's biomedical hardware-accelerated software suite called Clara, that includes Parabricks and MONAI. Similarly, the Regeneron Genetics Center uses Parabricks to expedite the secondary analysis of the exomes they sequence in their high-throughput sequencing center, leverage the DeepVariant Germline pipeline inside their workflows.
+
+
+== See also ==
+List of bioinformatics software
+List of sequence alignment software
+
+
+== References ==
+
+
+== Further reading ==
+
+
+== External links ==
+NVIDIA Clara
+NVIDIA Clara for Genomics

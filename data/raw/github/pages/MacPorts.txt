@@ -1,0 +1,119 @@
+MacPorts, formerly DarwinPorts, is a package manager for macOS and Darwin. It is an open-source software project that aims to simplify the installation of other open source software. It is similar in function to Fink and the BSD ports collections.
+MacPorts supports universal binaries for PowerPC, Intel-based, and Apple silicon versions of macOS, but migrating from a PowerPC installation of MacPorts to a version on an Intel Mac requires reinstalling all installed ports.
+
+
+== Usage ==
+
+
+=== Updating software ===
+There are three main usage modes of port that assist in updating installed software:
+
+sync updates the local ports tree. It does not upgrade any installed packages, but instead retrieves information about new and updated software. It is similar in function to brew update or apt update.
+selfupdate has the same functionality as sync but also updates the MacPorts system. In most cases, this should be used in preference to just running sync by itself, and it is recommended to run this each time before using MacPorts.
+upgrade upgrades any installed ports and its dependencies to the latest version found in the local ports tree. It is similar in function to apt upgrade.
+As an example, one common task is to update outdated ports. This can be done by running the following: MacPorts supports logical operators such as and, or and not, as well as glob patterns (enabled by default) and regex (enabled via --regex). For instance, to update outdated ports excluding all PHP versions, change the above command to the following:
+
+
+=== Installing software ===
+Users can indicate one or more packages that they wish to install via the install mode, and MacPorts will aim to install them and its dependencies. For example, both LibreOffice and Texmaker can be installed by running the following:Note that this will install the latest version as indicated by the local ports tree. Running selfupdate beforehand will make sure that the downloaded package is the newest version in MacPorts.
+
+
+==== Variants ====
+Variants provide different options that may be invoked when installing a port. Common actions include adding or removing dependencies and changing build arguments. They provide additional functionality that might not necessarily be useful for all users, but can be useful for others.
+
+For instance, the youtube-dl port provides an ffmpeg variant that is enabled by default. In return for adding two extra dependencies, this then allows for audio to be extracted. Variants can be included or removed using the + or - symbols, so the ffmpeg variant can be disabled by running the following:Multiple variants can be listed one after another by separating them with a space. As an example, it is possible to disable the default prefork MPM in the apache2 port in favour of worker MPM:The variants of a port can be determined by running port variants packagename, or by searching for the port on the MacPorts website.
+
+
+=== Frontends ===
+
+
+==== Website ====
+The MacPorts Ports website was implemented during Google Summer of Code 2019, with major UI improvements made within the same program in 2020. It displays information about individual ports, such as installation statistics and build-history. These statistics are also available via an API. Users can optionally login to be notified when a port has been updated.
+There is also a separate MacPorts homepage, that provides information on the project as well as instructions on how to install it.
+
+
+== History ==
+
+MacPorts was started in 2002 with the involvement of a number of Apple Inc. employees, including Landon Fuller, Kevin Van Vechten, and Jordan Hubbard. It was originally known as DarwinPorts, with the name coming from Darwin and FreeBSD Ports. It began as part of the OpenDarwin project, with its aim to help users on macOS and Darwin to install Unix software.
+OpenDarwin was shut down in 2006. DarwinPorts was then hosted on Mac OS Forge, an open source hosting service created and maintained by Apple Inc. for third-party projects not supported by Apple. So as to indicate the project's emphasis on macOS, its name was changed to MacPorts.
+When Apple closed Mac OS Forge in 2016, the project moved to GitHub. As part of this change, git was used as the new version control system, although Trac was still preferred for ticket management over GitHub issues.
+Version 1.0 was released on April 28, 2005. In December 2005 the project reached a milestone, surpassing 3,000 ports. At that time, package installation involved the source code being downloaded and compiled on the end user's machine. Version 2.0, released in 2011, introduced support for prebuilt binary archives; by default ports are installed using the prebuilt binary archive if available, and are built from source otherwise. As of May 2023, MacPorts has over 33,600 ports and best-effort support can be sourced from the community.
+
+
+== Implementation ==
+MacPorts installs software on top of the operating system, providing newer versions of pre-installed packages or software that is not included in macOS. This is in contrast to other package management systems, such as APT and DNF, that are part of the operating system. For this reason, MacPorts is sometimes known as an overlay distribution. Other examples include Fink and Homebrew.
+In contrast to the FreeBSD Ports Collection, which installs its software in /usr/local, MacPorts stores its data in /opt/local by default, although this can be modified when compiling MacPorts from source.  The reason given for this change is that other packaging systems could overwrite what MacPorts has installed, or vice versa. A dedicated directory helps to overcome this problem. Fink follows a similar approach, installing its data into /sw by default.
+
+
+=== Binary archives ===
+Buildbots are used to build ports in advance so that users do not have to compile the package locally. The result of this is known as a binary archive, and it helps to reduce the time required for installation. Similar to Homebrew, MacPorts takes the approach of having different builders for different operating system versions and architectures. However, sometimes it might be necessary to build from source locally if the binaries fail to build or the port's license does not allow binary distribution. If a binary could not be built, this would be noted on the MacPorts website for that individual port and the maintainer would be alerted. It is also possible to view recent buildbot events on a dedicated activity page.
+Binary archives are created locally whenever a user builds a port from source. They can also be manually created by running sudo port archive packagename.
+
+
+=== Portfiles ===
+MacPorts stores the instructions required to build a port in a port description file, otherwise known as a portfile. This is similar to how the AUR use shell scripts known as a PKGBUILD, or how Homebrew use ruby scripts as a formula. The portfiles are complete TCL programs with access to the TCL interpreter. They make use of simple key value pair options to define attributes.
+
+MacPorts uses an actual scripting language, namely TCL, in creating port descriptions. This gives the port writer a lot more flexibility in dealing with some of the more complex bits of software out there and the whole notion of action hooks (pre/post fetch, build, install, etc) is much cleaner in MacPorts [compared with FreeBSD]
+For example, this is the portfile for Hashcat:Each portfile has pre-defined stages that can be manually configured via the portfile. These include the following:
+Fetch
+First, MacPorts retrieves and downloads all the relevant files for the port from upstream. These are known as distfiles. In the case of hashcat, these files are retrieved from GitHub. They are removed, along with temporary build files, when the installation is complete.
+Checksum
+Checksums are always defined within the portfile, since they are different for different files. The checksums of the downloaded files are compared to those in the portfile to see whether they match.
+Only one compressed file is downloaded for Hashcat, so only one checksum is required in the portfile.
+Patch
+Sometimes, the code might need to be modified to make it installable via MacPorts. This could be for a variety of reasons, such as it installing in the wrong location by default. Patch files can be used to modify the source code in a readable format.
+
+In the above portfile, Hashcat does not require any changes to the code for the installation to work. Hence, there are no patch files required. When patches are required, the patch file would be stored with the portfile, and it would be referenced like the following (from wget):Configure
+The project's configure script is run to prepare for the build process. Part of this involves determining whether the required libraries are present. For ports that do not have a configure script, this stage (as well as others when required) can be disabled.
+Since the configure stage is not referenced in the Portfile, hashcat is using the default configure setup as defined by MacPorts. This involves running the configure script via ./configure.
+
+Build
+The instructions in the portfile are then used to build the port. The commands that are executed can vary for different languages.
+The portfile for hashcat shows that it should be treated as a Makefile project. It will therefore be built by running make.
+Test
+Some ports define a test to verify that the build has succeeded. This is an optional phase that is only run if the user executes port test packagename. It is therefore not executed when installing a port.
+
+This hashcat port has not defined a test stage. When defined, it might look like the following (from ImageMagick):Destroot
+The destroot stage is the first step in moving the built files into the correct location. MacPorts takes the approach of first staging the installation into an intermediate location (destroot) before placing the files in their correct positions (install). One advantage of this is that it makes it easy to record what files were created, allowing them to be cleanly uninstalled.
+As an example, a file that would normally be installed to /opt/local/lib/libfoo.a might first be installed to /tmp/stage/opt/local/lib/libfoo.a during the destroot stage, maintaining the relative directory structure.
+For hashcat, this is done by running make install, where one of the arguments (DESTDIR) specifies where to temporarily store the files.
+Note that in the majority of scenarios, only the stages below occur on the user's machine. This is because binaries for the ports are pre-built so that they do not need to be built from source locally.
+Install
+The destrooted files are archived safely. Since these files have not been activated yet, this allows for multiple different versions of the same port to be archived without interfering with each other.
+Activate
+When activating a port, the files in the destroot directory are moved to their correct location. This makes them accessible to the user, completing the installation process.
+If they wish to try a different version of the port, they can deactivate their current version and activate the new one. This does not uninstall the old port since it can easily be activated again from the archived files.
+When upgrading a port, MacPorts deactivates but does not uninstall the current version as a safety feature. This allows the user to easily revert to the old version if the update causes breaking changes.
+
+
+== Development ==
+
+Packages are the responsibility of individual maintainers, who are mentioned within the portfile. They are expected to update the port and apply bug-fixes where required. Anybody who wants to modify a portfile should alert the maintainer before applying the changes, although this is not always required for minor modifications.
+Anyone is able to contribute to MacPorts, generally via pull requests, and contributors can apply for commit rights following a good track record as a maintainer. A team of MacPorts members, known as the project managers, help to lead and coordinate the project.
+Starting from 2016, meetings have occasionally been held once a year. They normally take place in Slovenia, and allow for MacPorts members to work on future development.
+
+
+== Data collection ==
+By default, MacPorts does not collect any statistics. However, users can optionally submit information by running sudo port install mpstats. This sends details once a week on which ports are installed, as well as various system properties. The information is then used to determine which hardware to support and to understand how quickly new MacPorts releases are adopted.
+Users can view analytics data on the MacPorts website.
+
+
+== See also ==
+
+Fink
+Gentoo/Alt
+Homebrew
+Nix
+pkgsrc
+FreeBSD Ports
+Ports collection
+
+
+== References ==
+
+
+== External links ==
+Official website
+MacPorts Guide
+The MacPorts Wiki
+List of available ports

@@ -1,0 +1,700 @@
+Simultaneous localization and mapping (SLAM) is the computational problem of constructing or updating a map of an unknown environment while simultaneously keeping track of an agent's location within it. While this initially appears to be a chicken or the egg problem, there are several algorithms known to solve it in, at least approximately, tractable time for certain environments. Popular approximate solution methods include the particle filter, extended Kalman filter, covariance intersection, and GraphSLAM. SLAM algorithms are based on concepts in computational geometry and computer vision, and are used in robot navigation, robotic mapping and odometry for virtual reality or augmented reality.
+SLAM algorithms are tailored to the available resources and are not aimed at perfection but at operational compliance. Published approaches are employed in self-driving cars, unmanned aerial vehicles, autonomous underwater vehicles, planetary rovers, newer domestic robots and even inside the human body.
+
+
+== Mathematical description of the problem ==
+Given a series of controls 
+  
+    
+      
+        
+          u
+          
+            t
+          
+        
+      
+    
+    {\displaystyle u_{t}}
+  
+ and sensor observations 
+  
+    
+      
+        
+          o
+          
+            t
+          
+        
+      
+    
+    {\displaystyle o_{t}}
+  
+ over discrete time steps 
+  
+    
+      
+        t
+      
+    
+    {\displaystyle t}
+  
+, the SLAM problem is to compute an estimate of the agent's state 
+  
+    
+      
+        
+          x
+          
+            t
+          
+        
+      
+    
+    {\displaystyle x_{t}}
+  
+ and a map of the environment 
+  
+    
+      
+        
+          m
+          
+            t
+          
+        
+      
+    
+    {\displaystyle m_{t}}
+  
+. All quantities are usually probabilistic, so the objective is to compute
+
+  
+    
+      
+        P
+        (
+        
+          m
+          
+            t
+            +
+            1
+          
+        
+        ,
+        
+          x
+          
+            t
+            +
+            1
+          
+        
+        
+          |
+        
+        
+          o
+          
+            1
+            :
+            t
+            +
+            1
+          
+        
+        ,
+        
+          u
+          
+            1
+            :
+            t
+          
+        
+        )
+      
+    
+    {\displaystyle P(m_{t+1},x_{t+1}|o_{1:t+1},u_{1:t})}
+  
+
+Applying Bayes' rule gives a framework for sequentially updating the location posteriors, given a map and a transition function 
+  
+    
+      
+        P
+        (
+        
+          x
+          
+            t
+          
+        
+        
+          |
+        
+        
+          x
+          
+            t
+            −
+            1
+          
+        
+        )
+      
+    
+    {\displaystyle P(x_{t}|x_{t-1})}
+  
+,
+
+  
+    
+      
+        P
+        (
+        
+          x
+          
+            t
+          
+        
+        
+          |
+        
+        
+          o
+          
+            1
+            :
+            t
+          
+        
+        ,
+        
+          u
+          
+            1
+            :
+            t
+          
+        
+        ,
+        
+          m
+          
+            t
+          
+        
+        )
+        =
+        
+          ∑
+          
+            
+              m
+              
+                t
+                −
+                1
+              
+            
+          
+        
+        P
+        (
+        
+          o
+          
+            t
+          
+        
+        
+          |
+        
+        
+          x
+          
+            t
+          
+        
+        ,
+        
+          m
+          
+            t
+          
+        
+        ,
+        
+          u
+          
+            1
+            :
+            t
+          
+        
+        )
+        
+          ∑
+          
+            
+              x
+              
+                t
+                −
+                1
+              
+            
+          
+        
+        P
+        (
+        
+          x
+          
+            t
+          
+        
+        
+          |
+        
+        
+          x
+          
+            t
+            −
+            1
+          
+        
+        )
+        P
+        (
+        
+          x
+          
+            t
+            −
+            1
+          
+        
+        
+          |
+        
+        
+          m
+          
+            t
+          
+        
+        ,
+        
+          o
+          
+            1
+            :
+            t
+            −
+            1
+          
+        
+        ,
+        
+          u
+          
+            1
+            :
+            t
+          
+        
+        )
+        
+          /
+        
+        Z
+      
+    
+    {\displaystyle P(x_{t}|o_{1:t},u_{1:t},m_{t})=\sum _{m_{t-1}}P(o_{t}|x_{t},m_{t},u_{1:t})\sum _{x_{t-1}}P(x_{t}|x_{t-1})P(x_{t-1}|m_{t},o_{1:t-1},u_{1:t})/Z}
+  
+
+Similarly the map can be updated sequentially by
+
+  
+    
+      
+        P
+        (
+        
+          m
+          
+            t
+          
+        
+        
+          |
+        
+        
+          x
+          
+            t
+          
+        
+        ,
+        
+          o
+          
+            1
+            :
+            t
+          
+        
+        ,
+        
+          u
+          
+            1
+            :
+            t
+          
+        
+        )
+        =
+        
+          ∑
+          
+            
+              x
+              
+                t
+              
+            
+          
+        
+        
+          ∑
+          
+            
+              m
+              
+                t
+              
+            
+          
+        
+        P
+        (
+        
+          m
+          
+            t
+          
+        
+        
+          |
+        
+        
+          x
+          
+            t
+          
+        
+        ,
+        
+          m
+          
+            t
+            −
+            1
+          
+        
+        ,
+        
+          o
+          
+            t
+          
+        
+        ,
+        
+          u
+          
+            1
+            :
+            t
+          
+        
+        )
+        P
+        (
+        
+          m
+          
+            t
+            −
+            1
+          
+        
+        ,
+        
+          x
+          
+            t
+          
+        
+        
+          |
+        
+        
+          o
+          
+            1
+            :
+            t
+            −
+            1
+          
+        
+        ,
+        
+          m
+          
+            t
+            −
+            1
+          
+        
+        ,
+        
+          u
+          
+            1
+            :
+            t
+          
+        
+        )
+      
+    
+    {\displaystyle P(m_{t}|x_{t},o_{1:t},u_{1:t})=\sum _{x_{t}}\sum _{m_{t}}P(m_{t}|x_{t},m_{t-1},o_{t},u_{1:t})P(m_{t-1},x_{t}|o_{1:t-1},m_{t-1},u_{1:t})}
+  
+
+Like many inference problems, the solutions to inferring the two variables together can be found, to a local optimum solution, by alternating updates of the two beliefs in a form of an expectation–maximization algorithm.
+
+
+== Algorithms ==
+Statistical techniques used to approximate the above equations include Kalman filters and particle filters (the algorithm behind Monte Carlo Localization). They provide an estimation of the posterior probability distribution for the pose of the robot and for the parameters of the map. Methods which conservatively approximate the above model using covariance intersection are able to avoid reliance on statistical independence assumptions to reduce algorithmic complexity for large-scale applications. Other approximation methods achieve improved computational efficiency by using simple bounded-region representations of uncertainty.
+Set-membership techniques are mainly based on interval constraint propagation. 
+They provide a set which encloses the pose of the robot and a set approximation of the map. Bundle adjustment, and more generally maximum a posteriori estimation (MAP), is another popular technique for SLAM using image data, which jointly estimates poses and landmark positions, increasing map fidelity, and is used in commercialized SLAM systems such as Google's ARCore which replaces their prior augmented reality computing platform named Tango, formerly Project Tango. MAP estimators compute the most likely explanation of the robot poses and the map given the sensor data, rather than trying to estimate the entire posterior probability.
+New SLAM algorithms remain an active research area, and are often driven by differing requirements and assumptions about the types of maps, sensors and models as detailed below. Many SLAM systems can be viewed as combinations of choices from each of these aspects.
+
+
+=== Mapping ===
+Topological maps are a method of environment representation which capture the connectivity (i.e., topology) of the environment rather than creating a geometrically accurate map. Topological SLAM approaches have been used to enforce global consistency in metric SLAM algorithms.
+In contrast, grid maps use arrays (typically square or hexagonal) of discretized cells to represent a topological world, and make inferences about which cells are occupied. Typically the cells are assumed to be statistically independent to simplify computation. Under such assumption, 
+  
+    
+      
+        P
+        (
+        
+          m
+          
+            t
+          
+        
+        
+          |
+        
+        
+          x
+          
+            t
+          
+        
+        ,
+        
+          m
+          
+            t
+            −
+            1
+          
+        
+        ,
+        
+          o
+          
+            t
+          
+        
+        )
+      
+    
+    {\displaystyle P(m_{t}|x_{t},m_{t-1},o_{t})}
+  
+ are set to 1 if the new map's cells are consistent with the observation 
+  
+    
+      
+        
+          o
+          
+            t
+          
+        
+      
+    
+    {\displaystyle o_{t}}
+  
+ at location 
+  
+    
+      
+        
+          x
+          
+            t
+          
+        
+      
+    
+    {\displaystyle x_{t}}
+  
+ and 0 if inconsistent.
+Modern self driving cars mostly simplify the mapping problem to almost nothing, by making extensive use of highly detailed map data collected in advance. This can include map annotations to the level of marking locations of individual white line segments and curbs on the road. Location-tagged visual data such as Google's StreetView may also be used as part of maps. Essentially such systems simplify the SLAM problem to a simpler localization only task, perhaps allowing for moving objects such as cars and people only to be updated in the map at runtime.
+
+
+=== Sensing ===
+
+SLAM will always use several different types of sensors, and the powers and limits of various sensor types have been a major driver of new algorithms. Statistical independence is the mandatory requirement to cope with metric bias and with noise in measurements. Different types of sensors give rise to different SLAM algorithms which assumptions are most appropriate to the sensors. At one extreme, laser scans or visual features provide details of many points within an area, sometimes rendering SLAM inference unnecessary because shapes in these point clouds can be easily and unambiguously aligned at each step via image registration. At the opposite extreme, tactile sensors are extremely sparse as they contain only information about points very close to the agent, so they require strong prior models to compensate in purely tactile SLAM. Most practical SLAM tasks fall somewhere between these visual and tactile extremes.
+Sensor models divide broadly into landmark-based and raw-data approaches. Landmarks are uniquely identifiable objects in the world which location can be estimated by a sensor, such as Wi-Fi access points or radio beacons. Raw-data approaches make no assumption that landmarks can be identified, and instead model 
+  
+    
+      
+        P
+        (
+        
+          o
+          
+            t
+          
+        
+        
+          |
+        
+        
+          x
+          
+            t
+          
+        
+        )
+      
+    
+    {\displaystyle P(o_{t}|x_{t})}
+  
+ directly as a function of the location.
+Optical sensors may be one-dimensional (single beam) or 2D- (sweeping) laser rangefinders, 3D high definition light detection and ranging (lidar), 3D flash lidar, 2D or 3D sonar sensors, and one or more 2D cameras. Since the invention of local features, such as SIFT, there has been intense research into visual SLAM (VSLAM) using primarily visual (camera) sensors, because of the increasing ubiquity of cameras such as those in mobile devices.
+Follow up research includes. Both visual and lidar sensors are informative enough to allow for landmark extraction in many cases. Other recent forms of SLAM include tactile SLAM (sensing by local touch only), radar SLAM, acoustic SLAM, and Wi-Fi-SLAM (sensing by strengths of nearby Wi-Fi access points). Recent approaches apply quasi-optical wireless ranging for multi-lateration (real-time locating system (RTLS)) or multi-angulation in conjunction with SLAM as a tribute to erratic wireless measures. A kind of SLAM for human pedestrians uses a shoe mounted inertial measurement unit as the main sensor and relies on the fact that pedestrians are able to avoid walls to automatically build floor plans of buildings by an indoor positioning system.
+For some outdoor applications, the need for SLAM has been almost entirely removed due to high precision differential GPS sensors. From a SLAM perspective, these may be viewed as location sensors which likelihoods are so sharp that they completely dominate the inference. However, GPS sensors may occasionally decline or go down entirely, e.g. during times of military conflict, which are of particular interest to some robotics applications.
+
+
+=== Kinematics modeling ===
+The 
+  
+    
+      
+        P
+        (
+        
+          x
+          
+            t
+          
+        
+        
+          |
+        
+        
+          x
+          
+            t
+            −
+            1
+          
+        
+        )
+      
+    
+    {\displaystyle P(x_{t}|x_{t-1})}
+  
+ term represents the kinematics of the model, which usually include information about action commands given to a robot. As a part of the model, the kinematics of the robot is included, to improve estimates of sensing under conditions of inherent and ambient noise. The dynamic model balances the contributions from various sensors, various partial error models and finally comprises in a sharp virtual depiction as a map with the location and heading of the robot as some cloud of probability. Mapping is the final depicting of such model, the map is either such depiction or the abstract term for the model.
+For 2D robots, the kinematics are usually given by a mixture of rotation and "move forward" commands, which are implemented with additional motor noise. Unfortunately the distribution formed by independent noise in angular and linear directions is non-Gaussian, but is often approximated by a Gaussian. An alternative approach is to ignore the kinematic term and read odometry data from robot wheels after each command—such data may then be treated as one of the sensors rather than as kinematics.
+
+
+=== Moving objects ===
+Non-static environments, such as those containing other vehicles or pedestrians, continue to present research challenges. SLAM with DATMO is a model which tracks moving objects in a similar way to the agent itself.
+
+
+=== Loop closure ===
+Loop closure is the problem of recognizing a previously-visited location and updating beliefs accordingly. This can be a problem because model or algorithm errors can assign low priors to the location. Typical loop closure methods apply a second algorithm to compute some type of sensor measure similarity, and reset the location priors when a match is detected. For example, this can be done by storing and comparing bag of words vectors of scale-invariant feature transform (SIFT) features from each previously visited location.
+
+
+=== Exploration ===
+Active SLAM studies the combined problem of SLAM with deciding where to move next to build the map as efficiently as possible. The need for active exploration is especially pronounced in sparse sensing regimes such as tactile SLAM. Active SLAM is generally performed by approximating the entropy of the map under hypothetical actions. "Multi agent SLAM" extends this problem to the case of multiple robots coordinating themselves to explore optimally.
+
+
+=== Biological inspiration ===
+In neuroscience, the hippocampus appears to be involved in SLAM-like computations, giving rise to place cells, and has formed the basis for bio-inspired SLAM systems such as RatSLAM.
+
+
+=== Collaborative SLAM ===
+Collaborative SLAM combines sensors from multiple robots or users to generate 3D maps. This capability was demonstrated by a number of teams in the 2021 DARPA Subterranean Challenge.
+
+
+== Specialized SLAM methods ==
+
+
+=== Acoustic SLAM ===
+An extension of the common SLAM problem has been applied to the acoustic domain, where environments are represented by the three-dimensional (3D) position of sound sources, termed aSLAM (Acoustic Simultaneous Localization and Mapping). Early implementations of this technique have used direction-of-arrival (DoA) estimates of the sound source location, and rely on principal techniques of sound localization to determine source locations. An observer, or robot must be equipped with a microphone array to enable use of Acoustic SLAM, so that DoA features are properly estimated. Acoustic SLAM has paved foundations for further studies in acoustic scene mapping, and can play an important role in human-robot interaction through speech. To map multiple, and occasionally intermittent sound sources, an acoustic SLAM system uses foundations in random finite set theory to handle the varying presence of acoustic landmarks. However, the nature of acoustically derived features leaves Acoustic SLAM susceptible to problems of reverberation, inactivity, and noise within an environment.
+
+
+=== Audiovisual SLAM ===
+Originally designed for human–robot interaction, Audio-Visual SLAM is a framework that provides the fusion of landmark features obtained from both the acoustic and visual modalities within an environment. Human interaction is characterized by features perceived in not only the visual modality, but the acoustic modality as well; as such, SLAM algorithms for human-centered robots and machines must account for both sets of features. An Audio-Visual framework estimates and maps positions of human landmarks through use of visual features like human pose, and audio features like human speech, and fuses the beliefs for a more robust map of the environment. For applications in mobile robotics (ex. drones, service robots), it is valuable to use low-power, lightweight equipment such as monocular cameras, or microelectronic microphone arrays. Audio-Visual SLAM can also allow for complimentary function of such sensors, by compensating the narrow field-of-view, feature occlusions, and optical degradations common to lightweight visual sensors with the full field-of-view, and unobstructed feature representations inherent to audio sensors. The susceptibility of audio sensors to reverberation, sound source inactivity, and noise can also be accordingly compensated through fusion of landmark beliefs from the visual modality. Complimentary function between the audio and visual modalities in an environment can prove valuable for the creation of robotics and machines that fully interact with human speech and human movement.
+
+
+== Implementation methods ==
+
+Various SLAM algorithms are implemented in the open-source software Robot Operating System (ROS) libraries, often used together with the Point Cloud Library for 3D maps or visual features from OpenCV.
+
+
+=== EKF SLAM ===
+In robotics, EKF SLAM is a class of algorithms which uses the extended Kalman filter (EKF) for SLAM. Typically, EKF SLAM algorithms are feature based, and use the maximum likelihood algorithm for data association. In the 1990s and 2000s, EKF SLAM had been the de facto method for SLAM, until the introduction of FastSLAM.
+Associated with the EKF is the gaussian noise assumption, which significantly impairs EKF SLAM's ability to deal with uncertainty. With greater amount of uncertainty in the posterior, the linearization in the EKF fails.
+
+
+=== GraphSLAM ===
+In robotics, GraphSLAM is a SLAM algorithm which uses sparse information matrices produced by generating a factor graph of observation interdependencies (two observations are related if they contain data about the same landmark). It is based on optimization algorithms.
+
+
+== History ==
+A seminal work in SLAM is the research of Smith and Cheeseman on the representation and estimation of spatial uncertainty in 1986. Other pioneering work in this field was conducted by the research group of Hugh F. Durrant-Whyte in the early 1990s. which showed that solutions to SLAM exist in the infinite data limit. This finding motivates the search for algorithms which are computationally tractable and approximate the solution. The acronym SLAM was coined within the paper, "Localization of Autonomous Guided Vehicles" which first appeared in ISR in 1995.
+The self-driving STANLEY and JUNIOR cars, led by Sebastian Thrun, won the DARPA Grand Challenge and came second in the DARPA Urban Challenge in the 2000s, and included SLAM systems, bringing SLAM to worldwide attention. Mass-market SLAM implementations can now be found in consumer robot vacuum cleaners and virtual reality headsets such as the Meta Quest 2 and PICO 4 for markerless inside-out tracking.
+
+
+== See also ==
+
+
+== References ==
+
+
+== External links ==
+Probabilistic Robotics by Sebastian Thrun, Wolfram Burgard and Dieter Fox with a clear overview of SLAM.
+SLAM For Dummies (A Tutorial Approach to Simultaneous Localization and Mapping).
+Andrew Davison research page at the Department of Computing, Imperial College London about SLAM using vision.
+openslam.org A good collection of open source code and explanations of SLAM.
+Matlab Toolbox of Kalman Filtering applied to Simultaneous Localization and Mapping Vehicle moving in 1D, 2D and 3D.
+FootSLAM research page at German Aerospace Center (DLR) including the related Wi-Fi SLAM and PlaceSLAM approaches.
+SLAM lecture Online SLAM lecture based on Python.

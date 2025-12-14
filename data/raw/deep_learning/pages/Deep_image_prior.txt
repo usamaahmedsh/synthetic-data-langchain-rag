@@ -1,0 +1,635 @@
+Deep image prior is a type of convolutional neural network used to enhance a given image with no prior training data other than the image itself.
+A neural network is randomly initialized and used as prior to solve inverse problems such as noise reduction, super-resolution, and inpainting. Image statistics are captured by the structure of a convolutional image generator rather than by any previously learned capabilities.
+
+
+== Method ==
+
+
+=== Background ===
+Inverse problems such as noise reduction, super-resolution, and inpainting can be formulated as the optimization task 
+  
+    
+      
+        
+          x
+          
+            ∗
+          
+        
+        =
+        m
+        i
+        
+          n
+          
+            x
+          
+        
+        E
+        (
+        x
+        ;
+        
+          x
+          
+            0
+          
+        
+        )
+        +
+        R
+        (
+        x
+        )
+      
+    
+    {\displaystyle x^{*}=min_{x}E(x;x_{0})+R(x)}
+  
+, where 
+  
+    
+      
+        x
+      
+    
+    {\displaystyle x}
+  
+ is an image, 
+  
+    
+      
+        
+          x
+          
+            0
+          
+        
+      
+    
+    {\displaystyle x_{0}}
+  
+ a corrupted representation of that image, 
+  
+    
+      
+        E
+        (
+        x
+        ;
+        
+          x
+          
+            0
+          
+        
+        )
+      
+    
+    {\displaystyle E(x;x_{0})}
+  
+ is a task-dependent data term, and R(x) is the regularizer.
+Deep neural networks learn a generator/decoder 
+  
+    
+      
+        x
+        =
+        
+          f
+          
+            θ
+          
+        
+        (
+        z
+        )
+      
+    
+    {\displaystyle x=f_{\theta }(z)}
+  
+ which maps a random code vector 
+  
+    
+      
+        z
+      
+    
+    {\displaystyle z}
+  
+ to an image 
+  
+    
+      
+        x
+      
+    
+    {\displaystyle x}
+  
+.
+The image corruption method used to generate 
+  
+    
+      
+        
+          x
+          
+            0
+          
+        
+      
+    
+    {\displaystyle x_{0}}
+  
+ is selected for the specific application.
+
+
+=== Specifics ===
+In this approach, the 
+  
+    
+      
+        R
+        (
+        x
+        )
+      
+    
+    {\displaystyle R(x)}
+  
+ prior is replaced with the implicit prior captured by the neural network (where 
+  
+    
+      
+        R
+        (
+        x
+        )
+        =
+        0
+      
+    
+    {\displaystyle R(x)=0}
+  
+ for images that can be produced by a deep neural networks and 
+  
+    
+      
+        R
+        (
+        x
+        )
+        =
+        +
+        ∞
+      
+    
+    {\displaystyle R(x)=+\infty }
+  
+ otherwise). This yields the equation for the minimizer 
+  
+    
+      
+        
+          θ
+          
+            ∗
+          
+        
+        =
+        a
+        r
+        g
+        m
+        i
+        
+          n
+          
+            θ
+          
+        
+        E
+        (
+        
+          f
+          
+            θ
+          
+        
+        (
+        z
+        )
+        ;
+        
+          x
+          
+            0
+          
+        
+        )
+      
+    
+    {\displaystyle \theta ^{*}=argmin_{\theta }E(f_{\theta }(z);x_{0})}
+  
+ and the result of the optimization process 
+  
+    
+      
+        
+          x
+          
+            ∗
+          
+        
+        =
+        
+          f
+          
+            
+              θ
+              
+                ∗
+              
+            
+          
+        
+        (
+        z
+        )
+      
+    
+    {\displaystyle x^{*}=f_{\theta ^{*}}(z)}
+  
+.
+The minimizer 
+  
+    
+      
+        
+          θ
+          
+            ∗
+          
+        
+      
+    
+    {\displaystyle \theta ^{*}}
+  
+ (typically a gradient descent) starts from a randomly initialized parameters and descends into a local best result to yield the 
+  
+    
+      
+        
+          x
+          
+            ∗
+          
+        
+      
+    
+    {\displaystyle x^{*}}
+  
+ restoration function.
+
+
+==== Overfitting ====
+A parameter θ may be used to recover any image, including its noise. However, the network is reluctant to pick up noise because it contains high impedance while useful signal offers low impedance. This results in the θ parameter approaching a good-looking local optimum so long as the number of iterations in the optimization process remains low enough not to overfit data.
+
+
+=== Deep Neural Network Model ===
+Typically, the deep neural network model for deep image prior uses a U-Net like model without the skip connections that connect the encoder blocks with the decoder blocks. The authors in their paper mention that "Our findings here (and in other similar comparisons) seem to suggest that having deeper architecture is beneficial, and that having skip-connections that work so well for recognition tasks (such as semantic segmentation) is highly detrimental."
+
+
+== Applications ==
+
+
+=== Denoising ===
+The principle of denoising is to recover an image 
+  
+    
+      
+        x
+      
+    
+    {\displaystyle x}
+  
+ from a noisy observation 
+  
+    
+      
+        
+          x
+          
+            0
+          
+        
+      
+    
+    {\displaystyle x_{0}}
+  
+, where 
+  
+    
+      
+        
+          x
+          
+            0
+          
+        
+        =
+        x
+        +
+        ϵ
+      
+    
+    {\displaystyle x_{0}=x+\epsilon }
+  
+. The distribution 
+  
+    
+      
+        ϵ
+      
+    
+    {\displaystyle \epsilon }
+  
+ is sometimes known (e.g.: profiling sensor and photon noise) and may optionally be incorporated into the model, though this process works well in blind denoising.
+The quadratic energy function 
+  
+    
+      
+        E
+        (
+        x
+        ,
+        
+          x
+          
+            0
+          
+        
+        )
+        =
+        
+          |
+        
+        
+          |
+        
+        x
+        −
+        
+          x
+          
+            0
+          
+        
+        
+          |
+        
+        
+          
+            |
+          
+          
+            2
+          
+        
+      
+    
+    {\displaystyle E(x,x_{0})=||x-x_{0}||^{2}}
+  
+ is used as the data term, plugging it into the equation for 
+  
+    
+      
+        
+          θ
+          
+            ∗
+          
+        
+      
+    
+    {\displaystyle \theta ^{*}}
+  
+ yields the optimization problem 
+  
+    
+      
+        m
+        i
+        
+          n
+          
+            θ
+          
+        
+        
+          |
+        
+        
+          |
+        
+        
+          f
+          
+            θ
+          
+        
+        (
+        z
+        )
+        −
+        
+          x
+          
+            0
+          
+        
+        
+          |
+        
+        
+          
+            |
+          
+          
+            2
+          
+        
+      
+    
+    {\displaystyle min_{\theta }||f_{\theta }(z)-x_{0}||^{2}}
+  
+.
+
+
+=== Super-resolution ===
+Super-resolution is used to generate a higher resolution version of image x. The data term is set to 
+  
+    
+      
+        E
+        (
+        x
+        ;
+        
+          x
+          
+            0
+          
+        
+        )
+        =
+        
+          |
+        
+        
+          |
+        
+        d
+        (
+        x
+        )
+        −
+        
+          x
+          
+            0
+          
+        
+        
+          |
+        
+        
+          
+            |
+          
+          
+            2
+          
+        
+      
+    
+    {\displaystyle E(x;x_{0})=||d(x)-x_{0}||^{2}}
+  
+ where d(·) is a downsampling operator such as Lanczos that decimates the image by a factor t.
+
+
+=== Inpainting ===
+Inpainting is used to reconstruct a missing area in an image 
+  
+    
+      
+        
+          x
+          
+            0
+          
+        
+      
+    
+    {\displaystyle x_{0}}
+  
+. These missing pixels are defined as the binary mask 
+  
+    
+      
+        m
+        ∈
+        {
+        0
+        ,
+        1
+        
+          }
+          
+            H
+            ×
+            V
+          
+        
+      
+    
+    {\displaystyle m\in \{0,1\}^{H\times V}}
+  
+. The data term is defined as 
+  
+    
+      
+        E
+        (
+        x
+        ;
+        
+          x
+          
+            0
+          
+        
+        )
+        =
+        
+          |
+        
+        
+          |
+        
+        (
+        x
+        −
+        
+          x
+          
+            0
+          
+        
+        )
+        ⊙
+        m
+        
+          |
+        
+        
+          
+            |
+          
+          
+            2
+          
+        
+      
+    
+    {\displaystyle E(x;x_{0})=||(x-x_{0})\odot m||^{2}}
+  
+ (where 
+  
+    
+      
+        ⊙
+      
+    
+    {\displaystyle \odot }
+  
+ is the Hadamard product).
+The intuition behind this is that the loss is computed only on the known pixels in the image, and the network is going to learn enough about the image to fill in unknown parts of the image even though the computed loss doesn't include those pixels. This strategy is used to remove image watermarks by treating the watermark as missing pixels in the image.
+
+
+=== Flash–no-flash reconstruction ===
+This approach may be extended to multiple images. A straightforward example mentioned by the author is the reconstruction of an image to obtain natural light and clarity from a flash–no-flash pair. Video reconstruction is possible but it requires optimizations to take into account the spatial differences.
+
+
+== Implementations ==
+A reference implementation rewritten in Python 3.6 with the PyTorch 0.4.0 library was released by the author under the Apache 2.0 license: deep-image-prior 
+A TensorFlow-based implementation written in Python 2 and released under the CC-SA 3.0 license: deep-image-prior-tensorflow
+A Keras-based implementation written in Python 2 and released under the GPLv3: machine_learning_denoising
+
+
+== Example ==
+See Astronomy Picture of the Day (APOD) of 2024-02-18
+
+
+== References ==
+
+Ulyanov, Dmitry; Vedaldi, Andrea; Lempitsky, Victor (30 November 2017). "Deep Image Prior". arXiv:1711.10925v2 [cs.CV].

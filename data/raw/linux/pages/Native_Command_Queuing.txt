@@ -1,0 +1,42 @@
+In computing, Native Command Queuing (NCQ) is an extension of the Serial ATA protocol allowing hard disk drives to internally optimize the order in which received read and write commands are executed. This can reduce the amount of unnecessary drive head movement, resulting in increased performance (and slightly decreased wear of the drive) for workloads where multiple simultaneous read/write requests are outstanding, most often occurring in server-type applications.
+
+
+== History ==
+Native Command Queuing was preceded by Parallel ATA's version of Tagged Command Queuing (TCQ). ATA's attempt at integrating TCQ was constrained by the requirement that ATA host bus adapters use ISA bus device protocols to interact with the operating system. The resulting high CPU overhead and negligible performance gain contributed to a lack of market acceptance for ATA TCQ.
+NCQ differs from TCQ in that, with NCQ, each command is of equal importance, but NCQ's host bus adapter also programs its own first party DMA engine with CPU-given DMA parameters during its command sequence whereas TCQ interrupts the CPU during command queries and requires it to modulate the ATA host bus adapter's third party DMA engine. NCQ's implementation is preferable because the drive has more accurate knowledge of its performance characteristics and is able to account for its rotational position. Both NCQ and TCQ have a maximum queue length of 32 outstanding commands. Because the ATA TCQ is rarely used, Parallel ATA (and the IDE mode of some chipsets) usually only support one outstanding command per port.
+For NCQ to be enabled, it must be supported and enabled in the SATA host bus adapter and in the hard drive itself. The appropriate driver must be loaded into the operating system to enable NCQ on the host bus adapter.
+Many newer chipsets support the Advanced Host Controller Interface (AHCI), which allows operating systems to universally control them and enable NCQ.  DragonFly BSD has supported AHCI with NCQ since 2.3 in 2009. Linux kernels support AHCI natively since version 2.6.19, and FreeBSD fully supports AHCI since version 8.0. Windows Vista and Windows 7 also natively support AHCI, but their AHCI support (via the msahci service) must be manually enabled via registry editing if controller support was not present during their initial install. Windows 7's AHCI enables not only NCQ but also TRIM support on SSD drives (with their supporting firmware).  Older operating systems such as Windows XP require the installation of a vendor-specific driver (similar to installing a RAID or SCSI controller) even if AHCI is present on the host bus adapter, which makes initial setup more tedious and conversions of existing installations relatively difficult as most controllers cannot operate their ports in mixed AHCI–SATA/IDE/legacy mode.
+
+
+== Hard disk drives ==
+
+
+=== Performance ===
+A 2004 test with the first-generation NCQ drive (Seagate 7200.7 NCQ) found that while NCQ increased IOMeter performance, desktop application performance decreased. One review in 2010 found improvements on the order of 9% (on average) with NCQ enabled in a series of Windows multitasking tests.
+NCQ can negatively interfere with the operating system's I/O scheduler, decreasing performance; this has been observed in practice on Linux with RAID-5. There is no mechanism in NCQ for the host to specify any sort of deadlines for an I/O, like how many times a request can be ignored in favor of others. In theory, a queued request can be delayed by the drive an arbitrary amount of time while it is serving other (possibly new) requests under I/O pressure. Since the algorithms used inside drives' firmware for NCQ dispatch ordering are generally not publicly known, this introduces another level of uncertainty for hardware/firmware performance. Tests at Google around 2008 have shown that NCQ can delay an I/O for up to 1–2 seconds. A proposed workaround is for the operating system to artificially starve the NCQ queue sooner in order to satisfy low-latency applications in a timely manner.
+On some drives' firmware, such as the WD Raptor circa 2007, read-ahead is disabled when NCQ is enabled, resulting in slower sequential performance.
+SATA solid-state drives profit significantly from being able to queue multiple commands for parallel workloads. For PCIe-based NVMe SSDs, the queue depth was even increased to support a maximum of 65,535 queues with up to 65,535 commands each.
+
+
+=== Safety (FUA) ===
+
+One lesser-known feature of NCQ is that, unlike its ATA TCQ predecessor, it allows the host to specify whether it wants to be notified when the data reaches the disk's platters, or when it reaches the disk's buffer (on-board cache). Assuming a correct hardware implementation, this feature allows data consistency to be guaranteed when the disk's on-board cache is used in conjunction with system calls like fsync. The associated write flag, which is also borrowed from SCSI, is called Force Unit Access (FUA).
+
+
+== Solid-state drives ==
+NCQ is also used in newer solid-state drives where the drive encounters latency on the host, rather than the other way around. For example, Intel's X25-E Extreme solid-state drive uses NCQ to ensure that the drive has commands to process while the host system is busy processing CPU tasks.
+NCQ also enables the SSD controller to complete commands concurrently (or partly concurrently, for example using pipelines) where the internal organisation of the device enables such processing.
+The NVM Express (NVMe) standard also supports command queuing, in a form optimized for SSDs.  NVMe allows multiple queues for a single controller and device, allowing at the same time much higher depths for each queue, which more closely matches how the underlying SSD hardware works.
+
+
+== See also ==
+I/O scheduling
+Write barrier
+
+
+== References ==
+
+
+== External links ==
+Serial ATA and the 7 Deadly Sins of Parallel ATA at Lost Circuits (for TCQ)
+Hype vs. Reality analysis at Tom's Hardware

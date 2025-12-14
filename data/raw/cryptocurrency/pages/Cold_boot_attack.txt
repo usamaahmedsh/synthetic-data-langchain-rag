@@ -1,0 +1,106 @@
+In computer security, a cold boot attack (or to a lesser extent, a platform reset attack) is a type of side channel attack in which an attacker with physical access to a computer performs a memory dump of a computer's random-access memory (RAM) by performing a hard reset of the target machine. Typically, cold boot attacks are used for retrieving encryption keys from a running operating system for malicious or criminal investigative reasons. The attack relies on the data remanence property of DRAM and SRAM to retrieve memory contents that remain readable in the seconds to minutes following a power switch-off.
+An attacker with physical access to a running computer typically executes a cold boot attack by cold-booting the machine and booting a lightweight operating system from a removable disk to dump the contents of pre-boot physical memory to a file. An attacker is then free to analyze the data dumped from memory to find sensitive data, such as the keys, using various forms of key finding attacks. Since cold boot attacks target random-access memory, full disk encryption schemes, even with a trusted platform module installed are ineffective against this kind of attack. This is because the problem is fundamentally a hardware (insecure memory) and not a software issue. However, malicious access can be prevented by limiting physical access and using modern techniques to avoid storing sensitive data in random-access memory.
+
+
+== Technical details ==
+
+DIMM memory modules gradually lose data over time as they lose power, but do not immediately lose all data when power is lost. With certain memory modules, the time window for an attack can be extended to hours or even a week by cooling them with freeze spray and liquid nitrogen. Furthermore, as the bits disappear in memory over time, they can be reconstructed, as they fade away in a predictable manner. Consequently, an attacker can perform a memory dump of its contents by executing a cold boot attack. The ability to execute the cold boot attack successfully varies considerably across different systems, types of memory, memory manufacturers and motherboard properties, and may be more difficult to carry out than software-based methods or a DMA attack. While the focus of current research is on disk encryption, any sensitive data held in memory is vulnerable to the attack.
+Attackers execute cold boot attacks by forcefully and abruptly rebooting a target machine and then booting a pre-installed operating system from a USB flash drive, CD-ROM or over the network. In cases where it is not practical to hard reset the target machine, an attacker may alternatively physically remove the memory modules from the original system and quickly place them into a compatible machine under the attacker's control, which is then booted to access the memory. Further analysis can then be performed against the data dumped from RAM.
+A similar kind of attack can also be used to extract data from memory, such as a DMA attack that allows the physical memory to be accessed via a high-speed expansion port such as FireWire. A cold boot attack may be preferred in certain cases, such as when there is high risk of hardware damage. Using the high-speed expansion port can short out, or physically damage hardware in certain cases.
+
+
+== Uses ==
+Cold boots attacks are typically used for digital forensic investigations, malicious purposes such as theft and data recovery, although just having fun cannot be ruled out.
+
+
+=== Digital forensics ===
+In certain cases, a cold boot attack is used in the discipline of digital forensics to forensically preserve data contained within memory as criminal evidence. For example, when it is not practical to preserve data in memory through other means, a cold boot attack may be used to perform a dump of the data contained in random-access memory. For example, a cold boot attack is used in situations where a system is secured and it is not possible to access the computer. A cold boot attack may also be necessary when a hard disk is encrypted with full disk encryption and the disk potentially contains evidence of criminal activity. A cold boot attack provides access to the memory, which can provide information about the state of the system at the time such as what programs are running.
+
+
+=== Malicious intent ===
+A cold boot attack may be used by attackers to gain access to encrypted information such as financial information or trade secrets for malicious intent.
+
+
+== Circumventing full disk encryption ==
+A common purpose of cold boot attacks is to circumvent software-based disk encryption. Cold boot attacks when used in conjunction with key finding attacks have been demonstrated to be an effective means of circumventing full disk encryption schemes of various vendors and operating systems, even where a Trusted Platform Module (TPM) secure cryptoprocessor is used.
+In the case of disk encryption applications that can be configured to allow the operating system to boot without a pre-boot PIN being entered or a hardware key being present (e.g. BitLocker in a simple configuration that uses a TPM without a two-factor authentication PIN or USB key), the time frame for the attack is not limiting at all.
+
+
+=== BitLocker ===
+BitLocker in its default configuration uses a trusted platform module that neither requires a PIN, nor an external key to decrypt the disk. When the operating system boots, BitLocker retrieves the key from the TPM, without any user interaction. Consequently, an attacker can simply power on the machine, wait for the operating system to begin booting and then execute a cold boot attack against the machine to retrieve the key. Due to this, two-factor authentication, such as a pre-boot PIN or a removable USB device containing a startup key together with a TPM should be used to work around this vulnerability in the default BitLocker implementation. However, this workaround only prevents a cold boot attack if the machine was off before the attacker gained physical access. If the machine had already booted and is running, it does not prevent an attacker from retrieving sensitive data from memory, nor from retrieving encryption keys cached in memory.
+
+
+=== Mitigation ===
+Since a memory dump can be easily performed by executing a cold boot attack, storage of sensitive data in RAM, like encryption keys for full disk encryption is unsafe. Several solutions have been proposed for storing encryption keys in areas, other than random-access memory. While these solutions may reduce the chance of breaking full disk encryption, they provide no protection of other sensitive data stored in memory.
+
+
+==== Register-based key storage ====
+One solution for keeping encryption keys out of memory is register-based key storage. Implementations of this solution are TRESOR and Loop-Amnesia. Both of these implementations modify the kernel of an operating system so that CPU registers (in TRESOR's case the x86 debug registers and in Loop-Amnesia's case the AMD64 or EMT64 profiling registers) can be used to store encryption keys, rather than in RAM. Keys stored at this level cannot easily be read from userspace and are lost when the computer restarts for any reason. TRESOR and Loop-Amnesia both must use on-the-fly round key generation due to the limited space available for storing cryptographic tokens in this manner. For security, both disable interrupts to prevent key information from leaking to memory from the CPU registers while encryption or decryption is being performed, and both block access to the debug or profile registers.
+There are two potential areas in modern x86 processors for storing keys: the SSE registers which could in effect be made privileged by disabling all SSE instructions (and necessarily, any programs relying on them), and the debug registers which were much smaller but had no such issues.
+A  proof of concept distribution called 'paranoix' based on the SSE register method has been developed. The developers claim that "running TRESOR on a 64-bit CPU that supports AES-NI, there is no performance penalty compared to a generic implementation of AES", and run slightly faster than standard encryption despite the need for key recalculation. The primary advantage of Loop-Amnesia compared to TRESOR is that it supports the use of multiple encrypted drives; the primary disadvantages are a lack of support for 32-bit x86 and worse performance on CPUs not supporting AES-NI.
+
+
+==== Cache-based key storage ====
+"Frozen cache" (sometimes known as "cache as RAM"), may be used to securely store encryption keys. It works by disabling a CPU's L1 cache and uses it for key storage, however, this may significantly degrade overall system performance to the point of being too slow for most purposes.
+A similar cache-based solution was proposed by Guan et al. (2015) by employing the WB (Write-Back) cache mode to keep data in caches, reducing the computation times of public key algorithms.
+Mimosa in IEEE S&P 2015 presented a more practical solution for public-key cryptographic computations against cold-boot attacks and DMA attacks. It employs hardware transactional memory (HTM) which was originally proposed as a speculative memory access mechanism to boost the performance of multi-threaded applications. The strong atomicity guarantee provided by HTM, is utilized to defeat illegal concurrent accesses to the memory space that contains sensitive data. The RSA private key is encrypted in memory by an AES key that is protected by TRESOR. On request, an RSA private-key computation is conducted within an HTM transaction: the private key is firstly decrypted into memory, and then RSA decryption or signing is conducted. Because a plain-text RSA private key only appears as modified data in an HTM transaction, any read operation to these data will abort the transaction - the transaction will roll-back to its initial state. Note that, the RSA private key is encrypted in initial state, and it is a result of write operations (or AES decryption). Currently HTM is implemented in caches or store-buffers, both of which are located in CPUs, not in external RAM chips. So cold-boot attacks are prevented. Mimosa defeats against attacks that attempt to read sensitive data from memory (including cold-boot attacks, DMA attacks, and other software attacks), and it only introduces a small performance overhead.
+
+
+==== Dismounting encrypted disks ====
+Best practice recommends dismounting any encrypted, non-system disks when not in use, since most disk encryption software are designed to securely erase keys cached in memory after use. This reduces the risk of an attacker being able to salvage encryption keys from memory by executing a cold boot attack. To minimize access to encrypted information on the operating system hard disk, the machine should be completely shut down when not in use to reduce the likelihood of a successful cold boot attack. However, data may remain readable from tens of seconds to several minutes depending upon the physical RAM device in the machine, potentially allowing some data to be retrieved from memory by an attacker. Configuring an operating system to shut down or hibernate when unused, instead of using sleep mode, can help mitigate the risk of a successful cold boot attack.
+
+
+== Effective countermeasures ==
+
+
+=== Preventing physical access ===
+Typically, a cold boot attack can be prevented by limiting an attacker's physical access to the computer or by making it increasingly difficult to carry out the attack. One method involves soldering or gluing in the memory modules onto the motherboard, so they cannot be easily removed from their sockets and inserted into another machine under an attacker's control. However, this does not prevent an attacker from booting the victim's machine and performing a memory dump using a removable USB flash drive. A mitigation such as UEFI Secure Boot or similar boot verification approaches can be effective in preventing an attacker from booting up a custom software environment to dump out the contents of soldered-on main memory.
+
+
+=== Full memory encryption ===
+Encrypting random-access memory (RAM) mitigates the possibility of an attacker being able to obtain encryption keys or other material from memory via a cold boot attack. This approach may require changes to the operating system, applications, or hardware. One example of hardware-based memory encryption was implemented in the Microsoft Xbox. Implementations on newer x86-64 hardware are available from AMD and on Intel Willow Cove and newer.
+Software-based full memory encryption is similar to CPU-based key storage since key material is never exposed to memory, but is more comprehensive since all memory contents are encrypted. In general, only immediate pages are decrypted and read on the fly by the operating system. Implementations of software-based memory encryption solutions include: a commercial product from PrivateCore. and RamCrypt, a kernel-patch for the Linux kernel that encrypts data in memory and stores the encryption key in the CPU registers in a manner similar to TRESOR.
+Since version 1.24, VeraCrypt supports RAM encryption for keys and passwords.
+More recently, several papers have been published highlighting the availability of security-enhanced x86 and ARM commodity processors.  In that work, an ARM Cortex A8 processor is used as the substrate on which a full memory encryption solution is built.  Process segments (for example, stack, code or heap) can be encrypted individually or in composition.  This work marks the first full memory encryption implementation on a general-purpose commodity processor.  The system provides both confidentiality and integrity protections of code and data which are encrypted everywhere outside the CPU boundary.
+
+
+=== Secure erasure of memory ===
+Since cold boot attacks target unencrypted random-access memory, one solution is to erase sensitive data from memory when it is no longer in use. The "TCG Platform Reset Attack Mitigation Specification", an industry response to this specific attack, forces the BIOS to overwrite memory during POST if the operating system was not shut down cleanly. However, this measure can still be circumvented by removing the memory module from the system and reading it back on another system under the attacker's control that does not support these measures.
+An effective secure erase feature would be that if power is interrupted, the RAM is wiped in the less than 300 ms before power is lost in conjunction with a secure BIOS and hard drive/SSD controller that encrypts data on the M-2 and SATAx ports. If the RAM itself contained no serial presence or other data and the timings were stored in the BIOS with some form of failsafe requiring a hardware key to change them, it would be nearly impossible to recover any data and would also be immune to TEMPEST attacks, man-in-the-RAM and other possible infiltration methods.
+Some operating systems such as Tails provide a feature that securely writes random data to system memory when the operating system is shut down to mitigate against a cold boot attack. However, video memory erasure is still not possible and as of 2022 it's still an open ticket on the Tails forum. Potential attacks which could exploit this flaw are:
+
+Generation of a GnuPG keypair and viewing the private key on a text editor could lead to the key being recovered.
+A cryptocurrency seed could be seen, therefore bypassing the wallet (even if encrypted) allowing access to the funds.
+Typing a password with visibility enabled might show parts of it or even the whole key. If a keyfile is used, it could be shown to reduce time needed for a password attack.
+Traces of mounted or opened encrypted volumes with plausible deniability might be shown, leading to the discovery of them.
+If connected to a .onion service, the URL might be shown and lead to its discovery, whereas otherwise would be extremely difficult.
+Usage of a particular program could show user's patterns. For instance, if a steganography program is used and opened, the assumption that the user has been hiding data could be made. Likewise, if an instant messenger is being used, a list of contacts or messages could be shown.
+
+
+=== External key storage ===
+A cold boot attack can be prevented by ensuring no keys are stored by the hardware under attack.
+
+User enters the disk encryption key manually
+Using an enclosed fully encrypted hard disk drive where the encryption keys are held in hardware separate from the hard disk drive.
+
+
+== Ineffective countermeasures ==
+Memory scrambling may be used to minimize undesirable parasitic effects of semiconductors as a feature of modern Intel Core processors.
+However, because the scrambling is only used to decorrelate any patterns within the memory contents, the memory can be descrambled via a descrambling attack. Hence, memory scrambling is not a viable mitigation against cold boot attacks.
+Sleep mode provides no additional protection against a cold boot attack because data typically still resides in memory while in this state. As such, full disk encryption products are still vulnerable to attack because the keys reside in memory and do not need to be re-entered once the machine resumes from a low power state.
+Although limiting the boot device options in the BIOS may make it slightly harder to boot another operating system, firmware in modern chipsets tends to allow the user to override the boot device during POST by pressing a specified hot key. Limiting the boot device options will not prevent the memory module from being removed from the system and read back on an alternative system either. In addition, most chipsets provide a recovery mechanism that allows the BIOS settings to be reset to default even if they are protected with a password. The BIOS settings can also be modified while the system is running to circumvent any protections enforced by it, such as memory wiping or locking the boot device.
+
+
+== Smartphones ==
+The cold boot attack can be adapted and carried out in a similar manner on Android smartphones. A cold boot can be performed by disconnecting the phone's battery to force a hard reset or holding down the power button. The smartphone is then flashed with an operating system image that can perform a memory dump. Typically, the smartphone is connected to an attacker's machine using a USB port.
+Typically, Android smartphones securely erase encryption keys from random-access memory when the phone is locked. This reduces the risk of an attacker being able to retrieve the keys from memory, even if they succeeded in executing a cold boot attack against the phone.
+
+
+== References ==
+
+
+== External links ==
+Lest We Remember: Cold Boot Attacks on Encryption Keys on YouTube
+McGrew Security's Proof of Concept
+Boffins Freeze Phone to Crack Android On-Device Crypto
+Skorobogatov, Sergei (June 2002). "Low temperature data remanence in static RAM". University of Cambridge. doi:10.48456/tr-536. Retrieved 2008-02-27.

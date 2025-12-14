@@ -1,0 +1,27 @@
+io_uring is a Linux kernel system call interface for storage device asynchronous I/O operations. It addresses performance issues with similar interfaces provided by functions like read()/write() or aio_read()/aio_write() for operations on data accessed by file descriptors.
+
+
+== Interface ==
+It works by creating two circular buffers, called "queue rings", to track the submission and completion of I/O requests, respectively. For storage devices, these are called the submission queue (SQ) and completion queue (CQ). Keeping these buffers shared between the kernel and application helps to boost the I/O performance by eliminating the need to issue extra and expensive system calls to copy these buffers between the two. According to the io_uring design paper, the SQ buffer is writable only by consumer applications, and the CQ buffer is writable only by the kernel.
+eBPF can be combined with io_uring.
+
+
+== History ==
+The Linux kernel has supported asynchronous I/O since version 2.5, but it was seen as difficult to use and inefficient. This older API only supported certain niche use cases, notably it only enables asynchronous operation when using the O_DIRECT flag and while accessing already allocated files. This prevents utilizing the page cache, while also exposing the application to complex O_DIRECT semantics. Linux AIO also does not support sockets, so it cannot be used to multiplex network and disk I/O.
+The io_uring kernel interface was adopted in Linux kernel version 5.1 to resolve the deficiencies of Linux AIO. The liburing library provides an API to interact with the kernel interface easily from userspace.
+
+
+== Security ==
+In June 2023, Google's security team reported that 60% of the exploits submitted to their bug bounty program in 2022 were exploits of io_uring vulnerabilities. As a result, io_uring was disabled for apps in Android, and disabled entirely in ChromeOS as well as Google servers. Docker also consequently disabled io_uring from their default seccomp profile.
+
+
+== Notes ==
+
+
+== References ==
+
+
+== External links ==
+Efficient I/O with io_uring, in-depth description of motivation behind io_uring, interface (data structures etc.), and performance assessment
+liburing source repository
+io_uring source directory in the Linux kernel repository

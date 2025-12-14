@@ -1,0 +1,111 @@
+Filesystem in Userspace (FUSE) is a software interface for Unix and Unix-like computer operating systems that lets non-privileged users create their own file systems without editing kernel code. This is achieved by running file system code in user space while the FUSE module provides only a bridge to the actual kernel interfaces.
+FUSE is available for Linux, FreeBSD, OpenBSD, NetBSD (as puffs), OpenSolaris, Minix 3, macOS, MorphOS (as filesysbox.library), and Windows.
+FUSE is free software originally released under the terms of the GNU General Public License and the GNU Lesser General Public License.
+
+
+== History ==
+Plan 9 users have a ftpfs command that will connect to a ftp server, populate remote files in their name space, and translate 9p operations into ftp operations. This allows standard utilities (grep, sed, etc) to work directly on remote files. Since then, several implementations of ftpfs and sshfs have appeared.
+The FUSE system was originally part of AVFS (A Virtual Filesystem), a filesystem implementation heavily influenced by the translator concept of the GNU Hurd. It superseded Linux Userland Filesystem, and provided a translational interface using lufis in libfuse1.
+FUSE was originally released under the terms of the GNU General Public License and the GNU Lesser General Public License, later also reimplemented as part of the FreeBSD base system and released under the terms of Simplified BSD license. An ISC-licensed re-implementation by Sylvestre Gallon was released in March 2013, and incorporated into OpenBSD in June 2013.
+FUSE was merged into the mainstream Linux kernel tree in kernel version 2.6.14.
+The userspace side of FUSE, the libfuse library, generally followed the pace of Linux kernel development while maintaining "best effort" compatibility with BSD descendants. This is possible because the kernel FUSE reports its own "feature levels", or versions. The exception is the FUSE fork for macOS, OSXFUSE, which has too many differences for sharing a library. A break in libfuse history is libfuse3, which includes some incompatible improvements in the interface and performance, compared to the older libfuse2 now under maintenance mode.
+As the kernel-userspace protocol of FUSE is versioned and public, a programmer can choose to use a different piece of code in place of libfuse and still communicate with the kernel's FUSE facilities. On the other hand, libfuse and its many ports provide a portable high-level interface that may be implemented on a system without a "FUSE" facility.
+
+
+=== Ports, forks and reimplementations ===
+The version of FUSE for Mac OS X has too many differences for sharing the same library as regular libfuse systems. It was started as Google's MacFUSE in 2009 and forked as OSXFUSE in 2011 by Benjamin Fleischer. OSXFUSE was rebranded as macFUSE in 2020 following the rebrand of Mac OS X to macOS. The modern macFUSE consists of a closed-source kernel extension and three open-source userspace libraries: a fork of libfuse2, a fork of libfuse3 and an Objective-C framework for accessing macFUSE-specific functionality. The last fully open-source release was OSXFUSE 3.8.3 of 2018.
+WinFsp is a userspace filesystem driver interface for Windows released under GPLv3. It implements the libfuse2 and libfuse3 C APIs in addition to its own APIs for C and .NET.
+OpenHarmony uses a fork of libfuse3 as a "third-party component" with minimal modification. It is unclear whether this inclusion is only for the Linux kernal-based branches of OpenHarmony (which would be trivial) or also for their custom LiteOS and UniProton kernels.
+
+
+== Operation and usage ==
+
+To implement a new file system, a handler program linked to the supplied libfuse library needs to be written. The main purpose of this program is to specify how the file system is to respond to read/write/stat requests. The program is also used to mount the new file system. At the time the file system is mounted, the handler is registered with the kernel. If a user now issues read/write/stat requests for this newly mounted file system, the kernel forwards these IO-requests to the handler and then sends the handler's response back to the user.
+
+FUSE is particularly useful for writing virtual file systems. Unlike traditional file systems that essentially work with data on mass storage, virtual filesystems don't actually store data themselves. They act as a view or translation of an existing file system or storage device.
+In principle, any resource available to a FUSE implementation can be exported as a file system.
+The version of FUSE in Linux kernel includes various optional features that can be enabled to improve performance, including writeback (as opposed to write-through) caching and I/O passthrough.
+
+
+== Applications ==
+
+
+=== On-disk file systems ===
+Conventional on-disk file systems can be implemented in user space with FUSE, e.g. for compatibility or licensing reasons.
+
+Linear Tape File System: Allows files stored on magnetic tape to be accessed in a similar fashion to those on disk or removable flash drives.
+NTFS-3G and Captive NTFS, allowing access to NTFS filesystems.
+retro-fuse: retro-fuse is a user-space filesystem that provides a way to mount filesystems created by ancient Unix systems on modern OSes. The current version of retro-fuse supports mounting filesystems created by Fifth, Sixth and Seventh Edition of Research Unix from Bell Labs, as well as 2.9BSD and 2.11BSD based systems.
+
+
+=== Layering file systems ===
+FUSE filesystems can create a view of an underlying file system, transforming the files in some way.
+
+EncFS: Encrypted virtual filesystem
+FuseCompress, gzipfs, Fuse-ZIP, CompFUSEd: Compressed virtual filesystems
+Archive filesystems may also perform this task
+
+
+=== Archive and backup file systems ===
+FUSE filesystems can expose the contents of archives or backup sets without having to first extract them.
+
+archivemount
+Atlas (Rubrik backup software): Immutable, distributed filesystem used by Rubrik Cloud Data Management data protection applications
+Borg (backup software): Deduplicating backup program that allows backup archives to be mounted as FUSE filesystems.
+Restic: Free, fast, efficient and secure backup software uses FUSE to be able to browse all of your backup snapshots as a regular file system
+SPFS A file system for Spectrum Protect, designed to mount the backup server filespace anywhere on your server, and use the features included from the backup server (encryption, de-duplication, compression, filtering etc). This is a WORM file system.
+
+
+=== Remote/distributed file system clients ===
+CernVM-FS: A distributed read-only software distribution system, implemented as a POSIX filesystem in user space (FUSE) using HTTP transport, to deliver software in a fast and reliable fashion at global scale.
+CloudStore (formerly, Kosmos filesystem): By mounting via FUSE, existing Linux utilities can interact with CloudStore
+ExpanDrive: A commercial filesystem implementing SFTP/FTP/S3/Swift using FUSE
+FTPFS
+GlusterFS: Clustered Distributed Filesystem having ability to scale up to several petabytes.
+goofys: A FUSE filesystem that allows access to Amazon S3/Microsoft Azure storage with an emphasis on performance.
+google-drive-ocamlfuse is a FUSE filesystem for Google Drive, written in OCaml. It lets you mount your Google Drive on Linux.
+IPFS: A peer-to-peer distributed file system that seeks to connect all computing devices with the same system of files.
+JuiceFS: A distributed POSIX file system built on top of Redis and S3.
+KBFS: A distributed filesystem with end-to-end encryption and a global namespace based on Keybase.io service that uses FUSE to create cryptographically secure file mounts.
+Lustre Cluster filesystem will use FUSE to allow it to run in userspace, so that a FreeBSD port is possible. However, the ZFS-Linux port of Lustre will be running ZFS's DMU (Data Management Unit) in userspace.
+MinFS: MinFS is a fuse driver for Amazon S3 compatible object storage server. MinFS lets you mount a remote bucket (from a S3 compatible object store), as if it were a local directory.
+MooseFS: An open source distributed fault-tolerant file system available on every OS with FUSE implementation (Linux, FreeBSD, NetBSD, OpenSolaris, OS X), able to store petabytes of data spread over several servers visible as one resource.
+Nexfs: A commercial Linux file system that combines Block, File, and S3 compatible Cloud & Object storage into a single pool of POSIX compatible storage.
+ObjectiveFS: Distributed filesystem with object store backend (Amazon S3, Google Cloud Storage or S3-compatible object store) using FUSE
+Rclone can mount a variety of remote / cloud storage with FUSE.
+s3fs: Gives the ability to mount an S3 bucket as if it were a local file system.
+Sector File System: Sector is a distributed file system designed for large amount of commodity computers. Sector uses FUSE to provide a mountable local file system interface.
+SSHFS: Provides access to a remote filesystem through SSH.
+Transmit: A commercial FTP client that also adds the ability to mount WebDAV, SFTP, FTP and Amazon S3 servers as disks in Finder, via MacFUSE.
+WebDrive: A commercial filesystem implementing WebDAV, SFTP, FTP, FTPS and Amazon S3
+WikipediaFS: View and edit Wikipedia articles as if they were real files
+Wuala: Was a multi-platform, Java-based fully OS integrated distributed file system. Using FUSE, MacFUSE and CBFS Connect respectively for file system integration, in addition to a Java-based app accessible from any Java-enabled web browser (service discontinued in 2015).
+IndexFS: A remote file aggregating filesystem with transparent CURL access to distributed files.
+
+
+=== Other ===
+GVfs: The virtual filesystem for the GNOME desktop
+rvault: A secure and authenticated store for secrets and small documents using envelope encryption with one-time password (OTP) authentication. It uses FUSE to expose the vault as a file system.
+EaseFilter-Cloud-File-System: A Windows cloud file system for developers in user space, to implement the load balancing and cloud-based disaster recovery.
+	
+
+
+== See also ==
+
+PUFFS, a similar framework with FUSE compatibility
+9P (protocol)
+Installable File System
+Dokan Library FUSE Windows compatibility
+Windows Projected File System (ProjFS)
+
+
+== References ==
+
+
+== External links ==
+Official website
+Develop your own filesystem with FUSE by Sumit Singh
+List of FUSE filesystems
+Linux kernel documentation
+WinFSP, a FUSE-like system for Windows (a FUSE compatibility layer is provided for Cygwin)
+Crossmeta FUSE, Port of FUSE to Windows (commercial software)

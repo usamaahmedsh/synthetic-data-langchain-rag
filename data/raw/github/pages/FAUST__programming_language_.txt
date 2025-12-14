@@ -1,0 +1,68 @@
+FAUST (Functional AUdio STream) is a domain-specific purely functional programming language for implementing signal processing algorithms in the form of libraries, audio plug-ins, or standalone applications. A FAUST program denotes a signal processor: a mathematical function that is applied to some input signal and then fed out.
+
+
+== Overview ==
+The FAUST programming model combines a functional programming approach with a block diagram syntax:
+
+The functional programming approach provides a natural framework for signal processing. Digital signals are modeled as discrete functions of time, signal processors as second order functions that operate on them, and FAUST's block diagram composition operators, used to combine signal processors together, as third order functions, etc.
+Block diagrams, even if purely textual as in FAUST, promote a modular approach to signal processing that complies with sound engineers' and audio developers' habits.
+A FAUST program doesn't describe a sound or a group of sounds, but a signal processor. The program source is organized as a set of definitions with at least the definition of the keyword process (the equivalent of main in C):
+
+The FAUST compiler translates FAUST code into a C++ object, which may then interface with other C++ code to produce a full program.
+The generated code works at the sample level. It is therefore suited to implement low-level DSP functions like recursive filters. The code may also be embedded. It is self-contained and does not depend on any DSP library or runtime system. It has a very deterministic behavior and a constant memory size.
+The semantics of FAUST is driven to be simple and well-defined. It allows the FAUST compiler to be semantically driven. Instead of compiling a program literally, it compiles the mathematical function it denotes. This may promote component reuse. Moreover, having access to the exact semantics of a FAUST program can simplify preservation issues.
+FAUST is a textual language but block diagram oriented. It combines two approaches: functional programming and algebraic block diagrams, which are constructed via function composition. For that, FAUST relies on a block diagram algebra of five composition operations.
+
+
+== Example code ==
+FAUST programs define a process function that operates on incoming data. This is analogous to the main function in most programming languages. The following is an example that produces silence:
+
+The second example copies the input signal to the output. It involves the _ primitive that denotes the identity function for signals:
+
+Another example sums a stereo signal into a mono signal using the + primitive:
+
+Most FAUST primitives are analogous to their C counterpart on numbers, but lifted to signals. For example, the FAUST primitive sin operates on a signal X by applying the C function sin to each sample X[t]. All C numerical functions have their counterpart in FAUST.
+Some signal processing primitives are specific to FAUST. For example, the delay operator @ takes two input signals: X (the signal to be delayed) and D (the delay to be applied), and produces an output signal Y such that Y(t) = X(t − D(t)).
+
+
+== Block diagram composition ==
+Contrary to Max-like visual programming languages where the user does manual connections, FAUST primitives are assembled in block diagrams by using a set of high-level block diagram composition operations.
+
+Using the sequential composition operator : the output of + can be routed to the input of abs to compute the absolute value of the signal:
+
+Here is an example of parallel composition using the , operator that arranges its left and right expressions in parallel. This is analogous to a stereo cable.
+
+These operators can be combined arbitrarily. The following code multiplies an input signal with 0.5:
+
+The above may be rewritten in curried form:
+
+The recursive composition operator ~ can be used to create block diagrams with cycles (that include an implicit one-sample delay). Here is an example of an integrator that takes an input signal X and computes an output signal Y such that Y(t) = X(t) + Y(t−1):
+
+
+== Generating full applications ==
+Using specific architecture files, a FAUST program can be used to produce code for a variety of platforms and plug-in formats. These architecture files act as wrappers and describe the interactions with the host audio and GUI system. As of 2021, more than 30 architectures are supported and new ones may be implemented by anyone.
+
+
+== Generating block diagrams ==
+A useful option makes it possible to generate the block diagram representation of the program as one or more SVG graphic files.
+It is useful to note the difference between the block diagram and the generated C++ code. As stated, the key idea here is not to compile the block diagram literally, but the mathematical function it denotes. Modern C/C++ compilers also don't compile programs literally. But because of the complex semantics of C/C++ (due to side effects, pointer aliasing, etc.) they can't go very far in that direction. This is a distinct advantage of a purely functional language: it allows compilers to do very advanced optimisations.
+
+
+== Arrows-like semantics ==
+The Faust semantics is almost the same as that of Haskell's Arrows type class.
+However, the Arrow type class is not bound to signal processors.
+
+The Arrow combinators are more restrictive than their FAUST counterparts, e.g., the nesting of parallel composition is preserved, and inputs of the operands of &&& must match exactly.
+
+
+== Awards ==
+2022 Open Science Award for Open Source Research Software in the category "Documentation" 
+
+
+== References ==
+
+
+== External links ==
+
+Official website, online compiler, support, documentation, news, etc.
+faust on GitHub

@@ -1,0 +1,116 @@
+SPARK is a formally defined computer programming language based on the Ada programming language, intended for developing high integrity software used in systems where predictable and highly reliable operation is essential. It facilitates developing applications that demand safety, security, or business integrity.
+Originally, three versions of SPARK existed (SPARK83, SPARK95, SPARK2005), based on Ada 83, Ada 95, and Ada 2005 respectively.
+A fourth version, SPARK 2014, based on Ada 2012, was released on April 30, 2014. SPARK 2014 is a complete re-design of the language and supports verification tools.
+The SPARK language consists of a well-defined subset of the Ada language that uses contracts to describe the specification of components in a form that is suitable for both static and dynamic verification.
+In SPARK83/95/2005, the contracts are encoded in Ada comments and so are ignored by any standard Ada compiler, but are processed by the SPARK Examiner and its associated tools.
+SPARK 2014, in contrast, uses Ada 2012's built-in syntax of aspects to express contracts, bringing them into the core of the language. The main tool for SPARK 2014 (GNATprove) is based on the GNAT/GCC infrastructure, and re-uses almost all of the GNAT Ada 2012 front-end.
+
+
+== Technical overview ==
+SPARK utilises the strengths of Ada while trying to eliminate all its potential ambiguities and insecure constructs. SPARK programs are by design meant to be unambiguous, and their behavior is required to be unaffected by the choice of Ada compiler. These goals are achieved partly by omitting some of Ada's more problematic features (such as unrestricted parallel tasking) and partly by introducing contracts that encode the application designer's intentions and requirements for certain components of a program.
+The combination of these approaches allows SPARK to meet its design objectives, which are:
+
+logical soundness
+rigorous formal definition
+simple semantics
+security
+expressive power
+verifiability
+bounded resource (space and time) requirements.
+minimal runtime system requirements
+
+
+== Contract examples ==
+Consider the Ada subprogram specification below:
+
+procedure Increment (X : in out Counter_Type);
+
+In pure Ada, this might increment the variable X by one or one thousand; or it might set some global counter to X and return the original value of the counter in X; or it might do nothing with X.
+With SPARK 2014, contracts are added to the code to provide more information regarding what a subprogram actually does. For example, the above specification may be altered to say:
+
+procedure Increment (X : in out Counter_Type)
+  with Global => null,
+       Depends => (X => X);
+
+This specifies that the Increment procedure uses no (neither update nor read) global variable and that the only data item used in calculating the new value of X is X alone.
+Alternatively, the specification may be written as:
+
+procedure Increment (X : in out Counter_Type)
+  with Global  => (In_Out => Count),
+       Depends => (Count  => (Count, X),
+                   X      => null);
+
+This specifies that Increment will use the global variable Count in the same package as Increment, that the exported value of Count depends on the imported values of Count and X, and that the exported value of X does not depend on any variables at all and it will be derived from constant data only.
+If GNATprove is then run on the specification and corresponding body of a subprogram, it will analyse the body of the subprogram to build up a model of the information flow. This model is then compared against what has been specified by the annotations and any discrepancies reported to the user.
+These specifications can be further extended by asserting various properties that either need to hold when a subprogram is called (preconditions) or that will hold once execution of the subprogram has completed (postconditions). For example, if writing:
+
+procedure Increment (X : in out Counter_Type)
+  with Global  => null,
+       Depends => (X => X),
+       Pre     => X < Counter_Type'Last,
+       Post    => X = X'Old + 1;
+
+This, now, specifies not only that X is derived from itself alone, but also that before Increment is called X must be strictly less than the last possible value of its type (to ensure that the result will never overflow) and that afterward X will be equal to the initial value of X plus one.
+
+
+== Verification conditions ==
+GNATprove can also generate a set of verification conditions (VCs). These are used to establish whether certain properties hold for a given subprogram. At a minimum, GNATprove will generate VCs to establish that all run-time errors cannot occur within a subprogram, such as:
+
+array index out of range
+type range violation
+division by zero
+numerical overflow
+If a postcondition or any other assertion is added to a subprogram, GNATprove will also generate VCs that require the user to show that these properties hold for all possible paths through the subprogram.
+Under the hood, GNATprove uses the Why3 intermediate language and VC Generator, and the CVC4, Z3, and Alt-Ergo theorem provers to discharge VCs. Use of other provers (including interactive proof checkers) is also possible through other components of the Why3 toolset.
+
+
+== History ==
+The first version of SPARK (based on Ada 83) was produced at the University of Southampton (with UK Ministry of Defence sponsorship) by Bernard Carré and Trevor Jennings. The name SPARK was derived from SPADE Ada Kernel, in reference to the SPADE subset of the Pascal programming language.
+Subsequently the language was progressively extended and refined, first by Program Validation Limited and then by Praxis Critical Systems Limited. In 2004, Praxis Critical Systems Limited changed its name to Praxis High Integrity Systems Limited. In January 2010, the company became Altran Praxis.
+In early 2009, Praxis formed a partnership with AdaCore, and released SPARK Pro under the terms of the GPL. This was followed in June 2009 by the SPARK GPL Edition 2009, aimed at the free and open-source software (FOSS) and academic communities.
+In June 2010, Altran-Praxis announced that the SPARK programming language would be used in the software of US Lunar project CubeSat, expected to be completed in 2015.
+In January 2013, Altran-Praxis changed its name to Altran, which in April 2021 became Capgemini Engineering (following Altran's merger with Capgemini).
+The first Pro release of SPARK 2014 was announced on April 30, 2014, and was quickly followed by the SPARK 2014 GPL edition, aimed at the FLOSS and academic communities.
+
+
+== Industrial applications ==
+
+
+=== Safety-related systems ===
+SPARK has been used in several high profile safety-critical systems, covering commercial aviation (Rolls-Royce Trent series jet engines, the ARINC ACAMS system, the Lockheed Martin C130J), military aviation (EuroFighter Typhoon, Harrier GR9, AerMacchi M346), air-traffic management (UK NATS iFACTS system), rail (numerous signalling applications), medical (the LifeFlow ventricular assist device), and space applications (the Vermont Technical College CubeSat project).
+
+
+=== Security-related systems ===
+SPARK has also been used in secure systems development. Users include Rockwell Collins (Turnstile and SecureOne cross-domain solutions), the development of the original MULTOS CA, the NSA Tokeneer demonstrator, the secunet multi-level workstation, the Muen separation kernel and Genode block-device encrypter.
+In August 2010, Rod Chapman, principal engineer of Altran Praxis, implemented Skein, one of the SHA-3 candidates, in SPARK. After careful optimization, he managed to have the SPARK version run only about 5 to 10% slower than the C implementation. Later improvements to the Ada middle-end in GCC (implemented by Eric Botcazou of AdaCore) closed the gap, with the SPARK code matching the C in performance exactly.
+NVIDIA have also adopted SPARK for the implementation of security-critical firmware.
+In 2020, Rod Chapman re-implemented the TweetNaCl cryptographic library in SPARK 2014. The SPARK version of the library has a complete auto-active proof of type-safety, memory-safety and some correctness properties, and retains constant-time algorithms throughout. The SPARK code is also significantly faster than TweetNaCl.
+
+
+== See also ==
+
+Z notation
+Java Modeling Language
+
+
+== References ==
+
+
+== Further reading ==
+Barnes, John (2012). SPARK: The Proven Approach to High Integrity Software. Altran Praxis. ISBN 978-0-9572905-1-8. Archived from the original on 14 October 2016. Retrieved 31 December 2014.
+McCormick, John W.; Chapin, Peter C. (2015). Building High Integrity Applications with SPARK. Cambridge University Press. ISBN 978-1-107-65684-0.
+Ross, Philip E. (September 2005). "The Exterminators". IEEE Spectrum. 42 (9): 36–41. doi:10.1109/MSPEC.2005.1502527. ISSN 0018-9235. S2CID 26369398.
+
+
+== External links ==
+SPARK 2014 community site
+SPARK Pro website
+SPARK Libre (GPL) Edition website Archived 12 February 2005 at the Wayback Machine
+Altran
+Correctness by Construction: A Manifesto for High-Integrity Software Archived 30 October 2012 at the Wayback Machine
+UK's Safety-Critical Systems Club
+Comparison with a C specification language (Frama C)
+Tokeneer Project Page
+Muen Kernel Public Release
+LifeFlow LVAD Project
+VTU CubeSat Project

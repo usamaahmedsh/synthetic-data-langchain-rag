@@ -1,0 +1,117 @@
+The Address Resolution Protocol (ARP) is a communication protocol for discovering the link layer address, such as a MAC address, associated with an internet layer address, typically an IPv4 address. The protocol, part of the Internet protocol suite, was defined in 1982 by RFC 826, which is Internet Standard STD 37.
+ARP enables a host to send, for example, an IPv4 packet to another node in the local network by providing a protocol to get the MAC address associated with an IP address. The host broadcasts a request containing the target node's IP address, and the node with that IP address replies with its MAC address.
+ARP has been implemented with many combinations of network and data link layer technologies, such as IPv4, Chaosnet, DECnet and Xerox PARC Universal Packet (PUP) using IEEE 802 standards, FDDI, X.25, Frame Relay and Asynchronous Transfer Mode (ATM).
+In Internet Protocol Version 6 (IPv6) networks, the functionality of ARP is provided by the Neighbor Discovery Protocol (NDP).
+
+
+== Operating scope ==
+The Address Resolution Protocol is a request–response protocol. Its messages are directly encapsulated by a link layer protocol. It is communicated within the boundaries of a single subnetwork and is never routed.
+
+
+== Packet structure ==
+The Address Resolution Protocol uses a simple message format containing one address resolution request or response. The packets are carried at the data link layer of the underlying network as raw payload. In the case of Ethernet, a 0x0806 EtherType value is used to identify ARP frames.
+The size of the ARP message depends on the link layer and network layer address sizes. The message header specifies the types of network in use at each layer as well as the size of addresses of each. The message header is completed with the operation code for request (1) and reply (2). The payload of the packet consists of four addresses, the hardware and protocol address of the sender and receiver hosts.
+The principal packet structure of ARP packets is shown in the following table which illustrates the case of IPv4 networks running on Ethernet. In this scenario, the packet has 48-bit fields for the sender hardware address (SHA) and target hardware address (THA), and 32-bit fields for the corresponding sender and target protocol addresses (SPA and TPA). The ARP packet size in this case is 28 bytes.
+
+Hardware Type (HTYPE): 16 bits
+This field specifies the network link protocol type. In this example, a value of 1 indicates Ethernet.
+Protocol Type (PTYPE): 16 bits
+This field specifies the internetwork protocol for which the ARP request is intended. For IPv4, this has the value 0x0800. The permitted PTYPE values share a numbering space with those for EtherType.
+Hardware Length (HLEN): 8 bits
+Length (in octets) of a hardware address. For Ethernet, the address length is 6.
+Protocol Length (PLEN): 8 bits
+Length (in octets) of internetwork addresses. The internetwork protocol is specified in PTYPE. In this example: IPv4 address length is 4.
+Operation (OPER): 16 bits
+Specifies the operation that the sender is performing: 1 for request, 2 for reply.
+Sender Hardware Address (SHA): 48 bits
+Media address of the sender. In an ARP request this field is used to indicate the address of the host sending the request. In an ARP reply this field is used to indicate the address of the host that the request was looking for.
+Sender protocol address (SPA): 32 bits
+Internetwork address of the sender.
+Target hardware address (THA): 48 bits
+Media address of the intended receiver. In an ARP request this field is ignored. In an ARP reply this field is used to indicate the address of the host that originated the ARP request.
+Target protocol address (TPA): 32 bits
+Internetwork address of the intended receiver.
+ARP parameter values have been standardized and are maintained by the Internet Assigned Numbers Authority (IANA).
+The EtherType for ARP is 0x0806. This appears in the Ethernet frame header when the payload is an ARP packet and is not to be confused with PTYPE, which appears within this encapsulated ARP packet.
+
+
+== Layering ==
+ARP's placement within the Internet protocol suite and the OSI model may be a matter of confusion or even of dispute. RFC 826 places it into the link layer and characterizes it as a tool to inquire about the "higher level layer", such as the Internet layer. RFC 1122 also discusses ARP in its link layer section.
+Richard Stevens places ARP in OSI's data link layer while newer editions associate it with the network layer or introduce an intermediate OSI layer 2.5.
+
+
+== Example ==
+Two computers, A and B, are connected to the same local area network with no intervening gateway or router. A has a packet to send to IP address 192.168.0.55 which happens to be the address of B.
+Before sending the packet to B, A broadcasts an ARP request message – addressed with the broadcast MAC address FF:FF:FF:FF:FF:FF and requesting response from the node with IP address 192.168.0.55. All nodes of the network receive the message, but only B replies since it has the requested IP address. B responds with an ARP response message containing its MAC addresses which A receives. A sends the data packet on the link addressed with B's MAC address.
+Typically, a network node maintains a lookup cache that associates IP and MAC addressees. In this example, if A had the lookup cached, then it would not need to broadcast the ARP request. Also, when B received the request, it could cache the lookup to A so that if B needs to send a packet to A later, it does not need to use ARP to lookup its MAC address. Finally, when A receives the ARP response, it can cache the lookup for future messages addressed to the same IP address.
+
+
+== ARP probe ==
+An ARP probe in IPv4 is an ARP request constructed with the SHA of the probing host, an SPA of all 0s, a THA of all 0s, and a TPA set to the IPv4 address being probed for.  If some host on the network regards the IPv4 address (in the TPA) as its own, it will reply to the probe (via the SHA of the probing host) thus informing the probing host of the address conflict.  If instead there is no host which regards the IPv4 address as its own, then there will be no reply.  When several such probes have been sent, with slight delays, and none receive replies, it can reasonably be expected that no conflict exists.  As the original probe packet contains neither a valid SHA/SPA nor a valid THA/TPA pair, there is no risk of any host using the packet to update its cache with problematic data.  Before beginning to use an IPv4 address (whether received from manual configuration, DHCP, or some other means), a host implementing this specification must test to see if the address is already in use, by broadcasting ARP probe packets.
+
+
+== ARP announcements ==
+ARP may also be used as a simple announcement protocol. This is useful for updating other hosts' mappings of a hardware address when the sender's IP address or MAC address changes. Such an announcement, also called a gratuitous ARP (GARP) message, is usually broadcast as an ARP request containing the SPA in the target field (TPA=SPA), with THA set to zero. An alternative way is to broadcast an ARP reply with the sender's SHA and SPA duplicated in the target fields (TPA=SPA, THA=SHA).
+The ARP request and ARP reply announcements are both standards-based methods, but the ARP request method is preferred. Some devices may be configured for the use of either of these two types of announcements.
+An ARP announcement is not intended to solicit a reply; instead, it updates any cached entries in the ARP tables of other hosts that receive the packet. The operation code in the announcement may be either request or reply; the ARP standard specifies that the opcode is only processed after the ARP table has been updated from the address fields.
+Many operating systems issue an ARP announcement during startup. This helps to resolve problems that would otherwise occur if, for example, a network card was recently changed (changing the IP-address-to-MAC-address mapping) and other hosts still have the old mapping in their ARP caches.
+ARP announcements are also used by some network interfaces to provide load balancing for incoming traffic. In a team of network cards, it is used to announce a different MAC address within the team that should receive incoming packets.
+ARP announcements can be used in the Zeroconf protocol to allow automatic assignment of a link-local address to an interface where no other IP address configuration is available. The announcements are used to ensure an address chosen by a host is not in use by other hosts on the network link.
+This function can be dangerous from a cybersecurity viewpoint since an attacker can obtain information about the other hosts of its subnet to save in their ARP cache (ARP spoofing) an entry where the attacker MAC is associated, for instance, to the IP of the default gateway, thus allowing them to intercept all the traffic to external networks.
+
+
+== ARP mediation ==
+ARP mediation refers to the process of resolving layer-2 addresses through a virtual private wire service (VPWS) when different resolution protocols are used on the connected circuits, e.g., Ethernet on one end and Frame Relay on the other.  In IPv4, each provider edge (PE) device discovers the IP address of the locally attached customer edge (CE) device and distributes that IP address to the corresponding remote PE device.  Then each PE device responds to local ARP requests using the IP address of the remote CE device and the hardware address of the local PE device.  In IPv6, each PE device discovers the IP address of both local and remote CE devices and then intercepts local Neighbor Discovery (ND) and Inverse Neighbor Discovery (IND) packets and forwards them to the remote PE device.
+
+
+== Inverse ARP and Reverse ARP ==
+Inverse Address Resolution Protocol (Inverse ARP or InARP) is used to obtain network layer addresses (for example, IP addresses) of other nodes from data link layer (Layer 2) addresses. Since ARP translates layer-3 addresses to layer-2 addresses, InARP may be described as its inverse. In addition, InARP is implemented as a protocol extension to ARP: it uses the same packet format as ARP, but different operation codes.
+InARP is primarily used in Frame Relay (DLCI) and ATM networks, in which layer-2 addresses of virtual circuits are sometimes obtained from layer-2 signaling, and the corresponding layer-3 addresses must be available before those virtual circuits can be used.
+The Reverse Address Resolution Protocol (Reverse ARP or RARP), like InARP, translates layer-2 addresses to layer-3 addresses. However, in InARP the requesting station queries the layer-3 address of another node, whereas RARP is used to obtain the layer-3 address of the requesting station itself for address configuration purposes. RARP is obsolete; it was replaced by BOOTP, which was later superseded by the Dynamic Host Configuration Protocol (DHCP).
+
+
+== ARP spoofing and proxy ARP ==
+
+Because ARP does not provide methods for authenticating ARP replies on a network, ARP replies can come from systems other than the one with the required Layer 2 address.  An ARP proxy is a system that answers the ARP request on behalf of another system for which it will forward traffic, normally as a part of the network's design, such as for a dialup internet service. By contrast, in ARP spoofing the answering system, or spoofer, replies to a request for another system's address with the aim of intercepting data bound for that system. A malicious user may use ARP spoofing to perform a man-in-the-middle or denial-of-service attack on other users on the network. Various software exists to both detect and perform ARP spoofing attacks, though ARP itself does not provide any methods of protection from such attacks.
+
+
+== Alternatives ==
+Computers may maintain lists of known addresses, rather than using an active protocol. In this method, each computer maintains a database of the mapping of Layer 3 addresses (e.g., IP addresses) to Layer 2 addresses (e.g., Ethernet MAC addresses). This data is maintained primarily by interpreting ARP packets from the local network link. Thus, it is often called the ARP cache. Since at least the 1980s, networked computers have a utility called arp for interrogating or manipulating this database.
+Historically, other methods were used to maintain the mapping between addresses, such as static configuration files, or centrally maintained lists.
+
+
+== ARP stuffing ==
+Embedded systems such as networked cameras and networked power distribution devices, which lack a user interface, can use so-called ARP stuffing to make an initial network connection, although this is a misnomer, as ARP is not involved.
+ARP stuffing is accomplished as follows:
+
+The user's computer has an IP address stuffed manually into its address table (normally with the arp command with the MAC address taken from a label on the device)
+The computer sends special packets to the device, typically a ping packet with a non-default size.
+The device then adopts this IP address
+The user then communicates with it by telnet or web protocols to complete the configuration.
+Such devices typically have a method to disable this process once the device is operating normally, as the capability can make it vulnerable to attack.
+
+
+== Standards documents ==
+RFC 826  – "An Ethernet Address Resolution Protocol," Internet Standard 37.
+RFC 903  – "A Reverse Address Resolution Protocol," Internet Standard 38.
+RFC 2390 – "Inverse Address Resolution Protocol," Draft Standard.
+RFC 5227 – "IPv4 Address Conflict Detection," Proposed Standard.
+
+
+== See also ==
+Arping – Software utility for discovering and probing hosts on a computer network
+Arptables – Network administrator's tool
+Arpwatch – Computer networking software tool
+Bonjour Sleep Proxy – Open source component of zero configuration networking
+Cisco HDLC – Extension to the High-Level Data Link Control (HDLC) network protocol
+
+
+== References ==
+
+
+== External links ==
+
+"ARP Sequence Diagram (pdf)" (PDF). Archived from the original (PDF) on 2021-03-01.
+Gratuitous ARP
+Information and sample capture from Wireshark
+ARP-SK ARP traffic generation tools

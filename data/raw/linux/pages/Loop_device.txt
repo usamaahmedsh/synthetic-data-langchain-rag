@@ -1,0 +1,66 @@
+In Unix-like operating systems, a loop device, vnd (vnode disk), or lofi (loop file interface) is a pseudo-device that makes a computer file accessible as a block device.
+Before use, a loop device must be connected to an existent file in the file system. The association provides the user with an application programming interface (API) that allows the file to be used in place of a block special file (cf. device file system). Thus, if the file contains an entire file system, the file may then be mounted as if it were a disk device.
+Files of this kind are often used for CD ISO images and floppy disk images. Mounting a file containing a file system via such a loop mount makes the files within that file system accessible. They appear in the mount point directory.
+A loop device may allow some kind of data elaboration during this redirection. For example, the device may be the unencrypted version of an encrypted file. In such a case, the file associated with a loop device may be another pseudo-device. This is mostly useful when this device contains an encrypted file system. If supported, the loop device is in this case the decrypted version of the original encrypted file and can therefore be mounted as if it were a normal file system.
+
+
+== Uses of loop mounting ==
+After mounting a file that holds a file system, the files in that system can be accessed through the usual file system interface of the operating system, without any need for special functionality, such as reading and writing to ISO images, in applications.
+Loop mounting has several uses. It is a convenient method for managing and editing file system images offline, that are later used for normal system operation. This includes CD or DVD images or installation systems. It may be used to install an operating system onto a file system without repartitioning a disk. It also provides a permanent segregation of data, for example, when simulating removable media on a faster and more convenient hard disk or encapsulating encrypted file system.
+
+
+== Availability ==
+Various Unix-like operating systems provide the loop device functionality using different names.
+In Linux, device names are encoded in the symbol table entries of their corresponding device drivers. The device is called a "loop" device and device nodes are usually named /dev/loop0, /dev/loop1, etc. They can be created with makedev for the static device directory, dynamically by the facilities of the device file system (udev), or directly with mknod. The management user interface for the loop device is losetup, which is part of the package util-linux.
+Sometimes, the loop device is erroneously referred to as loopback device, but this term is reserved for a networking device in operating systems. The concept of the loop device is distinct.
+In BSD-derived systems, such as NetBSD and OpenBSD, the loop device is called "virtual node device" or "vnd", and generally located at /dev/vnd0, /dev/rvnd0 or /dev/svnd0, etc., in the file system. The program vnconfig is used for configuration.
+FreeBSD followed the same conventions as other BSD systems until release version 5, in which the loop device was incorporated into the memory disk driver ("md"). Configuration is now performed using the utility mdconfig.
+In Solaris/OpenSolaris, the loop device is called "loopback file interface" or lofi, and located at /dev/lofi/1, etc. SunOS has the configuration program lofiadm. lofi supports read-only compression and read-write encryption. Available is also a 3rd-party driver fbk (File emulates Blockdevice), for SunOS/Solaris since summer 1988.
+UnixWare includes a dynamically loadable device driver marry(7) and the utility marry(1M).  The marry driver allows a regular file to be treated as a device.  The regular file can be accessed through either a block device, /dev/marry/regfile, or as a character device, /dev/marry/rregfile. The command marry also supports encrypting and decrypting of the regular file.
+MacOS implements a native image mounting mechanism as part of its random access disk device abstraction. The command hdiutil attach -imagekey diskimage-class=CRawDiskImage -nomount <filename> causes a block device to appear in /dev as a regular disk device and subdevices for recognized partitions. Reads from and writes to those devices are sent to a user-mode helper process, which reads the data from the file or writes it to the file. In the user interface it is automatically activated by opening the disk image. MacOS can handle disk (.dmg or .iso), CD-ROM or DVD images in various formats.
+Loop mounting was not available on Microsoft Windows operating systems until Windows 7, where this functionality is natively implemented, and available through the diskpart utility. However, the facility is often added using third-party applications such as Daemon Tools and Alcohol 120%. Freely-available tools from VMware (Disk Mount Utility) Archived 2013-08-22 at the Wayback Machine and LTR Data (ImDisk) can also be used to achieve similar functionality. Under Windows XP and Vista it is also possible to use the virtual hard disk feature by adding some component from Microsoft Virtual Server 2005 R2.
+In A2, formerly AOS then Bluebottle, a file-based virtual disk is created with VirtualDisks.Create.  A file system can be installed in such a "disk" with VirtualDisks.Install.
+
+
+== Example ==
+Mounting a file containing a disk image on a directory requires two steps:
+
+association of the file with a loop device node,
+mounting of the loop device at a mount point directory
+These two operations can be performed either using two separate commands, or through special flags to the mount command. The first operation may be performed by programs such as losetup in Linux, or lofiadm in SunOS. As an example, if example.img is a regular file containing a file system and /home/you/dir is a Linux user's directory, the superuser (root) may mount the file on the directory by executing the following two commands:
+
+losetup /dev/loop0 example.img
+mount /dev/loop0 /home/you/dir
+
+The second command mounts the device on the directory /home/you/dir. The overall effect of executing these two commands is that the content of the file is used as a file system rooted at the mount point.
+To identify an available loop device for use in the above commands, the superuser (root) can use:
+
+losetup -f
+
+The mount utility is usually capable of handling the entire procedure:
+
+mount -o loop example.img /home/you/dir
+
+The device can then be unmounted with the following command:
+
+umount /home/you/dir
+# or, after finding the associated loop number by e.g. mount | grep "/home/you/dir" 
+# or losetup -a | grep example.img
+umount /dev/loop<N>
+
+At a lower level application programming interface (API), the association and disassociation of a file with a loop device is performed with the ioctl system call on a loop device.
+
+
+== See also ==
+Device file system
+Network block device
+cloop
+Disk image
+
+
+== References ==
+
+
+== External links ==
+Mounting a disk image using the loop device from the Bochs User Manual
+losetup(8) – Linux Administration and Privileged Commands Manual

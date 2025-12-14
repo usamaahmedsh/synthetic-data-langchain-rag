@@ -1,0 +1,271 @@
+Real-Time Messaging Protocol (RTMP) is a communication protocol for streaming audio, video, and data over the Internet. Originally developed as a proprietary protocol by Macromedia for streaming between Flash Player and the Flash Communication Server, Adobe (which acquired Macromedia) has released an incomplete version of the specification of the protocol for public use.
+The RTMP protocol has multiple variations:
+
+RTMP proper, the "plain" protocol which works on top of Transmission Control Protocol (TCP) and uses port number 1935 by default.
+RTMPS, which is RTMP over a Transport Layer Security (TLS/SSL) connection.
+RTMPE, which is RTMP encrypted using Adobe's own security mechanism. While the details of the implementation are proprietary, the mechanism uses industry standard cryptographic primitives.
+RTMPT, which is encapsulated within HTTP requests to traverse firewalls. RTMPT is frequently found utilizing cleartext requests on TCP ports 80 and 443 to bypass most corporate traffic filtering. The encapsulated session may carry plain RTMP, RTMPS, or RTMPE packets within.
+RTMFP, which is RTMP over User Datagram Protocol (UDP) instead of TCP, replacing RTMP Chunk Stream. The Secure Real-Time Media Flow Protocol suite has been developed by Adobe Systems and enables end‐users to connect and communicate directly with each other (P2P).
+E-RTMP, or Enhanced RTMP, is an enhancement to the RTMP and FLV specifications designed to improve streaming capabilities while maintaining compatibility with existing RTMP infrastructure. E-RTMP enhances RTMP by adding features such as advanced timestamp precision, multitrack capabilities, expanded codec support, FourCC signaling, and a reconnect request feature.
+While the primary motivation for RTMP was to be a protocol for playing Flash Video, it is also used in some other applications, such as the Adobe LiveCycle Data Services ES.
+
+
+== Basic operation ==
+RTMP is a TCP-based protocol which maintains persistent connections and allows low-latency communication. To deliver streams smoothly and transmit as much information as possible, it splits streams into fragments, and their size is negotiated dynamically between the client and server. Sometimes, it is kept unchanged; the default fragment sizes are 64 bytes for audio data, and 128 bytes for video data and most other data types. Fragments from different streams may then be interleaved, and multiplexed over a single connection. With longer data chunks, the protocol thus carries only a one-byte header per fragment, so incurring very little overhead. However, in practice, individual fragments are not typically interleaved. Instead, the interleaving and multiplexing is done at the packet level, with RTMP packets across several different active channels being interleaved in such a way as to ensure that each channel meets its bandwidth, latency, and other quality-of-service requirements. Packets interleaved in this fashion are treated as indivisible, and are not interleaved on the fragment level.
+The RTMP defines several virtual channels on which packets may be sent and received, and which operate independently of each other. For example, there is a channel for handling RPC requests and responses, a channel for video stream data, a channel for audio stream data, a channel for out-of-band control messages (fragment size negotiation, etc.), and so on. During a typical RTMP session, several channels may be active simultaneously at any given time. When RTMP data is encoded, a packet header is generated. The packet header specifies, amongst other matters, the ID of the channel on which it is to be sent, a timestamp of when it was generated (if necessary), and the size of the packet's payload. This header is then followed by the actual payload content of the packet, which is fragmented according to the currently agreed-upon fragment size before it is sent over the connection. The packet header itself is never fragmented, and its size does not count towards the data in the packet's first fragment. In other words, only the actual packet payload (the media data) is subject to fragmentation.
+At a higher level, the RTMP encapsulates MP3 or AAC audio and FLV1 video multimedia streams, and can make remote procedure calls (RPCs) using the Action Message Format. Any RPC services required are made asynchronously, using a single client/server request/response model, such that real-time communication is not required.
+
+
+=== Encryption ===
+RTMP sessions may be encrypted using either of two methods:
+
+Using industry standard TLS/SSL mechanisms. The underlying RTMP session is simply wrapped inside a normal TLS/SSL session.
+Using RTMPE, which wraps the RTMP session in a lighter-weight encryption layer.
+
+
+=== HTTP tunneling ===
+In RTMP Tunneled (RTMPT), RTMP data is encapsulated and exchanged via HTTP, and messages from the client (the media player, in this case) are addressed to port 80 (the default for HTTP) on the server.
+While the messages in RTMPT are larger than the equivalent non-tunneled RTMP messages due to HTTP headers, RTMPT may facilitate the use of RTMP in scenarios where the use of non-tunneled RTMP would otherwise not be possible, such as when the client is behind a firewall that blocks non-HTTP and non-HTTPS outbound traffic.
+The protocol works by sending commands through the POST URL, and AMF messages through the POST body. An example is
+
+POST /open/1 HTTP/1.1
+for a connection to be opened.
+
+
+== Specification document and patent license ==
+Adobe has released a specification for version 1.0 of the protocol, dated 21 December 2012. The web landing page leading to that specification notes that "To benefit customers who want to protect their content, the open RTMP specification does not include Adobe's unique secure RTMP measures".
+A document accompanying the Adobe specification grants "non-exclusive, royalty-free, nontransferable, non-sublicensable, personal, worldwide" patent license to all implementations of the protocol, with two restrictions: one forbids use for intercepting streaming data ("any technology that intercepts streaming video, audio and/or data content for storage in any device or medium"), and another prohibits circumvention of "technological measures for the protection of audio, video and/or data content, including any of Adobe’s secure RTMP measures".
+
+
+== Patents and related litigation ==
+Stefan Richter, author of some books on Flash, noted in 2008 that while Adobe is vague as to which patents apply to RTMP, U.S. patent 7,246,356 appears to be one of them.
+In 2011, Adobe did sue Wowza Media Systems claiming, among other things, infringement of their RTMP patents. In 2015, Adobe and Wowza announced that the lawsuits have been settled and dismissed with prejudice.
+
+
+== Packet structure ==
+
+Packets are sent over a TCP connection, which is established first between client and server. They contain a header and a body which, in the case of connection and control commands, is encoded using the Action Message Format (AMF). The header is split into the Basic Header (shown as detached from the rest, in the diagram) and Chunk Message Header. The Basic Header is the only constant part of the packet and is usually composed of a single composite byte, where the two most significant bits are the Chunk Type (fmt in the specification) and the rest form the Stream ID. Depending on the value of the former, some fields of the Message Header can be omitted, and their value derived from previous packets while depending on the value of the latter, the Basic Header can be extended with one or two extra bytes (as in the case of the diagramme that has three bytes in total (c)). If the value of the remaining six bits of the Basic Header (BH) (least significant) is 0 then the BH is two bytes and represents from Stream ID 64 to 319 (64+255); if the value is 1, then the BH is three bytes (with last two bytes encoded as 16bit Little Endian) and represents from Stream ID 64 to 65599 (64+65535); if the value is 2, then BH is one byte and is reserved for low-level protocol control messages and commands. The Chunk Message Header contains meta-data information such as the message size (measured in bytes), the Timestamp Delta and Message Type. This last value is a single byte and defines whether the packet is an audio, video, command or "low level" RTMP packet such as an RTMP Ping.
+An example is shown below as captured when a flash client executes the following code:
+
+this will generate the following Chunk:
+
+The packet starts with a Basic Header of a single byte (0x03) where the two most significant bits (b00000011) define a chunk header type of 0 while the rest (b00000011) define a Chunk Stream ID of 3. The four possible values of the header type and their significance are:
+
+b00 = 12 byte header (full header).
+b01 = 8 bytes - like type b00, not including message ID (4 last bytes).
+b10 = 4 bytes - Basic Header and timestamp (3 bytes) are included.
+b11 = 1 byte - only the Basic Header is included.
+The last type (b11) is always used in the case of aggregate messages where, in the example above, the second message will start with an id of 0xC3 (b11000011) and would mean that all Message Header fields should be derived from the message with a stream Id of 3 (which would be the message right above it). The six least significant bits that form the Stream ID can take values between 3 and 63. Some values have special meaning, like 1 that stands for an extended ID format, in which case there will be two bytes following that. A value of two is for low level messages such as Ping and Set Client Bandwidth.
+The next bytes of the RTMP Header (including the values in the example packet above) are decoded as follows:
+
+byte #1 (0x03)   = Chunk Header Type.
+byte #2–4 (0x000b68)  = Timestamp delta.
+byte #5–7 (0x000019)  = Packet Length - in this case it is 0x000019 = 25 bytes.
+byte #8 (0x14)   = Message Type ID - 0x14 (20) defines an AMF0 encoded command message.
+byte #9–12 (0x00000000)  = Message Stream ID. This is in little-endian order.
+The Message Type ID byte defines whether the packet contains audio/video data, a remote object or a command. Some possible values for are:
+
+0x01 = Set Packet Size Message.
+0x02 = Abort.
+0x03 = Acknowledge.
+0x04 = Control Message.
+0x05 = Server Bandwidth
+0x06 = Client Bandwidth.
+0x07 = Virtual Control.
+0x08 = Audio Packet.
+0x09 = Video Packet.
+0x0F = Data Extended.
+0x10 = Container Extended.
+0x11 = Command Extended (An AMF3 type command).
+0x12 = Data (Invoke (onMetaData info is sent as such)).
+0x13 = Container.
+0x14 = Command (An AMF0 type command).
+0x15 = UDP
+0x16 = Aggregate
+0x17 = Present
+Following the header, 0x02 denotes a string of size 0x000C and values 0x63 0x72 ... 0x6D ("createStream" command). Following that we have a 0x00 (number) which is the transaction id of value 2.0. The last byte is 0x05 (null) which means there are no arguments.
+
+
+=== Invoke Message Structure (0x14, 0x11) ===
+Some of the message types shown above, such as Ping and Set Client/Server Bandwidth, are considered low level RTMP protocol messages which do not use the AMF encoding format. Command messages on the other hand, whether AMF0 (Message Type of 0x14) or AMF3 (0x11), use the format and have the general form shown below:
+
+(String) <Command Name>
+(Number) <Transaction Id>
+(Mixed)  <Argument> ex. Null, String, Object: {key1:value1, key2:value2 ... }
+
+The transaction id is used for commands that can have a reply. The value can be either a string like in the example above or one or more objects, each composed of a set of key/value pairs where the keys are always encoded as strings while the values can be any AMF data type, including complex types like arrays.
+
+
+=== Control Message Structure (0x04) ===
+Control messages are not AMF encoded. They start with a stream Id of 0x02 which implies a full (type 0) header and have a message type of 0x04. The header is followed by six bytes, which are interpreted as such:
+
+#0–1 - Control Type.
+#2–3 - Second Parameter (this has meaning in specific Control Types)
+#4–5 - Third Parameter (same)
+The first two bytes of the message body define the Ping Type, which can apparently take six possible values.
+
+Type 0 - Clear Stream: Sent when the connection is established and carries no further data
+Type 1 - Clear the Buffer.
+Type 2 - Stream Dry.
+Type 3 - The client's buffer time. The third parameter holds the value in millisecond.
+Type 4 - Reset a stream.
+Type 6 - Ping the client from server. The second parameter is the current time.
+Type 7 - Pong reply from client. The second parameter is the time when the client receives the Ping.
+Type 8 - UDP Request.
+Type 9 - UDP Response.
+Type 10 - Bandwidth Limit.
+Type 11 - Bandwidth.
+Type 12 - Throttle Bandwidth.
+Type 13 - Stream Created.
+Type 14 - Stream Deleted.
+Type 15 - Set Read Access.
+Type 16 - Set Write Access.
+Type 17 - Stream Meta Request.
+Type 18 - Stream Meta Response.
+Type 19 - Get Segment Boundary.
+Type 20 - Set Segment Boundary.
+Type 21 - On Disconnect.
+Type 22 - Set Critical Link.
+Type 23 - Disconnect.
+Type 24 - Hash Update.
+Type 25 - Hash Timeout.
+Type 26 - Hash Request.
+Type 27 - Hash Response.
+Type 28 - Check Bandwidth.
+Type 29 - Set Audio Sample Access.
+Type 30 - Set Video Sample Access.
+Type 31 - Throttle Begin.
+Type 32 - Throttle End.
+Type 33 - DRM Notify.
+Type 34 - RTMFP Sync.
+Type 35 - Query IHello.
+Type 36 - Forward IHello.
+Type 37 - Redirect IHello.
+Type 38 - Notify EOF.
+Type 39 - Proxy Continue.
+Type 40 - Proxy Remove Upstream.
+Type 41 - RTMFP Set Keepalives.
+Type 46 - Segment Not Found.
+Pong is the name for a reply to a Ping, with the values used as seen above.
+
+
+=== ServerBw/ClientBw Message Structure (0x05, 0x06) ===
+This relates to messages that have to do with the client up-stream and server down-stream bit-rate. The body is composed of four bytes showing the bandwidth value, with a possible extension of one byte which sets the Limit Type. This can have one of three possible values which can be: hard, soft or dynamic (either soft or hard).
+
+
+=== Set Chunk Size (0x01) ===
+The value received in the four bytes of the body. A default value of 128 bytes exists, and the message is sent only when a change is wanted.
+
+
+== Protocol ==
+
+
+=== Handshake ===
+After establishing a TCP connection, an RTMP connection is established first, performing a handshake through the exchange of three packets from each side (also referred to as Chunks in the official documentation). These are referred in the official spec as C0-2 for the client sent packets and S0-2 for the server side respectively and are not to be confused with RTMP packets that can be exchanged only after the handshake is complete. These packets have a structure of their own and C1 contains a field setting the "epoch" timestamp, but since this can be set to zero, as is done in third party implementations, the packet can be simplified. The client initialises the connection by sending the C0 packet with a constant value of 0x03 representing the current protocol version. It follows straight with C1 without waiting for S0 to be received first which contains 1536 bytes, with the first four representing the epoch timestamp, the second four all being 0, and the rest being random (and which can be set to 0 in third party implementations). C2 and S2 are an echo of S1 and C1 respectively, except with the second four bytes being the time the respective message was received (instead of 0). After C2 and S2 are received, the handshake is considered complete.
+
+
+=== Connect ===
+At this point, the client, and server can negotiate a connection by exchanging AMF encoded messages. These include key value pairs which relate to variables that are needed for a connection to be established. An example message from the client is:
+
+The Flash Media Server and other implementations uses the concept of an "app" to conceptually define a container for audio/video and other content, implemented as a folder on the server root which contains the media files to be streamed. The first variable contains the name of this app as "sample" which is the name provided by the Wowza Server for their testing. The flashVer string is the same as returned by the Action-script getversion() function. The audioCodec and videoCodec are encoded as doubles and their meaning can be found in the original spec. The same is true for the videoFunction variable, which in this case is the self-explanatory SUPPORT_VID_CLIENT_SEEK constant. Of special interest is the objectEncoding which will define whether the rest of the communication will make use of the extended AMF3 format or not. As version 3 is the current default, the flash client has to be told explicitly in Action-script code to use AMF0 if that is requested. The server then replies with a ServerBW, a ClientBW and a SetPacketSize message sequence, finally followed by an Invoke, with an example message.
+
+Some values above are serialised into properties of a generic Action-script Object, which is then passed to the NetConnection event listener. The clientId will establish a number for the session to be started by the connection. Object encoding must match the value previously set.
+
+
+=== Play video ===
+To start a video stream, the client sends a "createStream" invocation followed by a ping message, followed by a "play" invocation with the file name as argument. The server will then reply with a series of "onStatus" commands followed by the video data as encapsulated within RTMP messages.
+After a connection is established, media is sent by encapsulating the content of FLV tags into RTMP messages of type 8 and 9 for audio and video, respectively.
+
+
+== Layered-on protocols ==
+
+
+=== HTTP tunneling (RTMPT) ===
+This refers to the HTTP tunneled version of the protocol. It communicates over port 80 and passes the AMF data inside HTTP POST request and responses. The sequence for connection is as follows:
+
+The first request has an /fcs/ident2 path, and the correct reply is a 404 Not Found error. The client then sends an /open/1 request where the server must reply with a 200 ok appending a random number that will be used as the session identifier for the said communication. In this example, 1728724019 is returned in the response body.
+
+From now on, the /idle/<session id>/<sequence #> is a polling request where the session id has been generated and returned from the server and the sequence is just a number that increments by one for every request. The appropriate response is a 200 OK, with an integer returned in the body signifying the interval time. AMF data is sent through /send/<session id>/<sequence #>
+
+
+== Software implementations ==
+
+RTMP is implemented at these three stages:
+
+Live video encoder
+Live and on-demand media streaming server
+Live and on-demand client
+
+
+=== rtmpdump ===
+
+The open-source RTMP client command-line tool rtmpdump is designed to play back or save to disk the full RTMP stream, including the RTMPE protocol Adobe uses for encryption. RTMPdump runs on Linux, Android, Solaris, Mac OS X, and most other Unix-derived operating systems, as well as Microsoft Windows. Originally supporting all versions of 32-bit Windows including Windows 98, from version 2.2 the software will run only on Windows XP and above (although earlier versions remain fully functional).
+Packages of the rtmpdump suite of software are available in the major open-source repositories (Linux distributions). These include the front-end apps "rtmpdump", "rtmpsrv" and "rtmpsuck."
+Development of RTMPdump was restarted in October 2009, outside the United States, at the MPlayer site. The current version features greatly improved functionality, and has been rewritten to take advantage of the benefits of the C programming language. In particular, the main functionality was built into a library (librtmp) which can easily be used by other applications. The RTMPdump developers have also written support for librtmp for MPlayer, FFmpeg, XBMC, cURL, VLC and a number of other open source software projects. Use of librtmp provides these projects with full support of RTMP in all its variants without any additional development effort.
+
+
+=== FLVstreamer ===
+FLVstreamer is a fork of RTMPdump, without the code, which Adobe claims violates the DMCA in the USA. This was developed as a response to Adobe's attempt in 2008 to suppress RTMPdump. FLVstreamer is an RTMP client that will save a stream of audio or video content from any RTMP server to disk, if encryption (RTMPE) is not enabled on the stream.
+
+
+== Extensions ==
+The above variants are additions made on top of RTMP. However, the limited codec selections of FLV and RTMP has necessitated the industry to add things to the format and the protocol directly. 
+
+
+=== Ad hoc extension ===
+RTMP interally uses its own four-bit "codec ID" instead of standard FourCC to identify the set of codecs it supports. Audio and video codec IDs are considered to be in different namespaces, so using the same value does not cause any conflict: for example, in Adobe's baseline standard, audio codec 7 is G.711A and video codec 7 is H.264.
+In China, Kingsoft Cloud assigned H.265 to video codec "12" in 2018, a practice soon accepted by other industry players such as Bilibili. In 2020, Xia Chu of ZLMediaKit assigned Opus to audio codec 13.
+All ad hoc additions to the coded ID field have been made obsolete by E-RTMP. E-RTMP does not reuse the IDs 12 and 13, making it compatible with the Chinese ad hoc extensions.
+
+
+=== Enhanced RTMP ===
+Enhanced RTMP (E-RTMP) is an enhancement to the Real-Time Messaging Protocol (RTMP) and FLV specifications, modernizing streaming workflows while maintaining compatibility with existing RTMP infrastructure. Developed as an open specification, E-RTMP was published by the Veovera Software Organization, with contributions from Adobe, Google, Twitch, and others. 
+Enhancements introduced in E-RTMP include:
+
+New FLV audio and video header formats, which is signaled using reserved parts of the original header formats.
+The old headers used four-bit integers to identify codec types, which limited extensibility. The new format uses FourCC numbers to identify new codecs. Standard choices include  AC-3, E-AC-3, Opus, FLAC for audio and VP8, VP9, HEVC, and AV1 with HDR capabilities for video, though any codec with an agreed-upon FourCC identifier can be used.
+The new headers include nanosecond-level timestamps for better synchronization with modern media formats.
+The new headers include the ability to describe a multitrack configuration, allowing simultaneous audio, video, and metadata processing within a single stream.
+The new audio header can describe multichannel audio configurations, which is more flexible.
+The new video header uses packet-types instead of frame-types. One of these types, VideoPacketType.Metadata, allows writing any video-metadata in Action Message Format (AMF). (AMF is used in the original RTMP on the protocol-messaging layer, not as part of the FLV video stream.)
+Advertisement of new codecs capabilities in FourCC format.
+New fields for onMetaData, an existing metadata mechanism in RTMP (the existing use of AMF).
+A reconnect request feature to improve connection stability and resilience in streaming workflows.
+E-RTMP enhances RTMP’s capabilities while ensuring interoperability with existing RTMP implementations. For example, a legacy decoder would not know how to decode frames containing reserved ("new") headers, but it would still be able to forward it properly.
+Because many changes in E-RTMP are made to the FLV format layer, E-RTMP also includes an extension to the FLV file format that can be used independently of E-RTMP. ffmpeg calls this format "enhanced FLV".
+
+
+==== Implementations ====
+Producers:
+
+ffmpeg (since 6.1)
+OBS Studio 29.1
+Ant Media Server
+Ingesters:
+
+YouTube (Beta, same ingest parameters as h264)
+Twitch
+Ingesters, Enhanced-FLV only:
+
+e-flv-js, Veovera's fork of flv-js (originally from Bilibili). The author of flv-js also has his own fork mpegts.js with some Enhanced-FLV support.
+
+
+== See also ==
+
+Secure Reliable Transport (SRT)
+Reliable Internet Stream Transport (RIST)
+WebRTC
+Protected Streaming Info about RTMPS and RTMPE
+Video on Demand (VoD)
+Media Source Extensions (MSE)
+WebSocket
+
+
+== References ==
+
+
+== External links ==
+Adobe Developer page - RTMP - official specification
+Send an RTMP Stream to Wowza Streaming Cloud With OBS Studio
+Open Broadcaster Software : Streaming with SRT or RIST Protocols
+Enhanced RTMP (V2)

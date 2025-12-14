@@ -1,0 +1,173 @@
+Modula-3 is a programming language conceived as a successor to an upgraded version of Modula-2 known as Modula-2+. It has been influential in research circles (influencing the designs of languages such as Java, C#, Python and Nim), but it has not been adopted widely in industry. It was designed by Luca Cardelli, James Donahue, Lucille Glassman, Mick Jordan (before at the Olivetti Software Technology Laboratory), Bill Kalsow and Greg Nelson at the Digital Equipment Corporation (DEC) Systems Research Center (SRC) and the Olivetti Research Center (ORC) in the late 1980s.
+Modula-3's main features are modularity, simplicity and safety while preserving the power of a systems-programming language. Modula-3 aimed to continue the Pascal tradition of type safety, while introducing new constructs for practical real-world programming. In particular Modula-3 added support for generic programming (similar to templates), multithreading, exception handling, garbage collection, object-oriented programming, partial revelation, and explicit marking of unsafe code. The design goal of Modula-3 was a language that implements the most important features of modern imperative programming languages in quite basic forms. Thus allegedly dangerous and complicating features such as multiple inheritance and operator overloading were omitted.
+
+
+== Historical development ==
+The Modula-3 project started in November 1986 when Maurice Wilkes wrote to Niklaus Wirth with some ideas for a new version of Modula. Wilkes had been working at DEC just prior to this point, and had returned to England and joined Olivetti's Research Strategy Board. Wirth had already moved on to Oberon, but had no problems with Wilkes's team continuing development under the Modula name. The language definition was completed in August 1988, and an updated version in January 1989. Compilers from DEC and Olivetti soon followed, and 3rd party implementations after that.
+Its design was heavily influenced by work on the Modula-2+ language in use at SRC and at the Acorn Computers Research Center (ARC, later ORC when Olivetti acquired Acorn) at the time, which was the language in which the operating system for the DEC Firefly multiprocessor VAX workstation was written and in which the Acorn Compiler for Acorn C and Modula Execution Library (CAMEL) at ARC for the ARX operating system project of ARM based Acorn Archimedes range of computers was written. As the revised Modula-3 Report states, the language was influenced by other languages such as Mesa, Cedar, Object Pascal, Oberon and Euclid.
+During the 1990s, Modula-3 gained considerable currency as a teaching language, but it was never widely adopted for industrial use. Contributing to this may have been the demise of DEC, a key Modula-3 supporter (especially when it ceased to maintain it effectively before DEC was sold to Compaq in 1998). In any case, in spite of Modula-3's simplicity and power, it appears that there was little demand for a procedural compiled language with restricted implementation of object-oriented programming. For a time, a commercial compiler named CM3 maintained by one of the chief implementors prior at DEC SRC who was hired before DEC being sold to Compaq, an integrated development environment (IDE) named Reactor and an extensible Java virtual machine (licensed in binary code and source code formats and buildable with Reactor) were offered by Critical Mass, Inc., but that company ceased active operations in 2000 and gave some of the source code of its products to elego Software Solutions GmbH. Modula-3 is now taught in universities mostly in comparative programming language courses, and its textbooks are out of print. Essentially the only corporate supporter of Modula-3 is elego, which inherited the sources from Critical Mass and has since made several releases of the CM3 system in source and binary code. The Reactor IDE has been open source released after several years it had not, with the new name CM3-IDE. In March 2002, elego also took over the repository of another active Modula-3 distribution, PM3, until then maintained at the École Polytechnique de Montréal but which later continued by the work on HM3 improved over the years later until it was obsoleted.
+
+
+== Syntax ==
+
+A common example of a language's syntax is the "Hello, World!" program.
+
+All programs in Modula-3 have at least a module file, while most also include an interface file that is used by clients to access data from the module. As in some other languages, a Modula-3 program must export a Main module, which can either be a file named Main.m3, or a file can call EXPORT to export the Main module.  Module file names are advised to be the same as the name in source code. If they differ, the compiler only emits a warning.
+Other conventions in the syntax include naming the exported type of an interface T, since types are usually qualified by their full names, so a type T inside a module named Foo will be named Foo.T. This aids in readability. Another similar convention is naming a public object Public as in the OOP examples below.
+
+
+== Language features ==
+
+
+=== Modularity ===
+First and foremost, all compiled units are either INTERFACE or implementation MODULEs, of one flavor or another. An interface compiled unit, starting with the keyword INTERFACE, defines constants, types, variables, exceptions, and procedures. The implementation module, starting with the keyword MODULE, provides the code, and any further constants, types, or variables needed to implement the interface. By default, an implementation module will implement the interface of the same name, but a module may explicitly EXPORT to a module not of the same name. For example, the main program exports an implementation module for the Main interface.
+
+Any compiled unit may IMPORT other interfaces, although circular imports are forbidden. This may be resolved by doing the import from the implementation MODULE. The entities within the imported module may be imported, instead of only the module name, using the FROM Module IMPORT Item [, Item]* syntax:
+
+Typically, one only imports the interface, and uses the 'dot' notation to access the items within the interface (similar to accessing the fields within a record). A typical use is to define one data structure (record or object) per interface along with any support procedures. Here the main type will get the name 'T', and one uses as in MyModule.T.
+In the event of a name collision between an imported module and other entity within the module, the reserved word
+AS can be used as in IMPORT CollidingModule AS X;
+
+
+=== Safe vs unsafe ===
+Some ability is deemed unsafe, where the compiler can no longer guarantee that results will be consistent; for example, when interfacing to the C language. The keyword UNSAFE prefixed in front of INTERFACE or MODULE, may be used to tell the compiler to enable certain low level features of the language. For example, an unsafe operation is bypassing the type system using LOOPHOLE to copy the bits of an integer into a floating point REAL number.
+An interface that imports an unsafe module must also be unsafe. A safe interface may be exported by an unsafe implementation module. This is the typical use when interfacing to external libraries, where two interfaces are built: one unsafe, the other safe.
+
+
+=== Generics ===
+A generic interface and its corresponding generic module, 
+prefix the INTERFACE or MODULE keyword with GENERIC, and take as formal arguments other interfaces. Thus (like C++ templates) one can easily define and use abstract data types, but unlike C++, the granularity is at the module level. An interface is passed to the generic interface and implementation modules as arguments, and the compiler will generate concrete modules.
+For example, one could define a GenericStack, then instantiate it with interfaces such as IntegerElem, or RealElem, or even interfaces to Objects, as long as each of those interfaces defines the properties needed by the generic modules.
+The bare types INTEGER, or REAL can't be used, because they are not modules, and the system of generics is based on using modules as arguments. By comparison, in a C++ template, a bare type would be used.
+FILE: IntegerElem.i3
+
+FILE: GenericStack.ig
+
+FILE: GenericStack.mg
+
+FILE: IntegerStack.i3
+
+FILE: IntegerStack.m3
+
+
+=== Traceability ===
+Any identifier can be traced back to where it originated, unlike the 'include' feature of other languages. A compiled unit must import identifiers from other compiled units, using an IMPORT statement. Even enumerations make use of the same 'dot' notation as used when accessing a field of a record.
+
+
+=== Dynamic allocation ===
+Modula-3 supports the allocation of data at runtime. There are two kinds of memory that can be allocated, TRACED and UNTRACED, the difference being whether the garbage collector can see it or not. NEW() is used to allocate data of either of these classes of memory. In an UNSAFE module, DISPOSE is available to free untraced memory.
+
+
+=== Object-oriented ===
+Object-oriented programming techniques may be used in Modula-3, but their use is not a requirement. Many of the other features provided in Modula-3 (modules, generics) can usually take the place of object-orientation.
+Object support is intentionally kept to its simplest terms. An object type (termed a "class" in other object-oriented languages) is introduced with the OBJECT declaration, which has essentially the same syntax as a RECORD declaration, although an object type is a reference type, whereas RECORDs in Modula-3 are not (similar to structs in C). Exported types are usually named T by convention, and create a separate "Public" type to expose the methods and data. For example:
+
+This defines an interface Person with two types, T, and Public, which is defined as an object with two methods, getAge() and init(). T is defined as a subtype of Public by the use of the <: operator.
+To create a new Person.T object, use the built in procedure NEW with the method init() as 
+
+
+=== Revelation ===
+Modula-3's REVEAL construct provides a conceptually simple and clean yet very powerful mechanism for hiding implementation details from clients, with arbitrarily many levels of friendliness. A full revelation of the form REVEAL T = V can be used to show the full implementation of the Person interface from above. A partial revelation of the form REVEAL T <: V merely reveals that T is a supertype of V without revealing any additional information on T.
+
+Note the use of the BRANDED keyword, which "brands" objects to make them unique as to avoid structural equivalence. BRANDED can also take a string as an argument, but when omitted, a unique string is generated for you.
+Modula-3 is one of a few programming languages which requires external references from a module to be strictly qualified. That is, a reference in module A to the object x exported from module B must take the form B.x. In Modula-3, it is impossible to import all exported names from a module.
+Because of the language's requirements on name qualification and method overriding, it is impossible to break a working program simply by adding new declarations to an interface (any interface). This makes it possible for large programs to be edited concurrently by many programmers with no worries about naming conflicts; and it also makes it possible to edit core language libraries with the firm knowledge that no extant program will be broken in the process.
+
+
+=== Exceptions ===
+Exception handling is based on a TRY...EXCEPT block system, which has since become common.  One feature that has not been adopted in other languages, with the notable exceptions of Delphi, Python[1], Scala[2] and Visual Basic.NET, is that the EXCEPT construct defined a form of switch statement with each possible exception as a case in its own EXCEPT clause. Modula-3 also supports a LOOP...EXIT...END construct that loops until an EXIT occurs, a structure equivalent to a simple loop inside a TRY...EXCEPT clause.
+
+
+=== Multi-threaded ===
+The language supports the use of multi-threading, and synchronization between threads.
+There is a standard module within the runtime library (m3core) named Thread, which supports the use of multi-threaded applications. The Modula-3 runtime may make use of a separate thread for internal tasks such as garbage collection.
+A built-in data structure MUTEX is used to synchronize multiple threads and protect data structures from simultaneous access with possible corruption or race conditions. The LOCK statement introduces a block in which the mutex is locked. Unlocking a MUTEX is implicit by the code execution locus's leaving the block. The MUTEX is an object, and as such, other objects may be derived from it.
+For example, in the input/output (I/O) section of the library libm3, readers and writers (Rd.T, and Wr.T) are derived from MUTEX, and they lock themselves before accessing or modifying any internal data such as buffers.
+
+
+=== Summary ===
+In summary, the language features:
+
+Modules and interfaces
+Explicit marking of unsafe code
+Generics
+Automatic garbage collection
+Strong typing, structural equivalence of types
+Objects
+Exceptions
+Threads
+In Systems Programming with Modula-3, four essential points of the language design are intensively discussed. These topics are: structural vs. name equivalence, subtyping rules, generic modules, and parameter modes like READONLY.
+
+
+== Standard library features ==
+Continuing a trend started with the C language, many of the features needed to write real programs were left out of the language definition and instead provided via a standard library set. Most of the interfaces below are described in detail in
+Standard libraries providing the following features. These are called standard interfaces and are required (must be provided) in the language.
+
+Text: Operations on immutable string references, called TEXTs
+Thread: Operations relating to threading, including MUTEX, condition variable, and thread pausing.  The threading library provides pre-emptive threads switching
+Word: Bitwise operations on unsigned integers (or machine words). Normally implemented directly by the compiler
+Floating-point interfaces
+Some recommended interfaces implemented in the available implementations but are not required
+
+Lex: For parsing number and other data
+Fmt: Formatting various datatypes for printing
+Pkl (or Pickle): Object serialization of any reference types reachable by the garbage collector
+Table: Generic modules for maps
+As in C, I/O is also provided via libraries, in Modula-3 called Rd and Wr. The object-oriented design of the Rd (readers) and Wr (writers) libraries is covered in detail in the book by Greg Nelson. An interesting aspect of Modula-3 is that it is one of few programming languages which standard libraries have been formally verified not to contain various types of bugs, including locking bugs. This was done under the auspices of the Larch/Modula-3 (see Larch family) and Extended static checking projects at DEC Systems Research Center.
+
+
+== Implementations ==
+Several compilers are available, most of them open source.
+
+DEC-SRC M3, the original.
+Olivetti Research Center (ORC) Modula-3 toolkit, originally a compiler, now available as a library for syntactic, lexical and semantic analysis of Modula-3 programs.
+Critical Mass CM3, a different successor of DEC-SRC M3
+Polytechnique Montreal Modula-3 PM3, a successor of DEC-SRC M3, currently merging with CM3
+EzM3, an independent lightweight and easily portable implementation, developed in connection with CVSup
+HM3, a successor of the pm3-1.1.15 release of PM3, with support of native threading using NPTL
+CM3, the successor to Critical Mass CM3. Based on an old version of GCC, PM3 and CAM3 derive from SRC M3. This is the only up to date, maintained and developed implementation.
+Since the only aspect of C data structures that is missing from Modula-3 is the union type, all extant Modula-3 implementations are able to provide good binary code compatibility with C language type declarations of arrays and structs.
+
+
+== Books ==
+None of these books are still in print, although used copies are obtainable and some are partly or fully digitized, and some chapters of one have prior or posterior versions obtainable as research reports from the web.
+
+Greg Nelson, ed., Systems Programming with Modula-3 The definitive reference on the Modula-3 language with interesting articles on object-oriented systems software construction and a documentation of the discussion leading to the final features of the language. There are some formerly (see for Chapter two, for chapter four, for chapter five, for chapter six) and some posteriorly (see for Chapter one and more updated two, thus of both prior versions of language definition and, for chapter three and for chapter seven) of publishing versions of the majority of its eight chapters individually available from prior DEC Systems Research Center (SRC) as research reports for download.
+Samuel P. Harbison, Modula-3  Easy to use class textbook.
+Robert Sedgewick, Algorithms in Modula-3
+Laszlo Boszormenyi & Carsten Weich, Programming in Modula-3: An Introduction in Programming with Style
+Renzo Orsini, Agostino Cortesi Programmare in Modula-3: introduzione alla programmazione imperativa e a oggetti an Italian book of the language explaining its main features.
+
+
+== Projects using Modula-3 ==
+Software which is programmed with Modula-3 includes:
+
+The SPIN operating system
+The CVSup software repository synchronizing program
+The Obliq language, which uses Modula-3 network objects ability to migrate objects over local networks transparently, allowing a distributed ability to Modula-3 object-oriented programming paradigm. It has been used to build distributed applications, computer animations, and web programming applications in the form of scripting extension to Modula-3.
+
+
+== Influences on other programming languages ==
+Although Modula-3 did not gain mainstream status, several parts of the DEC-SRC M3 distribution did. Probably the most influential part was the Network Objects library, which formed the basis for Java's first Remote Method Invocation (RMI) implementation, including the network protocol. Only when Sun moved from the Common Object Request Broker Architecture (CORBA) standard to the IIOP based protocol was it dropped. The Java documentation on garbage collection of remote objects still refer to the pioneering work done for Modula-3 Network Objects.  Python's implementation of classes was also inspired by the class mechanism found in C++ and Modula-3.
+Also the language Nim makes use of some aspects of Modula-3, such as traced vs untraced pointers.
+
+
+== References ==
+
+
+== External links ==
+Official website
+Modula3 on GitHub
+CM3 Implementation Website
+Modula-3 Home Page (now long dead, mirror)
+Modula-3: Language definition
+elego Software Solutions
+Modula-3 newsgroup, mostly deserted
+Modula-3 Development Mailing List, active
+Notes from Caltech's CS2 class, taught in Modula-3 in 2002 and 2003
+Caltech's CS3 class 2009 at the Wayback Machine (archived May 23, 2013)
+mirror Programming in Modula-3: program examples
+Building Distributed OO Applications: Modula-3 Objects at Work. Michel R. Dagenais. Draft Version (January 1997)
+Modula-3: Language, Libraries and Tools. Presentation on Modula-3 over 120 slides. Michael R. Dagenais, dead
+Object-Oriented Data Abstraction in Modula-3. Joseph Bergin (1997)
+Computerworld Interview with Luca Cardelli on Modula-3

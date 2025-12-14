@@ -1,0 +1,103 @@
+A port scanner is an application designed to probe a server or host for open ports. Such an application may be used by administrators to verify security policies of their networks and by attackers to identify network services running on a host and exploit vulnerabilities.
+A port scan or portscan is a process that sends client requests to a range of server port addresses on a host, with the goal of finding an active port; this is not a nefarious process in and of itself. The majority of uses of a port scan are not attacks, but rather simple probes to determine services available on a remote machine.
+To portsweep is to scan multiple hosts for a specific listening port.  The latter is typically used to search for a specific service,  for example, an SQL-based computer worm may portsweep looking for hosts listening on TCP port 1433.
+
+
+== TCP/IP basics ==
+The design and operation of the Internet is based on the Internet Protocol Suite, commonly also called TCP/IP.  In this system, network services are referenced using two components: a host address and a port number.  There are 65535 distinct and usable port numbers, numbered 1 … 65535. (Port zero is not a usable port number.)  Most services use one, or at most a limited range of, port numbers.
+Some port scanners scan only the most common port numbers, or ports most commonly associated with vulnerable services, on a given host.
+The result of a scan on a port is usually generalized into one of three categories:
+
+Open or Accepted: The host sent a reply indicating that a service is listening on the port.
+Closed or Denied or Not Listening: The host sent a reply indicating that connections will be denied to the port.
+Filtered, Dropped or Blocked: There was no reply from the host.
+Open ports present two vulnerabilities of which administrators must be wary:
+
+Security and stability concerns associated with the program responsible for delivering the service - Open ports.
+Security and stability concerns associated with the operating system that is running on the host - Open or Closed ports.
+Filtered ports do not tend to present vulnerabilities.
+
+
+== Assumptions ==
+All forms of port scanning rely on the assumption that the targeted host is compliant with RFC. Although this is the case most of the time, there is still a chance a host might send back strange packets or even generate false positives when the TCP/IP stack of the host is non-RFC-compliant or has been altered. This is especially true for less common scan techniques that are OS-dependent (FIN scanning, for example). The TCP/IP stack fingerprinting method also relies on these types of different network responses from a specific stimulus to guess the type of the operating system the host is running.
+
+
+== Types of scans ==
+
+
+=== TCP scanning ===
+The simplest port scanners use the operating system's network functions and are generally the next option to go to when SYN is not a feasible option (described next). Nmap calls this mode connect scan, named after the Unix connect() system call. If a port is open, the operating system completes the TCP three-way handshake, and the port scanner immediately closes the connection to avoid performing a Denial-of-service attack. Otherwise an error code is returned. This scan mode has the advantage that the user does not require special privileges. However, using the OS network functions prevents low-level control, so this scan type is less common. This method is "noisy", particularly if it is a "portsweep": the services can log the sender IP address and Intrusion detection systems can raise an alarm.
+
+
+=== SYN scanning ===
+SYN scan is another form of TCP scanning. Rather than using the operating system's network functions, the port scanner generates raw IP packets itself, and monitors for responses. This scan type is also known as "half-open scanning", because it never actually opens a full TCP connection. The port scanner generates a SYN packet. If the target port is open, it will respond with a SYN-ACK packet. The scanner host responds with an RST packet, closing the connection before the handshake is completed. If the port is closed but unfiltered, the target will instantly respond with an RST packet.
+The use of raw networking has several advantages, giving the scanner full control of the packets sent and the timeout for responses, and allowing detailed reporting of the responses. There is debate over which scan is less intrusive on the target host. SYN scan has the advantage that the individual services never actually receive a connection. However, the RST during the handshake can cause problems for some network stacks, in particular simple devices like printers. There are no conclusive arguments either way.
+
+
+=== UDP scanning ===
+UDP scanning is also possible, although there are technical challenges. UDP is a connectionless protocol so there is no equivalent to a TCP SYN packet. However, if a UDP packet is sent to a port that is not open, the system will respond with an ICMP port unreachable message. Most UDP port scanners use this scanning method, and use the absence of a response to infer that a port is open. However, if a port is blocked by a firewall, this method will falsely report that the port is open. If the port unreachable message is blocked, all ports will appear open. This method is also affected by ICMP rate limiting.
+An alternative approach is to send application-specific UDP packets, hoping to generate an application layer response. For example, sending a DNS query to port 53 will result in a response, if a DNS server is present. This method is much more reliable at identifying open ports. However, it is limited to scanning ports for which an application specific probe packet is available. Some tools (e.g., Nmap, Unionscan) generally have probes for less than 20 UDP services, while some commercial tools have as many as 70. In some cases, a service may be listening on the port, but configured not to respond to the particular probe packet.
+
+
+=== ACK scanning ===
+ACK scanning is one of the more unusual scan types, as it does not exactly determine whether the port is open or closed, but whether the port is filtered or unfiltered. This is especially good when attempting to probe for the existence of a firewall and its rulesets. Simple packet filtering will allow established connections (packets with the ACK bit set), whereas a more sophisticated stateful firewall might not.
+
+
+=== Window scanning ===
+Rarely used because of its outdated nature, window scanning is fairly untrustworthy in determining whether a port is opened or closed. It generates the same packet as an ACK scan, but checks whether the window field of the packet has been modified. When the packet reaches its destination, a design flaw attempts to create a window size for the packet if the port is open, flagging the window field of the packet with 1's before it returns to the sender. Using this scanning technique with systems that no longer support this implementation returns 0's for the window field, labeling open ports as closed.
+
+
+=== FIN scanning ===
+Since SYN scans are not surreptitious enough, firewalls are, in general, scanning for and blocking packets in the form of SYN packets. FIN packets can bypass firewalls without modification. Closed ports reply to a FIN packet with the appropriate RST packet, whereas open ports ignore the packet on hand. This is typical behavior due to the nature of TCP, and is in some ways an inescapable downfall.
+
+
+=== Other scan types ===
+Some more unusual scan types exist. These have various limitations and are not widely used. Nmap supports most of these.
+
+X-mas and Null Scan - are similar to FIN scanning, but:
+X-mas sends packets with FIN, URG and PUSH flags turned on like a Christmas tree
+Null sends a packet with no TCP flags set
+Protocol scan - determines what IP level protocols (TCP, UDP, GRE, etc.) are enabled.
+Proxy scan - a proxy (SOCKS or HTTP) is used to perform the scan. The target will see the proxy's IP address as the source. This can also be done using some FTP servers.
+Idle scan - Another method of scanning without revealing one's IP address, taking advantage of the predictable IP ID flaw.
+CatSCAN - Checks ports for erroneous packets.
+ICMP scan - determines if a host responds to ICMP requests, such as echo (ping), netmask, etc.
+
+
+== Port filtering by ISPs ==
+Many Internet service providers restrict their customers' ability to perform port scans to destinations outside of their home networks.  This is usually covered in the terms of service or acceptable use policy to which the customer must agree. Some ISPs implement packet filters or transparent proxies that prevent outgoing service requests to certain ports. For example, if an ISP provides a transparent HTTP proxy on port 80, port scans of any address will appear to have port 80 open, regardless of the target host's actual configuration.
+
+
+== Security ==
+The information gathered by a port scan has many legitimate uses including network inventory and the verification of the security of a network. Port scanning can, however, also be used to compromise security. Many exploits rely upon port scans to find open ports and send specific data patterns in an attempt to trigger a condition known as a buffer overflow.  Such behavior can compromise the security of a network and the computers therein, resulting in the loss or exposure of sensitive information and the ability to do work.
+The threat level caused by a port scan can vary greatly according to the method used to scan, the kind of port scanned, its number, the value of the targeted host and the administrator who monitors the host. But a port scan is often viewed as a first step for an attack, and is therefore taken seriously because it can disclose much sensitive information about the host.
+Despite this, the probability of a port scan alone followed by a real attack is small. The probability of an attack is much higher when the port scan is associated with a vulnerability scan.
+
+
+== Legal implications ==
+Because of the inherently open and decentralized architecture of the Internet, lawmakers have struggled since its creation to define legal boundaries that permit effective prosecution of cybercriminals. Cases involving port scanning activities are an example of the difficulties encountered in judging violations. Although these cases are rare, most of the time the legal process involves proving that an intent to commit a break-in or unauthorized access existed, rather than just the performance of a port scan.
+In June 2003, an Israeli, Avi Mizrahi, was accused by the Israeli authorities of the offense of attempting the unauthorized access of computer material. He had port scanned the Mossad website. He was acquitted of all charges on February 29, 2004. The judge ruled that these kinds of actions should not be discouraged when they are performed in a positive way.
+A 17-year-old Finn was accused of attempted computer break-in by a major Finnish bank. On April 9, 2003, he was convicted of the charge by the Supreme Court of Finland and ordered to pay US$12,000 for the expense of the forensic analysis made by the bank. In 1998, he had port scanned the bank network in an attempt to access the closed network, but failed to do so.
+In 2006, the UK Parliament had voted an amendment to the Computer Misuse Act 1990 such that a person is guilty of an offence who "makes, adapts, supplies or offers to supply any article knowing that it is designed or adapted for use in the course of or in connection with an offence under section 1 or 3 [of the CMA]". Nevertheless, the area of effect of this amendment is blurred, and widely criticized by Security experts as such.
+Germany, with the Strafgesetzbuch § 202a,b,c also has a similar law, and the Council of the European Union has issued a press release stating they plan to pass a similar one too, albeit more precise.
+
+
+=== United States ===
+
+
+==== Moulton v. VC3 ====
+In December 1999, Scott Moulton was arrested by the FBI and accused of attempted computer trespassing under Georgia's Computer Systems Protection Act and Computer Fraud and Abuse Act of America. At this time, his IT service company had an ongoing contract with Cherokee County of Georgia to maintain and upgrade the 911 center security. He performed several port scans on Cherokee County servers to check their security and eventually port scanned a web server monitored by another IT company, provoking a tiff which ended up in a tribunal. He was acquitted in 2000, with judge Thomas Thrash ruling in Moulton v. VC3 (N.D. Ga. 2000) that there was no damage impairing the integrity and availability of the network.
+
+
+== See also ==
+
+Content Vectoring Protocol
+List of TCP and UDP port numbers
+Service scan
+
+
+== References ==
+
+
+== External links ==
+Teo, Lawrence (December, 2000). Network Probes Explained:  Understanding Port Scans and Ping Sweeps. Linux Journal, Retrieved September 5, 2009, from Linuxjournal.com

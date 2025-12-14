@@ -1,0 +1,91 @@
+Das U-Boot (subtitled "the Universal Boot Loader" and often shortened to U-Boot; see History for more about the name) is an open-source boot loader used in embedded devices to perform various low-level hardware initialization tasks and boot the device's operating system kernel. It is available for a number of computer architectures, including M68000, ARM, Blackfin, MicroBlaze, AArch64, MIPS, Nios II, SuperH, PPC, Power ISA, RISC-V, LoongArch and x86.
+
+
+== Functionality ==
+U-Boot is both a first-stage and second-stage bootloader. It is loaded by the system's ROM (e.g. on-chip ROM of an ARM CPU) from a supported boot device, such as an SD card, SATA drive, NOR flash (e.g. using SPI or I²C), or NAND flash. If there are size constraints, U-Boot may be split into two stages: the platform would load a small SPL (Secondary Program Loader), which is a stripped-down version of U-Boot, and the SPL would do some initial hardware configuration (e.g. DRAM initialization using CPU cache as RAM) and load the larger, fully featured version of U-Boot. Regardless of whether the SPL is used, U-Boot performs both first-stage (e.g., configuring memory controller, SDRAM, mainboard and other I/O devices) and second-stage booting (e.g., loading OS kernel and other related files from storage device).
+U-Boot implements a subset of the UEFI specification as defined in the Embedded Base Boot Requirements (EBBR) specification. UEFI binaries like GRUB or the Linux kernel can be booted via the boot manager or from the command-line interface.
+U-Boot runs a command-line interface on a console or a serial port. Using the CLI, users can load and boot a kernel, possibly changing parameters from the default. There are also commands to read device information, read and write flash memory, download files (kernels, boot images, etc.) from the serial port or network, manipulate device trees, and work with environment variables (which can be written to persistent storage, and are used to control U-Boot behavior such as the default boot command and timeout before auto-booting, as well as hardware data such as the Ethernet MAC address).
+Unlike PC bootloaders which obscure or automatically choose the memory locations of the kernel and other boot data, U-Boot requires its boot commands to explicitly specify the physical memory addresses as destinations for copying data (kernel, ramdisk, device tree, etc.) and for jumping to the kernel and as arguments for the kernel. Because U-Boot's commands are fairly low-level, it takes several steps to boot a kernel, but this also makes U-Boot more flexible than other bootloaders, since the same commands can be used for more general tasks. It's even possible to upgrade U-Boot using U-Boot, simply by reading the new bootloader from somewhere (local storage, or from the serial port or network) into memory, and writing that data to persistent storage where the bootloader belongs.
+U-Boot has support for USB, so it can use a USB keyboard to operate the console (in addition to input from the serial port), and it can access and boot from USB Mass Storage devices such as SD card readers.
+
+
+=== Data storage and boot sources ===
+U-Boot boots an operating system by reading the kernel and any other required data (e.g. device tree, ramdisk image or boot image) into memory, and then executing the kernel with the appropriate arguments.
+U-Boot's commands are actually generalized commands which can be used to read or write any arbitrary data. Using these commands, data can be read from or written to any storage system that U-Boot supports, which include:
+(Note: These are boot sources from which U-Boot is capable of loading data (e.g. a kernel or ramdisk image) into memory.  U-Boot itself must be booted by the platform, and that must be done from a device that the platform's ROM is capable of booting from, which naturally depends on the platform.)
+
+Onboard or attached storage
+SD card
+SATA
+SCSI
+I²C (e.g. EEPROMs or NOR flash)
+SPI (e.g. NOR or NAND flash)
+ONFI (raw NAND flash)
+eMMC (managed NOR or NAND flash)
+eUFS (managed NAND flash)
+NVMe
+USB mass storage device
+Serial port (file transfer)
+Kermit
+S-Record
+YMODEM
+Network boot (optionally using DHCP, BOOTP, or RARP)
+TFTP
+NFS
+On some embedded device implementations, the CPU or SoC will locate and load the bootloader (such as Das U-Boot) from the boot partition (such as ext4 or FAT filesystems) directly.
+
+
+=== Compatible file systems ===
+U-Boot does not need to be able to read a filesystem for the kernel to use it as a root filesystem or initial ramdisk; U-Boot simply provides an appropriate parameter to the kernel, and/or copies the data to memory without understanding its contents.
+However, U-Boot can also read from (and in some cases, write to) filesystems. This way, rather than requiring the data that U-Boot will load to be stored at a fixed location on the storage device, U-Boot can read the filesystem to search for and load the kernel, device tree, etc., by pathname.
+U-Boot includes support for these filesystems:
+
+
+=== Device tree ===
+
+Device tree is a data structure for describing hardware layout. Using Device tree, a vendor might be able to use a less modified mainline U-Boot on otherwise special purpose hardware. As also adopted by the Linux kernel, Device tree is intended to ameliorate the situation in the embedded industry, where a vast number of product specific forks (of U-Boot and Linux) exist. The ability to run mainline software practically gives customers indemnity against lack of vendor updates.
+
+
+== History ==
+
+The project started as a 8xx PowerPC bootloader called 8xxROM written by Magnus Damm. In October 1999 Wolfgang Denk moved the project to SourceForge.net and renamed it to PPCBoot, because SF.net did not allow project names starting with digits. Version 0.4.1 of PPCBoot was first publicly released 19 July 2000.
+In 2002 a previous version of the source code was briefly forked into a product called ARMBoot, but was merged back into the PPCBoot project shortly thereafter. On 31 October 2002 PPCBoot−2.0.0 was released. This marked the last release under the PPCBoot name, as it was renamed to reflect its ability to work on other architectures besides the PPC ISA.
+PPCBoot−2.0.0 became U−Boot−0.1.0 in November 2002, expanded to work on the x86 processor architecture. Additional architecture capabilities were added in the following months: MIPS32 in March 2003, MIPS64 in April, Nios II in October, ColdFire in December, and MicroBlaze in April 2004. The May 2004 release of U-Boot-1.1.2 worked on the products of 216 board manufacturers across the various architectures.
+The current name Das U-Boot adds a German definite article, to create a bilingual pun on the classic 1981 German submarine film Das Boot, which takes place on a World War II German U-boat . It is free software released under the terms of the GNU General Public License. It can be built on an x86 PC for any of its intended architectures using a cross development GNU toolchain, for example crosstool, the Embedded Linux Development Kit (ELDK) or OSELAS.Toolchain.
+The importance of U-Boot in embedded Linux systems is quite succinctly stated in the book Building Embedded Linux Systems, by Karim Yaghmour, whose text about U-Boot begins, "Though there are quite a few other bootloaders, 'Das U-Boot', the universal bootloader, is arguably the richest, most flexible, and most actively developed open source bootloader available."
+
+
+== Notable vulnerabilities ==
+In 2025, multiple vulnerabilities discovered in 2024 have been disclosed in U-Boot. Abusing the filesystem support feature (ext4, SquashFS) of U-Boot by manually modifying filesystem data structures, an attacker can cause an integer overflow, a stack overflow or a heap overflow. As a result, an attacker can perform an arbitrary code execution and bypass the boot chain of trust. These issues are mitigated by the version v2025.01-rc1.
+
+
+== Usages ==
+The ARM-based Chromebooks ship with U-Boot. The Celeron- and i5-based Chromebooks use it as payload for coreboot.
+The PowerPC based series of AmigaOne computers running AmigaOS use U-Boot, in particular the Sam440ep and Sam460ex by ACube Systems Srl, and the AmigaOne X5000 by A-Eon, the successor of the AmigaOne X1000.
+Ubiquiti Networks devices use U-Boot.
+Amazon Kindle and Kobo eReader devices use U-Boot as their bootloader.
+TP-Link and several other OpenWRT/LEDE compatible MIPS based wireless routers use U-Boot for bootloading.
+Teltonika cellular routers use bootloader based on U-Boot.
+SpaceX's Falcon and Dragon both use U-Boot.
+Asahi Linux uses it as payload for m1n1 to boot Linux on Apple silicon Mac.
+
+
+== See also ==
+
+Comparison of boot loaders
+RedBoot
+Coreboot
+Barebox
+
+
+== Notes ==
+
+
+== References ==
+
+
+== External links ==
+Official website 
+Official Git repository
+Barebox (formerly known as U-Boot-V2)
+ARMboot

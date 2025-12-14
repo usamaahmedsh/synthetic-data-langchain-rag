@@ -1,0 +1,308 @@
+The Quick Emulator (QEMU) is a free and open-source emulator that uses dynamic binary translation to emulate a computer's processor; that is, it translates the emulated binary codes to an equivalent binary format which is executed by the machine. It provides a variety of hardware and device models for the virtual machine, enabling it to run different guest operating systems. QEMU can be used with a Kernel-based Virtual Machine (KVM) to emulate hardware at near-native speeds. Additionally, it supports user-level processes, allowing applications compiled for one processor architecture to run on another.
+QEMU supports the emulation of x86, ARM, PowerPC, RISC-V, and other architectures.
+
+
+== Licensing ==
+QEMU is free software developed by Fabrice Bellard. Different components of QEMU are licensed under the GNU General Public License (GPL), BSD license, GNU Lesser General Public License (LGPL), or other GPL-compatible licenses.
+
+
+== Operating modes ==
+QEMU has multiple operating modes:
+
+User-mode emulation. In the user emulation mode, QEMU runs single Linux or Darwin/macOS programs that were compiled for a different instruction set. System calls are thunked for endianness and for 32/64-bit mismatches. Fast cross-compilation and cross-debugging are the main targets for user-mode emulation.
+System emulation. In the system emulation mode, QEMU emulates a full computer system, including peripherals. It can be used to provide virtual hosting of several virtual computers on a single computer. QEMU can boot many guest operating systems, including Linux, Solaris, Microsoft Windows, DOS, and BSD; it supports emulating several instruction sets, including x86, x86-64, MIPS, ARMv7, ARMv8, PowerPC, RISC-V, SPARC, ETRAX CRIS and MicroBlaze.
+Hypervisor support. In the hypervisor support mode, QEMU either acts as a Virtual Machine Manager (VMM) or as a device emulation back-end for virtual machines running under a hypervisor. The most common is Linux's KVM but the project supports a number of hypervisors including Xen, Apple's HVF, Windows' WHPX, and NetBSD's NVMM.
+
+
+== Features ==
+QEMU supports the emulation of various architectures, including x86, MIPS64 (up to Release 6), SPARC (sun4m and sun4u), ARM (Integrator/CP and Versatile/PB), SuperH, PowerPC (PReP and Power Macintosh), ETRAX CRIS, MicroBlaze, and RISC-V. It supports saving the virtual machine state while all programs are running. Guest operating systems do not need patching to run inside QEMU.
+The virtual machine can interface with many types of physical host hardware, including the user's hard disks, CD-ROM drives, network cards, audio interfaces, and USB devices. USB devices can be emulated entirely, or the host's USB devices can be used, although this requires administrator privileges and does not work with some devices.
+Virtual disk images can be stored in QCOW format, which can significantly reduce image size. QCOW images only occupy the actual used disk space, not the full configured capacity. This means a configured 120 GB disk may only occupy a few hundred megabytes on the host, as QCOW does not store unused disk space in the image file.
+The QCOW2 format also allows the creation of overlay images, which are files that store only the changes made from an original (unmodified) base image file. This enables the emulated disk's contents to be reverted to an earlier state. For instance, a base image could contain a fresh installation of a known working operating system, and overlay images can be used to record changes. Should the guest system become unusable (through virus attack, accidental system destruction, etc.), the user can delete the overlay and use an earlier emulated disk image.
+QEMU can emulate network cards (of different models) that share the host system's connectivity by translating network addresses, effectively allowing the guest to use the same network as the host. The virtual network cards can also connect to network cards of other instances of QEMU or to local TAP interfaces. Network connectivity can also be achieved by bridging a TUN/TAP interface used by QEMU with a non-virtual Ethernet interface on the host OS using the host OS's bridging features.
+QEMU integrates several services to allow the host and guest systems to communicate for example: an integrated SMB server and network-port redirection (to allow incoming connections to the virtual machine). It can also boot Linux kernels without a bootloader.
+QEMU does not depend on the presence of graphical output methods on the host system. Instead, it provides access to the guest OS screen via an integrated VNC server. It can also use an emulated serial line without any screen, with applicable operating systems.
+Simulating multiple CPUs running SMP is possible.
+QEMU does not require administrative rights to run unless additional kernel modules are used to improve speed (like KQEMU) or certain modes of its network connectivity model are utilized.
+
+
+=== Tiny Code Generator ===
+The Tiny Code Generator (TCG) aims to remove the shortcoming of relying on a particular version of GCC or any compiler, instead incorporating the compiler into other tasks performed by QEMU at run time. The whole translation task thus consists of two parts: basic blocks of target code (TBs) being rewritten in TCG ops – a kind of machine-independent intermediate notation, and subsequently this notation being compiled for the host's architecture by TCG. Optional optimization passes are performed between them, for a just-in-time compiler (JIT) mode.
+TCG requires dedicated code written to support every architecture it runs on, so that the JIT knows what to translate the TCG ops to. If no dedicated JIT code is available for the architecture, TCG falls back to a slow interpreter mode called TCG Interpreter (TCI). It also requires updating the target code to use TCG ops instead of the old DynGen ops.
+Starting with QEMU Version 0.10.0, TCG ships with the QEMU stable release. It replaces DynGen, which relied on GCC 3.x to work.
+
+
+=== Accelerator ===
+KQEMU was a Linux kernel module, also written by Fabrice Bellard, which notably sped up emulation of x86 or x86-64 guests on platforms with the same CPU architecture. This worked by running user mode code (and optionally some kernel code) directly on the host computer's CPU, and by using processor and peripheral emulation only for kernel-mode and real-mode code. KQEMU could execute code from many guest operating systems even if the host CPU did not support hardware-assisted virtualization. KQEMU was initially a closed-source product available free of charge but starting from version 1.3.0pre10 (February 2007), it was relicensed under the GNU General Public License. QEMU versions starting with 0.12.0 (as of August 2009) support large memory which makes them incompatible with KQEMU. Newer releases of QEMU have completely removed support for KQEMU.
+QVM86 was a GNU GPLv2 licensed drop-in replacement for the then closed-source KQEMU. The developers of QVM86 ceased development in January 2007.
+Kernel-based Virtual Machine (KVM) has mostly taken over as the Linux-based hardware-assisted virtualization solution for use with QEMU following the lack of support for KQEMU and QVM86. QEMU can also use KVM on other architectures like ARM and MIPS.
+Intel's Hardware Accelerated Execution Manager (HAXM) is an open-source alternative to KVM for x86-based hardware-assisted virtualization on NetBSD, Linux, Windows and macOS using Intel VT. As of 2013 Intel mostly solicits its use with QEMU for Android development. Starting with version 2.9.0, the official QEMU includes support for HAXM, under the name Hax.
+QEMU also supports the following accelerators:
+
+hvf, Apple's Hypervisor.framework based on Intel VT.
+whpx, Microsoft's Windows Hypervisor Platform based on Intel VT or AMD-V.
+tcg, QEMU's own Tiny Code Generator. This is the default.
+
+
+=== Supported disk image formats ===
+QEMU supports the following disk image formats:
+
+macOS Universal Disk Image Format (.dmg) – Read-only
+Bochs – Read-only
+Linux cloop – Read-only
+Parallels disk image (.hdd, .hds) – Read-only
+QEMU copy-on-write (.qcow2, .qed, .qcow, .cow)
+VirtualBox Virtual Disk Image (.vdi)
+Virtual PC Virtual Hard Disk (.vhd)
+Virtual VFAT
+VMware Virtual Machine Disk (.vmdk)
+Raw images (.img) that contain sector-by-sector contents of a disk
+CD/DVD images (.iso) that contain sector-by-sector contents of an optical disk (e.g. booting live OSes)
+
+
+=== QEMU Object Model ===
+The QEMU Object Model (QOM) provides a framework for registering types that users can make and instantiating objects from those types.
+QOM provides the following features:
+
+System for dynamically registering types
+Support for single-inheritance of types
+Multiple inheritances of stateless interfaces
+
+
+== Parallel emulation ==
+Virtualization solutions that use QEMU can execute multiple virtual CPUs in parallel. For user-mode emulation, QEMU maps emulated threads to host threads. QEMU can run a host thread for each emulated virtual CPU (vCPU) for full system emulation. This depends on the guest being updated to support parallel system emulation, currently ARM, Alpha, HP-PA, PowerPC, RISC-V, s390x, x86, and Xtensa. Otherwise, a single thread is used to emulate all virtual CPUs (vCPUs), which executes each vCPU in a round-robin manner.
+
+
+== Integration ==
+
+
+=== VirtualBox ===
+VirtualBox, first released in January 2007, used some of QEMU's virtual hardware devices, and had a built-in dynamic re-compiler based on QEMU. As with KQEMU, VirtualBox runs nearly all guest code natively on the host via the VMM (Virtual Machine Manager) and uses the re-compiler only as a fallback mechanism – for example, when guest code executes in real mode. In addition, VirtualBox did a lot of code analysis and patching using a built-in disassembler to minimize recompilation. VirtualBox is free and open-source (available under GPL), except for certain features.
+
+
+=== Xen-HVM ===
+Xen, a virtual machine monitor, can run in HVM (hardware virtual machine) mode, using Intel VT-x or AMD-V hardware x86 virtualization extensions and ARM Cortex-A7 and Cortex-A15 virtualization extensions. This means that instead of para-virtualized devices, a real set of virtual hardware is exposed to the DomU, enabling it to use real device drivers.
+QEMU includes several components: CPU emulators, emulated devices, generic devices, machine descriptions, user interface, and a debugger. The emulated devices and generic devices in QEMU make up its device models for I/O virtualization. They comprise a PIIX3 IDE (with some rudimentary PIIX4 capabilities), Cirrus Logic or plain VGA emulated video, RTL8139 or E1000 network emulation, and ACPI support. APIC support is provided by Xen.
+Xen-HVM utilizes device emulation based on the QEMU project to deliver I/O virtualization to virtual machines (VMs). Hardware is emulated through a QEMU "device model" daemon running as a backend in Dom0. Unlike other QEMU modes, such as dynamic translation or KVM, the hypervisor fully manages virtual CPUs, pausing them as necessary while QEMU handles memory-mapped I/O emulation.
+
+
+=== KVM ===
+KVM (Kernel-based Virtual Machine) is a FreeBSD and Linux kernel module that allows a user space program access to the hardware virtualization features of various processors, with which QEMU can offer virtualization for x86, PowerPC, and S/390 guests. When the target architecture is the same as the host architecture, QEMU can make use of KVM particular features, such as acceleration.
+
+
+=== Win4Lin Pro Desktop ===
+In early 2005, Win4Lin introduced Win4Lin Pro Desktop, based on a 'tuned' version of QEMU and KQEMU and it hosts NT-versions of Windows. In June 2006, Win4Lin released Win4Lin Virtual Desktop Server based on the same code base. Win4Lin Virtual Desktop Server serves Microsoft Windows sessions to thin clients from a Linux server.
+In September 2006, Win4Lin announced a change of the company name to Virtual Bridges with the release of Win4BSD Pro Desktop, a port of the product to FreeBSD and PC-BSD. Solaris support followed in May 2007 with the release of Win4Solaris Pro Desktop and Win4Solaris Virtual Desktop Server.
+
+
+=== SerialICE ===
+SerialICE is a QEMU-based firmware debugging tool running system firmware inside of QEMU while accessing real hardware through a serial connection to a host system. This can be used as a cheap replacement for hardware in-circuit emulators (ICE).
+
+
+=== WinUAE ===
+WinUAE introduced support for the CyberStorm PPC and Blizzard 603e boards using the QEMU PPC core in version 3.0.0.
+
+
+=== Unicorn ===
+Unicorn is a CPU emulation framework based on QEMU's "TCG" CPU emulator. Unlike QEMU, Unicorn focuses on the CPU only: no emulation of any peripherals is provided and raw binary code (outside of the context of an executable file or a system image) can be run directly. Unicorn is thread-safe and has multiple bindings and instrumentation interfaces.
+
+
+=== Limbo x86 PC Emulator ===
+Limbo is an x86 and ARM64 QEMU-based virtual machine for Android. It is one of the few pieces of virtual machine software available for Android capable of emulating Microsoft Windows, although it was designed to emulate Linux and DOS. Unlike other QEMU-based emulators, it does not require users to type commands to use, instead having a user interface to set the virtual machine's settings.
+It is more popular in developing countries in Asia such as India, Malaysia, and Thailand on YouTube due to the high usage of the Android Operating System.  Limbo was removed from the Google Play Store for unknown reasons between February 2019 and December 2020, though it can still be installed off the developer's website with an APK (Android Package) installation. Limbo tends to have issues regarding its audio quality and playback. No fixes have been found for these problems as of 2024. Overall, Limbo is less well-known than other virtual machine software, which leads to less available information regarding its troubleshooting.
+It is required to install an application known as "Hacker's Keyboard" to use many keyboard functions that a basic Android keyboard cannot do in Limbo x86, such as the Ctrl, Alt, Del, and function keys. It is recommended to install Hacker's Keyboard with an APK file, as the Google Play version says it doesn't work with newer versions of Android.
+
+
+== Emulated hardware platforms ==
+
+
+=== x86 ===
+QEMU can emulate the i386 and x86_64 architectures. Besides the central processing unit (CPU) (which is also configurable and can emulate a number of Intel CPU models including as of 3 March 2018 Sandy Bridge, Ivy Bridge, Haswell, Broadwell and Skylake), the following devices are emulated:
+
+CD/DVD-ROM drive using an ISO image
+Floppy disk drive
+ATA controller or Serial ATA AHCI controller
+Graphics card: Cirrus CLGD 5446 PCI VGA-card, Standard-VGA graphics card with Bochs-VBE, Red Hat QXL VGA
+Network card: Realtek 8139C+ PCI, NE2000 PCI, NE2000 ISA, PCnet, E1000 (PCI Intel Gigabit Ethernet) and E1000E (PCIe Intel Gigabit Ethernet)
+NVMe disk interface
+Serial port
+Parallel port
+PC speaker
+i440FX/PIIX3 or Q35/ICH9 chipsets
+PS/2 mouse and keyboard
+SCSI controller: LSI MegaRAID SAS 1078, LSI53C895A, NCR53C9x as found in the AMD PCscsi and Tekram DC-390 controllers
+Sound card: Sound Blaster 16, AudioPCI ES1370, ICH AC'97, Gravis Ultrasound, and Intel HD Audio
+Watchdog timer (Intel 6300 ESB PCI, or iB700 ISA)
+USB 1.x/2.x/3.x controllers (UHCI, EHCI, xHCI)
+USB devices: Audio, Bluetooth dongle, HID (keyboard/mouse/tablet), MTP, serial interface, CAC smartcard reader, storage (bulk-only transfer and USB Attached SCSI), Wacom tablet
+Paravirtualized VirtIO devices: block device, network card, SCSI controller, video device, serial interface, balloon driver, 9pfs filesystem driver
+Paravirtualized Xen devices: block device, network card, console, framebuffer and input device
+The BIOS implementation used by QEMU starting from version 0.12 is SeaBIOS. The VGA BIOS implementation of SeaBIOS is also used starting from version 2.0.0. The UEFI firmware for QEMU is OVMF.
+
+
+=== PowerPC ===
+
+
+==== PowerMac ====
+QEMU emulates the following PowerMac peripherals:
+
+UniNorth PCI bridge
+PCI-VGA-compatible graphics card which maps the VESA Bochs Extensions
+Two PMAC-IDE-Interfaces with hard disk and CD-ROM support.
+NE2000 PCI adapter
+Non-volatile RAM
+VIA-CUDA with ADB keyboard and mouse.
+OpenBIOS is used as the firmware.
+
+
+==== PREP ====
+QEMU emulates the following PREP peripherals:
+
+PCI bridge
+PCI VGA-compatible graphics card with VESA Bochs Extensions
+Two IDE interfaces with hard disk and CD-ROM support
+Floppy disk drive
+NE2000 network adapter
+Serial interface
+PREP non-volatile RAM
+PC-compatible keyboard and mouse
+On the PREP target, Open Hack'Ware, an Open-Firmware-compatible BIOS, is used.
+
+
+==== IBM System p ====
+QEMU can emulate the paravirtual sPAPR interface with the following peripherals:
+
+PCI bridge, for access to VirtIO devices, VGA-compatible graphics, USB, etc.
+Virtual I/O network adapter, SCSI controller, and serial interface
+sPAPR non-volatile RAM
+On the sPAPR target, another Open-Firmware-compatible BIOS is used, called SLOF.
+
+
+=== ARM ===
+
+
+==== ARM32 ====
+
+QEMU emulates the ARMv7 instruction set (and down to ARMv5TEJ) with NEON extension. It emulates full systems like Integrator/CP board, Versatile baseboard, RealView Emulation baseboard, XScale-based PDAs, Palm Tungsten|E PDA, Nokia N800 and Nokia N810 Internet tablets, etc. QEMU also powers the Android emulator which is part of the Android SDK (most current Android implementations are ARM-based). Starting from version 2.0.0 of their Bada SDK, Samsung has chosen QEMU to help development on emulated 'Wave' devices.
+In 1.5.0 and 1.6.0, Samsung Exynos 4210 (dual-core Cortex-A9) and Versatile Express ARM Cortex-A9 ARM Cortex-A15 are emulated. In 1.6.0, the 32-bit instructions of the ARMv8 (AArch64) architecture are emulated, but 64-bit instructions are unsupported.
+The Xilinx Cortex A9-based Zynq SoC includes the following components:
+
+Zynq-7000 ARM Cortex-A9 CPU
+Zynq-7000 ARM Cortex-A9 MPCore
+Triple Timer Counter
+DDR Memory Controller
+DMA Controller (PL330)
+Static Memory Controller (NAND/NOR Flash)
+SD/SDIO Peripheral Controller (SDHCI)
+Zynq Gigabit Ethernet Controller
+USB Controller (EHCI – Host support only)
+Zynq UART Controller
+SPI and QSPI Controllers
+I2C Controller
+
+
+==== ARM64 ====
+QEMU can emulate 64-bit "A-profile" CPUs that commonly run Linux such as the ARM Cortex-A53, ARM Cortex-A57 and the ARM Cortex-A72. This allows it to emulate the Raspberry Pi 3 and 4.
+
+
+=== SPARC ===
+QEMU has support for both 32- and 64-bit SPARC architectures.
+When the firmware in the JavaStation (sun4m Architecture) was updated to version 0.8.1, Proll—a PROM replacement—was replaced with OpenBIOS in version 0.8.2.
+
+
+==== SPARC32 ====
+QEMU emulates the following sun4m/sun4c/sun4d peripherals:
+
+IOMMU or IO-UNITs
+TCX Frame buffer (graphics card)
+Lance (Am7990) Ethernet
+Non-volatile RAM M48T02/M48T08
+Slave I/O: timers, interrupt controllers, Zilog serial ports, keyboard and power/reset logic
+ESP SCSI controller with hard disk and CD-ROM support
+Floppy drive (not on SS-600MP)
+CS4231 sound device (only on SS-5, not working yet)
+
+
+==== SPARC64 ====
+QEMU emulates Sun4u (UltraSPARC PC-like machine), Sun4v (T1 PC-like machine), or generic Niagara (T1) machine with the following peripherals:
+
+UltraSparc IIi APB PCI Bridge
+PCI VGA-compatible card with VESA Bochs Extensions
+PS/2 mouse and keyboard
+Non-volatile RAM M48T59
+PC-compatible serial ports
+2 PCI IDE interfaces with hard disk and CD-ROM support
+Floppy disk
+
+
+=== MicroBlaze ===
+QEMU supports the following peripherals:
+
+MicroBlaze with or without MMU, including AXI Timer and Interrupt Controller peripherals.
+AXI External Memory Controller
+AXI DMA Controller
+Xilinx AXI Ethernet
+AXI Ethernet Lite
+AXI UART 16650 and UARTLite
+AXI SPI Controller
+
+
+=== LatticeMico32 ===
+Supported peripherals:
+From the Milkymist SoC
+
+UART
+VGA
+Memory card
+Ethernet
+pfu
+timer
+
+
+=== CRIS ===
+
+
+=== OpenRISC ===
+
+
+=== Others ===
+External trees exist, supporting the following targets:
+
+Zilog Z80 emulating a 48K ZX Spectrum
+HP PA-RISC
+RISC-V
+
+
+== See also ==
+
+qcow
+Comparison of platform virtualization software
+Mtools
+OVPsim
+Q
+SIMH
+SPIM
+GXemul
+GNOME Boxes
+VirtualBox
+
+
+== References ==
+
+
+== External links ==
+
+Official website 
+QEMU documentation
+Systems emulation with QEMU an IBM developerWorks article by M. Tim Jones
+QVM86 project page
+Debian on an emulated ARM machine
+Fedora ARM port emulation with QEMU
+The Wikibook "QEMU and KVM" (in German, or computer translated to English)
+QEMU on Windows
+QEMU Binaries for Windows
+Microblaze emulation with QEMU Archived 2010-09-27 at the Wayback Machine
+UnifiedSessionsManager – An unofficial QEMU/KVM configuration file definition
+Couverture, a code coverage project based on QEMU
+UTM Virtual Machines for Mac
+UTM Virtual Machines for iOS

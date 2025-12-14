@@ -1,0 +1,1618 @@
+A capsule neural network (CapsNet) is a machine learning system that is a type of artificial neural network (ANN) that can be used to better model hierarchical relationships. The approach is an attempt to more closely mimic biological neural organization.
+The idea is to add structures called "capsules" to a convolutional neural network (CNN), and to reuse output from several of those capsules to form more stable (with respect to various perturbations) representations for higher capsules. The output is a vector consisting of the probability of an observation, and a pose for that observation. This vector is similar to what is done for example when doing classification with localization in CNNs.
+Among other benefits, capsnets address the "Picasso problem" in image recognition: images that have all the right parts but that are not in the correct spatial relationship (e.g., in a "face", the positions of the mouth and one eye are switched). For image recognition, capsnets exploit the fact that while viewpoint changes have nonlinear effects at the pixel level, they have linear effects at the part/object level. This can be compared to inverting the rendering of an object of multiple parts.
+
+
+== History ==
+In 2000, Geoffrey Hinton et al. described an imaging system that combined segmentation and recognition into a single inference process using parse trees. So-called credibility networks described the joint distribution over the latent variables and over the possible parse trees. That system proved useful on the MNIST handwritten digit database.
+A dynamic routing mechanism for capsule networks was introduced by Hinton and his team in 2017. The approach was claimed to reduce error rates on MNIST and to reduce training set sizes. Results were claimed to be considerably better than a CNN on highly overlapped digits.
+In Hinton's original idea one minicolumn would represent and detect one multidimensional entity.
+
+
+== Transformations ==
+An invariant is an object property that does not change as a result of some transformation. For example, the area of a circle does not change if the circle is shifted to the left.
+Informally, an equivariant is a property that changes predictably under transformation. For example, the center of a circle moves by the same amount as the circle when shifted.
+A nonequivariant is a property whose value does not change predictably under a transformation. For example, transforming a circle into an ellipse means that its perimeter can no longer be computed as π times the diameter.
+In computer vision, the class of an object is expected to be an invariant over many transformations. I.e., a cat is still a cat if it is shifted, turned upside down or shrunken in size. However, many other properties are instead equivariant. The volume of a cat changes when it is scaled.
+Equivariant properties such as a spatial relationship are captured in a pose, data that describes an object's translation, rotation, scale and reflection. Translation is a change in location in one or more dimensions. Rotation is a change in orientation. Scale is a change in size. Reflection is a mirror image.
+Unsupervised capsnets learn a global linear manifold between an object and its pose as a matrix of weights. In other words, capsnets can identify an object independent of its pose, rather than having to learn to recognize the object while including its spatial relationships as part of the object. In capsnets, the pose can incorporate properties other than spatial relationships, e.g., color (cats can be of various colors).
+Multiplying the object by the manifold poses the object (for an object, in space).
+
+
+== Pooling ==
+Capsnets reject the pooling layer strategy of conventional CNNs that reduces the amount of detail to be processed at the next higher layer. Pooling allows a degree of translational invariance (it can recognize the same object in a somewhat different location) and allows a larger number of feature types to be represented. Capsnet proponents argue that pooling:
+
+violates biological shape perception in that it has no intrinsic coordinate frame;
+provides invariance (discarding positional information) instead of equivariance (disentangling that information);
+ignores the linear manifold that underlies many variations among images;
+routes statically instead of communicating a potential "find" to the feature that can appreciate it;
+damages nearby feature detectors, by deleting the information they rely upon.
+
+
+== Capsules ==
+A capsule is a set of neurons that individually activate for various properties of a type of object, such as position, size and hue. Formally, a capsule is a set of neurons that collectively produce an activity vector with one element for each neuron to hold that neuron's instantiation value (e.g., hue). Graphics programs use instantiation value to draw an object. Capsnets attempt to derive these from their input. The probability of the entity's presence in a specific input is the vector's length, while the vector's orientation quantifies the capsule's properties.
+Artificial neurons traditionally output a scalar, real-valued activation that loosely represents the probability of an observation. Capsnets replace scalar-output feature detectors with vector-output capsules and max-pooling with routing-by-agreement.
+Because capsules are independent, when multiple capsules agree, the probability of correct detection is much higher. A minimal cluster of two capsules considering a six-dimensional entity would agree within 10% by chance only once in a million trials. As the number of dimensions increase, the likelihood of a chance agreement across a larger cluster with higher dimensions decreases exponentially.
+Capsules in higher layers take outputs from capsules at lower layers, and accept those whose outputs cluster. A cluster causes the higher capsule to output a high probability of observation that an entity is present and also output a high-dimensional (20-50+) pose.
+Higher-level capsules ignore outliers, concentrating on clusters. This is similar to the Hough transform, the RHT and RANSAC from classic digital image processing.
+
+
+== Routing by agreement ==
+The outputs from one capsule (child) are routed to capsules in the next layer (parent) according to the child's ability to predict the parents' outputs. Over the course of a few iterations, each parents' outputs may converge with the predictions of some children and diverge from those of others, meaning that that parent is present or absent from the scene.
+For each possible parent, each child computes a prediction vector by multiplying its output by a weight matrix (trained by backpropagation). Next the output of the parent is computed as the scalar product of a prediction with a coefficient representing the probability that this child belongs to that parent. A child whose predictions are relatively close to the resulting output successively increases the coefficient between that parent and child and decreases it for parents that it matches less well. This increases the contribution that that child makes to that parent, thus increasing the scalar product of the capsule's prediction with the parent's output. After a few iterations, the coefficients strongly connect a parent to its most likely children, indicating that the presence of the children imply the presence of the parent in the scene. The more children whose predictions are close to a parent's output, the more quickly the coefficients grow, driving convergence. The pose of the parent (reflected in its output) progressively becomes compatible with that of its children.
+The coefficients' initial logits are the log prior probabilities that a child belongs to a parent. The priors can be trained discriminatively along with the weights. The priors depend on the location and type of the child and parent capsules, but not on the current input. At each iteration, the coefficients are adjusted via a "routing" softmax so that they continue to sum to 1 (to express the probability that a given capsule is the parent of a given child.) Softmax amplifies larger values and diminishes smaller values beyond their proportion of the total. Similarly, the probability that a feature is present in the input is exaggerated by a nonlinear "squashing" function that reduces values (smaller ones drastically and larger ones such that they are less than 1).
+This dynamic routing mechanism provides the necessary deprecation of alternatives ("explaining away") that is needed for segmenting overlapped objects.
+This learned routing of signals has no clear biological equivalent. Some operations can be found in cortical layers, but they do not seem to relate this technique.
+
+
+=== Math/code ===
+The pose vector 
+  
+    
+      
+        
+          
+            u
+          
+          
+            i
+          
+        
+      
+    
+    {\textstyle \mathbf {u} _{i}}
+  
+ is rotated and translated by a matrix 
+  
+    
+      
+        
+          
+            W
+          
+          
+            i
+            j
+          
+        
+      
+    
+    {\textstyle \mathbf {W} _{ij}}
+  
+ into a vector 
+  
+    
+      
+        
+          
+            
+              
+                u
+                ^
+              
+            
+          
+          
+            j
+            
+              |
+            
+            i
+          
+        
+      
+    
+    {\textstyle \mathbf {\hat {u}} _{j|i}}
+  
+ that predicts the output of the parent capsule.
+
+  
+    
+      
+        
+          
+            
+              
+                u
+                ^
+              
+            
+          
+          
+            j
+            
+              |
+            
+            i
+          
+        
+        =
+        
+          
+            W
+          
+          
+            i
+            j
+          
+        
+        
+          
+            u
+          
+          
+            i
+          
+        
+      
+    
+    {\displaystyle \mathbf {\hat {u}} _{j|i}=\mathbf {W} _{ij}\mathbf {u} _{i}}
+  
+
+Capsules 
+  
+    
+      
+        
+          s
+          
+            j
+          
+        
+      
+    
+    {\textstyle s_{j}}
+  
+ in the next higher level are fed the sum of the predictions from all capsules in the lower layer, each with a coupling coefficient 
+  
+    
+      
+        
+          c
+          
+            i
+            j
+          
+        
+      
+    
+    {\textstyle c_{ij}}
+  
+
+  
+    
+      
+        
+          s
+          
+            j
+          
+        
+        =
+        ∑
+        
+          
+            c
+            
+              i
+              j
+            
+          
+          
+            
+              
+                
+                  u
+                  ^
+                
+              
+            
+            
+              j
+              
+                |
+              
+              i
+            
+          
+        
+      
+    
+    {\displaystyle s_{j}=\sum {c_{ij}\mathbf {\hat {u}} _{j|i}}}
+  
+
+
+==== Procedure softmax ====
+The coupling coefficients from a capsule 
+  
+    
+      
+        i
+      
+    
+    {\textstyle i}
+  
+ in layer 
+  
+    
+      
+        l
+      
+    
+    {\textstyle l}
+  
+ to all capsules in layer 
+  
+    
+      
+        l
+        +
+        1
+      
+    
+    {\textstyle l+1}
+  
+ sum to one, and are defined by a "routing softmax". The initial logits 
+  
+    
+      
+        
+          b
+          
+            i
+            j
+          
+        
+      
+    
+    {\textstyle b_{ij}}
+  
+ are prior log probabilities for the routing. That is the prior probability that capsule 
+  
+    
+      
+        i
+      
+    
+    {\textstyle i}
+  
+ in layer 
+  
+    
+      
+        l
+      
+    
+    {\textstyle l}
+  
+ should connect to capsule 
+  
+    
+      
+        j
+      
+    
+    {\textstyle j}
+  
+ in layer 
+  
+    
+      
+        l
+        +
+        1
+      
+    
+    {\textstyle l+1}
+  
+. Normalization of the coupling coefficients:
+
+  
+    
+      
+        
+          
+            
+              
+                1
+                :
+                
+                  p
+                  r
+                  o
+                  c
+                  e
+                  d
+                  u
+                  r
+                  e
+                
+                 
+                
+                  s
+                  o
+                  f
+                  t
+                  m
+                  a
+                  x
+                
+                (
+                
+                  b
+                
+                ,
+                i
+                )
+              
+            
+            
+              
+                2
+                :
+                
+                ▹
+                
+                  
+                    argument matrix
+                  
+                
+              
+            
+            
+              
+                3
+                :
+                
+                ▹
+                
+                  
+                    argument scalar
+                  
+                
+              
+            
+            
+              
+                4
+                :
+                
+                ▹
+                
+                  
+                    memorize on
+                  
+                
+                 
+                
+                  b
+                
+              
+            
+            
+              
+                5
+                :
+                
+                ▹
+                
+                  
+                    return vector
+                  
+                
+              
+            
+            
+              
+                6
+                :
+                
+                
+                  f
+                  o
+                  r
+                  e
+                  a
+                  c
+                  h
+                
+                 
+                
+                  
+                    index
+                  
+                
+                 
+                i
+                ,
+                j
+                 
+                
+                  d
+                  o
+                
+              
+            
+            
+              
+                7
+                :
+                
+                
+                  c
+                  
+                    i
+                    j
+                  
+                
+                ←
+                
+                  
+                    
+                      e
+                      
+                        
+                          b
+                          
+                            i
+                            j
+                          
+                        
+                      
+                    
+                    
+                      
+                        ∑
+                        
+                          k
+                        
+                      
+                      
+                        
+                          e
+                          
+                            
+                              b
+                              
+                                i
+                                k
+                              
+                            
+                          
+                        
+                      
+                    
+                  
+                
+              
+            
+            
+              
+                8
+                :
+                
+                
+                  r
+                  e
+                  t
+                  u
+                  r
+                  n
+                
+                 
+                
+                  
+                    c
+                  
+                  
+                    i
+                  
+                
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{array}{lcl}1:\mathbf {procedure} ~\mathrm {softmax} (\mathbf {b} ,i)\\2:\quad \triangleright {\mbox{argument matrix}}\\3:\quad \triangleright {\mbox{argument scalar}}\\4:\quad \triangleright {\mbox{memorize on}}~\mathbf {b} \\5:\quad \triangleright {\mbox{return vector}}\\6:\quad \mathbf {foreach} ~{\mbox{index}}~i,j~\mathbf {do} \\7:\qquad c_{ij}\leftarrow {\frac {e^{b_{ij}}}{\sum _{k}{e^{b_{ik}}}}}\\8:\quad \mathbf {return} ~\mathbf {c} _{i}\\\end{array}}}
+  
+
+For this procedure to be optimum it would have to memorize several values, and reset those values on each iteration. That is if the vector 
+  
+    
+      
+        
+          b
+        
+      
+    
+    {\displaystyle \mathbf {b} }
+  
+ changes, then the memorized values must be updated. It is not shown how this should be done. Neither memorizing the divisor is shown.
+
+
+==== Procedure squash ====
+Because the length of the vectors represents probabilities they should be between zero and one, and to do that a squashing function is applied:
+
+  
+    
+      
+        
+          
+            
+              
+                1
+                :
+                
+                  p
+                  r
+                  o
+                  c
+                  e
+                  d
+                  u
+                  r
+                  e
+                
+                 
+                
+                  s
+                  q
+                  u
+                  a
+                  s
+                  h
+                
+                (
+                
+                  a
+                
+                )
+              
+            
+            
+              
+                2
+                :
+                
+                ▹
+                
+                  
+                    argument vector
+                  
+                
+              
+            
+            
+              
+                2
+                :
+                
+                ▹
+                
+                  
+                    return vector
+                  
+                
+              
+            
+            
+              
+                3
+                :
+                
+                
+                  a
+                
+                ←
+                
+                  
+                    
+                      ‖
+                      
+                        a
+                      
+                      
+                        ‖
+                        
+                          2
+                        
+                      
+                    
+                    
+                      1
+                      +
+                      ‖
+                      
+                        a
+                      
+                      
+                        ‖
+                        
+                          2
+                        
+                      
+                    
+                  
+                
+                
+                  
+                    
+                      a
+                    
+                    
+                      ‖
+                      
+                        a
+                      
+                      ‖
+                    
+                  
+                
+              
+            
+            
+              
+                4
+                :
+                
+                
+                  r
+                  e
+                  t
+                  u
+                  r
+                  n
+                
+                 
+                
+                  a
+                
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{array}{lcl}1:\mathbf {procedure} ~\mathrm {squash} (\mathbf {a} )\\2:\quad \triangleright {\mbox{argument vector}}\\2:\quad \triangleright {\mbox{return vector}}\\3:\qquad \mathbf {a} \leftarrow {\frac {\|\mathbf {a} \|^{2}}{1+\|\mathbf {a} \|^{2}}}{\frac {\mathbf {a} }{\|\mathbf {a} \|}}\\4:\quad \mathbf {return} ~\mathbf {a} \\\end{array}}}
+  
+
+A vector squashed to zero has a vanishing gradient.
+
+
+==== Procedure routing ====
+One approach to routing is the following
+
+  
+    
+      
+        
+          
+            
+              
+                 
+                 
+                1
+                :
+                
+                  p
+                  r
+                  o
+                  c
+                  e
+                  d
+                  u
+                  r
+                  e
+                
+                 
+                
+                  r
+                  o
+                  u
+                  t
+                  i
+                  n
+                  g
+                
+                (
+                
+                  
+                    
+                      
+                        u
+                        ^
+                      
+                    
+                  
+                  
+                    j
+                    
+                      |
+                    
+                    i
+                  
+                
+                ,
+                r
+                ,
+                l
+                )
+              
+            
+            
+              
+                 
+                 
+                2
+                :
+                
+                ▹
+                
+                  
+                    argument vector
+                  
+                
+              
+            
+            
+              
+                 
+                 
+                3
+                :
+                
+                ▹
+                
+                  
+                    argument scalar
+                  
+                
+              
+            
+            
+              
+                 
+                 
+                4
+                :
+                
+                ▹
+                
+                  
+                    argument scalar
+                  
+                
+              
+            
+            
+              
+                 
+                 
+                5
+                :
+                
+                ▹
+                
+                  
+                    return vector
+                  
+                
+              
+            
+            
+              
+                 
+                 
+                6
+                :
+                
+                
+                  f
+                  o
+                  r
+                  e
+                  a
+                  c
+                  h
+                
+                 
+                
+                  
+                    capsule
+                  
+                
+                 
+                i
+                 
+                
+                  
+                    in layer
+                  
+                
+                 
+                l
+                ,
+                 
+                
+                  
+                    capsule
+                  
+                
+                 
+                j
+                 
+                
+                  
+                    in layer
+                  
+                
+                 
+                (
+                l
+                +
+                1
+                )
+                 
+                
+                  d
+                  o
+                
+                 
+                
+                  b
+                  
+                    i
+                    j
+                  
+                
+                ←
+                0
+              
+            
+            
+              
+                 
+                 
+                7
+                :
+                
+                
+                  f
+                  o
+                  r
+                
+                 
+                
+                  
+                    iteration
+                  
+                
+                 
+                r
+                 
+                
+                  d
+                  o
+                
+              
+            
+            
+              
+                 
+                 
+                8
+                :
+                
+                
+                  f
+                  o
+                  r
+                  e
+                  a
+                  c
+                  h
+                
+                 
+                
+                  
+                    capsule
+                  
+                
+                 
+                i
+                 
+                
+                  
+                    in layer
+                  
+                
+                 
+                l
+                 
+                
+                  d
+                  o
+                
+                 
+                
+                  
+                    c
+                  
+                  
+                    i
+                  
+                
+                ←
+                softmax
+                ⁡
+                (
+                
+                  b
+                
+                ,
+                i
+                )
+              
+            
+            
+              
+                 
+                 
+                9
+                :
+                
+                
+                  f
+                  o
+                  r
+                  e
+                  a
+                  c
+                  h
+                
+                 
+                
+                  
+                    capsule
+                  
+                
+                 
+                j
+                 
+                
+                  
+                    in layer
+                  
+                
+                 
+                (
+                l
+                +
+                1
+                )
+                 
+                
+                  d
+                  o
+                
+                 
+                
+                  
+                    s
+                  
+                  
+                    j
+                  
+                
+                ←
+                
+                  ∑
+                  
+                    i
+                  
+                
+                
+                  
+                    c
+                    
+                      i
+                      j
+                    
+                  
+                  
+                    
+                      
+                        
+                          u
+                          ^
+                        
+                      
+                    
+                    
+                      j
+                      
+                        |
+                      
+                      i
+                    
+                  
+                
+              
+            
+            
+              
+                10
+                :
+                
+                
+                  f
+                  o
+                  r
+                  e
+                  a
+                  c
+                  h
+                
+                 
+                
+                  
+                    capsule
+                  
+                
+                 
+                j
+                 
+                
+                  
+                    in layer
+                  
+                
+                 
+                (
+                l
+                +
+                1
+                )
+                 
+                
+                  d
+                  o
+                
+                 
+                
+                  
+                    v
+                  
+                  
+                    j
+                  
+                
+                ←
+                squash
+                ⁡
+                (
+                
+                  
+                    s
+                  
+                  
+                    j
+                  
+                
+                )
+              
+            
+            
+              
+                11
+                :
+                
+                
+                  f
+                  o
+                  r
+                  e
+                  a
+                  c
+                  h
+                
+                 
+                
+                  
+                    capsule
+                  
+                
+                 
+                i
+                 
+                
+                  
+                    in layer
+                  
+                
+                 
+                l
+                ,
+                 
+                j
+                 
+                
+                  
+                    in layer
+                  
+                
+                 
+                (
+                l
+                +
+                1
+                )
+                 
+                
+                  d
+                  o
+                
+                 
+                
+                  
+                    b
+                  
+                  
+                    i
+                    j
+                  
+                
+                ←
+                
+                  
+                    b
+                  
+                  
+                    i
+                    j
+                  
+                
+                +
+                
+                  
+                    
+                      
+                        u
+                        ^
+                      
+                    
+                  
+                  
+                    j
+                    
+                      |
+                    
+                    i
+                  
+                
+                ⋅
+                
+                  
+                    v
+                  
+                  
+                    j
+                  
+                
+              
+            
+            
+              
+                12
+                :
+                
+                
+                  r
+                  e
+                  t
+                  u
+                  r
+                  n
+                
+                 
+                
+                  
+                    v
+                  
+                  
+                    j
+                  
+                
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{array}{lcl}~~1:\mathbf {procedure} ~\mathrm {routing} (\mathbf {\hat {u}} _{j|i},r,l)\\~~2:\quad \triangleright {\mbox{argument vector}}\\~~3:\quad \triangleright {\mbox{argument scalar}}\\~~4:\quad \triangleright {\mbox{argument scalar}}\\~~5:\quad \triangleright {\mbox{return vector}}\\~~6:\quad \mathbf {foreach} ~{\mbox{capsule}}~i~{\mbox{in layer}}~l,~{\mbox{capsule}}~j~{\mbox{in layer}}~(l+1)~\mathbf {do} ~b_{ij}\leftarrow 0\\~~7:\quad \mathbf {for} ~{\mbox{iteration}}~r~\mathbf {do} \\~~8:\qquad \mathbf {foreach} ~{\mbox{capsule}}~i~{\mbox{in layer}}~l~\mathbf {do} ~\mathbf {c} _{i}\leftarrow \operatorname {softmax} (\mathbf {b} ,i)\\~~9:\qquad \mathbf {foreach} ~{\mbox{capsule}}~j~{\mbox{in layer}}~(l+1)~\mathbf {do} ~\mathbf {s} _{j}\leftarrow \sum _{i}{c_{ij}\mathbf {\hat {u}} _{j|i}}\\10:\qquad \mathbf {foreach} ~{\mbox{capsule}}~j~{\mbox{in layer}}~(l+1)~\mathbf {do} ~\mathbf {v} _{j}\leftarrow \operatorname {squash} (\mathbf {s} _{j})\\11:\qquad \mathbf {foreach} ~{\mbox{capsule}}~i~{\mbox{in layer}}~l,~j~{\mbox{in layer}}~(l+1)~\mathbf {do} ~\mathbf {b} _{ij}\leftarrow \mathbf {b} _{ij}+\mathbf {\hat {u}} _{j|i}\cdot \mathbf {v} _{j}\\12:\quad \mathbf {return} ~\mathbf {v} _{j}\\\end{array}}}
+  
+
+At line 8, the softmax function can be replaced by any type of winner-take-all network. Biologically this somewhat resembles chandelier cells, but they can also be involved in calculation of coupling coefficients (line 9) or calculation of agreements (line 11).
+At line 9, the weight matrix for the coupling coefficients and the hidden prediction matrix are shown. The structure in layer I and II is somewhat similar to  the cerebral cortex if stellate cells are assumed to be involved in transposing input vectors. Whether both types of stellate cells have the same function is not clear, as layer I has excitatory spiny cells and layer II has inhibitory aspiny cells. The latter indicates a much different network.
+At line 10, the squash function can be replaced by other functions and network topologies that retain the vector direction.
+The procedure conducts 
+  
+    
+      
+        r
+      
+    
+    {\textstyle r}
+  
+ iterations, usually 4–5, with 
+  
+    
+      
+        l
+      
+    
+    {\textstyle l}
+  
+ the index for the source capsule layer or primary layer, where the routing goes from, and the capsule layer 
+  
+    
+      
+        l
+        +
+        1
+      
+    
+    {\textstyle l+1}
+  
+ the next higher layer.
+
+
+== Training ==
+Learning is supervised. The network is trained by minimizing the euclidean distance between the image and the output of a CNN that reconstructs the input from the output of the terminal capsules.
+The network is discriminatively trained, using iterative routing-by-agreement.
+The activity vectors of all but the correct parent are masked.
+
+
+=== Margin loss ===
+The length of the instantiation vector represents the probability that a capsule's entity is present in the scene. A top-level capsule has a long vector if and only if its associated entity is present. To allow for multiple entities, a separate margin loss is computed for each capsule. Downweighting the loss for absent entities stops the learning from shrinking activity vector lengths for all entities. The total loss is the sum of the losses of all entities. In Hinton's example the loss function is:
+
+  
+    
+      
+        
+          
+            
+              
+                
+                  L
+                  
+                    k
+                  
+                
+              
+              
+                
+                =
+                
+                  
+                    
+                      
+                        
+                          T
+                          
+                            k
+                          
+                        
+                         
+                        
+                          
+                            max
+                            
+                              (
+                              
+                                0
+                                ,
+                                
+                                  m
+                                  
+                                    +
+                                  
+                                
+                                −
+                                ‖
+                                
+                                  
+                                    v
+                                  
+                                  
+                                    k
+                                  
+                                
+                                ‖
+                              
+                              )
+                            
+                          
+                          
+                            2
+                          
+                        
+                      
+                      ⏟
+                    
+                  
+                  
+                    
+                      class present
+                    
+                  
+                
+                +
+                
+                  
+                    
+                      
+                        λ
+                        
+                          (
+                          
+                            1
+                            −
+                            
+                              T
+                              
+                                k
+                              
+                            
+                          
+                          )
+                        
+                         
+                        
+                          
+                            max
+                            
+                              (
+                              
+                                0
+                                ,
+                                ‖
+                                
+                                  
+                                    v
+                                  
+                                  
+                                    k
+                                  
+                                
+                                ‖
+                                −
+                                
+                                  m
+                                  
+                                    −
+                                  
+                                
+                              
+                              )
+                            
+                          
+                          
+                            2
+                          
+                        
+                      
+                      ⏟
+                    
+                  
+                  
+                    
+                      class not present
+                    
+                  
+                
+                ,
+              
+              
+                
+                  T
+                  
+                    k
+                  
+                
+                =
+                
+                  
+                    {
+                    
+                      
+                        
+                          1
+                          ,
+                        
+                        
+                          
+                            
+                              digit of class
+                            
+                          
+                           
+                          k
+                           
+                          
+                            
+                              present
+                            
+                          
+                        
+                      
+                      
+                        
+                          0
+                          ,
+                        
+                        
+                          
+                            
+                              otherwise
+                            
+                          
+                        
+                      
+                    
+                    
+                  
+                
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{aligned}L_{k}&=\underbrace {T_{k}~{\max \left(0,m^{+}-\|\mathbf {v} _{k}\|\right)}^{2}} _{\mbox{class present}}+\underbrace {\lambda \left(1-T_{k}\right)~{\max \left(0,\|\mathbf {v} _{k}\|-m^{-}\right)}^{2}} _{\mbox{class not present}},&T_{k}={\begin{cases}1,&{\mbox{digit of class}}~k~{\mbox{present}}\\0,&{\mbox{otherwise}}\\\end{cases}}\end{aligned}}}
+  
+
+This type of loss function is common in ANNs. The parameters 
+  
+    
+      
+        
+          m
+          
+            +
+          
+        
+      
+    
+    {\textstyle m^{+}}
+  
+ and 
+  
+    
+      
+        
+          m
+          
+            −
+          
+        
+      
+    
+    {\textstyle m^{-}}
+  
+ are set so the length does not max out or collapse, 
+  
+    
+      
+        
+          m
+          
+            +
+          
+        
+        =
+        0.9
+      
+    
+    {\textstyle m^{+}=0.9}
+  
+ and 
+  
+    
+      
+        
+          m
+          
+            −
+          
+        
+        =
+        0.1
+      
+    
+    {\textstyle m^{-}=0.1}
+  
+. Down-weighting of initial weights for absent classes are controlled by 
+  
+    
+      
+        λ
+      
+    
+    {\textstyle \lambda }
+  
+, with 
+  
+    
+      
+        λ
+        =
+        0.5
+      
+    
+    {\textstyle \lambda =0.5}
+  
+ as a reasonable choice.
+
+
+=== Reconstruction loss ===
+An additional reconstruction loss encourages entities to encode their inputs' instantiation parameters. The final activity vector is then used to reconstruct the input image via a CNN decoder consisting of 3 fully connected layers. The reconstruction minimizes the sum of squared differences between the outputs of the logistic units and the pixel intensities. This reconstruction loss is scaled down by 0.0005 so that it does not dominate the margin loss during training.
+
+
+== Example configuration ==
+The first convolutional layers perform feature extraction. For the 28x28 pixel MNIST image test an initial 256 9x9 pixel convolutional kernels (using stride 1 and rectified linear unit (ReLU) activation, defining 20x20 receptive fields) convert the pixel input into 1D feature activations and induce nonlinearity.
+The primary (lowest) capsule layer divides the 256 kernels into 32 capsules of 8 9x9 kernels each (using stride 2, defining 6x6 receptive fields). Capsule activations effectively invert the graphics rendering process, going from pixels to features. A single weight matrix is used by each capsule across all receptive fields. Each primary capsule sees all of the lower-layer outputs whose fields overlap with the center of the field in the primary layer. Each primary capsule output (for a particular field) is an 8-dimensional vector.
+A second, digit capsule layer has one 16-dimensional capsule for each digit (0-9). Dynamic routing connects (only) primary and digit capsule layers. A [32x6x6] x 10 weight matrix controls the mapping between layers.
+Capsnets are hierarchical, in that each lower-level capsule contributes significantly to only one higher-level capsule.
+However, replicating learned knowledge remains valuable. To achieve this, a capsnet's lower layers are convolutional, including hidden capsule layers. Higher layers thus cover larger regions, while retaining information about the precise position of each object within the region. For low level capsules, location information is "place-coded" according to which capsule is active. Higher up, more and more of the positional information is rate-coded in the capsule's output vector. This shift from place-coding to rate-coding, combined with the fact that higher-level capsules represent more complex objects with more degrees of freedom, suggests that capsule dimensionality increases with level.
+
+
+== Human vision ==
+Human vision examines a sequence of focal points (directed by saccades), processing only a fraction of the scene at its highest resolution. Capsnets build on inspirations from cortical minicolumns (also called cortical microcolumns) in the cerebral cortex. A minicolumn is a structure containing 80-120 neurons, with a diameter of about 28-40 μm, spanning all layers in the cerebral cortex. All neurons in the larger minicolumns have the same receptive field, and they output their activations as action potentials or spikes. Neurons within the microcolumn receive common inputs, have common outputs, are interconnected and may constitute a fundamental computational unit of the cerebral cortex.
+Capsnets explore the intuition that the human visual system creates a tree-like structure for each focal point and coordinates these trees to recognize objects. However, with capsnets each tree is "carved" from a fixed network (by adjusting coefficients) rather than assembled on the fly.
+
+
+== Alternatives ==
+CapsNets are claimed to have four major conceptual advantages over convolutional neural networks (CNN):
+
+Viewpoint invariance: the use of pose matrices allows capsule networks to recognize objects regardless of the perspective from which they are viewed.
+Fewer parameters: Because capsules group neurons, the connections between layers require fewer parameters.
+Better generalization to new viewpoints: CNNs, when trained to understand rotations, often learn that an object can be viewed similarly from several different rotations. However, capsule networks generalize better to new viewpoints because pose matrices can capture these characteristics as linear transformations.
+Defense against white-box adversarial attacks: the Fast Gradient Sign Method (FGSM) is a typical method for attacking CNNs. It evaluates the gradient of each pixel against the loss of the network, and changes each pixel by at most epsilon (the error term) to maximize the loss. Although this method can drop the accuracy of CNNs dramatically (e.g.: to below 20%), capsule networks maintain accuracy above 70%.
+Purely convolutional nets cannot generalize to unlearned viewpoints (other than translation). For other affine transformations, either feature detectors must be repeated on a grid that grows exponentially with the number of transformation dimensions, or the size of the labelled training set must (exponentially) expand to encompass those viewpoints. These exponential explosions make them unsuitable for larger problems.
+Capsnet's transformation matrices learn the (viewpoint independent) spatial relationship between a part and a whole, allowing the latter to be recognized based on such relationships. However, capsnets assume that each location displays at most one instance of a capsule's object. This assumption allows a capsule to use a distributed representation (its activity vector) of an object to represent that object at that location.
+Capsnets use neural activities that vary with viewpoint. They do not have to normalize objects (as in spatial transformer networks) and can even recognize multiply transformed objects. Capsnets can also process segmented objects.
+
+
+== Hybridization ==
+There are some suggestions for hybrid approaches by Capsule Networks.
+
+
+== See also ==
+Convolutional neural network
+Geoffrey Hinton
+MNIST database
+
+
+== Notes ==
+
+
+== References ==
+
+
+== External links ==
+Capsules Network Implementation in PyTorch, fixing several bugs in previous implementations, 2018-04-16, retrieved 2018-04-16
+Pytorch code: Capsule Routing via Variational Bayes, February 2020, retrieved 2020-10-23
+A PyTorch implementation of the NIPS 2017 paper "Dynamic Routing Between Capsules", Gram.AI, 2017-12-08, retrieved 2017-12-08
+What's wrong with convolutional neural nets on YouTube
+"Deep Learning". www.cedar.buffalo.edu. Retrieved 2017-12-07.
+Bourdakos, Nick (2018-02-12). "Understanding Capsule Networks — AI's Alluring New Architecture". freeCodeCamp.org. Retrieved 2019-04-23.
+Dai, Jifeng; Qi, Haozhi; Xiong, Yuwen; Li, Yi; Zhang, Guodong; Hu, Han; Wei, Yichen (2017-03-17). "Deformable Convolutional Networks". arXiv:1703.06211 [cs.CV].
+De Brabandere, Bert; Jia, Xu; Tuytelaars, Tinne; Van Gool, Luc (2016-05-31). "Dynamic Filter Networks". arXiv:1605.09673 [cs.LG].
+Guo, Xifeng (2017-12-08), CapsNet-Keras: A Keras implementation of CapsNet in NIPS2017 paper "Dynamic Routing Between Capsules". Now test error ＝ 0.34%., retrieved 2017-12-08
+Hinton, Geoffrey; Sabour, Sara; Frosst, Nicholas (November 2017). "MATRIX CAPSULES WITH EM ROUTING".
+Hinton and Google Brain - Capsule Networks on YouTube
+Liao, Huadong (2017-12-08), CapsNet-Tensorflow: A Tensorflow implementation of CapsNet(Capsules Net) in Hinton's paper Dynamic Routing Between Capsules, retrieved 2017-12-08
+Cai, Fangyu (2020-12-18). "'We Can Do It' — Geoffrey Hinton and UBC, UT, Google & UVic Team Propose Unsupervised Capsule..." Medium. Retrieved 2021-01-18.
+Sun, Weiwei; Tagliasacchi, Andrea; Deng, Boyang; Sabour, Sara; Yazdani, Soroosh; Hinton, Geoffrey; Yi, Kwang Moo (2020-12-08). "Canonical Capsules: Unsupervised Capsules in Canonical Pose". arXiv:2012.04718 [cs.CV].

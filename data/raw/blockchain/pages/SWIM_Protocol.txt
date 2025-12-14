@@ -1,0 +1,344 @@
+The Scalable Weakly Consistent Infection-style Process Group Membership (SWIM) Protocol is a group membership protocol based on "outsourced heartbeats" used in distributed systems, first introduced by Abhinandan Das, Indranil Gupta and Ashish Motivala in 2002. It is a hybrid algorithm which combines failure detection with group membership dissemination. 
+
+
+== Protocol ==
+The protocol has two components, the Failure Detector Component and the Dissemination Component.
+The Failure Detector Component functions as follows:
+
+Every T' time units, each node (
+  
+    
+      
+        
+          N
+          
+            1
+          
+        
+      
+    
+    {\displaystyle N_{1}}
+  
+) sends a ping to random other node (
+  
+    
+      
+        
+          N
+          
+            2
+          
+        
+      
+    
+    {\displaystyle N_{2}}
+  
+) in its membership list.
+If 
+  
+    
+      
+        
+          N
+          
+            1
+          
+        
+      
+    
+    {\displaystyle N_{1}}
+  
+ receives a response from 
+  
+    
+      
+        
+          N
+          
+            2
+          
+        
+      
+    
+    {\displaystyle N_{2}}
+  
+, 
+  
+    
+      
+        
+          N
+          
+            2
+          
+        
+      
+    
+    {\displaystyle N_{2}}
+  
+ is decided to be healthy and 
+  
+    
+      
+        
+          N
+          
+            1
+          
+        
+      
+    
+    {\displaystyle N_{1}}
+  
+ updates its "last heard from" timestamp for 
+  
+    
+      
+        
+          N
+          
+            2
+          
+        
+      
+    
+    {\displaystyle N_{2}}
+  
+ to be the current time.
+If 
+  
+    
+      
+        
+          N
+          
+            1
+          
+        
+      
+    
+    {\displaystyle N_{1}}
+  
+ does not receive a response, 
+  
+    
+      
+        
+          N
+          
+            1
+          
+        
+      
+    
+    {\displaystyle N_{1}}
+  
+ contacts k other nodes on its list (
+  
+    
+      
+        {
+        
+          N
+          
+            3
+          
+        
+        ,
+        .
+        .
+        .
+        ,
+        
+          N
+          
+            3
+            +
+            k
+          
+        
+        }
+      
+    
+    {\displaystyle \{N_{3},...,N_{3+k}\}}
+  
+), and requests that they ping 
+  
+    
+      
+        
+          N
+          
+            2
+          
+        
+      
+    
+    {\displaystyle N_{2}}
+  
+.
+If after T' units of time: if no successful response is received, 
+  
+    
+      
+        
+          N
+          
+            1
+          
+        
+      
+    
+    {\displaystyle N_{1}}
+  
+ marks 
+  
+    
+      
+        
+          N
+          
+            2
+          
+        
+      
+    
+    {\displaystyle N_{2}}
+  
+ as failed.
+The Dissemination Component functions as follows:
+
+Upon 
+  
+    
+      
+        
+          N
+          
+            1
+          
+        
+      
+    
+    {\displaystyle N_{1}}
+  
+ detecting a failed node 
+  
+    
+      
+        
+          N
+          
+            2
+          
+        
+      
+    
+    {\displaystyle N_{2}}
+  
+, 
+  
+    
+      
+        
+          N
+          
+            1
+          
+        
+      
+    
+    {\displaystyle N_{1}}
+  
+ sends a multicast message to the rest of the nodes in its membership list, with information about the failed node.
+Voluntary requests for a node to enter/leave the group are also sent via multicast.
+
+
+== Properties ==
+The protocol provides the following guarantees:
+
+Strong Completeness: Full completeness is guaranteed (e.g. the crash-failure of any node in the group is eventually detected by all live nodes).
+Detection Time: The expected value of detection time (from node failure to detection) is 
+  
+    
+      
+        
+          T
+          ′
+        
+        
+          
+            
+              
+              ˙
+            
+          
+        
+        
+          
+            1
+            
+              1
+              −
+              
+                e
+                
+                  −
+                  
+                    q
+                    
+                      f
+                    
+                  
+                
+              
+            
+          
+        
+      
+    
+    {\displaystyle T'{\dot {}}{\frac {1}{1-e^{-q_{f}}}}}
+  
+, where 
+  
+    
+      
+        
+          T
+          ′
+        
+      
+    
+    {\displaystyle T'}
+  
+ is the length of the protocol period, and 
+  
+    
+      
+        
+          q
+          
+            f
+          
+        
+      
+    
+    {\displaystyle q_{f}}
+  
+ is the fraction of non-faulty nodes in the group.
+
+
+== Extensions ==
+The original SWIM paper lists the following extensions to make the protocol more robust:
+
+Suspicion: Nodes that are unresponsive to ping messages are not initially marked as failed. Instead, they are marked as "suspicious"; nodes which discover a "suspicious" node still send a multicast to all other nodes including this mechanism. If a "suspicious" node responds to a ping before some time-out threshold, an "alive" message is sent via multicast to remove the "suspicious" label from the node.
+Infection-Style Dissemination: Instead of propagating node failure information via multicast, protocol messages are piggybacked on the ping messages used to determine node liveness. This is equivalent to gossip dissemination.
+Round-Robin Probe Target Selection: Instead of randomly picking a node to probe during each protocol time step, the protocol is modified so that each node performs a round-robin selection of probe target. This bounds the worst-case detection time of the protocol, without degrading the average detection time.
+
+
+== See also ==
+Failure detector
+Crash (computing)
+
+
+== References ==

@@ -1,0 +1,2155 @@
+The forward algorithm, in the context of a hidden Markov model (HMM), is used to calculate a 'belief state': the probability of a state at a certain time, given the history of evidence.  The process is also known as filtering. The forward algorithm is closely related to, but distinct from, the Viterbi algorithm.
+
+
+== Introduction ==
+The forward and backward algorithms should be placed within the context of probability as they appear to simply be names given to a set of standard mathematical procedures within a few fields. For example, neither "forward algorithm" nor "Viterbi" appear in the Cambridge encyclopedia of mathematics. The main observation to take away from these algorithms is how to organize Bayesian updates and inference to be computationally efficient in the context of directed graphs of variables (see sum-product networks).
+For an HMM such as this one:
+
+this probability is written as 
+  
+    
+      
+        p
+        (
+        
+          x
+          
+            t
+          
+        
+        
+          |
+        
+        
+          y
+          
+            1
+            :
+            t
+          
+        
+        )
+      
+    
+    {\displaystyle p(x_{t}|y_{1:t})}
+  
+. Here 
+  
+    
+      
+        x
+        (
+        t
+        )
+      
+    
+    {\displaystyle x(t)}
+  
+ is the hidden state which is abbreviated as 
+  
+    
+      
+        
+          x
+          
+            t
+          
+        
+      
+    
+    {\displaystyle x_{t}}
+  
+ and 
+  
+    
+      
+        
+          y
+          
+            1
+            :
+            t
+          
+        
+      
+    
+    {\displaystyle y_{1:t}}
+  
+ are the observations 
+  
+    
+      
+        1
+      
+    
+    {\displaystyle 1}
+  
+ to 
+  
+    
+      
+        t
+      
+    
+    {\displaystyle t}
+  
+. 
+The backward algorithm complements the forward algorithm by taking into account the future history if one wanted to improve the estimate for past times. This is referred to as smoothing and the forward/backward algorithm computes 
+  
+    
+      
+        p
+        (
+        
+          x
+          
+            t
+          
+        
+        
+          |
+        
+        
+          y
+          
+            1
+            :
+            T
+          
+        
+        )
+      
+    
+    {\displaystyle p(x_{t}|y_{1:T})}
+  
+ for 
+  
+    
+      
+        1
+        <
+        t
+        <
+        T
+      
+    
+    {\displaystyle 1<t<T}
+  
+. Thus, the full forward/backward algorithm takes into account all evidence. Note that a belief state can be calculated at each time step, but doing this does not, in a strict sense, produce the most likely state sequence, but rather the most likely state at each time step, given the previous history. In order to achieve the most likely sequence, the Viterbi algorithm is required. It computes the most likely state sequence given the history of observations, that is, the state sequence that maximizes 
+  
+    
+      
+        p
+        (
+        
+          x
+          
+            0
+            :
+            t
+          
+        
+        
+          |
+        
+        
+          y
+          
+            0
+            :
+            t
+          
+        
+        )
+      
+    
+    {\displaystyle p(x_{0:t}|y_{0:t})}
+  
+.
+
+
+== Algorithm ==
+The goal of the forward algorithm is to compute the joint probability 
+  
+    
+      
+        p
+        (
+        
+          x
+          
+            t
+          
+        
+        ,
+        
+          y
+          
+            1
+            :
+            t
+          
+        
+        )
+      
+    
+    {\displaystyle p(x_{t},y_{1:t})}
+  
+, where for notational convenience we have abbreviated 
+  
+    
+      
+        x
+        (
+        t
+        )
+      
+    
+    {\displaystyle x(t)}
+  
+ as 
+  
+    
+      
+        
+          x
+          
+            t
+          
+        
+      
+    
+    {\displaystyle x_{t}}
+  
+ and 
+  
+    
+      
+        (
+        y
+        (
+        1
+        )
+        ,
+        y
+        (
+        2
+        )
+        ,
+        .
+        .
+        .
+        ,
+        y
+        (
+        t
+        )
+        )
+      
+    
+    {\displaystyle (y(1),y(2),...,y(t))}
+  
+ as 
+  
+    
+      
+        
+          y
+          
+            1
+            :
+            t
+          
+        
+      
+    
+    {\displaystyle y_{1:t}}
+  
+. Once the joint probability 
+  
+    
+      
+        p
+        (
+        
+          x
+          
+            t
+          
+        
+        ,
+        
+          y
+          
+            1
+            :
+            t
+          
+        
+        )
+      
+    
+    {\displaystyle p(x_{t},y_{1:t})}
+  
+ is computed, the other probabilities 
+  
+    
+      
+        p
+        (
+        
+          x
+          
+            t
+          
+        
+        
+          |
+        
+        
+          y
+          
+            1
+            :
+            t
+          
+        
+        )
+      
+    
+    {\displaystyle p(x_{t}|y_{1:t})}
+  
+ and 
+  
+    
+      
+        p
+        (
+        
+          y
+          
+            1
+            :
+            t
+          
+        
+        )
+      
+    
+    {\displaystyle p(y_{1:t})}
+  
+ are easily obtained. 
+Both the state 
+  
+    
+      
+        
+          x
+          
+            t
+          
+        
+      
+    
+    {\displaystyle x_{t}}
+  
+ and observation 
+  
+    
+      
+        
+          y
+          
+            t
+          
+        
+      
+    
+    {\displaystyle y_{t}}
+  
+ are assumed to be discrete, finite random variables. The hidden Markov model's state transition probabilities 
+  
+    
+      
+        p
+        (
+        
+          x
+          
+            t
+          
+        
+        
+          |
+        
+        
+          x
+          
+            t
+            −
+            1
+          
+        
+        )
+      
+    
+    {\displaystyle p(x_{t}|x_{t-1})}
+  
+, observation/emission probabilities 
+  
+    
+      
+        p
+        (
+        
+          y
+          
+            t
+          
+        
+        
+          |
+        
+        
+          x
+          
+            t
+          
+        
+        )
+      
+    
+    {\displaystyle p(y_{t}|x_{t})}
+  
+, and initial prior probability 
+  
+    
+      
+        p
+        (
+        
+          x
+          
+            0
+          
+        
+        )
+      
+    
+    {\displaystyle p(x_{0})}
+  
+ are assumed to be known. Furthermore, the sequence of observations 
+  
+    
+      
+        
+          y
+          
+            1
+            :
+            t
+          
+        
+      
+    
+    {\displaystyle y_{1:t}}
+  
+ are assumed to be given. 
+Computing 
+  
+    
+      
+        p
+        (
+        
+          x
+          
+            t
+          
+        
+        ,
+        
+          y
+          
+            1
+            :
+            t
+          
+        
+        )
+      
+    
+    {\displaystyle p(x_{t},y_{1:t})}
+  
+ naively would require marginalizing over all possible state sequences 
+  
+    
+      
+        {
+        
+          x
+          
+            1
+            :
+            t
+            −
+            1
+          
+        
+        }
+      
+    
+    {\displaystyle \{x_{1:t-1}\}}
+  
+, the number of which grows exponentially with 
+  
+    
+      
+        t
+      
+    
+    {\displaystyle t}
+  
+. Instead, the forward algorithm takes advantage of the conditional independence rules of the hidden Markov model (HMM) to perform the calculation recursively.
+To demonstrate the recursion, let
+
+  
+    
+      
+        α
+        (
+        
+          x
+          
+            t
+          
+        
+        )
+        =
+        p
+        (
+        
+          x
+          
+            t
+          
+        
+        ,
+        
+          y
+          
+            1
+            :
+            t
+          
+        
+        )
+        =
+        
+          ∑
+          
+            
+              x
+              
+                t
+                −
+                1
+              
+            
+          
+        
+        p
+        (
+        
+          x
+          
+            t
+          
+        
+        ,
+        
+          x
+          
+            t
+            −
+            1
+          
+        
+        ,
+        
+          y
+          
+            1
+            :
+            t
+          
+        
+        )
+      
+    
+    {\displaystyle \alpha (x_{t})=p(x_{t},y_{1:t})=\sum _{x_{t-1}}p(x_{t},x_{t-1},y_{1:t})}
+  
+.
+Using the chain rule to expand 
+  
+    
+      
+        p
+        (
+        
+          x
+          
+            t
+          
+        
+        ,
+        
+          x
+          
+            t
+            −
+            1
+          
+        
+        ,
+        
+          y
+          
+            1
+            :
+            t
+          
+        
+        )
+      
+    
+    {\displaystyle p(x_{t},x_{t-1},y_{1:t})}
+  
+, we can then write
+
+  
+    
+      
+        α
+        (
+        
+          x
+          
+            t
+          
+        
+        )
+        =
+        
+          ∑
+          
+            
+              x
+              
+                t
+                −
+                1
+              
+            
+          
+        
+        p
+        (
+        
+          y
+          
+            t
+          
+        
+        
+          |
+        
+        
+          x
+          
+            t
+          
+        
+        ,
+        
+          x
+          
+            t
+            −
+            1
+          
+        
+        ,
+        
+          y
+          
+            1
+            :
+            t
+            −
+            1
+          
+        
+        )
+        p
+        (
+        
+          x
+          
+            t
+          
+        
+        
+          |
+        
+        
+          x
+          
+            t
+            −
+            1
+          
+        
+        ,
+        
+          y
+          
+            1
+            :
+            t
+            −
+            1
+          
+        
+        )
+        p
+        (
+        
+          x
+          
+            t
+            −
+            1
+          
+        
+        ,
+        
+          y
+          
+            1
+            :
+            t
+            −
+            1
+          
+        
+        )
+      
+    
+    {\displaystyle \alpha (x_{t})=\sum _{x_{t-1}}p(y_{t}|x_{t},x_{t-1},y_{1:t-1})p(x_{t}|x_{t-1},y_{1:t-1})p(x_{t-1},y_{1:t-1})}
+  
+.
+Because 
+  
+    
+      
+        
+          y
+          
+            t
+          
+        
+      
+    
+    {\displaystyle y_{t}}
+  
+ is conditionally independent of everything but 
+  
+    
+      
+        
+          x
+          
+            t
+          
+        
+      
+    
+    {\displaystyle x_{t}}
+  
+, and 
+  
+    
+      
+        
+          x
+          
+            t
+          
+        
+      
+    
+    {\displaystyle x_{t}}
+  
+ is conditionally independent of everything but 
+  
+    
+      
+        
+          x
+          
+            t
+            −
+            1
+          
+        
+      
+    
+    {\displaystyle x_{t-1}}
+  
+, this simplifies to
+
+  
+    
+      
+        α
+        (
+        
+          x
+          
+            t
+          
+        
+        )
+        =
+        p
+        (
+        
+          y
+          
+            t
+          
+        
+        
+          |
+        
+        
+          x
+          
+            t
+          
+        
+        )
+        
+          ∑
+          
+            
+              x
+              
+                t
+                −
+                1
+              
+            
+          
+        
+        p
+        (
+        
+          x
+          
+            t
+          
+        
+        
+          |
+        
+        
+          x
+          
+            t
+            −
+            1
+          
+        
+        )
+        α
+        (
+        
+          x
+          
+            t
+            −
+            1
+          
+        
+        )
+      
+    
+    {\displaystyle \alpha (x_{t})=p(y_{t}|x_{t})\sum _{x_{t-1}}p(x_{t}|x_{t-1})\alpha (x_{t-1})}
+  
+.
+Thus, since 
+  
+    
+      
+        p
+        (
+        
+          y
+          
+            t
+          
+        
+        
+          |
+        
+        
+          x
+          
+            t
+          
+        
+        )
+      
+    
+    {\displaystyle p(y_{t}|x_{t})}
+  
+ and 
+  
+    
+      
+        p
+        (
+        
+          x
+          
+            t
+          
+        
+        
+          |
+        
+        
+          x
+          
+            t
+            −
+            1
+          
+        
+        )
+      
+    
+    {\displaystyle p(x_{t}|x_{t-1})}
+  
+ are given by the model's emission distributions and transition probabilities, which are assumed to be known, one can quickly calculate 
+  
+    
+      
+        α
+        (
+        
+          x
+          
+            t
+          
+        
+        )
+      
+    
+    {\displaystyle \alpha (x_{t})}
+  
+ from 
+  
+    
+      
+        α
+        (
+        
+          x
+          
+            t
+            −
+            1
+          
+        
+        )
+      
+    
+    {\displaystyle \alpha (x_{t-1})}
+  
+ and avoid incurring exponential computation time. 
+The recursion formula given above can be written in a more compact form. Let 
+  
+    
+      
+        
+          a
+          
+            i
+            j
+          
+        
+        =
+        p
+        (
+        
+          x
+          
+            t
+          
+        
+        =
+        i
+        
+          |
+        
+        
+          x
+          
+            t
+            −
+            1
+          
+        
+        =
+        j
+        )
+      
+    
+    {\displaystyle a_{ij}=p(x_{t}=i|x_{t-1}=j)}
+  
+ be the transition probabilities and 
+  
+    
+      
+        
+          b
+          
+            i
+            j
+          
+        
+        =
+        p
+        (
+        
+          y
+          
+            t
+          
+        
+        =
+        i
+        
+          |
+        
+        
+          x
+          
+            t
+          
+        
+        =
+        j
+        )
+      
+    
+    {\displaystyle b_{ij}=p(y_{t}=i|x_{t}=j)}
+  
+ be the emission probabilities, then
+
+  
+    
+      
+        
+          
+            α
+          
+          
+            t
+          
+        
+        =
+        
+          
+            b
+          
+          
+            t
+          
+          
+            T
+          
+        
+        ⊙
+        
+          A
+        
+        
+          
+            α
+          
+          
+            t
+            −
+            1
+          
+        
+      
+    
+    {\displaystyle \mathbf {\alpha } _{t}=\mathbf {b} _{t}^{T}\odot \mathbf {A} \mathbf {\alpha } _{t-1}}
+  
+
+where 
+  
+    
+      
+        
+          A
+        
+        =
+        [
+        
+          a
+          
+            i
+            j
+          
+        
+        ]
+      
+    
+    {\displaystyle \mathbf {A} =[a_{ij}]}
+  
+ is the transition probability matrix, 
+  
+    
+      
+        
+          
+            b
+          
+          
+            t
+          
+        
+      
+    
+    {\displaystyle \mathbf {b} _{t}}
+  
+ is the i-th row of the emission probability matrix 
+  
+    
+      
+        
+          B
+        
+        =
+        [
+        
+          b
+          
+            i
+            j
+          
+        
+        ]
+      
+    
+    {\displaystyle \mathbf {B} =[b_{ij}]}
+  
+ which corresponds to the actual observation 
+  
+    
+      
+        
+          y
+          
+            t
+          
+        
+        =
+        i
+      
+    
+    {\displaystyle y_{t}=i}
+  
+ at time 
+  
+    
+      
+        t
+      
+    
+    {\displaystyle t}
+  
+, and 
+  
+    
+      
+        
+          
+            α
+          
+          
+            t
+          
+        
+        =
+        [
+        α
+        (
+        
+          x
+          
+            t
+          
+        
+        =
+        1
+        )
+        ,
+        …
+        ,
+        α
+        (
+        
+          x
+          
+            t
+          
+        
+        =
+        n
+        )
+        
+          ]
+          
+            T
+          
+        
+      
+    
+    {\displaystyle \mathbf {\alpha } _{t}=[\alpha (x_{t}=1),\ldots ,\alpha (x_{t}=n)]^{T}}
+  
+ is the alpha vector. The 
+  
+    
+      
+        ⊙
+      
+    
+    {\displaystyle \odot }
+  
+ is the hadamard product between the transpose of 
+  
+    
+      
+        
+          
+            b
+          
+          
+            t
+          
+        
+      
+    
+    {\displaystyle \mathbf {b} _{t}}
+  
+ and 
+  
+    
+      
+        
+          A
+        
+        
+          
+            α
+          
+          
+            t
+            −
+            1
+          
+        
+      
+    
+    {\displaystyle \mathbf {A} \mathbf {\alpha } _{t-1}}
+  
+.
+The initial condition is set in accordance to the prior probability over 
+  
+    
+      
+        
+          x
+          
+            0
+          
+        
+      
+    
+    {\displaystyle x_{0}}
+  
+ as 
+
+  
+    
+      
+        α
+        (
+        
+          x
+          
+            0
+          
+        
+        )
+        =
+        p
+        (
+        
+          y
+          
+            0
+          
+        
+        
+          |
+        
+        
+          x
+          
+            0
+          
+        
+        )
+        p
+        (
+        
+          x
+          
+            0
+          
+        
+        )
+      
+    
+    {\displaystyle \alpha (x_{0})=p(y_{0}|x_{0})p(x_{0})}
+  
+.
+Once the joint probability 
+  
+    
+      
+        α
+        (
+        
+          x
+          
+            t
+          
+        
+        )
+        =
+        p
+        (
+        
+          x
+          
+            t
+          
+        
+        ,
+        
+          y
+          
+            1
+            :
+            t
+          
+        
+        )
+      
+    
+    {\displaystyle \alpha (x_{t})=p(x_{t},y_{1:t})}
+  
+ has been computed using the forward algorithm, we can easily obtain the related joint probability 
+  
+    
+      
+        p
+        (
+        
+          y
+          
+            1
+            :
+            t
+          
+        
+        )
+      
+    
+    {\displaystyle p(y_{1:t})}
+  
+ as
+
+  
+    
+      
+        p
+        (
+        
+          y
+          
+            1
+            :
+            t
+          
+        
+        )
+        =
+        
+          ∑
+          
+            
+              x
+              
+                t
+              
+            
+          
+        
+        p
+        (
+        
+          x
+          
+            t
+          
+        
+        ,
+        
+          y
+          
+            1
+            :
+            t
+          
+        
+        )
+        =
+        
+          ∑
+          
+            
+              x
+              
+                t
+              
+            
+          
+        
+        α
+        (
+        
+          x
+          
+            t
+          
+        
+        )
+      
+    
+    {\displaystyle p(y_{1:t})=\sum _{x_{t}}p(x_{t},y_{1:t})=\sum _{x_{t}}\alpha (x_{t})}
+  
+
+and the required conditional probability 
+  
+    
+      
+        p
+        (
+        
+          x
+          
+            t
+          
+        
+        
+          |
+        
+        
+          y
+          
+            1
+            :
+            t
+          
+        
+        )
+      
+    
+    {\displaystyle p(x_{t}|y_{1:t})}
+  
+ as
+
+  
+    
+      
+        p
+        (
+        
+          x
+          
+            t
+          
+        
+        
+          |
+        
+        
+          y
+          
+            1
+            :
+            t
+          
+        
+        )
+        =
+        
+          
+            
+              p
+              (
+              
+                x
+                
+                  t
+                
+              
+              ,
+              
+                y
+                
+                  1
+                  :
+                  t
+                
+              
+              )
+            
+            
+              p
+              (
+              
+                y
+                
+                  1
+                  :
+                  t
+                
+              
+              )
+            
+          
+        
+        =
+        
+          
+            
+              α
+              (
+              
+                x
+                
+                  t
+                
+              
+              )
+            
+            
+              
+                ∑
+                
+                  
+                    x
+                    
+                      t
+                    
+                  
+                
+              
+              α
+              (
+              
+                x
+                
+                  t
+                
+              
+              )
+            
+          
+        
+        .
+      
+    
+    {\displaystyle p(x_{t}|y_{1:t})={\frac {p(x_{t},y_{1:t})}{p(y_{1:t})}}={\frac {\alpha (x_{t})}{\sum _{x_{t}}\alpha (x_{t})}}.}
+  
+
+Once the conditional probability has been calculated, we can also find the point estimate of 
+  
+    
+      
+        
+          x
+          
+            t
+          
+        
+      
+    
+    {\displaystyle x_{t}}
+  
+. For instance, the MAP estimate of 
+  
+    
+      
+        
+          x
+          
+            t
+          
+        
+      
+    
+    {\displaystyle x_{t}}
+  
+ is given by
+
+  
+    
+      
+        
+          
+            
+              
+                x
+                ^
+              
+            
+          
+          
+            t
+          
+          
+            M
+            A
+            P
+          
+        
+        =
+        arg
+        ⁡
+        
+          max
+          
+            
+              x
+              
+                t
+              
+            
+          
+        
+        
+        p
+        (
+        
+          x
+          
+            t
+          
+        
+        
+          |
+        
+        
+          y
+          
+            1
+            :
+            t
+          
+        
+        )
+        =
+        arg
+        ⁡
+        
+          max
+          
+            
+              x
+              
+                t
+              
+            
+          
+        
+        
+        α
+        (
+        
+          x
+          
+            t
+          
+        
+        )
+        ,
+      
+    
+    {\displaystyle {\widehat {x}}_{t}^{MAP}=\arg \max _{x_{t}}\;p(x_{t}|y_{1:t})=\arg \max _{x_{t}}\;\alpha (x_{t}),}
+  
+
+while the MMSE estimate of 
+  
+    
+      
+        
+          x
+          
+            t
+          
+        
+      
+    
+    {\displaystyle x_{t}}
+  
+ is given by 
+
+  
+    
+      
+        
+          
+            
+              
+                x
+                ^
+              
+            
+          
+          
+            t
+          
+          
+            M
+            M
+            S
+            E
+          
+        
+        =
+        
+          E
+        
+        [
+        
+          x
+          
+            t
+          
+        
+        
+          |
+        
+        
+          y
+          
+            1
+            :
+            t
+          
+        
+        ]
+        =
+        
+          ∑
+          
+            
+              x
+              
+                t
+              
+            
+          
+        
+        
+          x
+          
+            t
+          
+        
+        p
+        (
+        
+          x
+          
+            t
+          
+        
+        
+          |
+        
+        
+          y
+          
+            1
+            :
+            t
+          
+        
+        )
+        =
+        
+          
+            
+              
+                ∑
+                
+                  
+                    x
+                    
+                      t
+                    
+                  
+                
+              
+              
+                x
+                
+                  t
+                
+              
+              α
+              (
+              
+                x
+                
+                  t
+                
+              
+              )
+            
+            
+              
+                ∑
+                
+                  
+                    x
+                    
+                      t
+                    
+                  
+                
+              
+              α
+              (
+              
+                x
+                
+                  t
+                
+              
+              )
+            
+          
+        
+        .
+      
+    
+    {\displaystyle {\widehat {x}}_{t}^{MMSE}=\mathbb {E} [x_{t}|y_{1:t}]=\sum _{x_{t}}x_{t}p(x_{t}|y_{1:t})={\frac {\sum _{x_{t}}x_{t}\alpha (x_{t})}{\sum _{x_{t}}\alpha (x_{t})}}.}
+  
+
+The forward algorithm is easily modified to account for observations from variants of the hidden Markov model as well, such as the Markov jump linear system.
+
+
+== Pseudocode ==
+
+
+== Example ==
+This example on observing possible states of weather from the observed condition of seaweed. We have observations of seaweed for three consecutive days as dry, damp, and soggy in order. The possible states of weather can be sunny, cloudy, or rainy. In total, there can be 
+  
+    
+      
+        
+          3
+          
+            3
+          
+        
+        =
+        27
+      
+    
+    {\displaystyle 3^{3}=27}
+  
+ such weather sequences. Exploring all such possible state sequences is computationally very expensive. To reduce this complexity, Forward algorithm comes in handy, where the trick lies in using the conditional independence of the sequence steps to calculate partial probabilities, 
+  
+    
+      
+        α
+        (
+        
+          x
+          
+            t
+          
+        
+        )
+        =
+        p
+        (
+        
+          x
+          
+            t
+          
+        
+        ,
+        
+          y
+          
+            1
+            :
+            t
+          
+        
+        )
+        =
+        p
+        (
+        
+          y
+          
+            t
+          
+        
+        
+          |
+        
+        
+          x
+          
+            t
+          
+        
+        )
+        
+          ∑
+          
+            
+              x
+              
+                t
+                −
+                1
+              
+            
+          
+        
+        p
+        (
+        
+          x
+          
+            t
+          
+        
+        
+          |
+        
+        
+          x
+          
+            t
+            −
+            1
+          
+        
+        )
+        α
+        (
+        
+          x
+          
+            t
+            −
+            1
+          
+        
+        )
+      
+    
+    {\displaystyle \alpha (x_{t})=p(x_{t},y_{1:t})=p(y_{t}|x_{t})\sum _{x_{t-1}}p(x_{t}|x_{t-1})\alpha (x_{t-1})}
+  
+ as shown in the above derivation. Hence, we can calculate the probabilities as the product of the appropriate observation/emission probability, 
+  
+    
+      
+        p
+        (
+        
+          y
+          
+            t
+          
+        
+        
+          |
+        
+        
+          x
+          
+            t
+          
+        
+        )
+      
+    
+    {\displaystyle p(y_{t}|x_{t})}
+  
+ ( probability of state 
+  
+    
+      
+        
+          y
+          
+            t
+          
+        
+      
+    
+    {\displaystyle y_{t}}
+  
+ seen at time t from previous observation) with the sum of probabilities of reaching that state at time t, calculated using transition probabilities. This reduces complexity of the problem from searching whole search space to just using previously computed 
+  
+    
+      
+        α
+      
+    
+    {\displaystyle \alpha }
+  
+'s and transition probabilities.
+
+
+== Complexity ==
+Complexity of Forward Algorithm is 
+  
+    
+      
+        Θ
+        (
+        n
+        
+          m
+          
+            2
+          
+        
+        )
+      
+    
+    {\displaystyle \Theta (nm^{2})}
+  
+, where 
+  
+    
+      
+        m
+      
+    
+    {\displaystyle m}
+  
+ is the number of possible states for a latent variable (like the number of weather conditions in the example above), and 
+  
+    
+      
+        n
+      
+    
+    {\displaystyle n}
+  
+  is the length of the observed sequence. This is a clear reduction from the ad hoc method of exploring all the possible states, which has a complexity of 
+  
+    
+      
+        Θ
+        (
+        n
+        
+          m
+          
+            n
+          
+        
+        )
+      
+    
+    {\displaystyle \Theta (nm^{n})}
+  
+.
+
+
+== Variants of the algorithm ==
+Hybrid Forward Algorithm: A variant of the Forward Algorithm called Hybrid Forward Algorithm (HFA) can be used for the construction of radial basis function (RBF) neural networks with tunable nodes. The RBF neural network is constructed by the conventional subset selection algorithms. The network structure is determined by combining both the stepwise forward network configuration and the continuous RBF parameter optimization. It is used to efficiently and effectively produce a parsimonious RBF neural network that generalizes well. It is achieved through simultaneous network structure determination and parameter optimization on the continuous parameter space. HFA tackles the mixed integer hard problem using an integrated analytic framework, leading to improved network performance and reduced memory usage for the network construction.
+Forward Algorithm for Optimal Control in Hybrid Systems: This variant of Forward algorithm is motivated by the structure of manufacturing environments that integrate process and operations control. We derive a new property of the optimal state trajectory structure which holds under a modified condition on the cost function. This allows us to develop a low-complexity, scalable algorithm for explicitly determining the optimal controls, which can be more efficient than Forward Algorithm.
+Continuous Forward Algorithm: A continuous forward algorithm (CFA) can be used for nonlinear modelling and identification using radial basis function (RBF) neural networks. The proposed algorithm performs the two tasks of network construction and parameter optimization within an integrated analytic framework, and offers two important advantages. First, the model performance can be significantly improved through continuous parameter optimization. Secondly, the neural representation can be built without generating and storing all candidate regressors, leading to significantly reduced memory usage and computational complexity.
+
+
+== History ==
+The forward algorithm is one of the algorithms used to solve the decoding problem. Since the development of speech recognition and pattern recognition and related fields like computational biology which use HMMs, the forward algorithm has gained popularity.
+
+
+== Applications ==
+The forward algorithm is mostly used in applications that need us to determine the probability of being in a specific state when we know about the sequence of observations. The algorithm can be applied wherever we can train a model as we receive data using Baum-Welch or any general EM algorithm. The Forward algorithm will then tell us about the probability of data with respect to what is expected from our model. One of the applications can be in the domain of finance, where it can help decide on when to buy or sell tangible assets.
+It can have applications in all fields where we apply Hidden Markov Models (HMMs). The popular ones include Natural language processing domains like tagging part-of-speech and speech recognition. Recently it is also being used in the domain of bioinformatics.
+Forward algorithm can also be applied to perform weather speculations. We can have an HMM describing the weather and its relation to the state of observations for few consecutive days (some examples could be dry, damp, soggy, sunny, cloudy, rainy etc.). We can consider calculating the probability of observing any sequence of observations recursively given the HMM. We can then calculate the probability of reaching an intermediate state as the sum of all possible paths to that state. Thus the partial probabilities for the final observation will hold the probability of reaching those states going through all possible paths.
+
+
+== See also ==
+Viterbi algorithm
+Forward-backward algorithm
+Baum–Welch algorithm
+
+
+== References ==
+
+
+== Further reading ==
+Russell and Norvig's Artificial Intelligence, a Modern Approach, starting on page 570 of the 2010 edition, provides a succinct exposition of this and related topics
+Smyth, Padhraic, David Heckerman, and Michael I. Jordan. "Probabilistic independence networks for hidden Markov probability models." Neural computation 9.2 (1997): 227-269. [1]
+Read, Jonathon. "Hidden Markov Models and Dynamic Programming." University of Oslo (2011). [2]
+Kohlschein, Christian,  An introduction to Hidden Markov Models [3]
+Manganiello, Fabio, Mirco Marchetti, and Michele Colajanni. Multistep attack detection and alert correlation in intrusion detection systems. Information Security and Assurance. Springer Berlin Heidelberg, 2011. 101-110. [4]
+Zhang, Ping, and Christos G. Cassandras. "An improved forward algorithm for optimal control of a class of hybrid systems." Automatic Control, IEEE Transactions on 47.10 (2002): 1735-1739.
+Stratonovich, R. L. "Conditional markov processes". Theory of Probability & Its Applications 5, no. 2 (1960): 156178.
+
+
+== Softwares ==
+Hidden Markov Model R-Package contains functionality for computing and retrieving forward  procedure
+momentuHMM R-Package provides tools for using and inferring HMMs.
+GHMM Library for Python
+The hmm package Haskell library for HMMS, implements Forward algorithm.
+Library for Java contains Machine Learning and Artificial Intelligence algorithm implementations.

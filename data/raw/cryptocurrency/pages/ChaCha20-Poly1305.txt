@@ -1,0 +1,57 @@
+ChaCha20-Poly1305 is an authenticated encryption with associated data (AEAD) algorithm, that combines the ChaCha20 stream cipher with the Poly1305 message authentication code. It has fast software performance, and without hardware acceleration, is usually faster than AES-GCM.
+
+
+== History ==
+The two building blocks of the construction, the algorithms Poly1305 and ChaCha20, were both independently designed, in 2005 and 2008, by Daniel J. Bernstein.
+In March 2013, a proposal was made to the IETF TLS working group to include Salsa20, a winner of the eSTREAM competition to replace the aging RC4-based ciphersuites. A discussion followed in the IETF TLS mailing list with various enhancement suggestions, including using Chacha20 instead of Salsa20 and using a universal hashing based MAC for performance. The outcome of this process was the adoption of Adam Langley's proposal for a variant of the original ChaCha20 algorithm (using 32-bit counter and 96-bit nonce) and a variant of the original Poly1305 (authenticating 2 strings) being combined in an IETF draft to be used in TLS and DTLS, and chosen, for security and performance reasons, as a newly supported cipher. Shortly after IETF's adoption for TLS, ChaCha20, Poly1305 and the combined AEAD mode are added to OpenSSH via thechacha20-poly1305@openssh.com authenticated encryption cipher but kept the original 64-bit counter and 64-bit nonce for the ChaCha20 algorithm.
+In 2015, the AEAD algorithm was standardized in RFC 7539 and  in RFC 7634 to be used in IPsec. The same year, it was integrated by Cloudflare as an alternative ciphersuite.
+In 2016 RFC 7905 describes how to use it in the TLS 1.2 and DTLS 1.2 protocols.
+In June 2018, RFC 7539 was updated and replaced by RFC 8439.
+
+
+== Description ==
+The ChaCha20-Poly1305 algorithm takes as input a 256-bit key and a 96-bit nonce to encrypt a plaintext, with a ciphertext expansion of 128-bit (the tag size). In the ChaCha20-Poly1305 construction, ChaCha20 is used in counter mode to derive a key stream that is XORed with the plaintext. The ciphertext and the associated data is then authenticated using a variant of Poly1305 that first encodes the two strings into one. The way that a cipher and a one time authenticator are combined is precisely identical to AES-GCM construction in how the first block is used to seed the authenticator and how the ciphertext is then authenticated with a 16-byte tag.
+The main external difference with ChaCha20 is its 64 byte (512 bit) block size, in comparison to 16 bytes (128 bit) with both AES-128 and AES-256. The larger block size enables higher performance on modern CPUs and allows for larger streams before the 32 bit counter overflows.
+
+
+== Variants ==
+
+
+=== XChaCha20-Poly1305 – extended nonce variant ===
+The XChaCha20-Poly1305 construction is an extended 192-bit nonce variant of the ChaCha20-Poly1305 construction, using XChaCha20 instead of ChaCha20. When choosing nonces at random, the XChaCha20-Poly1305 construction allows for better security than the original construction. The draft attempt to standardize the construction expired in July 2020.
+
+
+=== Salsa20-Poly1305 and XSalsa20-Poly1305 ===
+Salsa20-Poly1305 and XSalsa20-Poly1305 are variants of the ChaCha20-Poly1305 and XChaCha20-Poly1305 algorithms, using Salsa20 and XSalsa20 in place of ChaCha20 and XChaCha20. They are implemented in NaCl and libsodium but not standardized. The variants using ChaCha are preferred in practice as they provide better diffusion per round than Salsa.
+
+
+=== Reduced-round variants ===
+ChaCha20 can be replaced with its reduced-round variants ChaCha12 and ChaCha8, yielding ChaCha12-Poly1305 and ChaCha8-Poly1305. The same modification can be applied to XChaCha20-Poly1305. These are implemented by the RustCrypto team and not standardized.
+
+
+== Use ==
+ChaCha20-Poly1305 is used in IPsec, SSH, TLS 1.2, DTLS 1.2, TLS 1.3, WireGuard, S/MIME 4.0, OTRv4 and multiple other protocols and implemented in OpenSSL and libsodium. Additionally, the algorithm is used in the backup software Borg in order to provide standard data encryption and in the copy-on-write filesystem Bcachefs for the purpose of optional whole filesystem encryption. It's also one of the encryption traffic methods of V2Ray.
+
+
+== Performance ==
+ChaCha20-Poly1305 usually offers better performance than the more prevalent AES-GCM algorithm, except on systems where the CPU(s) have the AES-NI instruction set extension. As a result, ChaCha20-Poly1305 is sometimes preferred over AES-GCM due to its similar levels of security and in certain use cases involving mobile devices, which mostly use ARM-based CPUs. Because ChaCha20-Poly1305 has less overhead than AES-GCM, ChaCha20-Poly1305 on mobile devices may consume less power than AES-GCM.
+
+
+== Security ==
+The ChaCha20-Poly1305 construction is generally secure in the standard model and the ideal permutation model, for the single- and multi-user setting. However, similarly to GCM, the security relies on choosing a unique nonce for every message encrypted. Compared to AES-GCM, implementations of ChaCha20-Poly1305 are less vulnerable to timing attacks.
+To be noted, when the SSH protocol uses ChaCha20-Poly1305 as underlying primitive, it is vulnerable to the Terrapin attack.
+
+
+== See also ==
+Authenticated encryption
+Galois/Counter Mode
+Salsa20
+Poly1305
+Advanced Encryption Standard
+
+
+== External links ==
+Josefsson, Simon (2013-03-17). "Salsa20 stream cipher in TLS". mailarchive.ietf.org. IETF. Retrieved 2024-07-31. FYI, we have published -00 of a draft that describes how the Salsa20 stream cipher
+
+
+== References ==

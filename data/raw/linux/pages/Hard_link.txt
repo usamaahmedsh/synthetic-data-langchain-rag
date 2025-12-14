@@ -1,0 +1,62 @@
+In computing, a hard link is a directory entry (in a directory-based file system) that associates a name with a file. Thus, each file must have at least one hard link. Creating additional hard links for a file makes the contents of that file accessible via additional paths (i.e., via different names or in different directories). This causes an alias effect: a process can open the file by any one of its paths and change its content. By contrast, a soft link or “shortcut” to a file is not a direct link to the data itself, but rather a reference to a hard link or another soft link.
+Every directory is itself a special file on many systems, containing a list of file names instead of other data. Hence, multiple hard links to directories are possible, which could create a circular directory structure, rather than a branching structure like a tree. For that reason, some file systems forbid the creation of additional hard links to directories.
+POSIX-compliant operating systems, such as Linux, Android, macOS, and the non-POSIX-compliant Windows NT family, support multiple hard links to the same file, depending on the file system. For instance, NTFS and ReFS support hard links, while FAT does not.
+
+
+== Operation ==
+
+Let two hard links, named "LINK A.TXT" and "LINK B.TXT", point to the same physical data. A text editor opens "LINK A.TXT", modifies it and saves it. When the editor (or any other app) opens "LINK B.TXT", it can see those changes made to "LINK A.TXT", since both file names point to the same data. So from a user's point of view this is one file with several filenames. Editing any filename modifies "all" files, however deleting "any" filename except the last one keeps the file around.
+However, some editors, such as GNU Emacs, break the hard link concept. When opening a file for editing, e.g.,  "LINK B.TXT", emacs renames "LINK B.TXT" to "LINK B.TXT~", loads "LINK B.TXT~" into the editor, and saves the modified contents to a newly created "LINK B.TXT". Now, "LINK A.TXT" and "LINK B.TXT" no longer share the same data. (This behavior can be changed using the emacs variable backup-by-copying.)
+Any number of hard links to the physical data may be created. To access the data, a user only needs to specify the name of any existing link; the operating system will resolve the location of the actual data. Even if the user deletes one of the hard links, the data is still accessible through any other link that remains. Once the user deletes all of the links, if no process has the file open, the operating system frees the disk space that the file once occupied.
+
+
+=== Reference counting ===
+
+Most file systems that support hard links use reference counting. The file system stores an integer value with each logical data section that represents the total number of hard links that have been created to point to the data. When a new link is created, this value is increased by one. When a link is removed, the value is decreased by one. When the counter becomes zero, the operating system frees the logical data section. (The OS may not to do so immediately, e.g., when there are outstanding file handles open, for performance reasons, or to enable the undelete command.)
+This is a simple method for the file system to track the use of a given area of storage, as zero values indicate free space and nonzero values indicate used space. The maintenance of this value guarantees that there will be no dangling hard links pointing nowhere. The data section and the associated inode are preserved as long as a single hard link (directory reference) points to it or any process keeps the associated file open.
+On POSIX-compliant operating systems, the reference count for a file or directory is returned by the stat() or fstat() system calls in the st_nlink field of struct stat.
+
+
+== Limitations ==
+To prevent loops in the filesystem, and to keep the interpretation of the ".." file (parent directory) consistent, operating systems do not generally allow hard links to directories. UNIX System V allowed them, but only the superuser had permission to make such links. Mac OS X v10.5 (Leopard) and newer use hard links on directories for the Time Machine backup mechanism only.
+Hard links can be created to files only on the same volume, i.e., within the same file system. (This is because a hard link is a "name → inode" association where the inode is identified by its number, and inode numbers are only unique within their partition. Also, different volumes may have different file systems. There is no guarantee that the target volume's file system is compatible with hard linking.)
+The maximum number of hard links to a single file on a particular type of file system is limited by the size of the file system's reference counter and the size of the copy of the reference counter in the operating system's in-memory per-file data structure; it may also be limited by a policy choice in the operating system code. Exceeding the permitted number of links results in an error. In AT&T Unix System 6, released in 1975, the number of hard links allowed was 127. On Unix-like systems the in-memory counter is 4,294,967,295 (on 32-bit machines) or 18,446,744,073,709,551,615 (on 64-bit machines). In some file systems, the number of hard links is limited more strictly by their on-disk format. For example, as of Linux 3.11, the ext4 file system limits the number of hard links on a file to 65,000. Windows enforces a limit of 1024 hard links to a file on NTFS volumes.
+On Linux Weekly News, Neil Brown criticized hard links as high-maintenance, since they complicate the design of programs that handle directory trees, including archivers and disk usage tools. These apps must take care to de-duplicate files that are linked multiple times in a hierarchy. Brown notes that Plan 9 from Bell Labs, the intended successor to Unix, does not include the concept of a hard link.
+
+
+== Platform support ==
+Windows NT 3.1 and later support hard links on the NTFS file system. Windows 2000 introduces a CreateHardLink() function to create hard links, but only for files, not directories. The DeleteFile() function can remove them.
+To create a hard link on Windows, end-users can use:
+
+The fsutil utility (introduced in Windows 2000)
+The mklink internal command of Windows Command Prompt (introduced in Windows Vista and Windows Server 2008)
+The New-Item cmdlet of PowerShell
+To interrogate a file for its hard links, end-users can use:
+
+The fsutil utility
+The Get-Item and Get-ChildItem cmdlets of PowerShell. These cmdlets represent each file with an object; PowerShell adds a read-only LinkType property to each of them. This property contains the "HardLink" string if the associated file has multiple hard links.
+The Windows Component Store uses hard links to keep track of different versions of components stored on the hard disk drive.
+On Unix-like systems, the link() system call can create additional hard links to existing files. To create hard links, end-users can use:
+
+The ln utility
+The link utility
+The New-Item cmdlet of PowerShell
+To interrogate a file for its hard links, end-users can use:
+
+The stat command
+The ls -l command
+The Get-Item and Get-ChildItem cmdlets of PowerShell (see above)
+Unix-like emulation or compatibility software running on Microsoft Windows, such as Cygwin and Subsystem for UNIX-based Applications, allow the use of POSIX interfaces. 
+OpenVMS supports hard links on the ODS-5 file system. Unlike Unix, VMS can create hard links to directories.
+
+
+== See also ==
+Symbolic link: Points to a hard link, not the file data itself; hence, it works across volumes and file systems.
+NTFS links: Details the four link types that the NTFS supports—hard links, symbolic links, junction points, and volume mount points
+Shortcut: A small file that points to another in a local or remote location
+Alias: macOS implementation of a shortcut
+Shadow: OS/2 implementation of a shortcut
+freedup – The freedup command frees-up disk space by replacing duplicate data stores with automatically generated hard links
+
+
+== References ==

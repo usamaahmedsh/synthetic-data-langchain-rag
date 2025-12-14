@@ -1,0 +1,88 @@
+GT.M is a high-throughput key–value database engine optimized for transaction processing. (It is a type also referred to as "schema-less", "schema-free", or "NoSQL".) GT.M is also an application development platform and a compiler for the ISO standard M language, also known as MUMPS.
+GT.M, an abbreviation for Greystone Technology M, was developed by the Greystone Technology Corp in the 1980s. It is an implementation of ANSI standard M for AIX and Linux. In addition to preserving the traditional features of M, GT.M also offers an optimizing compiler that produces object code that does not require internal interpreters during execution.
+The database engine, made open source in 2000, is maintained by FIS. GT.M is used as the backend of their FIS Profile banking application, and it powers banks in Spain, France, Italy, the Netherlands, Romania and India; Capital One 360 in the United States; Tangerine (Scotiabank) in Canada; Atom Bank; Tandem Bank; Sainsbury's Bank; Scottish Widows and Barclays Direct in the UK. It is also used as an open source backend for the Electronic Health Record system WorldVistA and other open source EHRs such as Medsphere's OpenVista. It is listed as an open source healthcare solution partner of Red Hat. It consists of approximately 2 million lines of code.
+
+
+== Technical overview ==
+GT.M consists of a language subsystem, a database subsystem, and utility programs. The language subsystem and database subsystem are closely integrated, but each is usable without the other. The language and database subsystems share common data organization and typing.
+
+
+=== Data organization and typing ===
+
+Like MUMPS, GT.M has no real concept of different data types, though strings (those which are not fully numeric) must be placed in quotes to differentiate them from variables. Numbers can be treated as strings of digits, or strings can be treated as numbers by numeric operators (coerced, in MUMPS terminology). Data is treated based on context and the rules of GT.M: 1+"42" yields the result 43, the first character of 43 is 4, and 20+"30 DUCKS" is 50 (as non-numeric characters are dropped during numeric operations).
+There is only one data structure - multi-dimensional sparse arrays (key-value nodes, sub-trees, and associative memory are all equally valid descriptions) with up to 32 subscripts.  A scalar can be thought of as an array element with zero subscripts.  Nodes with varying numbers of subscripts (including one node with no subscripts) can freely co-exist in the same array.  For example, if one wanted to represent the national capitals of the United States:
+
+Set Capital("United States")="Washington"
+Set Capital("United States",1774,1776)="Philadelphia"
+Set Capital("United States",1776,1777)="Baltimore"
+
+Variables are created on demand when first assigned to.  Thus, the first Set command above would create the variable Capital.  Variables have scope in the language, and are called local variables.  A database access looks like an array access, for example:
+
+Set ^Capital("United States")="Washington"
+
+but the caret (^) means that it is a database access.  Variables used for database access have a single global scope, and of course persist and shared between processes.  They are called global variables.  The first 31 characters of a variable name are significant.
+The Kill and ZKill commands are used to delete subtrees of values.
+GT.M uses Unicode (ISO/IEC-10646) for international character set support.
+
+
+=== Database subsystem ===
+
+The logical database of a GT.M process consists of one or more global variable name spaces, each consisting of unlimited number of global variables.  For each global variable name space, a global directory maps global variables to the database files where they actually reside.  An unlimited number of global variables can fit within one database file; a global variable must fit in one database file.
+A database file consists of up to 224M (276,168,704) database blocks.  A database block is a multiple of 512 bytes, with a maximum size of 65,024 bytes.  Commonly used block sizes are 4KB, 8KB and 16KB - so, with an 8KB block size, an individual global variable can grow to 1,792GB.  A global variable node (global variable, subscripts plus value) must fit in one database block and each block has a 16 byte overhead.  So, the largest node that will fit in a database with a 4KB block size is 4,080 bytes.  A key (global variable plus subscripts) can be up to 255 bytes.
+The database engine is daemonless and processes accessing the database operate with normal user and group ids - a process has access to a database file if and only if the ownership and permissions of that database file (plus any layered access control such as SELinux) permits access.  Each process has within its address space all the logic needed to manage the database, and processes cooperate with one another to manage database files.  When a database file is journaled, updates are written to journal files before being written to database files, and in the event of a system crash, database files can be recovered from journal files.
+The database engine also supports transaction processing.  So, code such as:
+
+TStart ()
+ Set ^Capital("France")="Paris"
+ Set ^Country("Paris")="France"
+TCommit
+
+implements an ACID transaction.  GT.M uses optimistic concurrency control to manage transactions.
+A plug-in architecture allows the database to be encrypted in order to protect data at rest.  GT.M is distributed with a reference plug-in that uses GnuPG.
+
+
+=== Language subsystem ===
+
+Unlike the database where global variable nodes must fit within a database block, local variable strings can grow to 1MB.  The GT.M run-time provides dynamic storage allocation with garbage collection.  The number of local variables and the number of nodes in local variables are limited only by storage available to the process.  The default scope of a local variable is the lifetime of a process.  Local variables created within routines using the New command have more limited scope.
+GT.M routines are dynamically compiled and linked for execution in the address space of each process.  With the exception of the 32-bit implementation of GT.M for the x86 Linux platform, object modules can also be placed in shared libraries with the standard ld command, in which case the memory used is shared.  This is important because an application such as VistA has over 20,000 routines whose compiled object code exceeds 200MB.  A large hospital running VistA can have thousands of concurrently running user processes.
+With a couple of small exceptions, GT.M includes a nearly complete implementation of ISO standard M (affectionately known as MUMPS for historical reasons).
+In GT.M, M code can freely call out to C code (or code in other languages with a C compatible interface), and C code can freely call in to M code (so the top level program can be a C main()).  For example, is a GT.M module in CPAN, m_python Archived 2010-03-31 at the Wayback Machine for access from Python or EGTM binding for Erlang.
+Web services written in GT.M can be deployed under an Internet super server such as inetd or xinetd.  Web-enabled applications can use layered software such as EWD Archived 2010-01-08 at the Wayback Machine or CFMumps.
+
+
+== Platforms ==
+GT.M is fully supported on the following platforms:
+
+AIX on IBM System p
+Linux on x86_64 and IA-32 (x86) architectures. The YottaDB fork of GT.M adds support for ARM.
+GT.M is no longer supported on these platforms:
+
+HP-UX as of October 2015 (V6.2-002A)
+OpenVMS as of December 2014 (V6.2-001)
+Solaris as of December 2015 (V6.2-002A)
+The code base for GT.M on Linux on IA-32 (x86) includes changes needed to run on Cygwin on Microsoft Windows but this is not a supported platform.
+
+
+== Licensing ==
+
+On Linux on x86-64 & IA-32 (x86), and on OpenVMS on Alpha/AXP, GT.M is released as Free / Open Source Software (FOSS) under the terms of the GNU Affero General Public License, version 3.  On other platforms, it is available under proprietary licenses.
+
+
+== Common applications ==
+GT.M is predominantly used in healthcare and financial services industry. The first production use of GT.M was in 1986 at the Elvis Presley Memorial Trauma Center in Memphis, Tennessee. Through FIS Profile, it powers banks in the United States, Canada, Spain, France, Italy, Vietnam, and Thailand.
+SQL and ODBC access to GT.M databases exists as separate commercial products.
+
+
+== References ==
+
+
+== Further reading ==
+Ignacio Valdes (November 17, 2002), K.S. Bhaskar Receives 2002 LMN Achievement Award, linuxmednews.com
+
+
+== External links ==
+Project page at SourceForge
+GT.M documentation
+YottaDB, a GT.M fork
+EGTM: GT.M binding for Erlang
+nodem: GT.M binding for Node.js

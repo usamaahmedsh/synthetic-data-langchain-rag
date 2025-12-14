@@ -1,0 +1,276 @@
+Photometric stereo is a technique in computer vision for estimating the surface normals of objects by observing that object under different lighting conditions (photometry). It is based on the fact that the amount of light reflected by a surface is dependent on the orientation of the surface in relation to the light source and the observer. By measuring the amount of light reflected into a camera, the space of possible surface orientations is limited. Given enough light sources from different angles, the surface orientation may be constrained to a single orientation or even overconstrained.
+The technique was originally introduced by Woodham in 1980.  The special case where the data is a single image is known as shape from shading, and was analyzed by B. K. P. Horn in 1989. Photometric stereo has since been generalized to many other situations, including extended light sources and non-Lambertian surface finishes.  Current research aims to make the method work in the presence of projected shadows, highlights, and non-uniform lighting.
+Photometric stereo is widely used in various fields, including archaeology, cultural heritage conservation, and quality control. It is now integrated into widely used open-source software, such as Meshroom.
+
+
+== Basic Method ==
+Under Woodham's original assumptions — Lambertian reflectance, known point-like distant light sources, and uniform albedo — the problem can be solved by inverting the linear equation 
+  
+    
+      
+        I
+        =
+        L
+        ⋅
+        n
+      
+    
+    {\displaystyle I=L\cdot n}
+  
+, where 
+  
+    
+      
+        I
+      
+    
+    {\displaystyle I}
+  
+ is a (known) vector of 
+  
+    
+      
+        m
+      
+    
+    {\displaystyle m}
+  
+ observed intensities, 
+  
+    
+      
+        n
+      
+    
+    {\displaystyle n}
+  
+ is the (unknown) surface normal, and 
+  
+    
+      
+        L
+      
+    
+    {\displaystyle L}
+  
+ is a (known) 
+  
+    
+      
+        3
+        ×
+        m
+      
+    
+    {\displaystyle 3\times m}
+  
+ matrix of normalized light directions.
+This model can easily be extended to surfaces with non-uniform albedo, while keeping the problem linear. Taking an albedo reflectivity of 
+  
+    
+      
+        k
+      
+    
+    {\displaystyle k}
+  
+, the formula for the reflected light intensity becomes:
+
+  
+    
+      
+        I
+        =
+        k
+        (
+        L
+        ⋅
+        n
+        )
+      
+    
+    {\displaystyle I=k(L\cdot n)}
+  
+
+If 
+  
+    
+      
+        L
+      
+    
+    {\displaystyle L}
+  
+ is square (there are exactly 3 lights) and non-singular, it can be inverted, giving:
+
+  
+    
+      
+        
+          L
+          
+            −
+            1
+          
+        
+        I
+        =
+        k
+        n
+      
+    
+    {\displaystyle L^{-1}I=kn}
+  
+
+Since the normal vector is known to have length 1, 
+  
+    
+      
+        k
+      
+    
+    {\displaystyle k}
+  
+ must be the length of the vector 
+  
+    
+      
+        k
+        n
+      
+    
+    {\displaystyle kn}
+  
+, and 
+  
+    
+      
+        n
+      
+    
+    {\displaystyle n}
+  
+ is the normalised direction of that vector.
+If 
+  
+    
+      
+        L
+      
+    
+    {\displaystyle L}
+  
+ is not square (there are more than 3 lights), a generalisation of the inverse can be obtained using the Moore–Penrose pseudoinverse, by simply multiplying both sides with 
+  
+    
+      
+        
+          L
+          
+            T
+          
+        
+      
+    
+    {\displaystyle L^{T}}
+  
+ giving:
+
+  
+    
+      
+        
+          L
+          
+            T
+          
+        
+        I
+        =
+        
+          L
+          
+            T
+          
+        
+        k
+        (
+        L
+        ⋅
+        n
+        )
+      
+    
+    {\displaystyle L^{T}I=L^{T}k(L\cdot n)}
+  
+
+  
+    
+      
+        (
+        
+          L
+          
+            T
+          
+        
+        L
+        
+          )
+          
+            −
+            1
+          
+        
+        
+          L
+          
+            T
+          
+        
+        I
+        =
+        k
+        n
+      
+    
+    {\displaystyle (L^{T}L)^{-1}L^{T}I=kn}
+  
+
+After which the normal vector and albedo can be solved as described above.
+
+
+== Non-Lambertian surfaces ==
+The classical photometric stereo problem concerns itself only with Lambertian surfaces, with perfectly diffuse reflection. This is unrealistic for many types of materials, especially metals, glass and smooth plastics, and will lead to aberrations in the resulting normal vectors.
+Many methods have been developed to lift this assumption. In this section, a few of these are listed.
+
+
+=== Specular reflections ===
+Historically, in computer graphics, the commonly used model to render surfaces started with Lambertian surfaces and progressed first to include simple specular reflections. Computer vision followed a similar course with photometric stereo. Specular reflections were among the first deviations from the Lambertian model. These are a few adaptations that have been developed.
+
+Many techniques ultimately rely on modelling the reflectance function of the surface, that is, how much light is reflected in each direction. This reflectance function has to be invertible. The reflected light intensities towards the camera is measured, and the inverse reflectance function is fit onto the measured intensities, resulting in a unique solution for the normal vector.
+
+
+=== General BRDFs and beyond ===
+According to the Bidirectional reflectance distribution function (BRDF) model, a surface may distribute the amount of light it receives in any outward direction. This is the most general known model for opaque surfaces. Some techniques have been developed to model (almost) general BRDFs. In practice, all of these require many light sources to obtain reliable data. These are methods in which surfaces with general BRDFs can be measured.
+
+Determine the explicit BRDF prior to scanning. To do this, a different surface is required that has the same or a very similar BRDF, of which the actual geometry (or at least the normal vectors for many points on the surface) is already known. The lights are then individually shone upon the known surface, and the amount of reflection into the camera is measured. Using this information, a look-up table can be created that maps reflected intensities for each light source to a list of possible normal vectors. This puts constraints on the possible normal vectors the surface may have, and reduces the photometric stereo problem to an interpolation between measurements. Typical known surfaces to calibrate the look-up table with are spheres for their wide variety of surface orientations.
+Restricting the BRDF to be symmetrical. If the BRDF is symmetrical, the direction of the light can be restricted to a cone about the direction to the camera. Which cone this is depends on the BRDF itself, the normal vector of the surface, and the measured intensity. Given enough measured intensities and the resulting light directions, these cones can be approximated and therefore the normal vectors of the surface.
+Some progress has been made towards modelling an even more general surfaces, such as Spatially Varying Bidirectional Distribution Functions (SVBRDF), Bidirectional surface scattering reflectance distribution functions (BSSRDF), and accounting for interreflections. However, such methods are still fairly restrictive in photometric stereo. Better results have been achieved with structured light.
+
+
+== Uncalibrated photometric stereo ==
+Uncalibrated Photometric Stereo is an approach in photometric stereo that aims to reconstruct the 3D shape of an object from images captured under unknown lighting conditions. Unlike classical methods, which often assume controlled or known lighting setups, this approach removes these constraints, making it adaptable to diverse and real-world environments.
+The advent of deep learning has revolutionized universal PS by replacing handcrafted assumptions with data-driven models. Recent approaches leverage Transformer-based architectures and multi-scale encoder–decoder networks to directly estimate surface normals from input images. 
+Uncalibrated Photometric Stereo is inherently an ill-posed problem, as it attempts to recover 3D shape and lighting conditions simultaneously from images alone. This leads to fundamental ambiguities in the reconstruction process, which manifest as systematic errors in the recovered geometry, including global distortions in the object's overall shape, and misinterpretation of surface orientation, where concave regions may appear convex and vice versa.
+To address the challenges of uncalibrated photometric stereo, hybrid methods have emerged that combine multi-view stereo and photometric stereo. These approaches leverage the strengths of both techniques, including geometric reliability and resolution.
+
+
+== See also ==
+Photoclinometry
+Photometry
+Stereo vision
+3D scanner
+
+
+== References ==

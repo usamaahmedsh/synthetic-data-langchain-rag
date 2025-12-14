@@ -1,0 +1,47 @@
+Application Layer Transport Security (ALTS) is a Google-developed authentication and transport encryption system used for securing remote procedure call (RPC) within Google machines. Google started its development in 2007, as a tailored modification of TLS.
+
+
+== Background ==
+ALTS, similar to TLS, was designed specifically for Google’s data centers and relies on two protocols, Handshake and Record. Google began developing ATLS in 2007 in order to create a security system solution for the company’s infrastructure.
+The ALTS whitepaper was published in December 2017. At that time the dominant Application layer protocols were SSL and TLS 1.1 (TLS 1.2 was only published as an RFC in 2008), those supported many legacy algorithms and had poor security standards. As Google was in full control over the machines that needed secure transport of RPCs, deployment of systems was relatively easy, and so Google developers could afford designing their own system from scratch.
+Another requirement that deemed a new system necessary is different trust models:
+in TLS, the server side is committed to its own domain name (and corresponding naming scheme), while Google needed the same identity (i.e. RPC) to be used with multiple naming schemes, in order to simplify microservice replication, load balancing and rescheduling between hosts.
+
+
+== Details ==
+
+
+=== Handshake protocol ===
+The ALTS handshake protocol is based on authenticated Diffie–Hellman key exchange scheme, and supports both perfect forward secrecy (access to current keys does not compromise future security) and session resumption (noticeable speedups in the protocol after the first session between the parties).
+Unlike TLS, in ALTS both parties — server and client — have a certificate proving their respective identities. The certificate chains to a trusted signing service verification key, with the leaf being an Elliptic-curve Diffie–Hellman key, that is eventually used for key exchange. The elliptic curve used in the key exchange is Curve25519.
+The handshake protocol consists of four messages, sent in plaintext:
+
+ClientInit, initiated by the client, and contains the client's certificate, list of available cipher suites, and a session resumption attempt;
+ServerInit, sent by the server as a response, and contains its own certificate, chosen cipher suite, and optionally an encrypted resumption ticket;
+ServerFinished, sent by the server (concatenated to the previous message in ALTS default implementation), and contains a handshake authenticator, i.e. HMAC over a known bitstring using the calculated session key;
+ClientFinished, sent by the client, and contains a handshake authenticator, similarly to the one in ServerFinished.
+Once both parties computed the session key (record protocol in the whitepaper), they can start encrypting traffic with the symmetric encryption algorithm 128-bit AES, using mostly  GCM as its mode of operation. On older machines, a Google developed VCM was used.
+The handshake protocol was verified using the ProVerif formal verification tool.
+
+
+=== Session resumption ===
+In order to avoid repeating computationally expensive operations, ALTS supports session resumption.
+The resumption tickets are created by either the server or the client, and may be used in the handshake protocol, if both parties hold the same resumption ticket, indexed by a resumption identifier.
+The resumption secret is used to derive the next session key, authenticator and encapsulated (independent) resumption ticket/identifier.
+
+
+=== Perfect forward secrecy ===
+Perfect forward secrecy (PFS) is not enabled by default in ALTS; however, it is supported. Instead of using an inherent PFS algorithm, ALTS achieves PFS by frequently rotating the certificates, which have a short lifespan ( 20, or 48 minutes; see ). Moreover, if PFS is enabled, it is also enabled for session resumption, by deriving the encryption keys from the resumption ticket using a pseudorandom function.
+
+
+== See also ==
+Transport Layer Security
+QUIC
+Google Cloud Platform
+
+
+== External links ==
+ALTS White Paper
+
+
+== References ==

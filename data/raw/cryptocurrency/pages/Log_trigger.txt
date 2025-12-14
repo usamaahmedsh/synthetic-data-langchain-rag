@@ -1,0 +1,153 @@
+In relational databases, the log trigger or history trigger is a mechanism for automatic recording of information about changes inserting or/and updating or/and deleting rows in a database table.
+It is a particular technique for change data capturing, and in data warehousing for dealing with slowly changing dimensions.
+
+
+== Introduction ==
+Operational databases are typically designed to capture the current state of an organization, acting as a snapshot of "now" rather than a historical archive. In this environment, updates are often destructive; when a specific data point changes, the system prioritizes efficiency by replacing the existing value with the new one. For instance, in an employee or customer directory, if an individual moves to a new location, an update operation is performed on the database that writes the new address directly over the old one. Consequently, the previous address is permanently overwritten and lost to the system, leaving the database with only the most up-to-date information and no record of the entity's history or previous status.
+The Log trigger is a mechanism to automatically detect changes and to store the previous status of information.
+
+
+== Definition ==
+Suppose there is a table which we want to audit. This table contains the following columns:
+Column1, Column2, ..., Columnn
+The column Column1 is assumed to be the primary key.
+These columns are defined to have the following types:
+Type1, Type2, ..., Typen
+The Log Trigger works writing the changes (INSERT, UPDATE and DELETE operations) on the table in another, history table, defined as following:
+
+As shown above, this new table contains the same columns as the original table, and additionally two new columns of type DATETIME: StartDate and EndDate. This is known as tuple versioning. These two additional columns define a period of time of "validity" of the data associated with a specified entity (the entity of the primary key), or in other words, it stores how the data were in the period of time between the StartDate (included) and EndDate (not included).
+For each entity (distinct primary key) on the original table, the following structure is created in the history table. Data is shown as example.
+
+Notice that if they are shown chronologically the EndDate column of any row is exactly the StartDate of its successor (if any). It does not mean that both rows are common to that point in time, since -by definition- the value of EndDate is not included.
+There are two variants of the Log trigger, depending how the old values (DELETE, UPDATE) and new values (INSERT, UPDATE) are exposed to the trigger (it is RDBMS dependent):
+Old and new values as fields of a record data structure
+
+Old and new values as rows of virtual tables
+
+
+=== Compatibility notes ===
+The code above is shown as a code idiom. Trigger syntax vary enormously among RDBMS, for example:
+
+The function GetDate() is used to get the system date and time, a specific RDBMS could either use another function name, or get this information by another way.
+Several RDBMS (Db2, MySQL) do not support that the same trigger can be attached to more than one operation (INSERT, DELETE, UPDATE). In such a case a trigger must be created for each operation; For an INSERT operation only the inserting section must be specified, for a DELETE operation only the deleting section must be specified, and for an UPDATE operation both sections must be present, just as it is shown above (the deleting section first, then the inserting section), because an UPDATE operation is logically represented as a DELETE operation followed by an INSERT operation.
+In the code shown, the record data structure containing the old and new values are called OLD and NEW. On a specific RDBMS they could have different names.
+In the code shown, the virtual tables are called DELETED and INSERTED. On a specific RDBMS they could have different names. Another RDBMS (Db2) even let the name of these logical tables be specified.
+In the code shown, comments are in C/C++ style, they could not be supported by a specific RDBMS, or a different syntax should be used.
+Several RDBMS require that the body of the trigger is enclosed between BEGIN and END keywords.
+
+
+== Implementation in common RDBMS ==
+
+
+=== IBM Db2 ===
+Source:
+
+A trigger cannot be attached to more than one operation (INSERT, DELETE, UPDATE), so a trigger must be created for each operation.
+The old and new values are exposed as fields of a record data structures. The names of these records can be defined, in this example they are named as O for old values and N for new values.
+
+
+=== Microsoft SQL Server ===
+Source:
+
+The same trigger can be attached to all the INSERT, DELETE, and UPDATE operations.
+Old and new values as rows of virtual tables named DELETED and INSERTED.
+
+
+=== MySQL ===
+A trigger cannot be attached to more than one operation (INSERT, DELETE, UPDATE), so a trigger must be created for each operation.
+The old and new values are exposed as fields of a record data structures called Old and New.
+
+
+=== Oracle ===
+The same trigger can be attached to all the INSERT, DELETE, and UPDATE operations.
+The old and new values are exposed as fields of a record data structures called :OLD and :NEW.
+It is necessary to test the nullity of the fields of the :NEW record that define the primary key (when a DELETE operation is performed), in order to avoid the insertion of a new row with null values in all columns.
+
+
+=== PostgreSQL ===
+The action associated to a trigger must be specified as a function, so a function is first defined.
+Old and new values are exposed as rows of virtual tables named old_table and new_table, but these names can be different.
+Even though a trigger can be associated to more than one operation (INSERT, DELETE, UPDATE), in this case a different trigger is associated on every operation on order to specify the names of the virtual tables, and these triggers can reference to the same function.
+
+
+== Historic information ==
+Typically, database backups are used to store and retrieve historic information. A database backup is a security mechanism, more than an effective way to retrieve ready-to-use historic information.
+A (full) database backup is only a snapshot of the data in specific points of time, so we could know the information of each snapshot, but we can know nothing between them. Information in database backups is discrete in time.
+Using the log trigger the information we can know is not discrete but continuous, we can know the exact state of the information in any point of time, only limited to the granularity of time provided with the DATETIME data type of the RDBMS used.
+
+
+== Advantages ==
+It is simple.
+It is not a commercial product, it works with available features in common RDBMS.
+It is automatic, once it is created, it works with no further human intervention.
+It is not required to have good knowledge about the tables of the database, or the data model.
+Changes in current programming are not required.
+Changes in the current tables are not required, because log data of any table is stored in a different one.
+It works for both programmed and ad hoc statements.
+Only changes (INSERT, UPDATE and DELETE operations) are registered, so the growing rate of the history tables are proportional to the changes.
+It is not necessary to apply the trigger to all the tables on database, it can be applied to certain tables, or certain columns of a table.
+
+
+== Disadvantages ==
+It does not automatically store information about the user producing the changes (information system user, not database user). This information might be provided explicitly. It could be enforced in information systems, but not in ad hoc queries.
+
+
+== Examples of use ==
+
+
+=== Getting the current version of a table ===
+
+It should return the same resultset of the whole original table.
+
+
+=== Getting the version of a table in a certain point of time ===
+Suppose the @DATE variable contains the point or time of interest.
+
+
+=== Getting the information of an entity in a certain point of time ===
+Suppose the @DATE variable contains the point or time of interest, and the @KEY variable contains the primary key of the entity of interest.
+
+
+=== Getting the history of an entity ===
+Suppose the @KEY variable contains the primary key of the entity of interest.
+
+
+=== Getting when and how an entity was created ===
+Suppose the @KEY variable contains the primary key of the entity of interest.
+
+
+== Immutability of primary keys ==
+Since the trigger requires that primary key being the same throughout time, it is desirable to either ensure or maximize its immutability, if a primary key changed its value, the entity it represents would break its own history.
+There are several options to achieve or maximize the primary key immutability:
+
+Use of a surrogate key as a primary key. Since there is no reason to change a value with no meaning other than identity and uniqueness, it would never change.
+Use of an immutable natural key as a primary key. In a good database design, a natural key which can change should not be considered as a "real" primary key.
+Use of a mutable natural key as a primary key (it is widely discouraged) where changes are propagated in every place where it is a foreign key. In such a case, the history table should be also affected.
+
+
+== Data warehousing ==
+According with the slowly changing dimension management methodologies, The log trigger falls into the following:
+
+Type 2 (tuple versioning variant)
+Type 4 (use of history tables)
+
+
+== See also ==
+Relational database
+Primary key
+Natural key
+Surrogate key
+Change data capture
+Slowly changing dimension
+Tuple versioning
+
+
+== Notes ==
+The Log trigger was designed by Laurence R. Ugalde to automatically generate history of transactional databases.
+
+
+== External links ==
+Log trigger on GitHub
+
+
+== References ==

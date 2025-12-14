@@ -1,0 +1,1037 @@
+Context mixing is a type of data compression algorithm in which the next-symbol predictions of two or more statistical models are combined to yield a prediction that is often more accurate than any of the individual predictions.  For example, one simple method (not necessarily the best) is to average the probabilities assigned by each model. The random forest is another method: it outputs the prediction that is the mode of the predictions output by individual models.  Combining models is an active area of research in machine learning.
+The PAQ series of data compression programs use context mixing to assign probabilities to individual bits of the input.
+
+
+== Application to Data Compression ==
+Suppose that we are given two conditional probabilities, 
+  
+    
+      
+        P
+        (
+        X
+        
+          |
+        
+        A
+        )
+      
+    
+    {\displaystyle P(X|A)}
+  
+ and 
+  
+    
+      
+        P
+        (
+        X
+        
+          |
+        
+        B
+        )
+      
+    
+    {\displaystyle P(X|B)}
+  
+, and we wish to estimate 
+  
+    
+      
+        P
+        (
+        X
+        
+          |
+        
+        A
+        ,
+        B
+        )
+      
+    
+    {\displaystyle P(X|A,B)}
+  
+, the probability of event X given both conditions 
+  
+    
+      
+        A
+      
+    
+    {\displaystyle A}
+  
+ and 
+  
+    
+      
+        B
+      
+    
+    {\displaystyle B}
+  
+. There is insufficient information for probability theory to give a result. In fact, it is possible to construct scenarios in which the result could be anything at all. But intuitively, we would expect the result to be some kind of average of the two.
+The problem is important for data compression. In this application, 
+  
+    
+      
+        A
+      
+    
+    {\displaystyle A}
+  
+ and 
+  
+    
+      
+        B
+      
+    
+    {\displaystyle B}
+  
+ are contexts, 
+  
+    
+      
+        X
+      
+    
+    {\displaystyle X}
+  
+ is the event that the next bit or symbol of the data to be compressed has a particular value, and 
+  
+    
+      
+        P
+        (
+        X
+        
+          |
+        
+        A
+        )
+      
+    
+    {\displaystyle P(X|A)}
+  
+ and 
+  
+    
+      
+        P
+        (
+        X
+        
+          |
+        
+        B
+        )
+      
+    
+    {\displaystyle P(X|B)}
+  
+ are the probability estimates by two independent models. The compression ratio depends on how closely the estimated probability approaches the true but unknown probability of event 
+  
+    
+      
+        X
+      
+    
+    {\displaystyle X}
+  
+. It is often the case that contexts 
+  
+    
+      
+        A
+      
+    
+    {\displaystyle A}
+  
+ and 
+  
+    
+      
+        B
+      
+    
+    {\displaystyle B}
+  
+ have occurred often enough to accurately estimate 
+  
+    
+      
+        P
+        (
+        X
+        
+          |
+        
+        A
+        )
+      
+    
+    {\displaystyle P(X|A)}
+  
+ and 
+  
+    
+      
+        P
+        (
+        X
+        
+          |
+        
+        B
+        )
+      
+    
+    {\displaystyle P(X|B)}
+  
+ by counting occurrences of 
+  
+    
+      
+        X
+      
+    
+    {\displaystyle X}
+  
+ in each context, but the two contexts either have not occurred together frequently, or there are insufficient computing resources (time and memory) to collect statistics for the combined case.
+For example, suppose that we are compressing a text file. We wish to predict whether the next character will be a linefeed, given that the previous character was a period (context 
+  
+    
+      
+        A
+      
+    
+    {\displaystyle A}
+  
+) and that the last linefeed occurred 72 characters ago (context 
+  
+    
+      
+        B
+      
+    
+    {\displaystyle B}
+  
+). Suppose that a linefeed previously occurred after 1 of the last 5 periods (
+  
+    
+      
+        P
+        (
+        X
+        
+          |
+        
+        A
+        =
+        0.2
+      
+    
+    {\displaystyle P(X|A=0.2}
+  
+) and in 5 out of the last 10 lines at column 72 (
+  
+    
+      
+        P
+        (
+        X
+        
+          |
+        
+        B
+        )
+        =
+        0.5
+      
+    
+    {\displaystyle P(X|B)=0.5}
+  
+). How should these predictions be combined?
+Two general approaches have been used, linear and logistic mixing. Linear mixing uses a weighted average of the predictions weighted by evidence. In this example, 
+  
+    
+      
+        P
+        (
+        X
+        
+          |
+        
+        B
+        )
+      
+    
+    {\displaystyle P(X|B)}
+  
+ gets more weight than 
+  
+    
+      
+        P
+        (
+        X
+        
+          |
+        
+        A
+        )
+      
+    
+    {\displaystyle P(X|A)}
+  
+ because 
+  
+    
+      
+        P
+        (
+        X
+        
+          |
+        
+        B
+        )
+      
+    
+    {\displaystyle P(X|B)}
+  
+ is based on a greater number of tests. Older versions of PAQ uses this approach. Newer versions use logistic (or neural network) mixing by first transforming the predictions into the logistic domain, log(p/(1-p)) before averaging. This effectively gives greater weight to predictions near 0 or 1, in this case 
+  
+    
+      
+        P
+        (
+        X
+        
+          |
+        
+        A
+        )
+      
+    
+    {\displaystyle P(X|A)}
+  
+. In both cases, additional weights may be given to each of the input models and adapted to favor the models that have given the most accurate predictions in the past. All but the oldest versions of PAQ use adaptive weighting.
+Most context mixing compressors predict one bit of input at a time. The output probability is simply the probability that the next bit will be a 1.
+
+
+=== Linear Mixing ===
+We are given a set of predictions 
+  
+    
+      
+        
+          P
+          
+            i
+          
+        
+        (
+        1
+        )
+        =
+        
+          n
+          
+            1
+            i
+          
+        
+        
+          /
+        
+        
+          n
+          
+            i
+          
+        
+      
+    
+    {\textstyle P_{i}(1)=n_{1i}/n_{i}}
+  
+, where 
+  
+    
+      
+        
+          n
+          
+            i
+          
+        
+        =
+        
+          n
+          
+            0
+            i
+          
+        
+        +
+        
+          n
+          
+            1
+            i
+          
+        
+      
+    
+    {\textstyle n_{i}=n_{0i}+n_{1i}}
+  
+, and 
+  
+    
+      
+        
+          n
+          
+            0
+            i
+          
+        
+      
+    
+    {\displaystyle n_{0i}}
+  
+ and 
+  
+    
+      
+        
+          n
+          
+            1
+            i
+          
+        
+      
+    
+    {\displaystyle n_{1i}}
+  
+ are the counts of 0 and 1 bits respectively for the 
+  
+    
+      
+        i
+      
+    
+    {\displaystyle i}
+  
+'th model. The probabilities are computed by weighted addition of the 0 and 1 counts:
+
+  
+    
+      
+        
+          S
+          
+            0
+          
+        
+        =
+        
+          ∑
+          
+            i
+          
+        
+        
+          w
+          
+            i
+          
+        
+        
+          n
+          
+            0
+            i
+          
+        
+      
+    
+    {\textstyle S_{0}=\sum _{i}w_{i}n_{0i}}
+  
+
+  
+    
+      
+        
+          S
+          
+            1
+          
+        
+        =
+        
+          ∑
+          
+            i
+          
+        
+        
+          w
+          
+            i
+          
+        
+        
+          n
+          
+            1
+            i
+          
+        
+      
+    
+    {\textstyle S_{1}=\sum _{i}w_{i}n_{1i}}
+  
+
+  
+    
+      
+        S
+        =
+        
+          S
+          
+            0
+          
+        
+        +
+        
+          S
+          
+            1
+          
+        
+      
+    
+    {\textstyle S=S_{0}+S_{1}}
+  
+
+  
+    
+      
+        P
+        (
+        0
+        )
+        =
+        
+          
+            
+              S
+              
+                0
+              
+            
+            S
+          
+        
+      
+    
+    {\textstyle P(0)={\frac {S_{0}}{S}}}
+  
+
+  
+    
+      
+        P
+        (
+        1
+        )
+        =
+        
+          
+            
+              S
+              
+                1
+              
+            
+            S
+          
+        
+      
+    
+    {\textstyle P(1)={\frac {S_{1}}{S}}}
+  
+
+The weights 
+  
+    
+      
+        
+          w
+          
+            i
+          
+        
+      
+    
+    {\displaystyle w_{i}}
+  
+ are initially equal and always sum to 1. Under the initial conditions, each model is weighted in proportion to evidence. The weights are then adjusted to favor the more accurate models. Suppose we are given that the actual bit being predicted is 
+  
+    
+      
+        y
+      
+    
+    {\displaystyle y}
+  
+ (0 or 1). Then the weight adjustment is:
+  
+    
+      
+        
+          w
+          
+            i
+          
+        
+        ←
+        max
+        [
+        0
+        ,
+        
+          w
+          
+            i
+          
+        
+        +
+        (
+        y
+        −
+        P
+        (
+        1
+        )
+        )
+        
+          
+            
+              S
+              
+                n
+                
+                  1
+                  i
+                
+              
+              −
+              
+                S
+                
+                  1
+                
+              
+              
+                n
+                
+                  i
+                
+              
+            
+            
+              
+                S
+                
+                  0
+                
+              
+              
+                S
+                
+                  1
+                
+              
+            
+          
+        
+        ]
+      
+    
+    {\displaystyle w_{i}\leftarrow \max[0,w_{i}+(y-P(1)){\frac {Sn_{1i}-S_{1}n_{i}}{S_{0}S_{1}}}]}
+  
+Compression can be improved by bounding 
+  
+    
+      
+        
+          n
+          
+            i
+          
+        
+      
+    
+    {\textstyle n_{i}}
+  
+ so that the model weighting is better balanced. In PAQ6, whenever one of the bit counts is incremented, the part of the other count that exceeds 2 is halved. For example, after the sequence 000000001, the counts would go from 
+  
+    
+      
+        (
+        
+          n
+          
+            0
+          
+        
+        ,
+        
+          n
+          
+            1
+          
+        
+        )
+        =
+        (
+        8
+        ,
+        0
+        )
+      
+    
+    {\textstyle (n_{0},n_{1})=(8,0)}
+  
+ to 
+  
+    
+      
+        (
+        5
+        ,
+        1
+        )
+      
+    
+    {\textstyle (5,1)}
+  
+.
+
+
+=== Logistic Mixing ===
+Let 
+  
+    
+      
+        
+          P
+          
+            i
+          
+        
+        (
+        1
+        )
+      
+    
+    {\displaystyle P_{i}(1)}
+  
+ be the prediction by the  
+  
+    
+      
+        i
+      
+    
+    {\displaystyle i}
+  
+'th model that the next bit will be a 1. Then the final prediction 
+  
+    
+      
+        P
+        (
+        1
+        )
+      
+    
+    {\displaystyle P(1)}
+  
+ is calculated:
+
+  
+    
+      
+        
+          x
+          
+            i
+          
+        
+        =
+        
+          stretch
+        
+        (
+        
+          P
+          
+            i
+          
+        
+        (
+        1
+        )
+        )
+      
+    
+    {\displaystyle x_{i}={\text{stretch}}(P_{i}(1))}
+  
+
+  
+    
+      
+        P
+        (
+        1
+        )
+        =
+        
+          squash
+        
+        (
+        
+          ∑
+          
+            i
+          
+        
+        
+          w
+          
+            i
+          
+        
+        
+          x
+          
+            i
+          
+        
+        )
+      
+    
+    {\textstyle P(1)={\text{squash}}(\sum _{i}w_{i}x_{i})}
+  
+
+where 
+  
+    
+      
+        P
+        (
+        1
+        )
+      
+    
+    {\displaystyle P(1)}
+  
+ is the probability that the next bit will be a 1, 
+  
+    
+      
+        
+          P
+          
+            i
+          
+        
+        (
+        1
+        )
+      
+    
+    {\displaystyle P_{i}(1)}
+  
+ is the probability estimated by the  
+  
+    
+      
+        i
+      
+    
+    {\displaystyle i}
+  
+'th model, and
+
+  
+    
+      
+        
+          stretch
+        
+        (
+        x
+        )
+        =
+        ln
+        ⁡
+        (
+        x
+        
+          /
+        
+        (
+        1
+        −
+        x
+        )
+        )
+      
+    
+    {\displaystyle {\text{stretch}}(x)=\ln(x/(1-x))}
+  
+
+  
+    
+      
+        
+          squash
+        
+        (
+        x
+        )
+        =
+        
+          
+            stretch
+          
+          
+            −
+            1
+          
+        
+        (
+        x
+        )
+        =
+        1
+        
+          /
+        
+        (
+        1
+        +
+        
+          e
+          
+            −
+            x
+          
+        
+        )
+      
+    
+    {\displaystyle {\text{squash}}(x)={\text{stretch}}^{-1}(x)=1/(1+e^{-x})}
+  
+
+After each prediction, the model is updated by adjusting the weights to minimize coding cost.
+
+  
+    
+      
+        
+          w
+          
+            i
+          
+        
+        ←
+        
+          w
+          
+            i
+          
+        
+        +
+        η
+        
+          x
+          
+            i
+          
+        
+        (
+        y
+        −
+        P
+        (
+        1
+        )
+        )
+      
+    
+    {\displaystyle w_{i}\leftarrow w_{i}+\eta x_{i}(y-P(1))}
+  
+
+where 
+  
+    
+      
+        η
+      
+    
+    {\displaystyle \eta }
+  
+ is the learning rate (typically 0.002 to 0.01), 
+  
+    
+      
+        y
+      
+    
+    {\displaystyle y}
+  
+ is the predicted bit, and (
+  
+    
+      
+        y
+        −
+        P
+        (
+        1
+        )
+      
+    
+    {\displaystyle y-P(1)}
+  
+) is the prediction error.
+
+
+=== List of Context Mixing Compressors ===
+All versions below use logistic mixing unless otherwise indicated.
+
+All PAQ versions (Matt Mahoney, Serge Osnach, Alexander Ratushnyak, Przemysław Skibiński, Jan Ondrus, and others) [1]. PAQAR and versions prior to PAQ7 used linear mixing. Later versions used logistic mixing.
+All LPAQ versions (Matt Mahoney, Alexander Ratushnyak) [2].
+ZPAQ (Matt Mahoney) [3].
+WinRK 3.0.3 (Malcolm Taylor) in maximum compression PWCM mode [4]. Version 3.0.2 was based on linear mixing.
+NanoZip (Sami Runsas) in maximum compression mode (option -cc) [5].
+xwrt 3.2 (Przemysław Skibiński) in maximum compression mode (options -i10 through -i14) [6] as a back end to a dictionary encoder.
+cmm1 through cmm4, M1, and M1X2 (Christopher Mattern) use a small number of contexts for high speed. M1 and M1X2 use a genetic algorithm to select two bit masked contexts in a separate optimization pass.
+ccm (Christian Martelock).
+bit (Osman Turan) [7].
+pimple, pimple2, tc, and px (Ilia Muraviev) [8].
+enc (Serge Osnach) tries several methods based on PPM and (linear) context mixing and chooses the best one. [9]
+fpaq2 (Nania Francesco Antonio) using fixed weight averaging for high speed.
+cmix (Byron Knoll) mixes many models, and is currently ranked first in the Large Text Compression benchmark, as well as the Silesia corpus and has surpassed the winning entry of the Hutter Prize although it is not eligible due to using too much memory.
+
+
+== References ==

@@ -1,0 +1,139 @@
+EncFS is a Free (LGPL) FUSE-based cryptographic filesystem. It transparently encrypts files, using an arbitrary directory as storage for the encrypted files.
+Two directories are involved in mounting an EncFS filesystem: the source directory, and the mountpoint. Each file in the mountpoint has a specific file in the source directory that corresponds to it. The file in the mountpoint provides the unencrypted view of the one in the source directory. Filenames are encrypted in the source directory.
+Files are encrypted using a volume key, which is stored either within or outside the encrypted source directory. A password is used to decrypt this key.
+EncFS has been declared dormant with no further updates by Valient Gough, the developer, on its GitHub page in May 2024. They recommend using gocryptfs instead.
+
+
+== Common uses ==
+In Linux, allows encryption of home folders as an alternative to eCryptfs.
+Allows encryption of files and folders saved to cloud storage (Dropbox, Google Drive, OneDrive, etc.).
+Allows portable encryption of file folders on removable disks.
+Available as a cross-platform folder encryption mechanism.
+Increases storage security by adding two-factor authentication (2FA). When the EncFS volume key is stored outside the encrypted source directory and into a physically separated location from the actual encrypted data, it significantly increases security by adding a two-factor authentication (2FA). For example, EncFS is able to store each unique volume key anywhere else than the actual encrypted data, such as on a USB flash drive, network mount, optical disc or cloud. In addition to that a password could be required to decrypt this volume key.
+
+
+== Advantages ==
+EncFS offers several advantages over other disk encryption software simply because each file is stored individually as an encrypted file elsewhere in the host's directory tree.
+
+
+=== Cross-platform ===
+EncFS is available on multiple platforms, whereas eCryptfs is tied to the Linux kernel
+
+
+=== Bitrot detection ===
+EncFS implements bitrot detection on top of any underlying filesystem
+
+
+=== Scalable storage ===
+EncFS has no "volumes" that occupy a fixed size — encrypted directories grow and shrink as more files are added to or removed from the mountpoint
+
+
+=== Normal file server ===
+EncFS's encrypted directory can be located on a normal file server (via NFS, SSHFS, etc.) and can be mirrored and backed up efficiently with normal file-system tools, such as Rsync
+
+
+=== Different physical devices ===
+It is possible for some directories on the mountpoint to exist on different physical devices, if a filesystem is mounted over one of the sub-directories in the source directory
+
+
+=== Faster backup ===
+Backup utilities can back up only the files that have changed in the source directory (file synchronisation, cloud storage)
+
+
+=== Reduced corruption ===
+Corruption of data is more isolated. Corruption of filedata is local to a single file, and data corruption of the filesystem can be corrected with a reliable filesystem repair utility like fsck. Some whole-disk encryption systems lack one or both of these attributes.
+
+
+=== Optimizations ===
+Since file modifications shine through to the underlying file system, various optimizations by the operating system are still possible unlike with full-disk encryption. For example, passing information about released space (TRIM) can improve performance of SSD drives. But this is also supported with dm-crypt.
+
+
+=== Random file access ===
+Files can be accessed at random.  You can, for example, skip to the middle of a very large encrypted video without decrypting the whole file.
+
+
+== Disadvantages ==
+There are some drawbacks to using EncFS.
+
+
+=== Compatibility ===
+Mounted EncFS directories share the same features and restrictions as the filesystem containing the source directory.
+
+
+=== No support for very long filenames ===
+Due to encryption, the filenames for encrypted files produced by EncFS are longer than the original filenames. Therefore, filenames whose length is close to the maximum supported by the filesystem cannot be stored by EncFS, since they will exceed the length limit after encryption. Most filesystems limit filenames to 255 bytes; in that case, EncFS only supports filenames up to 190 bytes.
+
+
+=== General security concerns ===
+Anyone having access to the source directory is able to see how many files are in the encrypted filesystem, what permissions they have, their approximate size, and the last time they were accessed or modified, though the file names and file data are encrypted.
+
+
+=== EncFS 1.7 security concerns ===
+A paid security audit was conducted in February 2014, which revealed several potential vulnerabilities. It concludes:
+
+EncFS is probably safe as long as the adversary only gets one copy of the ciphertext and nothing more. EncFS is not safe if the adversary has the opportunity to see two or more snapshots of the ciphertext at different times. EncFS attempts to protect files from malicious modification, but there are serious problems with this feature.
+
+
+=== EncFS 1.8 security concerns ===
+The announcement of EncFS 1.8 included several underlying design changes, acknowledging the security concerns raised in the previous audit.  However, certain concerns still remain regarding those vulnerabilities.
+
+
+== Filesystem options ==
+When creating a new EncFS volume, several different options are available to customize the filesystem to suit various needs.
+
+
+=== Cipher algorithm ===
+EncFS uses whatever ciphers it is able to locate in various encryption libraries on the system. Blowfish and AES are typically available.
+The cipher key length (keySize) can be selected for ciphers that support variable key lengths.
+
+
+=== Block size ===
+Each file is encrypted in blocks, and this option controls what size those blocks are. Each time a single byte is read the entire block it is contained in must be decrypted. Likewise, for each write the block must be decrypted, altered, and re-encrypted.
+The default block size of 1024 is sufficient for most purposes.
+
+
+=== Filename encoding ===
+Filenames in the source directory can be plain or encrypted in block or stream mode. Block mode obscures the filename length somewhat, while stream mode keeps them as short as possible, which might save space on the source directory's filesystem depending on how that filesystem manages the directory tree.
+
+
+=== Filename IV chaining ===
+When enabled, the initialization vector for filename encryption is derived from the file's parent directories, causing two files with the same name — but in different directories — to have different encrypted filenames.
+If a directory is renamed, all files and directories contained therein will need to have their encrypted filenames re-encrypted, which can be an expensive operation. This option should be disabled if heavily populated directories will be renamed often.
+
+
+=== Per-file IV initialization vector ===
+When enabled, each file is encrypted with a random 8-byte initialization vector, which is stored within the encrypted file in the source directory. If this option is disabled, each file is encrypted with the same initialization vector, which can make the volume key easier to break.
+Enabling this option makes the filesystem more secure at the cost of an additional 8 bytes per file.
+
+
+=== External IV chaining ===
+Causes the file data initialization vector to be derived from the filename's initialization vector chain. The same data will be encrypted differently given a different filename or directory.
+Consequently, renaming a file when this mode is enabled requires that either the file's random initialization vector be offset by the change in the filename initialization vector chain, or the data be re-encoded. The authors of EncFS have chosen the former route as it is considerably faster, especially for large files.
+
+
+=== Filename to IV header chaining ===
+Makes encoding depend on the full pathname. So renaming or moving means reencoding. Hardlinks are not supported.
+
+
+=== Block MAC headers ===
+Stores a checksum with each encrypted block, causing corruption or modification of the encrypted files to be detected by EncFS. The checksum (blockMACBytes) is 8 bytes, and optionally up to 8 additional bytes of random data (blockMACRandBytes) can be added to each block to prevent two blocks with the same unencrypted data from having the same checksum. This option creates a large amount of CPU overhead, as each block's checksum must be calculated when data is read (to verify integrity) or written (to update the checksum).
+
+
+== See also ==
+
+Disk encryption
+Filesystem-level encryption
+List of cryptographic file systems
+List of file systems
+
+
+== References ==
+
+
+== External links ==
+Notice of the end of the project (Github)
+Encfs manpage
+gocryptfs: Alternative recommended by developer
+Safe: another per-file implementation for Windows and Mac OS X, with no kernel mode driver (slower), but fully open source
+Boxcryptor: Proprietary software based on EncFS for Windows, Android, and iOS Archived 2017-02-16 at the Wayback Machine
+EncFSMP: Implementation that runs on Windows and Mac OS X

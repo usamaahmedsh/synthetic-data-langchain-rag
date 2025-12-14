@@ -1,0 +1,127 @@
+X-Video Motion Compensation (XvMC), is an extension of the X video extension (Xv) for the X Window System. The XvMC API allows video programs to offload portions of the video decoding process to the GPU video-hardware. In theory this process should also reduce bus bandwidth requirements. Currently, the supported portions to be offloaded by XvMC onto the GPU are motion compensation (mo comp) and inverse discrete cosine transform (iDCT) for MPEG-2 video. XvMC also supports offloading decoding of mo comp, iDCT, and VLD ("Variable-Length Decoding", more commonly known as "slice level acceleration") for not only MPEG-2 but also MPEG-4 ASP video on VIA Unichrome (S3 Graphics Chrome Series) hardware.
+XvMC was the first UNIX equivalent of the Microsoft Windows DirectX Video Acceleration (DxVA) API. Popular software applications known to take advantage of XvMC include MPlayer, MythTV, and xine.
+
+
+== Device drivers ==
+Each hardware video GPU capable of XvMC video acceleration requires a X11 software device driver to enable these features.
+
+
+=== Hardware manufacturers ===
+
+
+==== Nvidia ====
+There are currently three X11 Nvidia drivers available: a 2D-only open source but obfuscated driver maintained by Nvidia called nv, a proprietary binary driver by Nvidia, and an open source driver based on reverse engineering of the binary driver developed by the Linux community called Nouveau. Nouveau is not pursuing XvMC support, the 2D nv driver does not support XvMC, and the official proprietary binary driver by Nvidia only supports MPEG-2 offloading (mo comp and iDCT) on hardware up to and including the GeForce 7000 series.
+
+
+==== VIA ====
+VIA provides open source device drivers for some of its VIA Unichrome (S3 Graphics Chrome Series) hardware, supporting offloading of MPEG-2 and MPEG-4 ASP video.
+Thanks to VLD level of decoding VIA offloads much more decoding tasks from CPU than GPUs supporting iDCT or mo comp levels only. Keep in mind that not all devices are supported and there are some other caveats.
+
+
+==== Intel ====
+Intel provides official open source device drivers which supports MPEG-2 offloading (mo comp and iDCT) on Intel's 8xx/9xx range of integrated graphics chips.
+
+
+==== ATI/AMD ====
+Although ATI was the first manufacturer to provide MPEG-2 acceleration in their graphic boards with the Rage 128 GPU, it has never provided documentation on how to use it. So no XvMC is available, and will probably never be.
+XvMC is supported on Radeon-4000 cards (which have UVD) by Catalyst driver from 8.10 and higher at an experimental level (meaning that it doesn't work "out of the box".) 
+(See also X-Video Bitstream Acceleration).
+Motion compensation support in other ATI/AMD hardware is planned for the future. (Now all hardware has support for MPEG-2 acceleration on iDCT and mo comp levels).
+
+
+==== Matrox ====
+There are no device drivers which support XvMC on Matrox hardware, (although Matrox Parhelia hardware has support for MPEG-2 acceleration on mo comp level).
+
+
+==== S3 ====
+Binary device driver by S3 only supports MPEG-2 offloading in initial 2.0.16 driver on Chrome 20 GPUs. 
+
+
+== XvMC API technical overview ==
+This is from X-Vxvideoideo Motion Compensation - API specification v. 1.0
+
+
+=== XvPort ===
+XvMC extends the X video extension (Xv) and makes use of the familiar concept of the XvPort. Ports have attributes that can be set and queried through Xv. In XvMC ports can also have hardware motion compensation contexts created for use with them. Ports which support XvImages (i.e. they have an "XV_IMAGE" port encoding as described in the Xv version 2.2 API addendum) can be queried for the list of XvMCSurface types they support. If they support any XvMCSurface types an XvMCContext can be created for that port.
+
+
+=== XvMCContext ===
+XvMCContext describes the state of the motion compensation pipeline. An individual XvMCContext can be created for use with a single port, surface type, motion compensation type, width and height combination. For example, a context might be created for a particular port that does MPEG-2 motion compensation on 720 x 480 4:2:0 surfaces. Once the context is created, referencing it implies the port, surface type, size and the motion compensation type. Contexts may be "direct" or "indirect". For indirect contexts the X display server renders all video using the data passed to it by the client. For direct contexts the client libraries render the video with little or no interaction with the X display server.
+
+
+=== XvMCSurfaces ===
+XvMCSurfaces are buffers into which the motion compensation hardware can render. The data in the buffers themselves are not client accessible and may be stored in a hardware-specific format. Any number of buffers can be created for use with a particular context (resources permitting).
+
+
+=== Video Pipeline ===
+XvMC provides video acceleration starting at one of two places in the video pipeline. Acceleration starting at the first point, which we shall call the "Motion Compensation" level, begins after the inverse quantization and IDCT at the place where motion compensation is to be applied. The second point, which we shall call the "IDCT" level, begins before the IDCT just after the inverse quantization.
+
+
+=== Rendering ===
+Rendering is done by presenting the library with a target XvMCSurface and up to two reference XvMCSurfaces for the motion compensation, a buffer of 8x8 blocks and a command buffer which describes how to use the 8x8 blocks along with motion compensation vectors to construct the data in the target XvMCSurface. When the pipeline starts at the iDCT level, Xv will perform the IDCT on the blocks before performing the motion compensation. A function is provided to copy/overlay a portion of the XvMCSurface to a drawable with arbitrary scaling.
+
+
+=== XvMCSubpictures ===
+XvMCSubpictures are separate surfaces that may be blended with the target surface. Any number of XvMCSubpictures may be created for use with a context (resources permitting). Both "backend" and "frontend" subpicture behavior are supported.
+
+
+== Software support ==
+XvMC acceleration is supported in:
+
+MPlayer
+MythTV (XvMC support dropped in 0.25)
+Xine
+XvMC have been removed in Mesa 22.3.
+
+
+== Processes that could be accelerated ==
+Even though XvMC currently only supports hardware acceleration of motion compensation (mo comp) and inverse discrete cosine transform (iDCT), (and Variable-Length Decoding for VIA Unichrome GPU), additional video decoding processes could be passed on to modern GPUs which could be accelerated via GPU fragment programs. XvMC could be extended in the future to support the same processes as the newer competing hardware video acceleration APIs like VDPAU, XvBA, and VAAPI:
+
+Motion compensation (mo comp)
+Inverse discrete cosine transform (iDCT)
+Inverse telecine 3:2 and 2:2 pull-down correction
+Inverse modified discrete cosine transform (iMDCT)
+In-loop deblocking filter
+Intra-frame prediction
+Inverse quantization (IQ)
+Variable-length decoding (VLD), more commonly known as slice-level acceleration
+Spatial-temporal deinterlacing and automatic interlace/progressive source detection
+Bitstream processing (CAVLC/CABAC)
+
+
+== Current limitations ==
+Besides not matching all of the features and function of DxVA (which is the Microsoft equivalent API for Windows), and lacking support for other video formats than MPEG-2 in Linux device drivers from Intel and Nvidia, the XvMC API specification version 1.0 currently also has these other limitations: 
+
+BOB and onefield are the only deinterlacing methods that work with XvMC.
+Picture in Picture (PiP) does not work with XvMC.
+Stepping through the video frame by frame can cause artifacts with XvMC.
+Editing a video is difficult to impossible with XvMC activated.
+Lacking network transparency in the XvMC API
+Lacking the ability for the client application to be completely independent of which client side library needs to be used (i.e. a unified wrapper library).
+VA API is a more modern video acceleration API which support the video acceleration features of modern GPUs.
+
+
+== See also ==
+X video extension (commonly referred to as just "XVideo" or "Xv")
+X Window System (commonly referred to as just "X11" or "X")
+MIT-SHM - The MIT Shared Memory Extension for X11
+DirectX Video Acceleration (DxVA) API - Microsoft Windows equivalent to XvMC
+Video Acceleration API (VA API)
+OpenMAX IL (Open Media Acceleration Integration Layer) - a royalty-free cross-platform media abstraction API from the Khronos Group
+X-Video Bitstream Acceleration (XvBA)
+VDPAU (Video Decode and Presentation API for Unix)
+Distributed Codec Engine (libcde) is a Texas Instruments API for the video codec engine in OMAP based embedded systems
+Video Decode Acceleration Framework is Apple Inc.s API for hardware-accelerated decoding of H.264 on Mac OS X
+VideoToolbox is an API from Apple Inc. for hardware-accelerated decoding on Apple TV and Mac OS X 10.05 or later. It was originally undocumented, but Apple has since released documentation on it.
+OpenVideo Decode (OVD) – a new open cross-platform video acceleration API from AMD.
+
+
+== References ==
+
+
+== External links ==
+X.Org Foundation
+The XFree86 Project, Inc.
+freedesktop.org
+The Unichrome Project
+XvMC at MythTV's wiki

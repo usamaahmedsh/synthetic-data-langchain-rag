@@ -1,0 +1,1192 @@
+In cryptography, the McEliece cryptosystem is an asymmetric encryption algorithm developed in 1978 by Robert McEliece. It was the first such scheme to use randomization in the encryption process. The algorithm has never gained much acceptance in the cryptographic community, but is a candidate for "post-quantum cryptography", as it is immune to attacks using Shor's algorithm and – more generally – measuring coset states using Fourier sampling.
+The algorithm is based on the hardness of decoding a general linear code (which is known to be NP-hard). For a description of the private key, an error-correcting code is selected for which an efficient decoding algorithm is known, and that is able to correct 
+  
+    
+      
+        t
+      
+    
+    {\displaystyle t}
+  
+ errors. The original algorithm uses binary Goppa codes (subfield codes of algebraic geometry codes of a genus-0 curve over finite fields of characteristic 2); these codes can be efficiently decoded, thanks to an algorithm due to Patterson. The public key is derived from the private key by disguising the selected code as a general linear code. For this, the code's generator matrix 
+  
+    
+      
+        G
+      
+    
+    {\displaystyle G}
+  
+ is perturbated by two randomly selected invertible matrices 
+  
+    
+      
+        S
+      
+    
+    {\displaystyle S}
+  
+ and 
+  
+    
+      
+        P
+      
+    
+    {\displaystyle P}
+  
+ (see below).
+Variants of this cryptosystem exist, using different types of codes. Most of them were proven less secure; they were broken by structural decoding.
+McEliece with Goppa codes has resisted cryptanalysis so far. The most effective attacks known use information-set decoding algorithms. A 2008 paper describes both an attack and a fix. Another paper shows that for quantum computing, key sizes must be increased by a factor of four due to improvements in information set decoding.
+The McEliece cryptosystem has some advantages over, for example, RSA. The encryption and decryption are faster. For a long time, it was thought that McEliece could not be used to produce signatures. However, a signature scheme can be constructed based on the Niederreiter scheme, the dual variant of the McEliece scheme. One of the main disadvantages of McEliece is that the private and public keys are large matrices. For a standard selection of parameters, the public key is 512 kilobits long.
+
+
+== Scheme definition ==
+McEliece consists of three algorithms: a probabilistic key generation algorithm that produces a public and a private key, a probabilistic encryption algorithm, and a deterministic decryption algorithm.
+All users in a McEliece deployment share a set of common security parameters: 
+  
+    
+      
+        n
+        ,
+        k
+        ,
+        t
+      
+    
+    {\displaystyle n,k,t}
+  
+.
+
+
+=== Key generation ===
+The principle is that Alice chooses a linear code 
+  
+    
+      
+        C
+      
+    
+    {\displaystyle C}
+  
+ from some family of codes for which she knows an efficient decoding algorithm, and to make 
+  
+    
+      
+        C
+      
+    
+    {\displaystyle C}
+  
+ public knowledge but keep the decoding algorithm secret. Such a decoding algorithm requires not just knowing 
+  
+    
+      
+        C
+      
+    
+    {\displaystyle C}
+  
+, in the sense of knowing an arbitrary generator matrix, but requires one to know the parameters used when specifying 
+  
+    
+      
+        C
+      
+    
+    {\displaystyle C}
+  
+ in the chosen family of codes. For instance, for binary Goppa codes, this information would be the Goppa polynomial and the code locators. Therefore, Alice may publish a suitably obfuscated generator matrix of 
+  
+    
+      
+        C
+      
+    
+    {\displaystyle C}
+  
+.
+More specifically, the steps are as follows:
+
+Alice selects a binary 
+  
+    
+      
+        (
+        n
+        ,
+        k
+        )
+      
+    
+    {\displaystyle (n,k)}
+  
+-linear code 
+  
+    
+      
+        C
+      
+    
+    {\displaystyle C}
+  
+ capable of (efficiently) correcting 
+  
+    
+      
+        t
+      
+    
+    {\displaystyle t}
+  
+ errors from some large family of codes, e.g. binary Goppa codes. This choice should give rise to an efficient decoding algorithm 
+  
+    
+      
+        A
+      
+    
+    {\displaystyle A}
+  
+. Let also 
+  
+    
+      
+        G
+      
+    
+    {\displaystyle G}
+  
+ be any generator matrix for 
+  
+    
+      
+        C
+      
+    
+    {\displaystyle C}
+  
+. Any linear code has many generator matrices, but often there is a natural choice for this family of codes. Knowing this would reveal 
+  
+    
+      
+        A
+      
+    
+    {\displaystyle A}
+  
+ so it should be kept secret.
+Alice selects a random 
+  
+    
+      
+        k
+        ×
+        k
+      
+    
+    {\displaystyle k\times k}
+  
+ binary non-singular matrix 
+  
+    
+      
+        S
+      
+    
+    {\displaystyle S}
+  
+.
+Alice selects a random 
+  
+    
+      
+        n
+        ×
+        n
+      
+    
+    {\displaystyle n\times n}
+  
+ permutation matrix 
+  
+    
+      
+        P
+      
+    
+    {\displaystyle P}
+  
+.
+Alice computes the 
+  
+    
+      
+        k
+        ×
+        n
+      
+    
+    {\displaystyle k\times n}
+  
+ matrix 
+  
+    
+      
+        
+          
+            
+              G
+              ^
+            
+          
+        
+        =
+        S
+        G
+        P
+      
+    
+    {\displaystyle {\hat {G}}=SGP}
+  
+.
+Alice's public key is 
+  
+    
+      
+        (
+        
+          
+            
+              G
+              ^
+            
+          
+        
+        ,
+        t
+        )
+      
+    
+    {\displaystyle ({\hat {G}},t)}
+  
+; her private key is 
+  
+    
+      
+        (
+        S
+        ,
+        P
+        ,
+        A
+        )
+      
+    
+    {\displaystyle (S,P,A)}
+  
+. Note that 
+  
+    
+      
+        A
+      
+    
+    {\displaystyle A}
+  
+ could be encoded and stored as the parameters used for selecting 
+  
+    
+      
+        C
+      
+    
+    {\displaystyle C}
+  
+.
+
+
+=== Message encryption ===
+Suppose Bob wishes to send a message 
+  
+    
+      
+        m
+      
+    
+    {\displaystyle m}
+  
+ to Alice whose public key is 
+  
+    
+      
+        (
+        
+          
+            
+              G
+              ^
+            
+          
+        
+        ,
+        t
+        )
+      
+    
+    {\displaystyle ({\hat {G}},t)}
+  
+:
+
+Bob encodes the message 
+  
+    
+      
+        m
+      
+    
+    {\displaystyle m}
+  
+ as a binary string of length 
+  
+    
+      
+        k
+      
+    
+    {\displaystyle k}
+  
+.
+Bob computes the vector 
+  
+    
+      
+        
+          c
+          
+            ′
+          
+        
+        =
+        m
+        
+          
+            
+              G
+              ^
+            
+          
+        
+      
+    
+    {\displaystyle c^{\prime }=m{\hat {G}}}
+  
+.
+Bob generates a random 
+  
+    
+      
+        n
+      
+    
+    {\displaystyle n}
+  
+-bit vector 
+  
+    
+      
+        z
+      
+    
+    {\displaystyle z}
+  
+ containing exactly 
+  
+    
+      
+        t
+      
+    
+    {\displaystyle t}
+  
+ ones (a vector of length 
+  
+    
+      
+        n
+      
+    
+    {\displaystyle n}
+  
+ and weight 
+  
+    
+      
+        t
+      
+    
+    {\displaystyle t}
+  
+)
+Bob sends Alice the ciphertext computed as 
+  
+    
+      
+        c
+        =
+        
+          c
+          
+            ′
+          
+        
+        +
+        z
+      
+    
+    {\displaystyle c=c^{\prime }+z}
+  
+.
+
+
+=== Message decryption ===
+Upon receipt of 
+  
+    
+      
+        c
+      
+    
+    {\displaystyle c}
+  
+, Alice performs the following steps to decrypt the message:
+
+Alice computes the inverse of 
+  
+    
+      
+        P
+      
+    
+    {\displaystyle P}
+  
+ (i.e. 
+  
+    
+      
+        
+          P
+          
+            −
+            1
+          
+        
+      
+    
+    {\displaystyle P^{-1}}
+  
+).
+Alice computes 
+  
+    
+      
+        
+          
+            
+              c
+              ^
+            
+          
+        
+        =
+        c
+        
+          P
+          
+            −
+            1
+          
+        
+      
+    
+    {\displaystyle {\hat {c}}=cP^{-1}}
+  
+.
+Alice uses the decoding algorithm 
+  
+    
+      
+        A
+      
+    
+    {\displaystyle A}
+  
+ to decode 
+  
+    
+      
+        
+          
+            
+              c
+              ^
+            
+          
+        
+      
+    
+    {\displaystyle {\hat {c}}}
+  
+ to 
+  
+    
+      
+        
+          
+            
+              m
+              ^
+            
+          
+        
+      
+    
+    {\displaystyle {\hat {m}}}
+  
+.
+Alice computes 
+  
+    
+      
+        m
+        =
+        
+          
+            
+              m
+              ^
+            
+          
+        
+        
+          S
+          
+            −
+            1
+          
+        
+      
+    
+    {\displaystyle m={\hat {m}}S^{-1}}
+  
+.
+
+
+== Proof of message decryption ==
+Note that 
+  
+    
+      
+        
+          
+            
+              c
+              ^
+            
+          
+        
+        =
+        c
+        
+          P
+          
+            −
+            1
+          
+        
+        =
+        m
+        
+          
+            
+              G
+              ^
+            
+          
+        
+        
+          P
+          
+            −
+            1
+          
+        
+        +
+        z
+        
+          P
+          
+            −
+            1
+          
+        
+        =
+        m
+        S
+        G
+        +
+        z
+        
+          P
+          
+            −
+            1
+          
+        
+      
+    
+    {\displaystyle {\hat {c}}=cP^{-1}=m{\hat {G}}P^{-1}+zP^{-1}=mSG+zP^{-1}}
+  
+,
+and that 
+  
+    
+      
+        P
+      
+    
+    {\displaystyle P}
+  
+ is a permutation matrix, thus 
+  
+    
+      
+        z
+        
+          P
+          
+            −
+            1
+          
+        
+      
+    
+    {\displaystyle zP^{-1}}
+  
+ has weight 
+  
+    
+      
+        t
+      
+    
+    {\displaystyle t}
+  
+.
+The Goppa code 
+  
+    
+      
+        G
+      
+    
+    {\displaystyle G}
+  
+ can correct up to 
+  
+    
+      
+        t
+      
+    
+    {\displaystyle t}
+  
+ errors, and the word 
+  
+    
+      
+        m
+        S
+        G
+      
+    
+    {\displaystyle mSG}
+  
+ is at distance at most 
+  
+    
+      
+        t
+      
+    
+    {\displaystyle t}
+  
+ from 
+  
+    
+      
+        c
+        
+          P
+          
+            −
+            1
+          
+        
+      
+    
+    {\displaystyle cP^{-1}}
+  
+. Therefore, the correct code word 
+  
+    
+      
+        
+          
+            
+              m
+              ^
+            
+          
+        
+        =
+        m
+        S
+      
+    
+    {\displaystyle {\hat {m}}=mS}
+  
+ is obtained.
+Multiplying with the inverse of 
+  
+    
+      
+        S
+      
+    
+    {\displaystyle S}
+  
+ gives 
+  
+    
+      
+        m
+        =
+        
+          
+            
+              m
+              ^
+            
+          
+        
+        
+          S
+          
+            −
+            1
+          
+        
+        =
+        m
+        S
+        
+          S
+          
+            −
+            1
+          
+        
+      
+    
+    {\displaystyle m={\hat {m}}S^{-1}=mSS^{-1}}
+  
+, which is the plain text message.
+
+
+== Key sizes ==
+Because there is a free choice in the matrix 
+  
+    
+      
+        S
+      
+    
+    {\displaystyle S}
+  
+, it is common to express 
+  
+    
+      
+        
+          
+            
+              G
+              ^
+            
+          
+        
+      
+    
+    {\displaystyle {\hat {G}}}
+  
+ in "systematic form" so that the last 
+  
+    
+      
+        k
+      
+    
+    {\displaystyle k}
+  
+ columns correspond to the identity matrix 
+  
+    
+      
+        
+          
+            
+              G
+              ^
+            
+          
+        
+        =
+        (
+        
+          
+            
+              G
+              ~
+            
+          
+        
+        
+          |
+        
+        I
+        )
+      
+    
+    {\displaystyle {\hat {G}}=({\tilde {G}}|I)}
+  
+. This reduces the key size to 
+  
+    
+      
+        (
+        n
+        −
+        k
+        )
+        ×
+        k
+      
+    
+    {\displaystyle (n-k)\times k}
+  
+. McEliece originally suggested security parameter sizes of 
+  
+    
+      
+        n
+        =
+        1024
+        ,
+        k
+        =
+        524
+        ,
+        t
+        =
+        50
+      
+    
+    {\displaystyle n=1024,k=524,t=50}
+  
+, resulting in a public key size of 524 × (1024 − 524) = 262000 bits. Recent analysis suggests parameter sizes of 
+  
+    
+      
+        n
+        =
+        2048
+        ,
+        k
+        =
+        1751
+        ,
+        t
+        =
+        27
+      
+    
+    {\displaystyle n=2048,k=1751,t=27}
+  
+ for 80 bits of security when using standard algebraic decoding, or 
+  
+    
+      
+        n
+        =
+        1632
+        ,
+        k
+        =
+        1269
+        ,
+        t
+        =
+        34
+      
+    
+    {\displaystyle n=1632,k=1269,t=34}
+  
+ when using list decoding for the Goppa code, giving rise to public key sizes of 520047 and 460647 bits respectively. For resiliency against quantum computers, sizes of 
+  
+    
+      
+        n
+        =
+        6960
+        ,
+        k
+        =
+        5413
+        ,
+        t
+        =
+        119
+      
+    
+    {\displaystyle n=6960,k=5413,t=119}
+  
+ with Goppa code were proposed, giving the size of public key of 8373911 bits. In its round 3 submission to the NIST post quantum standardization the highest level of security, level 5 is given for parameter sets 6688128, 6960119, and 8192128. The parameters are 
+  
+    
+      
+        n
+        =
+        6688
+        ,
+        k
+        =
+        5024
+        ,
+        t
+        =
+        128
+      
+    
+    {\displaystyle n=6688,k=5024,t=128}
+  
+, 
+  
+    
+      
+        n
+        =
+        6960
+        ,
+        k
+        =
+        5413
+        ,
+        t
+        =
+        119
+      
+    
+    {\displaystyle n=6960,k=5413,t=119}
+  
+, 
+  
+    
+      
+        n
+        =
+        8192
+        ,
+        k
+        =
+        6528
+        ,
+        t
+        =
+        128
+      
+    
+    {\displaystyle n=8192,k=6528,t=128}
+  
+ respectively.
+
+
+== Attacks ==
+An attack consists of an adversary, who knows the public key 
+  
+    
+      
+        (
+        
+          
+            
+              G
+              ^
+            
+          
+        
+        ,
+        t
+        )
+      
+    
+    {\displaystyle ({\hat {G}},t)}
+  
+ but not the private key, deducing the plaintext from some intercepted ciphertext 
+  
+    
+      
+        y
+        ∈
+        
+          
+            F
+          
+          
+            2
+          
+          
+            n
+          
+        
+      
+    
+    {\displaystyle y\in \mathbb {F} _{2}^{n}}
+  
+. Such attempts should be infeasible.
+There are two main branches of attacks for McEliece:
+
+
+=== Brute-force / unstructured attacks ===
+The attacker knows 
+  
+    
+      
+        
+          
+            
+              G
+              ^
+            
+          
+        
+      
+    
+    {\displaystyle {\hat {G}}}
+  
+, the generator matrix of an 
+  
+    
+      
+        (
+        n
+        ,
+        k
+        )
+      
+    
+    {\displaystyle (n,k)}
+  
+ code 
+  
+    
+      
+        
+          
+            
+              C
+              ^
+            
+          
+        
+      
+    
+    {\displaystyle {\hat {C}}}
+  
+ that is combinatorially able to correct 
+  
+    
+      
+        t
+      
+    
+    {\displaystyle t}
+  
+ errors.
+The attacker may ignore the fact that 
+  
+    
+      
+        
+          
+            
+              C
+              ^
+            
+          
+        
+      
+    
+    {\displaystyle {\hat {C}}}
+  
+ is really the obfuscation of a structured code chosen from a specific family, and instead just use an algorithm for decoding with any linear code. Several such algorithms exist, such as going through each codeword of the code, syndrome decoding, or information set decoding.
+Decoding a general linear code, however, is known to be NP-hard, and all of the above-mentioned methods have exponential running time.
+In 2008, Bernstein, Lange, and Peters described a practical attack on the original McEliece cryptosystem, using the information set decoding method by Stern.
+Using the parameters originally suggested by McEliece, the attack could be carried out in 260.55 bit operations. Since the attack is embarrassingly parallel (no communication between nodes is necessary), it can be carried out in days on modest computer clusters.
+
+
+=== Structural attacks ===
+The attacker may instead attempt to recover the "structure" of 
+  
+    
+      
+        C
+      
+    
+    {\displaystyle C}
+  
+, thereby recovering the efficient decoding algorithm 
+  
+    
+      
+        A
+      
+    
+    {\displaystyle A}
+  
+ or another sufficiently strong, efficient decoding algorithm.
+The family of codes from which 
+  
+    
+      
+        C
+      
+    
+    {\displaystyle C}
+  
+ is chosen completely determines whether this is possible for the attacker. Many code families have been proposed for McEliece, and most of them have been completely "broken" in the sense that attacks have been found that recover an efficient decoding algorithm, such as Reed-Solomon codes.
+The originally proposed binary Goppa codes remain one of the few suggested families of codes that have largely resisted attempts at devising structural attacks.
+
+
+== Post-quantum encryption candidate ==
+A variant of this algorithm combined with NTS-KEM was entered into and selected during the third round of the NIST post-quantum encryption competition.
+
+
+== References ==
+
+
+== External links ==
+Alfred J. Menezes; Scott A. Vanstone; A. J. Menezes; Paul C. van Oorschot (1996). "Chapter 8: Public-Key Encryption". Handbook of Applied Cryptography. CRC Press. ISBN 978-0-8493-8523-0.
+Rahmschmid, Claudia; Adams, David (2023). McEliece Messaging: Smoke Crypto Chat - The first mobile McEliece-Messenger published as a stable prototype worldwide. Article TK Info Portal.
+"Quantum Computers? Internet Security Code of the Future Cracked". Science Daily. Eindhoven University of Technology. 1 November 2008.
+"Classic McEliece". (Submission to the NIST Post-Quantum Cryptography Standardization Project)

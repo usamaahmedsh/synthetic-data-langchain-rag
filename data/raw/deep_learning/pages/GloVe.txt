@@ -1,0 +1,1040 @@
+GloVe, coined from Global Vectors, is a model for distributed word representation. The model is an unsupervised learning algorithm for obtaining vector representations of words. This is achieved by mapping words into a meaningful space where the distance between words is related to semantic similarity. Training is performed on aggregated global word-word co-occurrence statistics from a corpus, and the resulting representations showcase interesting linear substructures of the word vector space. As log-bilinear regression model for unsupervised learning of word representations, it combines the features of two model families, namely the global matrix factorization and local context window methods.
+It was developed as an open-source project at Stanford University and launched in 2014. It was designed as a competitor to word2vec, and the original paper noted multiple improvements of GloVe over word2vec. As of 2022, both approaches are outdated, and Transformer-based models, such as BERT, which add multiple neural-network attention layers on top of a word embedding model similar to Word2vec, have come to be regarded as the state of the art in NLP.
+
+
+== Definition ==
+You shall know a word by the company it keeps (Firth, J. R. 1957:11)The idea of GloVe is to construct, for each word 
+  
+    
+      
+        i
+      
+    
+    {\displaystyle i}
+  
+, two vectors 
+  
+    
+      
+        
+          w
+          
+            i
+          
+        
+        ,
+        
+          
+            
+              
+                w
+                ~
+              
+            
+          
+          
+            i
+          
+        
+      
+    
+    {\displaystyle w_{i},{\tilde {w}}_{i}}
+  
+, such that the relative positions of the vectors capture part of the statistical regularities of the word 
+  
+    
+      
+        i
+      
+    
+    {\displaystyle i}
+  
+. The statistical regularity is defined as the co-occurrence probabilities. Words that resemble each other in meaning should also resemble each other in co-occurrence probabilities.
+
+
+=== Word counting ===
+Let the vocabulary be 
+  
+    
+      
+        V
+      
+    
+    {\displaystyle V}
+  
+, the set of all possible words (aka "tokens"). Punctuation is either ignored, or treated as vocabulary, and similarly for capitalization and other typographical details.
+
+If two words occur close to each other, then we say that they occur in the context of each other. For example, if the context length is 3, then we say that in the following sentenceGloVe1, coined2 from3 Global4 Vectors5, is6 a7 model8 for9 distributed10 word11 representation12the word "model8" is in the context of "word11" but not the context of "representation12".
+A word is not in the context of itself, so "model8" is not in the context of the word "model8", although, if a word appears again in the same context, then it does count.
+Let 
+  
+    
+      
+        
+          X
+          
+            i
+            j
+          
+        
+      
+    
+    {\displaystyle X_{ij}}
+  
+ be the number of times that the word 
+  
+    
+      
+        j
+      
+    
+    {\displaystyle j}
+  
+ appears in the context of the word 
+  
+    
+      
+        i
+      
+    
+    {\displaystyle i}
+  
+ over the entire corpus. For example, if the corpus is just "I don't think that that is a problem." we have 
+  
+    
+      
+        
+          X
+          
+            
+              that
+            
+            ,
+            
+              that
+            
+          
+        
+        =
+        2
+      
+    
+    {\displaystyle X_{{\text{that}},{\text{that}}}=2}
+  
+ since the first "that" appears in the second one's context, and vice versa.
+Let 
+  
+    
+      
+        
+          X
+          
+            i
+          
+        
+        =
+        
+          ∑
+          
+            j
+            ∈
+            V
+          
+        
+        
+          X
+          
+            i
+            j
+          
+        
+      
+    
+    {\displaystyle X_{i}=\sum _{j\in V}X_{ij}}
+  
+ be the number of words in the context of all instances of word 
+  
+    
+      
+        i
+      
+    
+    {\displaystyle i}
+  
+. By counting, we have
+  
+    
+      
+        
+          X
+          
+            i
+          
+        
+        =
+        2
+        ×
+        (
+        
+          context size
+        
+        )
+        ×
+        #
+        (
+        
+          occurrences of word 
+        
+        i
+        )
+      
+    
+    {\displaystyle X_{i}=2\times ({\text{context size}})\times \#({\text{occurrences of word }}i)}
+  
+(except for words occurring right at the start and end of the corpus)
+
+
+=== Probabilistic modelling ===
+Let 
+  
+    
+      
+        
+          P
+          
+            i
+            k
+          
+        
+        :=
+        P
+        (
+        k
+        
+          |
+        
+        i
+        )
+        :=
+        
+          
+            
+              X
+              
+                i
+                k
+              
+            
+            
+              X
+              
+                i
+              
+            
+          
+        
+      
+    
+    {\displaystyle P_{ik}:=P(k|i):={\frac {X_{ik}}{X_{i}}}}
+  
+be the co-occurrence probability. That is, if one samples a random occurrence of the word 
+  
+    
+      
+        i
+      
+    
+    {\displaystyle i}
+  
+ in the entire document, and a random word within its context, that word is 
+  
+    
+      
+        k
+      
+    
+    {\displaystyle k}
+  
+ with probability 
+  
+    
+      
+        
+          P
+          
+            i
+            k
+          
+        
+      
+    
+    {\displaystyle P_{ik}}
+  
+. Note that 
+  
+    
+      
+        
+          P
+          
+            i
+            k
+          
+        
+        ≠
+        
+          P
+          
+            k
+            i
+          
+        
+      
+    
+    {\displaystyle P_{ik}\neq P_{ki}}
+  
+ in general. For example, in a typical modern English corpus, 
+  
+    
+      
+        
+          P
+          
+            
+              ado
+            
+            ,
+            
+              much
+            
+          
+        
+      
+    
+    {\displaystyle P_{{\text{ado}},{\text{much}}}}
+  
+ is close to one, but 
+  
+    
+      
+        
+          P
+          
+            
+              much
+            
+            ,
+            
+              ado
+            
+          
+        
+      
+    
+    {\displaystyle P_{{\text{much}},{\text{ado}}}}
+  
+ is close to zero. This is because the word "ado" is almost only used in the context of the archaic phrase "much ado about", but the word "much" occurs in all kinds of contexts.
+For example, in a 6 billion token corpus, we have
+
+Inspecting the table, we see that the words "ice" and "steam" are indistinguishable along the "water" (often co-occurring with both) and "fashion" (rarely co-occurring with either), but distinguishable along the "solid" (co-occurring more with ice) and "gas" (co-occurring more with "steam").
+The idea is to learn two vectors 
+  
+    
+      
+        
+          w
+          
+            i
+          
+        
+        ,
+        
+          
+            
+              
+                w
+                ~
+              
+            
+          
+          
+            i
+          
+        
+      
+    
+    {\displaystyle w_{i},{\tilde {w}}_{i}}
+  
+ for each word 
+  
+    
+      
+        i
+      
+    
+    {\displaystyle i}
+  
+, such that we have a multinomial logistic regression:
+  
+    
+      
+        
+          w
+          
+            i
+          
+          
+            T
+          
+        
+        
+          
+            
+              
+                w
+                ~
+              
+            
+          
+          
+            j
+          
+        
+        +
+        
+          b
+          
+            i
+          
+        
+        +
+        
+          
+            
+              
+                b
+                ~
+              
+            
+          
+          
+            j
+          
+        
+        ≈
+        ln
+        ⁡
+        
+          P
+          
+            i
+            j
+          
+        
+      
+    
+    {\displaystyle w_{i}^{T}{\tilde {w}}_{j}+b_{i}+{\tilde {b}}_{j}\approx \ln P_{ij}}
+  
+and the terms 
+  
+    
+      
+        
+          b
+          
+            i
+          
+        
+        ,
+        
+          
+            
+              
+                b
+                ~
+              
+            
+          
+          
+            j
+          
+        
+      
+    
+    {\displaystyle b_{i},{\tilde {b}}_{j}}
+  
+ are unimportant parameters.
+This means that if the words 
+  
+    
+      
+        i
+        ,
+        j
+      
+    
+    {\displaystyle i,j}
+  
+ have similar co-occurrence probabilities 
+  
+    
+      
+        (
+        
+          P
+          
+            i
+            k
+          
+        
+        
+          )
+          
+            k
+            ∈
+            V
+          
+        
+        ≈
+        (
+        
+          P
+          
+            j
+            k
+          
+        
+        
+          )
+          
+            k
+            ∈
+            V
+          
+        
+      
+    
+    {\displaystyle (P_{ik})_{k\in V}\approx (P_{jk})_{k\in V}}
+  
+, then their vectors should also be similar: 
+  
+    
+      
+        
+          w
+          
+            i
+          
+        
+        ≈
+        
+          w
+          
+            j
+          
+        
+      
+    
+    {\displaystyle w_{i}\approx w_{j}}
+  
+.
+
+
+=== Logistic regression ===
+Naively, logistic regression can be run by minimizing the squared loss:
+  
+    
+      
+        L
+        =
+        
+          ∑
+          
+            i
+            ,
+            j
+            ∈
+            V
+          
+        
+        (
+        
+          w
+          
+            i
+          
+          
+            T
+          
+        
+        
+          
+            
+              
+                w
+                ~
+              
+            
+          
+          
+            j
+          
+        
+        +
+        
+          b
+          
+            i
+          
+        
+        +
+        
+          
+            
+              
+                b
+                ~
+              
+            
+          
+          
+            j
+          
+        
+        −
+        ln
+        ⁡
+        
+          P
+          
+            i
+            j
+          
+        
+        
+          )
+          
+            2
+          
+        
+      
+    
+    {\displaystyle L=\sum _{i,j\in V}(w_{i}^{T}{\tilde {w}}_{j}+b_{i}+{\tilde {b}}_{j}-\ln P_{ij})^{2}}
+  
+However, this would be noisy for rare co-occurrences. To fix the issue, the squared loss is weighted so that the loss is slowly ramped-up as the absolute number of co-occurrences 
+  
+    
+      
+        
+          X
+          
+            i
+            j
+          
+        
+      
+    
+    {\displaystyle X_{ij}}
+  
+ increases:
+  
+    
+      
+        L
+        =
+        
+          ∑
+          
+            i
+            ,
+            j
+            ∈
+            V
+          
+        
+        f
+        (
+        
+          X
+          
+            i
+            j
+          
+        
+        )
+        (
+        
+          w
+          
+            i
+          
+          
+            T
+          
+        
+        
+          
+            
+              
+                w
+                ~
+              
+            
+          
+          
+            j
+          
+        
+        +
+        
+          b
+          
+            i
+          
+        
+        +
+        
+          
+            
+              
+                b
+                ~
+              
+            
+          
+          
+            j
+          
+        
+        −
+        ln
+        ⁡
+        
+          P
+          
+            i
+            j
+          
+        
+        
+          )
+          
+            2
+          
+        
+      
+    
+    {\displaystyle L=\sum _{i,j\in V}f(X_{ij})(w_{i}^{T}{\tilde {w}}_{j}+b_{i}+{\tilde {b}}_{j}-\ln P_{ij})^{2}}
+  
+where
+  
+    
+      
+        f
+        (
+        x
+        )
+        =
+        
+          {
+          
+            
+              
+                
+                  
+                    
+                      (
+                      
+                        x
+                        
+                          /
+                        
+                        
+                          x
+                          
+                            max
+                          
+                        
+                      
+                      )
+                    
+                    
+                      α
+                    
+                  
+                
+                
+                  
+                     if 
+                  
+                  x
+                  <
+                  
+                    x
+                    
+                      max
+                    
+                  
+                
+              
+              
+                
+                  1
+                
+                
+                  
+                     otherwise 
+                  
+                
+              
+            
+          
+          
+        
+      
+    
+    {\displaystyle f(x)=\left\{{\begin{array}{cc}\left(x/x_{\max }\right)^{\alpha }&{\text{ if }}x<x_{\max }\\1&{\text{ otherwise }}\end{array}}\right.}
+  
+and 
+  
+    
+      
+        
+          x
+          
+            max
+          
+        
+        ,
+        α
+      
+    
+    {\displaystyle x_{\max },\alpha }
+  
+ are hyperparameters. In the original paper, the authors found that 
+  
+    
+      
+        
+          x
+          
+            max
+          
+        
+        =
+        100
+        ,
+        α
+        =
+        3
+        
+          /
+        
+        4
+      
+    
+    {\displaystyle x_{\max }=100,\alpha =3/4}
+  
+ seem to work well in practice.
+
+
+=== Use ===
+Once a model is trained, we have 4 trained parameters for each word: 
+  
+    
+      
+        
+          w
+          
+            i
+          
+        
+        ,
+        
+          
+            
+              
+                w
+                ~
+              
+            
+          
+          
+            i
+          
+        
+        ,
+        
+          b
+          
+            i
+          
+        
+        ,
+        
+          
+            
+              
+                b
+                ~
+              
+            
+          
+          
+            i
+          
+        
+      
+    
+    {\displaystyle w_{i},{\tilde {w}}_{i},b_{i},{\tilde {b}}_{i}}
+  
+. The parameters 
+  
+    
+      
+        
+          b
+          
+            i
+          
+        
+        ,
+        
+          
+            
+              
+                b
+                ~
+              
+            
+          
+          
+            i
+          
+        
+      
+    
+    {\displaystyle b_{i},{\tilde {b}}_{i}}
+  
+ are irrelevant, and only 
+  
+    
+      
+        
+          w
+          
+            i
+          
+        
+        ,
+        
+          
+            
+              
+                w
+                ~
+              
+            
+          
+          
+            i
+          
+        
+      
+    
+    {\displaystyle w_{i},{\tilde {w}}_{i}}
+  
+ are relevant.
+The authors recommended using 
+  
+    
+      
+        
+          w
+          
+            i
+          
+        
+        +
+        
+          
+            
+              
+                w
+                ~
+              
+            
+          
+          
+            i
+          
+        
+      
+    
+    {\displaystyle w_{i}+{\tilde {w}}_{i}}
+  
+ as the final representation vector for word 
+  
+    
+      
+        i
+      
+    
+    {\displaystyle i}
+  
+, because empirically it worked better than 
+  
+    
+      
+        
+          w
+          
+            i
+          
+        
+      
+    
+    {\displaystyle w_{i}}
+  
+ or 
+  
+    
+      
+        
+          
+            
+              
+                w
+                ~
+              
+            
+          
+          
+            i
+          
+        
+      
+    
+    {\displaystyle {\tilde {w}}_{i}}
+  
+ alone.
+
+
+== Applications ==
+GloVe can be used to find relations between words like synonyms, company-product relations, zip codes and cities, etc. However, the unsupervised learning algorithm is not effective in identifying homographs, i.e., words with the same spelling and different meanings. This is as the unsupervised learning algorithm calculates a single set of vectors for words with the same morphological structure. The algorithm is also used by the SpaCy library to build semantic word embedding features, while computing the top list words that match with distance measures such as cosine similarity and Euclidean distance approach. GloVe was also used as the word representation framework for the online and offline systems designed to detect psychological distress in patient interviews.
+
+
+== See also ==
+ELMo
+BERT
+Word2vec
+fastText
+Natural language processing
+
+
+== References ==
+
+
+== External links ==
+GloVe Archived 2016-12-19 at the Wayback Machine
+Deeplearning4j GloVe Archived 2019-02-02 at the Wayback Machine

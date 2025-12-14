@@ -1,0 +1,617 @@
+Single-pixel imaging is a computational imaging technique for producing spatially-resolved images using a single detector instead of an array of detectors (as in conventional camera sensors). A device that implements such an imaging scheme is called a single-pixel camera. Combined with compressed sensing, the single-pixel camera can recover images from fewer measurements than the number of reconstructed pixels.
+Single-pixel imaging differs from raster scanning in that multiple parts of the scene are imaged at the same time, in a wide-field fashion, by using a sequence of mask patterns either in the illumination or in the detection stage. A spatial light modulator (such as a digital micromirror device) is often used for this purpose.
+Single-pixel cameras were developed to be simpler, smaller, and cheaper alternatives to conventional, silicon-based digital cameras, with the ability to also image a broader spectral range. Since then, they have been adapted and demonstrated to be suitable for numerous applications in microscopy, tomography, holography, ultrafast imaging, FLIM and remote sensing.
+
+
+== History ==
+The origins of single-pixel imaging can be traced back to the development of dual photography and compressed sensing in the mid 2000s. Seminal papers by Takhar et al. and Duarte et al. at Rice University concretised the foundations of the single-pixel imaging technique. It also presented a detailed comparison of different scanning and imaging modalities in existence at that time. These developments were also one of the earliest applications of the digital micromirror device (DMD), developed by Texas Instruments for their DLP projection technology, for structured light detection.
+Soon, the technique was extended to computational ghost imaging, terahertz imaging, and 3D imaging. Systems based on structured detection were often termed single-pixel cameras, whereas those based on structured illumination were often referred to as computational ghost imaging. By using pulsed-lasers as the light source, single-pixel imaging was applied for time-of-flight measurements used in depth-mapping LiDAR applications. Apart from the DMD, different light modulation schemes were also experimented with liquid crystals and LED arrays.
+In the early 2010s, single-pixel imaging was exploited in fluorescence microscopy, for imaging biological samples. Coupled with the technique of time-correlated single photon counting (TCSPC), the use of single-pixel imaging for compressive fluorescence lifetime imaging microscopy (FLIM) has also been explored. Since the late 2010s, machine learning techniques, especially Deep learning, have been increasingly used to optimise the illumination, detection, or reconstruction strategies of single-pixel imaging.
+
+
+== Principles ==
+
+
+=== Theory ===
+
+In sampling, digital data acquisition involves uniformly sampling discrete points of an analog signal at or above the Nyquist rate.  For example, in a digital camera, the sampling is done with a 2-D array of 
+  
+    
+      
+        N
+      
+    
+    {\displaystyle N}
+  
+ pixelated detectors on a CCD or CMOS sensor (
+  
+    
+      
+        N
+      
+    
+    {\displaystyle N}
+  
+ is usually millions in consumer digital cameras). Such a sample can be represented using the vector 
+  
+    
+      
+        x
+      
+    
+    {\displaystyle x}
+  
+ with elements 
+  
+    
+      
+        
+          x
+          
+            i
+          
+        
+        ,
+        i
+        =
+        1
+        ,
+        2
+        ,
+        .
+        .
+        .
+        ,
+        N
+      
+    
+    {\displaystyle x_{i},i=1,2,...,N}
+  
+. A vector can be expressed as the coefficients 
+  
+    
+      
+        {
+        
+          a
+          
+            i
+          
+        
+        }
+      
+    
+    {\displaystyle \{a_{i}\}}
+  
+ of an orthonormal basis expansion:
+  
+    
+      
+        x
+        =
+        
+          ∑
+          
+            i
+            =
+            1
+          
+          
+            N
+          
+        
+        
+          
+            a
+            
+              i
+            
+          
+          
+            ψ
+            
+              i
+            
+          
+        
+      
+    
+    {\displaystyle x=\sum _{i=1}^{N}{a_{i}\psi _{i}}}
+  
+where 
+  
+    
+      
+        
+          ψ
+          
+            i
+          
+        
+      
+    
+    {\displaystyle \psi _{i}}
+  
+ are the 
+  
+    
+      
+        N
+        ×
+        1
+      
+    
+    {\displaystyle N\times 1}
+  
+ basis vectors. Or, more compactly: 
+  
+    
+      
+        x
+        =
+        Ψ
+        a
+      
+    
+    {\displaystyle x=\Psi a}
+  
+where 
+  
+    
+      
+        Ψ
+      
+    
+    {\displaystyle \Psi }
+  
+ is the 
+  
+    
+      
+        N
+        ×
+        N
+      
+    
+    {\displaystyle N\times N}
+  
+ basis matrix formed by stacking 
+  
+    
+      
+        
+          ψ
+          
+            i
+          
+        
+      
+    
+    {\displaystyle \psi _{i}}
+  
+. It is often possible to find a basis in which the coefficient vector 
+  
+    
+      
+        a
+      
+    
+    {\displaystyle a}
+  
+ is sparse (with 
+  
+    
+      
+        K
+        <<
+        N
+      
+    
+    {\displaystyle K<<N}
+  
+ non-zero coefficients) or r-compressible (the sorted coefficients decay as a power law). This is the principle behind compression standards like JPEG and JPEG-2000, which exploit the fact that natural images tend to be compressible in the DCT and wavelet bases. Compressed sensing aims to bypass the conventional "sample-then-compress" framework by directly acquiring a condensed representation with 
+  
+    
+      
+        M
+        <
+        N
+      
+    
+    {\displaystyle M<N}
+  
+ linear measurements. Similar to the previous step, this can be represented mathematically as:
+  
+    
+      
+        y
+        =
+        Φ
+        x
+        =
+        Φ
+        Ψ
+        a
+      
+    
+    {\displaystyle y=\Phi x=\Phi \Psi a}
+  
+where 
+  
+    
+      
+        y
+      
+    
+    {\displaystyle y}
+  
+ is an 
+  
+    
+      
+        M
+        ×
+        1
+      
+    
+    {\displaystyle M\times 1}
+  
+ vector and 
+  
+    
+      
+        Φ
+      
+    
+    {\displaystyle \Phi }
+  
+ is the 
+  
+    
+      
+        M
+      
+    
+    {\displaystyle M}
+  
+-rank measurement matrix. This so-called under-determined measurement makes the inverse problem an ill-posed problem, which in general is unsolvable. However, compressed sensing exploits the fact that with the proper design of 
+  
+    
+      
+        Φ
+      
+    
+    {\displaystyle \Phi }
+  
+, the compressible signal 
+  
+    
+      
+        x
+      
+    
+    {\displaystyle x}
+  
+ can be exactly or approximately recovered using computational methods. It has been shown that incoherence between the bases 
+  
+    
+      
+        Φ
+      
+    
+    {\displaystyle \Phi }
+  
+ and 
+  
+    
+      
+        Ψ
+      
+    
+    {\displaystyle \Psi }
+  
+ (along with the existence of sparsity in 
+  
+    
+      
+        Ψ
+      
+    
+    {\displaystyle \Psi }
+  
+) is sufficient for such a scheme to work. Popular choices of 
+  
+    
+      
+        Ψ
+      
+    
+    {\displaystyle \Psi }
+  
+ are random matrices or random subsets of basis vectors from Fourier, Walsh-Hadamard or Noiselet bases. It has also been shown that the 
+  
+    
+      
+        
+          
+            
+              L
+            
+          
+          
+            1
+          
+        
+      
+    
+    {\displaystyle {\mathcal {L}}_{1}}
+  
+ optimisation given by:
+  
+    
+      
+        
+          
+            
+              a
+              ^
+            
+          
+        
+        =
+        
+          arg min
+        
+        
+          |
+        
+        
+          |
+        
+        
+          α
+          ′
+        
+        
+          |
+        
+        
+          
+            |
+          
+          
+            1
+          
+        
+        
+        S
+        .
+        T
+        .
+        
+          |
+        
+        
+          |
+        
+        y
+        −
+        Φ
+        Ψ
+        
+          α
+          ′
+        
+        
+          |
+        
+        
+          
+            |
+          
+          
+            2
+          
+        
+        <
+        ϵ
+      
+    
+    {\displaystyle {\hat {a}}={\text{arg min}}||\alpha '||_{1}\quad S.T.||y-\Phi \Psi \alpha '||_{2}<\epsilon }
+  
+works better to retrieve the signal 
+  
+    
+      
+        x
+      
+    
+    {\displaystyle x}
+  
+ from the random measurements 
+  
+    
+      
+        y
+      
+    
+    {\displaystyle y}
+  
+, than other common methods like least-squares minimisation. An improvement to the 
+  
+    
+      
+        
+          
+            
+              L
+            
+          
+          
+            1
+          
+        
+      
+    
+    {\displaystyle {\mathcal {L}}_{1}}
+  
+ optimisation algorithm, based on total-variation minimisation, is especially useful for reconstructing images directly in the pixel basis.
+
+
+=== Single-pixel camera ===
+
+The single-pixel camera is an optical computer that implements the compressed sensing measurement architecture described above. It works by sequentially measuring the inner products 
+  
+    
+      
+        
+          y
+          
+            m
+          
+        
+        =
+        ⟨
+        x
+        ,
+        
+          ϕ
+          
+            m
+          
+        
+        ⟩
+      
+    
+    {\displaystyle y_{m}=\langle x,\phi _{m}\rangle }
+  
+ between the image 
+  
+    
+      
+        x
+      
+    
+    {\displaystyle x}
+  
+ and the set of 2-D test functions 
+  
+    
+      
+        {
+        
+          ϕ
+          
+            m
+          
+        
+        }
+      
+    
+    {\displaystyle \{\phi _{m}\}}
+  
+, to compute the measurement vector 
+  
+    
+      
+        y
+      
+    
+    {\displaystyle y}
+  
+. In a typical setup, it consists of two main components: a spatial light modulator (SLM) and a single-pixel detector. The light from a wide-field source is collimated and projected onto the scene, and the reflected/transmitted light is focussed on to the detector with lenses. The SLM is used to realise the test functions 
+  
+    
+      
+        {
+        
+          ϕ
+          
+            m
+          
+        
+        }
+      
+    
+    {\displaystyle \{\phi _{m}\}}
+  
+, often as binary pattern masks, and to introduce them either in the illumination or in the detection path. The detector integrates and converts the light signal into an output voltage, which is then digitised by an A/D converter and analysed by a computer.
+Rows from a randomly permuted (for incoherence) Walsh-Hadamard matrix, reshaped into square patterns, are commonly used as binary test functions in single-pixel imaging. To obtain both positive and negative values (±1 in this case), the mean light intensity can be subtracted from each measurements, since the SLM can produce only binary patterns with 0 (off) and 1 (on) conditions. An alternative is to split the positive and negative elements into two sets, measure both with the negative set inverted (i.e., -1 replaced with +1), and subtract the measurements in the end. Values between 0 and 1 can be obtained by dithering the DMD micromirrors during the detector's integration time.
+Examples of commonly used detectors include photomultiplier tubes, avalanche photodiodes, or hybrid photo multipliers (sandwich of layers of photon amplification stages). A spectrometer can also be used for multispectral imaging, along with an array of detectors, one for each spectral channel. Another common addition is a time-correlated single photon counting (TCSPC) board to process the detector output, which, coupled with a pulsed laser, enables lifetime measurement and is useful in biomedical imaging.
+
+
+== Advantages and drawbacks ==
+The most important advantage of the single-pixel design is its reduced size, complexity, and cost of the photon detector (just a single unit). This enables the use of exotic detectors capable of multi-spectral, time-of-flight, photon counting, and other fast detection schemes. This made single-pixel imaging suitable for various fields, ranging from microscopy to astronomy.
+The quantum efficiency of a photodiode is also higher than that of the pixel sensors in a typical CCD or CMOS array. Coupled with the fact that each single-pixel measurement receives about 
+  
+    
+      
+        N
+        
+          /
+        
+        2
+      
+    
+    {\displaystyle N/2}
+  
+ times more photons than an average pixel sensor, this help reduce image distortion from dark noise and read-out noise significantly. Another important advantage is the fill factor of SLMs like a DMD, which can reach around 90% (compared to  that of a CCD/CMOS array which is only around 50%). In addition, single-pixel imaging inherits the theoretical advantages that underpins the compressed sensing framework, such as its universality (the same measurement matrix 
+  
+    
+      
+        Φ
+      
+    
+    {\displaystyle \Phi }
+  
+ works for many sparsifying bases 
+  
+    
+      
+        Ψ
+      
+    
+    {\displaystyle \Psi }
+  
+) and robustness (measurements have equal priority, and thus, loss of a measurement does not corrupt the entire reconstruction).
+The main drawback the single-pixel imaging technique face is the tradeoff between speed of acquisition and spatial resolution. Fast acquisition needs projecting fewer patterns (since each of them is measured sequentially), which leads to lower resolution of the reconstructed image. An innovative method of "fusing" the low resolution single-pixel image with a high spatial-resolution CCD/CMOS image (dubbed "Data Fusion") has been proposed to mitigate this problem. Deep learning methods to learn the optimal set of patterns suitable to image a particular category of samples are also being developed to improve the speed and reliability of the technique.
+
+
+== Applications ==
+Some of the research fields that are increasingly employing and developing single-pixel imaging are listed below:
+
+Multispectral and hyperspectral imaging
+Infrared imaging spectroscopy
+Diffuse optics and imaging through scattering media
+Time-resolved and life-time microscopy
+Fluorescence spectroscopy
+X-ray diffraction tomography
+Biomedical imaging
+Terahertz and ultrafast imaging
+Magnetic resonance imaging
+Photoacoustic imaging
+Holography and phase imaging
+Long-range imaging and remote sensing
+Cytometry and polarimetry
+Real-time and post-processed video
+
+
+== See also ==
+Compressed sensing
+Computational imaging
+Structured light
+Digital micromirror device
+Photodetector
+Hadamard matrix
+
+
+== References ==
+
+
+== Further reading ==
+Eldar, Yonina C.; Kutyniok, Gitta, eds. (2012). Compressed sensing: theory and applications. Cambridge: Cambridge University Press. ISBN 978-1-107-00558-7.
+Stern, Adrian (2017). Optical compressive imaging. Boca Raton: CRC Press, Taylor & Francis. ISBN 978-1-4987-0806-7.
+
+
+== External links ==
+Ghezzi, Alberto (24 May 2023). "Time-resolved multispectral fluorescence microscopy based on computational imaging". POLITesi. hdl:10589/203773.

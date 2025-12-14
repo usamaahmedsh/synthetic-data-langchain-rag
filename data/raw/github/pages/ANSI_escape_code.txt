@@ -1,0 +1,244 @@
+ANSI escape sequences are a standard for in-band signaling to control cursor location, color, font styling, and other options on video text terminals and terminal emulators. Certain sequences of bytes, most starting with an ASCII escape character and a bracket character, are embedded into text.  The terminal interprets these sequences as commands, rather than text to display verbatim.
+ANSI sequences were introduced in the 1970s to replace vendor-specific sequences and became widespread in the computer equipment market by the early 1980s. Although hardware text terminals have become increasingly rare in the 21st century, the relevance of the ANSI standard persists because a great majority of terminal emulators and command consoles interpret at least a portion of the ANSI standard.
+
+
+== History ==
+Almost all manufacturers of video terminals added vendor-specific escape sequences to perform operations such as placing the cursor at arbitrary positions on the screen. One example is the VT52 terminal, which allowed the cursor to be placed at an x,y location on the screen by sending the ESC character, a Y character, and then two characters representing numerical values equal to the x,y location plus 32 (thus starting at the ASCII space character and avoiding the control characters). The Hazeltine 1500 had a similar feature, invoked using ~, DC1 and then the X and Y positions separated with a comma. While the two terminals had identical functionality in this regard, different control sequences had to be used to invoke them.
+As these sequences were different for different terminals, elaborate libraries such as termcap ("terminal capabilities") and utilities such as tput had to be created so programs could use the same API to work with any terminal. In addition, many of these terminals required sending numbers (such as row and column) as the binary values of the characters; for some programming languages, and for systems that did not use ASCII internally, it was often difficult to turn a number into the correct character.
+The ANSI standard attempted to address these problems by making a command set that all terminals would use and requiring all numeric information to be transmitted as ASCII numbers. The first standard in the series was ECMA-48, adopted in 1976. It was a continuation of a series of character coding standards, the first one being ECMA-6 from 1965, a 7-bit standard from which ISO 646 originates. The name "ANSI escape sequence" dates from 1979 when ANSI adopted ANSI X3.64.  The ANSI X3L2 committee collaborated with the ECMA committee TC 1 to produce nearly identical standards. These two standards were merged into an international standard, ISO 6429. In 1994, ANSI withdrew its standard in favor of the international standard.
+
+The first popular video terminal to support these sequences was the Digital VT100, introduced in 1978. This model was very successful in the market, which sparked a variety of VT100 clones, among the earliest and most popular of which was the much more affordable Zenith Z-19 in 1979.  Others included the Qume QVT-108, Televideo TVI-970, Wyse WY-99GT as well as optional "VT100" or "VT103" or "ANSI" modes with varying degrees of compatibility on many other brands. The popularity of these gradually led to more and more software (especially bulletin board systems and other online services) assuming the escape sequences worked, leading to almost all new terminals and emulator programs supporting them.
+In 1981, ANSI X3.64 was adopted for use in the US government by FIPS publication 86.  Later, the US government stopped duplicating industry standards, so FIPS pub. 86 was withdrawn.
+ECMA-48 has been updated several times and is currently at its 5th edition, from 1991. It is also adopted by ISO and IEC as standard ISO/IEC 6429. A version is adopted as a Japanese Industrial Standard, as JIS X 0211.
+Related standards include ITU T.61, the Teletex standard, and the ISO/IEC 8613, the Open Document Architecture standard (mainly ISO/IEC 8613-6 or ITU T.416). The two systems share many escape codes with the ANSI system, with extensions that are not necessarily meaningful to computer terminals. Both systems quickly fell into disuse, but ECMA-48 does mark the extensions used in them as reserved.
+
+
+== Platform support ==
+In the early 1980s, large amounts of software directly used these sequences to update screen displays. This included everything on VMS (which assumed DEC terminals), most software designed to be portable on CP/M home computers, and even lots of Unix software as it was easier to use than the termcap libraries, such as the shell script examples below in this article.
+Terminal emulators for communicating with remote machines almost always implement ANSI escape codes. This includes anything written to communicate with bulletin-board systems on home and personal computers. On Unix terminal emulators such as xterm also can communicate with software running on the same machine, and thus software running in X11 under a terminal emulator could assume the ability to write these sequences.
+As computers got more powerful even built-in displays started supporting them, allowing software to be portable between CP/M systems. There were attempts to extend the escape sequences to support printers and as an early PDF-like document storage format, the Open Document Architecture.
+
+
+=== DOS and Windows ===
+The IBM PC, introduced in 1981, did not support these or any other escape sequences for updating the screen. Only a few control characters (BEL, CR, LF, BS) were interpreted by the underlying BIOS. Any display effects had to be done with BIOS calls, which were notoriously slow, or by directly manipulating the IBM PC hardware. This made any interesting software non-portable and led to the need to duplicate details of the display hardware in PC Clones.
+DOS version 2.0 included an optional device driver named ANSI.SYS. Poor performance, and the fact that it was not installed by default, meant software rarely (if ever) took advantage of it.
+The Windows Console did not support ANSI escape sequences, nor did Microsoft provide any method to enable them. Some replacements such as JP Software's TCC (formerly 4NT), Michael J. Mefford's ANSI.COM, Jason Hood's ANSICON and Maximus5's ConEmu enabled ANSI escape sequences. Software such as the Python colorama package or Cygwin modified text in-process as it was sent to the console, extracting the ANSI Escape sequences and emulating them with Windows calls.
+In 2016, Microsoft released the Windows 10 version 1511 update which unexpectedly implemented support for ANSI escape sequences, over three decades after the debut of Windows. This was done alongside Windows Subsystem for Linux, apparently to allow Unix-like terminal-based software to use the Windows Console. Windows PowerShell 5.1 enabled this by default, and PowerShell 6 made it possible to embed the necessary ESC character into a string with `e. 
+Windows Terminal, introduced in 2019, supports the sequences by default. Since Windows 11 22H2 and Windows Terminal 1.15, Windows Terminal replaces Windows Console as the default.
+
+
+== C0 control codes ==
+Almost all users assume some functions of some single-byte characters. Initially defined as part of ASCII, the default C0 control code set is now defined in ISO 6429 (ECMA-48), making it part of the same standard as the C1 set invoked by the ANSI escape sequences (although ISO 2022 allows the ISO 6429 C0 set to be used without the ISO 6429 C1 set, and vice versa, provided that 0x1B is always ESC). This is used to shorten the amount of data transmitted, or to perform some functions that are unavailable from escape sequences:
+
+Escape sequences vary in length. The general format for an ANSI-compliant escape sequence is defined by ANSI X3.41 (equivalent to ECMA-35 or ISO/IEC 2022). The escape sequences consist only of bytes in the range 0x20—0x7F (all the non-control ASCII characters), and can be parsed without looking ahead. The behavior when a control character, a byte with the high bit set, or a byte that is not part of any valid sequence, is encountered before the end is undefined.
+
+
+== Fe Escape sequences ==
+If the ESC is followed by a byte in the range 0x40 to 0x5F, the escape sequence is of type Fe. Its interpretation is delegated to the applicable C1 control code standard. Accordingly, all escape sequences corresponding to C1 control codes from ANSI X3.64 / ECMA-48 follow this format.
+The standard says that, in 8-bit environments, the control functions corresponding to type Fe escape sequences (those from the set of C1 control codes) can be represented as single bytes in the 0x80–0x9F range. This is possible in character encodings conforming to the provisions for an 8-bit code made in ISO 2022, such as the ISO 8859 series. However, in character encodings used on modern devices such as UTF-8 or CP-1252, those codes are often used for other purposes, so only the 2-byte sequence is typically used. In the case of UTF-8, representing a C1 control code via the C1 Controls and Latin-1 Supplement block results in a different two-byte code (e.g. 0xC2,0x8E for U+008E), but no space is saved this way.
+
+
+== Control Sequence Introducer commands ==
+For Control Sequence Introducer, or CSI, commands, the ESC [ (written as \e[, \x1b[ or \033[ in several programming languages) is followed by any number (including none) of "parameter bytes" in the range 0x30–0x3F (ASCII 0–9:;<=>?), then by any number of "intermediate bytes" in the range 0x20–0x2F (ASCII space and !"#$%&'()*+,-./), then finally by a single "final byte" in the range 0x40–0x7E (ASCII @A–Z[\]^_`a–z{|}~).
+All common sequences just use the parameters as a series of semicolon-separated numbers such as 1;2;3. Missing numbers are treated as 0 (1;;3 acts like the middle number is 0, and no parameters at all in ESC[m acts like a 0 reset code). Some sequences (such as CUU) treat 0 as 1 in order to make missing parameters useful.
+A subset of arrangements was declared "private" so that terminal manufacturers could insert their own sequences without conflicting with the standard. Sequences containing the parameter bytes <=>? or the final bytes 0x70–0x7E (p–z{|}~) are private.
+The behavior of the terminal is undefined in the case where a CSI sequence contains any character outside of the range 0x20–0x7E. These illegal characters are either C0 control characters (the range 0–0x1F), DEL (0x7F), or bytes with the high bit set. Possible responses are to ignore the byte, to process it immediately, and furthermore whether to continue with the CSI sequence, to abort it immediately, or to ignore the rest of it.
+
+
+== Select Graphic Rendition parameters ==
+The control sequence CSI n m, named Select Graphic Rendition (SGR), sets display attributes. Several attributes can be set in the same sequence, separated by semicolons. Each display attribute remains in effect until a following occurrence of SGR resets it. If no codes are given, CSI m is treated as CSI 0 m (reset / normal).
+
+
+=== Colors ===
+
+
+==== 3-bit and 4-bit ====
+The original specification only had 8 colors, and just gave them names. The SGR parameters 30–37 selected the foreground color, while 40–47 selected the background. Quite a few terminals implemented "bold" (SGR code 1) as a brighter color rather than a different font, thus providing 8 additional foreground colors. Usually you could not get these as background colors, though sometimes inverse video (SGR code 7) would allow that. Examples: to get black letters on white background use ESC[30;47m, to get red use ESC[31m, to get bright red use ESC[1;31m. To reset colors to their defaults, use ESC[39;49m (not supported on some terminals), or reset all attributes with ESC[0m. Later terminals added the ability to directly specify the "bright" colors with 90–97 and 100–107.
+The chart below shows a few examples of how classical standards and modern terminal emulators translate the 4-bit color codes into 24-bit color codes.
+
+
+==== 8-bit ====
+
+As 256-color lookup tables became common on graphic cards, escape sequences were added to select from a pre-defined set of 256 colors:
+
+ESC[38;5;⟨n⟩m Select foreground color      where n is a number from the table below
+ESC[48;5;⟨n⟩m Select background color
+  0-  7:  standard colors (as in ESC [ 30–37 m)
+  8- 15:  high intensity colors (as in ESC [ 90–97 m)
+ 16-231:  6 × 6 × 6 cube (216 colors): 16 + 36 × r + 6 × g + b (0 ≤ r, g, b ≤ 5)
+232-255:  grayscale from dark to light in 24 steps
+
+The colors displayed by these values vary across terminal/emulator implementations as the recognized ECMA-48 and ITU's T.416 specifications do not define a specific color palette for this lookup table. While it is common to use the above formula for the color palette, in particular the algorithm and choice of colors for the 16-231 cube values differs between implementations. The color palette and algorithm used by XTerm is specified below as a sample.
+The ITU's T.416 Information technology - Open Document Architecture (ODA) and interchange format: Character content architectures uses ":" as separator characters instead:
+
+ESC[38:5:⟨n⟩m Select foreground color      where n is a number from the table below
+ESC[48:5:⟨n⟩m Select background color
+
+To calculate the RGB values of the colors in the table above, the following Python script can be used:
+
+There has also been a similar but incompatible 88-color encoding using the same escape sequence, seen in rxvt and xterm-88color.  It uses a 4×4×4 color cube.
+
+
+==== 24-bit ====
+As "true color" graphic cards with 16 to 24 bits of color became common, applications began to support 24-bit colors. Terminal emulators supporting setting 24-bit foreground and background colors with escape sequences include Xterm, KDE's Konsole, and iTerm, as well as all libvte based terminals, including GNOME Terminal.
+
+ESC[38;2;⟨r⟩;⟨g⟩;⟨b⟩m Select RGB foreground color
+ESC[48;2;⟨r⟩;⟨g⟩;⟨b⟩m Select RGB background color
+
+This syntax, initially implemented in XTerm, is based on a reading of the ISO/IEC 8613-6 specification, specifically that SGR 38 / SGR 48 followed by the parameter "2" can specify a "direct color" in RGB space.. As the first widely-used implementation, this specification of RGB values using semicolon separators is widely supported by terminal emulators that include 24-bit color support.
+As with the 8-bit color codes, there is a very similar specification of 24-bit color in the ITU's T.416 Open Document Architecture (ODA) and interchange format: Character content architectures, which was adopted as ISO/IEC 8613-6 but ended up as a commercial failure. The ODA version is more elaborate and thus incompatible with the above semicolon-separated version:
+
+Colons are used as separators, rather than semicolons.
+The parameters after the '2' (r, g, and b) are optional and can be left empty.
+There is a leading "colorspace ID". The definition of the colorspace ID is not included in that specification, so it may be blank to represent the unspecified default. For CMYK color specifications, mintty interprets the colorspace ID parameter as specifying the maximum value which the channel values are given out of (e.g. 100 or 255).
+In addition to the '2' value after 48 to specify a Red-Green-Blue format (and the '5' above for a 0-255 indexed color), there are alternatives of '0' for implementation-defined and '1' for transparent - neither of which have any further parameters; '3' specifies colors using a Cyan-Magenta-Yellow scheme, and '4' for a Cyan-Magenta-Yellow-Black one, the latter using the position marked as "unused" for the Black component.
+ESC[38:2:⟨Color-Space-ID⟩:⟨r⟩:⟨g⟩:⟨b⟩:⟨unused⟩:⟨CS tolerance⟩:⟨Color-Space⟩m Select RGB foreground color
+ESC[48:2:⟨Color-Space-ID⟩:⟨r⟩:⟨g⟩:⟨b⟩:⟨unused⟩:⟨CS tolerance⟩:⟨Color-Space⟩m Select RGB background color
+
+where Color-Space indicates the Color-Space associated with the given tolerance: 0 for CIELUV or 1 for CIELAB.
+The semicolon-based RGB specification is the most widely supported, but both it and the RGB variant of ITU T.416 are supported by many terminal emulators.
+
+
+==== Unix environment variables relating to color support ====
+Rather than using the color support in termcap and terminfo introduced in SVr3.2 (1987), the S-Lang library (version 0.99-32, June 1996) used a separate environment variable $COLORTERM to indicate whether a terminal emulator could use colors at all, and later added values to indicate if it supported 24-bit color. This system, although poorly documented, became widespread enough for Fedora and RHEL to consider using it as a simpler and more universal detection mechanism compared to querying the now-updated libraries.
+Some terminal emulators (urxvt, Konsole) set $COLORFGBG to report the color scheme of the terminal (mainly light vs. dark background). This behavior originated in S-Lang and is used by vim. Gnome-terminal refuses to add this behavior, as the syntax for the value is not agreed upon, the value cannot be changed upon a runtime change of the palette, and more "proper" xterm OSC 4/10/11 sequences already exist.
+
+
+== Operating System Command sequences ==
+Most Operating System Command sequences were defined by Xterm, but many are also supported by other terminal emulators. For historical reasons, Xterm can end the command with BEL (0x07) as well as the standard ST (0x9C or 0x1B 0x5C). For example, Xterm allows the window title to be set by ESC ]0;this is the window title BEL.
+A non-xterm extension is the hyperlink, ESC ]8;;link ST from 2017, used by VTE, iTerm2, and mintty, among others.
+The Linux console uses ESC ] P n rr gg bb to change the palette, which, if hard-coded into an application, may hang other terminals. However, appending ST will be ignored by Linux and form a proper, ignorable sequence for other terminals.
+
+
+== Fs Escape sequences ==
+If the ESC is followed by a byte in the range 0x60—0x7E, the escape sequence is of type Fs. This type is used for control functions individually registered with the ISO-IR registry. A table of these is listed under ISO/IEC 2022.
+
+
+== Fp Escape sequences ==
+If the ESC is followed by a byte in the range 0x30—0x3F, the escape sequence is of type Fp, which is set apart for up to sixteen private-use control functions.
+
+
+== nF Escape sequences ==
+If the ESC is followed by a byte in the range 0x20—0x2F, the escape sequence is of type nF. Said byte is followed by any number of additional bytes in this range, and then a byte in the range 0x30-0x7E. These escape sequences are further subcategorised by the low two bits of the first byte, e.g. "type 2F" for sequences where the first byte is 0x22; and by whether the final byte is in the range 0x30—0x3F indicating private use (e.g. "type 2Fp") or not (e.g. "type 2Ft").
+Most of the nFt sequences are for changing the current character set, and are listed in ISO/IEC 2022. Some others:
+
+If the first byte is '#' the public sequences are reserved for additional ISO-IR registered individual control functions. No such sequences are presently registered. Type 3Fp sequences (which includes ones starting with '#') are available for private-use control functions.
+
+
+== Examples ==
+CSI 2 J — This clears the screen and, on some devices, locates the cursor to the y,x position 1,1 (upper left corner).
+CSI 32 m — This makes text green. The green may be a dark, dull green, so you may wish to enable Bold with the sequence CSI 1 m which would make it bright green, or combined as CSI 32 ; 1 m.  Some implementations use the Bold state to make the character Bright.
+CSI 0 ; 6 8 ; "DIR" ; 13 p — This reassigns the key F10 to send to the keyboard buffer the string "DIR" and ENTER, which in the DOS command line would display the contents of the current directory. (MS-DOS ANSI.SYS only) This was sometimes used for ANSI bombs.  This is a private-use code (as indicated by the letter p), using a non-standard extension to include a string-valued parameter.  Following the letter of the standard would consider the sequence to end at the letter D.
+CSI s — This saves the cursor position. Using the sequence CSI u will restore it to the position. Say the current cursor position is 7(y) and 10(x). The sequence CSI s will save those two numbers. Now you can move to a different cursor position, such as 20(y) and 3(x), using the sequence CSI 20 ; 3 H or CSI 20 ; 3 f. Now if you use the sequence CSI u the cursor position will return to 7(y) and 10(x). Some terminals require the DEC sequences ESC 7 / ESC 8 instead which is more widely supported.
+
+
+=== In shell scripting ===
+ANSI escape codes are often used in UNIX and UNIX-like terminals to provide syntax highlighting. For example, on compatible terminals, the following list command color-codes file and directory names by type.
+
+ls --color
+
+Users can employ escape codes in their scripts by including them as part of standard output or standard error. For example, the following GNU sed command embellishes the output of the make command by displaying lines containing words starting with "WARN" in reverse video and words starting with "ERR" in bright yellow on a dark red background (letter case is ignored). The representations of the codes are highlighted.
+
+make 2>&1 | sed -e 's/.*\bWARN.*/\x1b[7m&\x1b[0m/i' -e 's/.*\bERR.*/\x1b[93;41m&\x1b[0m/i'
+
+The following Bash function flashes the terminal (by alternately sending reverse and normal video mode codes) until the user presses a key.
+It can be used to alert a programmer when a lengthy command terminates, such as with make ; flasher .
+
+flasher () { while true; do printf '\e[?5h'; sleep 0.1; printf '\e[?5l'; read -s -n1 -t1 && break; done; }
+
+The following command will reset the console, similar to the command reset on modern Linux systems; however it should work even on older Linux systems and on other (non-Linux) UNIX variants.
+
+
+=== In C ===
+This following program creates a table of numbers from 0 to 109, each of which is displayed in the format specified by the Select Graphic Rendition escape sequence using that number as the graphic rendition code.
+
+
+== Terminal input sequences ==
+
+Pressing special keys on the keyboard, as well as outputting many xterm CSI, DCS, or OSC sequences, often produces a CSI, DCS, or OSC sequence, sent from the terminal to the computer as though the user typed it.
+When typing input on a terminal keypresses outside the normal main alphanumeric keyboard area can be sent to the host as ANSI sequences. For keys that have an equivalent output function, such as the cursor keys, these often mirror the output sequences. However, for most keypresses there isn't an equivalent output sequence to use.
+There are several encoding schemes, and unfortunately most terminals mix sequences from different schemes, so host software has to be able to deal with input sequences using any scheme. 
+To complicate the matter, the VT terminals themselves have two schemes of input, normal mode and application mode that can be switched by the application.
+(draft section)
+
+<char>                                         -> char
+<esc>                                          -> esc
+<esc> <esc>                                    -> Alt-esc
+<esc> <char>                                   -> Alt-keypress or keycode sequence
+<esc> '['                                      -> Alt-[
+<esc> '[' (<modifier>) <char>                  -> keycode sequence, <modifier> is a decimal
+                                                  number and defaults to 1 (xterm)
+<esc> '[' (<keycode>) (';'<modifier>) '~'      -> keycode sequence, <keycode> and <modifier>
+                                                  are decimal numbers and default to 1 (vt)
+
+If the terminating character is '~', the first number must be present and is a
+keycode number, the second number is an optional modifier value. If the terminating
+character is a letter, the letter is the keycode value, and the optional number is
+the modifier value.
+The modifier value defaults to 1, and after subtracting 1 is a bitmap of modifier
+keys being pressed: Meta+Ctrl+Alt+⇧ Shift. So, for example, <esc>[4;2~ is
+⇧ Shift+End, <esc>[20~ is function key F9, <esc>[5C is Ctrl+→.
+In other words, the modifier is the sum of the following numbers:
+
+vt sequences:
+<esc>[1~    - Home        <esc>[16~   -             <esc>[31~   - F17
+<esc>[2~    - Insert      <esc>[17~   - F6          <esc>[32~   - F18
+<esc>[3~    - Delete      <esc>[18~   - F7          <esc>[33~   - F19
+<esc>[4~    - End         <esc>[19~   - F8          <esc>[34~   - F20
+<esc>[5~    - PgUp        <esc>[20~   - F9          <esc>[35~   - 
+<esc>[6~    - PgDn        <esc>[21~   - F10         
+<esc>[7~    - Home        <esc>[22~   -             
+<esc>[8~    - End         <esc>[23~   - F11         
+<esc>[9~    -             <esc>[24~   - F12         
+<esc>[10~   - F0          <esc>[25~   - F13         
+<esc>[11~   - F1          <esc>[26~   - F14         
+<esc>[12~   - F2          <esc>[27~   -             
+<esc>[13~   - F3          <esc>[28~   - F15         
+<esc>[14~   - F4          <esc>[29~   - F16         
+<esc>[15~   - F5          <esc>[30~   -
+
+xterm sequences:
+<esc>[A     - Up          <esc>[K     -             <esc>[U     -
+<esc>[B     - Down        <esc>[L     -             <esc>[V     -
+<esc>[C     - Right       <esc>[M     -             <esc>[W     -
+<esc>[D     - Left        <esc>[N     -             <esc>[X     -
+<esc>[E     -             <esc>[O     -             <esc>[Y     -
+<esc>[F     - End         <esc>[1P    - F1          <esc>[Z     -
+<esc>[G     - Keypad 5    <esc>[1Q    - F2       
+<esc>[H     - Home        <esc>[1R    - F3       
+<esc>[I     -             <esc>[1S    - F4       
+<esc>[J     -             <esc>[T     - 
+
+<esc>[A to <esc>[D are the same as the ANSI output sequences. The <modifier> is normally omitted if no modifier keys are pressed, but most implementations always emit the <modifier> for F1–F4. (draft section)
+Xterm has a comprehensive documentation page on the various function-key and mouse input sequence schemes from DEC's VT terminals and various other terminals it emulates. Thomas Dickey has added a lot of support to it over time; he also maintains a list of default keys used by other terminal emulators for comparison.
+
+On the Linux console, certain function keys generate sequences of the form CSI [ char. The CSI sequence should terminate on the [.
+Old versions of Terminator generate SS3 1; modifiers char when F1 – F4 are pressed with modifiers. The faulty behavior was copied from GNOME Terminal.
+xterm replies CSI row ; column R if asked for cursor position and CSI 1 ; modifiers R if the F3 key is pressed with modifiers, which collide in the case of row == 1. This can be avoided by using the ? private modifier as CSI ? 6 n, which will be reflected in the response as CSI ? row ; column R.
+many terminals prepend ESC to any character that is typed with the alt key down. This creates ambiguity for uppercase letters and symbols @[\]^_, which would form C1 codes.
+Konsole generates SS3 modifiers char when F1 – F4 are pressed with modifiers.
+iTerm2 supports reporting additional keys via an enhanced CSI u mode.
+
+
+== See also ==
+ANSI art
+Control character
+ISO/IEC JTC 1/SC 2
+C0 and C1 control codes
+
+
+== Notes ==
+
+
+== References ==
+
+
+== External links ==
+Standard ECMA-48, Control Functions For Coded Character Sets. (5th edition, June 1991), European Computer Manufacturers Association, Geneva 1991 (also published by ISO and IEC as standard ISO/IEC 6429)
+vt100.net DEC Documents
+"ANSI.SYS -- ansi terminal emulation escape sequences". Archived from the original on 6 February 2006. Retrieved 22 February 2007.
+Xterm / Escape Sequences
+AIXterm / Escape Sequences
+A collection of escape sequences for terminals that are vaguely compliant with ECMA-48 and friends.
+"ANSI Escape Sequences". Archived from the original on 25 May 2011.
+ITU-T Rec. T.416 (03/93) Information technology – Open Document Architecture (ODA) and interchange format: Character content architectures

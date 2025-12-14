@@ -1,0 +1,234 @@
+Transmission Control Protocol (TCP) uses a congestion control algorithm that includes various aspects of an additive increase/multiplicative decrease (AIMD) scheme, along with other schemes including slow start and a congestion window (CWND), to achieve congestion avoidance. The TCP congestion-avoidance algorithm is the primary basis for congestion control in the Internet. Per the end-to-end principle, congestion control is largely a function of internet hosts, not the network itself. There are several variations and versions of the algorithm implemented in protocol stacks of operating systems of computers that connect to the Internet.
+To avoid congestive collapse, TCP uses a multi-faceted congestion-control strategy. For each connection, TCP maintains a CWND, limiting the total number of unacknowledged packets that may be in transit end-to-end. This is somewhat analogous to TCP's sliding window used for flow control.
+
+
+== Additive increase/multiplicative decrease ==
+The additive increase/multiplicative decrease (AIMD) algorithm is a closed-loop control algorithm. AIMD combines linear growth of the congestion window with an exponential reduction when congestion occurs. Multiple flows using AIMD congestion control will eventually converge to use equal amounts of a contended link.
+This is the algorithm that is described in RFC 5681 for the congestion avoidance state.
+
+
+== Congestion window ==
+In TCP, the congestion window (CWND) is one of the factors that determines the number of bytes that can be sent out at any time.  The congestion window is maintained by the sender and is a means of preventing a link between the sender and the receiver from becoming overloaded with too much traffic.  This should not be confused with the sliding window maintained by the sender which exists to prevent the receiver from becoming overloaded. The congestion window is calculated by estimating how much congestion there is on the link.
+When a connection is set up, the congestion window, a value maintained independently at each host, is set to a small multiple of the maximum segment size (MSS) allowed on that connection.  Further variance in the congestion window is dictated by an additive increase/multiplicative decrease (AIMD) approach. This means that if all segments are received and the acknowledgments reach the sender on time, some constant is added to the window size. It will follow different algorithms.
+A system administrator may adjust the maximum window size limit, or adjust the constant added during additive increase, as part of TCP tuning.
+The flow of data over a TCP connection is also controlled by the use of the receive window advertised by the receiver. A sender can send data less than its own congestion window and the receive window.
+
+
+== Slow start ==
+Slow start, defined by RFC 5681, is part of the congestion control strategy used by TCP in conjunction with other algorithms to avoid sending more data than the network is capable of forwarding, that is, to avoid causing network congestion.
+Slow start begins initially with a congestion window size (CWND) of 1, 2, 4 or 10 MSS. The value for the congestion window size can be increased by 1 MSS with each acknowledgment (ACK) received, effectively doubling the window size each RTT.
+The transmission rate will be increased by the slow-start algorithm until either a packet loss is detected, the receiver's advertised window (rwnd) becomes the limiting factor, or slow start threshold (ssthresh) is reached, which is used to determine whether the slow start or congestion avoidance algorithm is used, a value set to limit slow start.
+If the CWND reaches ssthresh, TCP switches to the congestion avoidance algorithm. It should be increased by up to 1 MSS for each RTT. A common formula is that each new ACK increases the CWND by MSS * MSS / CWND. It increases almost linearly and provides an acceptable approximation.
+If a loss event occurs, TCP assumes that it is due to network congestion and takes steps to reduce the offered load on the network. These measures depend on the exact TCP congestion avoidance algorithm used.
+When a TCP sender detects segment loss using the retransmission timer and the given segment has not yet been resent, the value of ssthresh must be set to no more than half of the amount of data that has been sent but not yet cumulatively acknowledged or 2 * MSS, whichever value is greater.
+
+TCP Tahoe
+When a loss occurs, retransmit is sent, half of the current CWND is saved as ssthresh and slow start begins again from its initial CWND.
+TCP Reno
+A fast retransmit is sent, half of the current CWND is saved as ssthresh and as new CWND, thus skipping slow start and going directly to the congestion avoidance algorithm. The overall algorithm here is called fast recovery.
+Slow start assumes that unacknowledged segments are due to network congestion. While this is an acceptable assumption for many networks, segments may be lost for other reasons, such as poor data link layer transmission quality.  Thus, slow start can perform poorly in situations with poor reception, such as wireless networks.
+The slow start protocol also performs badly for short-lived connections. Older web browsers would create many consecutive short-lived connections to the web server, and would open and close the connection for each file requested. This kept most connections in the slow start mode, which resulted in poor response time. To avoid this problem, modern browsers either open multiple connections simultaneously or reuse one connection for all files requested from a particular web server. Connections, however, cannot be reused for the multiple third-party servers used by web sites to implement web advertising, sharing features of social networking services, and counter scripts of web analytics.
+
+
+== Fast retransmit ==
+Fast retransmit is an enhancement to TCP that reduces the time a sender waits before retransmitting a lost segment. A TCP sender normally uses a simple timer to recognize lost segments. If an acknowledgment is not received for a particular segment within a specified time (a function of the estimated round-trip delay time), the sender will assume the segment was lost in the network and will retransmit the segment.
+Duplicate acknowledgment is the basis for the fast retransmit mechanism. After receiving a packet an acknowledgement is sent for the last in-order byte of data received. For an in-order packet, this is effectively the last packet's sequence number plus the current packet's payload length. If the next packet in the sequence is lost but a third packet in the sequence is received, then the receiver can only acknowledge the last in-order byte of data, which is the same value as was acknowledged for the first packet. The second packet is lost and the third packet is not in order, so the last in-order byte of data remains the same as before. Thus a Duplicate acknowledgment occurs. The sender continues to send packets, and a fourth and fifth packet are received by the receiver. Again, the second packet is missing from the sequence, so the last in-order byte has not changed. Duplicate acknowledgments are sent for both of these packets.
+When a sender receives three duplicate acknowledgments, it can be reasonably confident that the segment carrying the data that followed the last in-order byte specified in the acknowledgment was lost. A sender with fast retransmit will then retransmit this packet immediately without waiting for its timeout. On receipt of the retransmitted segment, the receiver can acknowledge the last in-order byte of data received. In the above example, this would acknowledge to the end of the payload of the fifth packet. There is no need to acknowledge intermediate packets since TCP uses cumulative acknowledgments by default.
+
+
+== Algorithms ==
+The names Reno and Tahoe are the names of releases of the BSD UNIX operating system, and were used to refer to the congestion control algorithms (CCAs) at least as early a 1996 paper by Kevin Fall and Sally Floyd.
+The following is one possible classification according to the following properties:
+
+the type and amount of feedback received from the network
+incremental deployability on the current Internet
+the aspect of performance it aims to improve: high bandwidth-delay product networks (B); lossy links (L); fairness (F); advantage to short flows (S); variable-rate links (V); speed of convergence (C)
+the fairness criterion it uses
+Some well-known congestion avoidance mechanisms are classified by this scheme as follows:
+
+
+=== TCP Tahoe and Reno ===
+TCP Tahoe and Reno algorithms were retrospectively named after the versions or flavors of the 4.3BSD operating system in which each first appeared (which were themselves named after Lake Tahoe and the nearby city of Reno, Nevada). The Tahoe algorithm first appeared in 4.3BSD-Tahoe (which was made to support the CCI Power 6/32 "Tahoe" minicomputer), and was later made available to non-AT&T licensees as part of the 4.3BSD Networking Release 1; this ensured its wide distribution and implementation. Improvements were made in 4.3BSD-Reno and subsequently released to the public as Networking Release 2 and later 4.4BSD-Lite.
+While both consider retransmission timeout (RTO) and duplicate ACKs as packet loss events, the behavior of Tahoe and Reno differ primarily in how they react to duplicate ACKs:
+
+Tahoe: if three duplicate ACKs are received (i.e. four ACKs acknowledging the same packet, which are not piggybacked on data and do not change the receiver's advertised window), Tahoe performs a fast retransmit, sets the slow start threshold to half of the current congestion window, reduces the congestion window to 1 MSS, and resets to slow start state.
+Reno: if three duplicate ACKs are received, Reno will perform a fast retransmit and skip the slow start phase by instead halving the congestion window (instead of setting it to 1 MSS like Tahoe), setting the ssthresh equal to the new congestion window, and enter a phase called fast recovery.
+In both Tahoe and Reno, if an ACK times out (RTO timeout), slow start is used, and both algorithms reduce the congestion window to 1 MSS.
+
+
+=== TCP New Reno ===
+TCP New Reno, defined by RFC 6582 (which obsolesces previous definitions in RFC 3782 and RFC 2582), improves retransmission during the fast-recovery phase of TCP Reno.
+During fast recovery, to keep the transmit window full, for every duplicate ACK that is returned, a new unsent packet from the end of the congestion window is sent.
+The difference from Reno is that New Reno does not halve ssthresh immediately which may reduce the window too much if multiple packet losses occur.  It does not exit fast-recovery and reset ssthresh until it acknowledges all of the data.
+After retransmission, newly acknowledged data have two cases:
+
+Full acknowledgments: The ACK acknowledges all the intermediate segments sent, the ssthresh cannot be changed, cwnd can be set to ssthresh
+Partial acknowledgments: The ACK does not acknowledge all data. It means another loss may occur, retransmit the first unacknowledged segment if permitted
+It uses a variable called recover to record how much data needs to be recovered. After a retransmit timeout, it records the highest sequence number transmitted in the recover variable and exits the fast recovery procedure. If this sequence number is acknowledged, TCP returns to the congestion avoidance state.
+A problem occurs with New Reno when there are no packet losses but instead, packets are reordered by more than 3 packet sequence numbers.  In this case, New Reno mistakenly enters fast recovery. When the reordered packet is delivered, duplicate and needless retransmissions are immediately sent.
+New Reno performs as well as SACK at low packet error rates and substantially outperforms Reno at high error rates.
+
+
+=== TCP Vegas ===
+
+Until the mid-1990s, all of TCP's set timeouts and measured round-trip delays were based upon only the last transmitted packet in the transmit buffer. University of Arizona researchers Larry Peterson and Lawrence Brakmo introduced TCP Vegas in which timeouts were set and round-trip delays were measured for every packet in the transmit buffer. In addition, TCP Vegas uses additive increases in the congestion window. In a 2012 comparison study of various TCP CCAs, TCP Vegas appeared to be the smoothest followed by TCP CUBIC.
+TCP Vegas was not widely deployed outside Peterson's laboratory but was selected as the default congestion control method for DD-WRT firmware v24 SP2.
+
+
+=== TCP Hybla ===
+TCP Hybla aims to eliminate penalties to TCP connections that use high-latency terrestrial or satellite radio links. Hybla improvements are based on analytical evaluation of the congestion window dynamics.
+
+
+=== TCP BIC ===
+
+Binary Increase Congestion control (BIC) is a TCP implementation with an optimized CCA for high-speed networks with high latency, known as long fat networks (LFNs). BIC is used by default in Linux kernels 2.6.8 through 2.6.18.
+
+
+=== TCP CUBIC ===
+
+CUBIC is a less aggressive and more systematic derivative of BIC, in which the window is a cubic function of time since the last congestion event, with the inflection point set to the window prior to the event. CUBIC is used by default in Linux kernels since version 2.6.19.
+
+
+=== Agile-SD TCP ===
+Agile-SD is a Linux-based CCA which is designed for the real Linux kernel. It is a receiver-side algorithm that employs a loss-based approach using a novel mechanism, called agility factor (AF), to increase the bandwidth utilization over high-speed and short-distance networks (low bandwidth-delay product networks) such as local area networks or fiber-optic network, especially when the applied buffer size is small. It has been evaluated by comparing its performance to Compound TCP (the default CCA in MS Windows) and CUBIC (the default of Linux) using NS-2 simulator. It improves the total performance up to 55% in term of average throughput.
+
+
+=== TCP Westwood+ ===
+
+Westwood+ is a sender-only modification of TCP Reno that optimizes the performance of TCP congestion control over both wired and wireless networks. TCP Westwood+ is based on end-to-end bandwidth estimation to set the congestion window and slow-start threshold after a congestion episode, that is, after three duplicate acknowledgments or a timeout. The bandwidth is estimated by averaging the rate of returning acknowledgment packets. In contrast with TCP Reno, which blindly halves the congestion window after three duplicate ACKs, TCP Westwood+ adaptively sets a slow-start threshold and a congestion window that takes into account an estimate of bandwidth available at the time congestion is experienced. Compared to Reno and New Reno, Westwood+ significantly increases throughput over wireless links and improves fairness in wired networks.
+
+
+=== Compound TCP ===
+
+Compound TCP is a Microsoft implementation of TCP which maintains two different congestion windows simultaneously, with the goal of achieving good performance on LFNs while not impairing fairness. It has been widely deployed in Windows versions since Microsoft Windows Vista and Windows Server 2008 and has been ported to older Microsoft Windows versions as well as Linux.
+
+
+=== TCP Proportional Rate Reduction ===
+TCP Proportional Rate Reduction (PRR) is an algorithm designed to improve the accuracy of data sent during recovery. The algorithm ensures that the window size after recovery is as close as possible to the slow start threshold. In tests performed by Google, PRR resulted in a 3–10% reduction in average latency and recovery timeouts were reduced by 5%. PRR is available in Linux kernels since version 3.2.
+
+
+=== TCP BBR ===
+Bottleneck Bandwidth and Round-trip propagation time (BBR) is a CCA developed at Google in 2016. While most CCAs are loss-based, in that they rely on packet loss to detect congestion and lower rates of transmission, BBR, like TCP Vegas, is model-based. The algorithm uses the maximum bandwidth and round-trip time at which the network delivered the most recent flight of outbound data packets to build a model of the network. Each cumulative or selective acknowledgment of packet delivery produces a rate sample that records the amount of data delivered over the time interval between the transmission of a data packet and the acknowledgment of that packet.
+When implemented at YouTube, BBRv1 yielded an average of 4% higher network throughput and up to 14% in some countries. BBR has been available for Linux TCP since Linux 4.9. It is also available for QUIC.
+BBR version 1 (BBRv1) fairness to non-BBR streams is disputed. While Google's presentation shows BBRv1 co-existing well with CUBIC, researchers like Geoff Huston and Hock, Bless and Zitterbart found it unfair to other streams and not scalable. Hock et al. also found "some severe inherent issues such as increased queuing delays, unfairness, and massive packet loss" in the BBR implementation of Linux 4.9. Soheil Abbasloo et al. (authors of C2TCP) show that BBRv1 doesn't perform well in dynamic environments such as cellular networks. They have also shown that BBR has an unfairness issue. For instance, when a CUBIC flow (which is the default TCP implementation in Linux, Android, and MacOS) coexists with a BBR flow in the network, the BBR flow can dominate the CUBIC flow and get the whole link bandwidth from it (see figure 18 in).
+Version 2 attempts to deal with the issue of unfairness when operating alongside loss-based congestion management such as CUBIC. In BBRv2 the model used by BBRv1 is augmented to include information about packet loss and information from Explicit Congestion Notification (ECN). Whilst BBRv2 may at times have lower throughput than BBRv1 it is generally considered to have better goodput. Windows 11, version 24H2 and Windows Server 2025 had support for BBRv2, but may not enable it by default.
+Version 3 (BBRv3) fixes two bugs in BBRv2 (premature end of bandwidth probing, bandwidth convergence) and performs some performance tuning. There is also a variant, termed BBR.Swift, optimized for datacenter-internal links: it uses network_RTT (excluding receiver delay) as the main congestion control signal.
+
+
+=== C2TCP ===
+Cellular Controlled Delay TCP (C2TCP) was motivated by the lack of a flexible end-to-end TCP approach that can satisfy various QoS requirements for different applications without requiring any changes in the network devices. C2TCP aims to satisfy ultra-low latency and high-bandwidth requirements of applications such as virtual reality, video conferencing, online gaming, vehicular communication systems, etc. in a highly dynamic environment such as current LTE and future 5G cellular networks. C2TCP works as an add-on on top of loss-based TCP (e.g. Reno, NewReno, CUBIC, BIC, ...), it is only required to be installed on the server-side and makes the average delay of packets bounded to the desired delays set by the applications.
+Researchers at NYU showed that C2TCP outperforms the delay and delay-variation performance of various state-of-the-art TCP schemes. For instance, they showed that compared to BBR, CUBIC, and Westwood on average, C2TCP decreases the average delay of packets by about 250%, 900%, and 700% respectively on various cellular network environments.
+
+
+=== Elastic-TCP ===
+Elastic-TCP was proposed in February 2019 to increase bandwidth utilization over high-BDP networks in support of cloud computing. It is a Linux-based CCA that is designed for the Linux kernel. It is a receiver-side algorithm that employs a loss-delay-based approach using a novel mechanism called a window-correlated weighting function (WWF). It has a high level of elasticity to deal with different network characteristics without the need for human tuning. It has been evaluated by comparing its performance to Compound TCP (the default CCA in MS Windows), CUBIC (the default for Linux) and TCP-BBR (the default of Linux 4.9 used by Google) using the NS-2 simulator and testbed. Elastic-TCP significantly improves the total performance in terms of average throughput, loss ratio, and delay.
+
+
+=== NATCP ===
+Soheil Abbasloo et al. proposed NATCP (Network-Assisted TCP), a controversial TCP design targeting multi-access edge computing (MEC).  The key idea of NATCP is that if the characteristics of the network were known beforehand, TCP would have been designed differently. Therefore, NATCP employs the available features and properties in the current MEC-based cellular architectures to push the performance of TCP close to the optimal performance. NATCP uses out-of-band feedback from the network to the servers located nearby. The feedback from the network, which includes the capacity of the cellular access link and the minimum RTT of the network, guides the servers to adjust their sending rates. As preliminary results show, NATCP outperforms the state-of-the-art TCP schemes.
+
+
+=== Other TCP congestion avoidance algorithms ===
+FAST TCP
+Generalized FAST TCP
+H-TCP
+Data Center TCP
+High Speed TCP
+HSTCP-LP
+TCP-Illinois
+TCP-LP
+TCP SACK
+Scalable TCP
+TCP Veno
+Westwood
+XCP
+YeAH-TCP
+TCP-FIT
+Congestion Avoidance with Normalized Interval of Time (CANIT)
+Non-linear neural network congestion control based on genetic algorithm for TCP/IP networks
+D-TCP
+NexGen D-TCP
+Copa
+TCP New Reno was the most commonly implemented algorithm, SACK support is very common and is an extension to Reno/New Reno. Most others are competing proposals that still need evaluation. Starting with 2.6.8 the Linux kernel switched the default implementation from New Reno to BIC. The default implementation was again changed to CUBIC in the 2.6.19 version. FreeBSD from version 14.X onwards also uses CUBIC as the default algorithm. Previous version used New Reno. However, FreeBSD supports a number of other choices.
+When the per-flow product of bandwidth and latency increases, regardless of the queuing scheme, TCP becomes inefficient and prone to instability. This becomes increasingly important as the Internet evolves to incorporate very high-bandwidth optical links.
+TCP Interactive (iTCP) allows applications to subscribe to TCP events and respond accordingly enabling various functional extensions to TCP from outside TCP layer. Most TCP congestion schemes work internally.  iTCP additionally enables advanced applications to directly participate in congestion control such as to control the source generation rate.
+Zeta-TCP detects congestion from both latency and loss rate measures. To maximize the goodput Zeta-TCP and applies different congestion window backoff strategies based on the likelihood of congestion. It also has other improvements to accurately detect packet losses, avoiding retransmission timeout retransmission; and accelerate and control the inbound (download) traffic.
+
+
+== Classification by network awareness ==
+CCAs may be classified in relation to network awareness, meaning the extent to which these algorithms are aware of the state of the network. This consist of three primary categories: black box, grey box, and green box.
+Black box algorithms offer blind methods of congestion control. They operate only on the binary feedback received upon congestion and do not assume any knowledge concerning the state of the networks which they manage.
+Grey box algorithms use time-based measurement, such as RTT variation and rate of packet arrival, in order to obtain measurements and estimations of bandwidth, flow contention, and other knowledge of network conditions.
+Green box algorithms offer bimodal methods of congestion control which measures the fair share of total bandwidth which should be allocated for each flow, at any point, during the system's execution.
+
+
+=== Black box ===
+Highspeed-TCP
+BIC TCP (Binary Increase Congestion Control Protocol) uses a concave increase of the sources rate after each congestion event until the window is equal to that before the event, in order to maximize the time that the network is fully utilized.  After that, it probes aggressively.
+CUBIC TCP – a less aggressive and more systematic derivative of BIC, in which the window is a cubic function of time since the last congestion event, with the inflection point set to the window prior to the event.
+AIMD-FC (additive increase multiplicative decrease with fast convergence), an improvement of AIMD.
+Binomial Mechanisms
+SIMD Protocol
+GAIMD
+
+
+=== Grey box ===
+TCP Vegas – estimates the queuing delay, and linearly increases or decreases the window so that a constant number of packets per flow are queued in the network.  Vegas implements proportional fairness.
+FAST TCP – achieves the same equilibrium as Vegas, but uses proportional control instead of linear increase, and intentionally scales the gain down as the bandwidth increases with the aim of ensuring stability.
+TCP BBR  – estimates the queuing delay but uses exponential increase. Intentionally slows down periodically for fairness and decreased delay.
+TCP-Westwood (TCPW) – a loss causes the window to be reset to the sender's estimate of the bandwidth-delay product (the smallest measured RTT multiplied by the observed rate of receiving ACKs).
+C2TCP
+TFRC
+TCP-Real
+TCP-Jersey
+
+
+=== Green box ===
+Bimodal Mechanism – Bimodal Congestion Avoidance and Control mechanism.
+Signalling methods implemented by routers
+Random Early Detection (RED) randomly drops packets in proportion to the router's queue size, triggering multiplicative decrease in some flows.
+Explicit Congestion Notification (ECN)
+Network-Assisted Congestion Control
+NATCP – Network-Assisted TCP uses out-of-band explicit feedback indicating minimum RTT of the network and capacity of the cellular access link.
+The variable-structure congestion control protocol (VCP) uses two ECN bits to explicitly feedback the network state of congestion. It includes an end host side algorithm as well.
+The following algorithms require custom fields to be added to the TCP packet structure:
+
+Explicit Control Protocol (XCP) – XCP packets carry a congestion header with a feedback field, indicating the increase or decrease of the sender's congestion window. XCP routers set the feedback value explicitly for efficiency and fairness.
+MaxNet – Uses a single header field, which carries the maximum congestion level of any router on a flow's path.  The rate is set as a function of this maximum congestion, resulting in max-min fairness.
+JetMax, like MaxNet, responds only to the maximum congestion signal, but also carries other overhead fields.
+
+
+== Linux usage ==
+
+BIC is used by default in Linux kernels 2.6.8 through 2.6.18. (August 2004 – September 2006)
+CUBIC is used by default in Linux kernels since version 2.6.19. (November 2006)
+PRR is incorporated in Linux kernels to improve loss recovery since version 3.2. (January 2012)
+BBRv1 is incorporated in Linux kernels to enable model-based congestion control since version 4.9. (December 2016)
+
+
+== See also ==
+L4S, an enhanced version of ECN designed for working with TCP endpoints
+Low Extra Delay Background Transport (LEDBAT)
+Network congestion § Mitigation
+Transmission Control Protocol §§ Congestion control​ and Development
+
+
+== Notes ==
+
+
+== References ==
+
+
+=== Sources ===
+Kurose, James; Ross, Keith (2008). Computer Networking: A Top-Down Approach (4th ed.). Addison Wesley. ISBN 978-0-13-607967-5.
+Kurose, James; Ross, Keith (2012). Computer Networking: A Top-Down Approach (6th ed.). Pearson. ISBN 978-0-13-285620-1.
+Abbasloo, Soheil; Xu, Yang; Chao, H. Jonathon; Shi, Hang; Kozat, Ulas C.; Ye, Yinghua (2019). "Toward Optimal Performance with Network Assisted TCP at Mobile Edge". 2nd USENIX Workshop on Hot Topics in Edge Computing (HotEdge 19). Renton, WA: USENIX Association.
+Afanasyev, A.; N. Tilley; P. Reiher; L. Kleinrock (2010). "Host-to-host congestion control for TCP" (PDF). IEEE Communications Surveys and Tutorials. 12 (3): 304–342. CiteSeerX 10.1.1.228.3080. doi:10.1109/SURV.2010.042710.00114. S2CID 8638824.
+Jacobson, Van; Karels, Michael J. (November 1988). "Congestion avoidance and control" (PDF). ACM SIGCOMM Computer Communication Review. 18 (4): 314–329. doi:10.1145/52325.52356.
+
+
+== External links ==
+Approaches to Congestion Control in Packet Networks
+Papers in Congestion Control
+Allman, Mark; Paxson, Vern; Stevens, W. Richard (April 1999). "Fast Retransmit/Fast Recovery". TCP Congestion Control. Internet Engineering Task Force. sec. 3.2. doi:10.17487/RFC2581. RFC 2581. Retrieved 1 May 2010.
+TCP Congestion Handling and Congestion Avoidance Algorithms –  The TCP/IP Guide

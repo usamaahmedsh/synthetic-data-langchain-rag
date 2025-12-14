@@ -1,0 +1,99 @@
+The Online Certificate Status Protocol (OCSP) is an Internet protocol used for obtaining the revocation status of an X.509 digital certificate. It was created as an alternative to certificate revocation lists (CRL), specifically addressing certain problems associated with using CRLs in a public key infrastructure (PKI). Messages communicated via OCSP are encoded in ASN.1 and are usually communicated over HTTP. The "request/response" nature of these messages leads to OCSP servers being termed OCSP responders.
+Some web browsers (e.g., Firefox) use OCSP to validate HTTPS certificates, while others have disabled it. Most OCSP revocation statuses on the Internet disappear soon after certificate expiration.
+Certificate authorities (CAs) were previously required by the CA/Browser Forum to provide OCSP service, but this requirement was removed in July 2023, making OCSP optional and CRLs required again. On August 6, 2025, Let's Encrypt announced that OCSP services will be shut down due to privacy concerns.
+
+
+== Comparison to CRLs ==
+Since an OCSP response contains less data than a typical certificate revocation list (CRL), it puts less burden on network and client resources.
+Since an OCSP response has less data to parse, the client-side libraries that handle it can be less complex than those that handle CRLs.
+OCSP discloses to the responder that a particular network host used a particular certificate at a particular time.  OCSP does not mandate encryption, so other parties may intercept this information.
+
+
+== Basic PKI implementation ==
+Alice and Bob have public key certificates issued by Carol, the certificate authority (CA).
+Alice wishes to perform a transaction with Bob and sends him her certificate.
+Bob, concerned that Alice's private key may have been compromised, creates an 'OCSP request' that contains Alice's certificate serial number and sends it to Carol.
+Carol's OCSP responder reads the certificate serial number from Bob's request. The OCSP responder uses the certificate serial number to look up the revocation status of Alice's certificate. The OCSP responder looks in a CA database that Carol maintains. In this scenario, Carol's CA database is the only trusted location where a compromise to Alice's certificate would be recorded.
+Carol's OCSP responder confirms that Alice's certificate is still OK, and returns a signed, successful 'OCSP response' to Bob.
+Bob cryptographically verifies Carol's signed response.  Bob has stored Carol's public key some time before this transaction. Bob uses Carol's public key to verify Carol's response.
+Bob completes the transaction with Alice.
+
+
+== Protocol details ==
+An OCSP responder (a server typically run by the certificate issuer) may return a signed response signifying that the certificate specified in the request is 'good', 'revoked', or 'unknown'. If it cannot process the request, it may return an error code.
+The OCSP request format supports additional extensions. This enables extensive customization to a particular PKI scheme.
+OCSP can be vulnerable to replay attacks, where a signed, 'good' response is captured by a malicious intermediary and replayed to the client at a later date after the subject certificate may have been revoked. OCSP allows a nonce to be included in the request that may be included in the corresponding response. Because of high load, most OCSP responders do not use the nonce extension to create a different response for each request, instead using presigned responses with a validity period of multiple days. Thus, the replay attack is a major threat to validation systems.
+OCSP can support more than one level of CA. OCSP requests may be chained between peer responders to query the issuing CA appropriate for the subject certificate, with responders validating each other's responses against the root CA using their own OCSP requests.
+An OCSP responder may be queried for revocation information by delegated path validation (DPV) servers. OCSP does not, by itself, perform any DPV of supplied certificates.
+The key that signs a response need not be the same key that signed the certificate. The certificate's issuer may delegate another authority to be the OCSP responder. In this case, the responder's certificate (the one that is used to sign the response) must be issued by the issuer of the certificate in question, and must include a certain extension that marks it as an OCSP signing authority (more precisely, an extended key usage extension with the OID {iso(1) identified-organization(3) dod(6) internet(1) security(5) mechanisms(5) pkix(7) keyPurpose(3) ocspSigning(9)})
+
+
+== Privacy concerns ==
+OCSP checking creates a privacy concern for some users, since it requires the client to contact a third party (albeit a party trusted by the client software vendor) to confirm certificate validity. This third party could thus track what websites the client is accessing. OCSP stapling is a way to verify validity without disclosing browsing behavior to the CA.
+
+
+== Criticisms ==
+OCSP-based revocation is not an effective technique to mitigate against the compromise of an HTTPS server's private key. An attacker who has compromised a server's private key typically needs to be in a man-in-the-middle position on the network to abuse that private key and impersonate a server. An attacker in such a position is also typically in a position to interfere with the client's OCSP queries. Because most clients will silently ignore OCSP if the query times out, OCSP is not a reliable means of mitigating HTTPS server key compromise.
+The MustStaple TLS extension in a certificate can require that the certificate be verified by a stapled OCSP response, mitigating this problem. OCSP also remains a valid defense against situations where the attacker is not a "man-in-the-middle" (code-signing or certificates issued in error).
+The OCSP protocol assumes the requester has network access to connect to an appropriate OCSP responder. Some requesters may not be able to connect because their local network prohibits direct Internet access (a common practice for internal nodes in a data center). Forcing internal servers to connect to the Internet in order to use OCSP contributes to the de-perimeterisation trend. The OCSP stapling protocol is an alternative that allows servers to cache OCSP responses, which removes the need for the requestor to directly contact the OCSP responder.
+
+
+== Browser support ==
+
+There is wide support for OCSP amongst most major browsers:
+
+Internet Explorer is built on the CryptoAPI of Windows and thus starting with version 7 on Windows Vista (not XP) supports OCSP checking.
+All versions of Mozilla Firefox support OCSP checking. Firefox 3 enables OCSP checking by default.
+Safari on macOS supports OCSP checking. It is enabled by default as of Mac OS X 10.7 (Lion). Prior to that, it has to be manually activated in Keychain preferences.
+Versions of Opera from 8.0 to the current version support OCSP checking.
+However, Google Chrome is an outlier. Google disabled OCSP checks by default in 2012, citing latency and privacy issues and instead uses their own update mechanism to send revoked certificates to the browser.
+
+
+== Implementations ==
+Several open source and proprietary OCSP implementations exist, including fully featured servers and libraries for building custom applications.  OCSP client support is built into many operating systems, web browsers, and other network software due to the popularity of HTTPS and the World Wide Web.
+
+
+=== Server ===
+
+
+==== Open source ====
+Boulder, CA and OCSP responder developed and used by Let's Encrypt (Go)
+DogTag,  Open source certificate authority CA, CRL and OCSP responder.
+EJBCA, CA and OCSP responder (Java)
+XiPKI, CA and OCSP responder. With support of RFC 6960 and SHA3 (Java)
+OpenCA OCSP Responder  Standalone OCSP responder from the OpenCA Project (C)
+
+
+==== Proprietary ====
+Certificate Services  CA and OCSP responder included with Windows Server
+
+
+=== Library ===
+
+
+==== Open source ====
+cfssl (Go)
+OpenSSL (C)
+wolfSSL (C)
+
+
+=== Client ===
+
+
+== See also ==
+Certificate revocation list
+Certificate authority
+Server-based Certificate Validation Protocol
+OCSP stapling
+Certificate Transparency
+
+
+== References ==
+
+
+== External links ==
+RFC 2560, X.509 Internet Public Key Infrastructure Online Certificate Status Protocol – OCSP
+RFC 4806, Online Certificate Status Protocol (OCSP) Extensions to IKEv2
+RFC 5019, The Lightweight Online Certificate Status Protocol (OCSP) Profile for High-Volume Environments
+RFC 6960, X.509 Internet Public Key Infrastructure Online Certificate Status Protocol – OCSP
+Processor.com April, 2009 article about Online Certificate Status Protocol

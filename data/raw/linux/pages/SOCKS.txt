@@ -1,0 +1,247 @@
+SOCKS is an Internet protocol that exchanges network packets between a client and server through a proxy server. SOCKS5 optionally provides authentication, so only authorized users may access a server. Practically, a SOCKS server proxies TCP connections to an arbitrary IP address and provides a means for UDP packets to be forwarded. The SOCKS protocol operates between the application layer and the transport layer. A SOCKS server accepts incoming client connection on TCP port 1080.
+
+
+== History ==
+The protocol was originally designed and developed by David Koblas, a system administrator of MIPS Computer Systems. After MIPS was taken over by Silicon Graphics in 1992, Koblas presented a paper on SOCKS at that year's Usenix Security Symposium, making SOCKS publicly available. The protocol was extended to version 4 by Ying-Da Lee of NEC.
+The SOCKS reference architecture and client are owned by Permeo Technologies, a spin-off from NEC. (Blue Coat Systems bought out Permeo Technologies and were in turn acquired by Symantec.)
+The SOCKS5 protocol was originally a security protocol that made firewalls and other security products easier to administer. It was approved by the IETF in 1996. The protocol was developed in collaboration with Aventail Corporation, which markets the technology outside of Asia.
+
+
+== Acronym ==
+SOCKS is sometimes defined as an acronym for "socket secure" from at least 2001, although it was not originally defined as such in the SOCKS Protocol Version 5 RFC in 1996 or the UNIX Security Symposium III paper in 1992 but simply referred to a specific proxy protocol designed to facilitate communication between clients and servers through a firewall.
+
+
+== Usage ==
+SOCKS is a de facto standard for circuit-level gateways (level 5 gateways).
+The circuit/session level nature of SOCKS make it a versatile tool in forwarding any TCP (or UDP since SOCKS5) traffic, creating an interface for all types of routing tools. It can be used as:
+
+A circumvention tool, allowing traffic to bypass Internet filtering to access content otherwise blocked, e.g., by governments, workplaces, schools, and country-specific web services. Since SOCKS is very detectable, a common approach is to present a SOCKS interface for more sophisticated protocols:
+The Tor onion proxy software presents a SOCKS interface to its clients.
+Providing similar functionality to a virtual private network, allowing connections to be forwarded to a server's "local" network:
+Some SSH suites, such as OpenSSH, support dynamic port forwarding that allows the user to create a local SOCKS proxy. This can free the user from the limitations of connecting only to a predefined remote port and server.
+
+
+== Protocol ==
+
+
+=== SOCKS4 ===
+A typical SOCKS4 connection request looks like this:
+
+VER: 8 bits
+SOCKS version number, 0x04 for this version
+CMD: 8 bits
+Command code:
+0x01: Establish a TCP/IP stream connection.
+0x02: Establish a TCP/IP port binding.
+DSTPORT: 16 bits
+Destination port number, in network byte order.
+DESTIP: 32 bits
+Destination IPv4 address, in network byte order.
+ID: variable
+The User ID string, null-terminated.
+The server responds with:
+
+VN: 8 bits
+Reply version (a null byte).
+REP: 8 bits
+Reply code:
+0x5a: Request granted.
+0x5b: Request rejected or failed.
+0x5c: Request failed because client is not running identd (or not reachable from server).
+0x5d: Request failed because client's identd could not confirm the user ID in the request.
+DSTPORT: 16 bits
+Destination port number, meaningful if granted in BIND, should otherwise be ignored.
+DESTIP: 32 bits
+Destination IPv4 address. Together with DSTPORT the ip:port the client should bind to.
+
+For example, this is a SOCKS4 request to connect Fred to 66.102.7.99:80, the server replies with an "OK":
+
+Client: 0x04 | 0x01 | 0x00 0x50 | 0x42 0x66 0x07 0x63 | 0x46 0x72 0x65 0x64 0x00
+The last field is "Fred" in ASCII, followed by a null byte.
+Server: 0x00 | 0x5A | 0xXX 0xXX | 0xXX 0xXX 0xXX 0xXX
+0xXX can be any byte value. The SOCKS4 protocol specifies that the values of these bytes should be ignored.
+From this point onwards, any data sent from the SOCKS client to the SOCKS server is relayed to 66.102.7.99, and vice versa.
+The command field may be 0x01 for "connect" or 0x02 for "bind"; the "bind" command allows incoming connections for protocols such as active FTP.
+
+
+=== SOCKS4a ===
+SOCKS4a extends the SOCKS4 protocol to allow a client to specify a destination domain name rather than an IP address; this is useful when the client itself cannot resolve the destination host's domain name to an IP address. It was proposed by Ying-Da Lee, the author of SOCKS4.
+The client should set the first three bytes of DSTIP to NULL and the last byte to a non-zero value. (This corresponds to IP address 0.0.0.x, with x nonzero, an inadmissible destination address and thus should never occur if the client can resolve the domain name.) Following the NULL byte terminating USERID, the client must send the destination domain name and terminate it with another NULL byte. This is used for both "connect" and "bind" requests.
+Client to SOCKS server:
+
+SOCKS4_C
+SOCKS4 client handshake packet (above)
+DOMAIN
+the domain name of the host to contact , null (0x00) terminated
+Server to SOCKS client: (Same as SOCKS4)
+A server using protocol SOCKS4a must check the DSTIP in the request packet. If it represents address 0.0.0.x with nonzero x, the server must read in the domain name that the client sends in the packet. The server should resolve the domain name and make connection to the destination host if it can.
+
+
+=== SOCKS5 ===
+The SOCKS5 protocol is defined in RFC 1928.  It is an incompatible extension of the SOCKS4 protocol; it offers more choices for authentication and adds support for IPv6 and UDP, the latter of which can be used for DNS lookups. The initial handshake consists of the following:
+
+Client connects and sends a greeting, which includes a list of authentication methods supported.
+Server chooses one of the methods (or sends a failure response if none of them are acceptable).
+Several messages may now pass between the client and the server, depending on the authentication method chosen.
+Client sends a connection request similar to SOCKS4.
+Server responds similar to SOCKS4.
+The initial greeting from the client is:
+
+VER
+SOCKS version (0x05)
+NAUTH
+Number of authentication methods supported, uint8
+AUTH
+Authentication methods, 1 byte per method supported
+The authentication methods supported are numbered as follows:
+0x00: No authentication
+0x01: GSSAPI (RFC 1961)
+0x02: Username/password (RFC 1929)
+0x03–0x7F: methods assigned by IANA
+0x03: Challenge–Handshake Authentication Protocol
+0x04: Unassigned
+0x05: Challenge–Response Authentication Method
+0x06: Secure Sockets Layer
+0x07: NDS Authentication
+0x08: Multi-Authentication Framework
+0x09: JSON Parameter Block
+0x0A–0x7F: Unassigned
+0x80–0xFE: methods reserved for private use
+
+VER
+SOCKS version (0x05)
+CAUTH
+chosen authentication method, or 0xFF if no acceptable methods were offered
+The subsequent authentication is method-dependent. Username and password authentication (method 0x02) is described in RFC 1929:
+
+VER
+0x01 for current version of username/password authentication
+IDLEN, ID
+Username length, uint8; username as bytestring
+PWLEN, PW
+Password length, uint8; password as bytestring
+
+VER
+0x01 for current version of username/password authentication
+STATUS
+0x00 success, otherwise failure, connection must be closed
+After authentication the connection can proceed. We first define an address datatype as:
+
+TYPE
+type of the address. One of:
+0x01: IPv4 address
+0x03: Domain name
+0x04: IPv6 address
+ADDR
+the address data that follows. Depending on type:
+4 bytes for IPv4 address
+1 byte of name length followed by 1–255 bytes for the domain name
+16 bytes for IPv6 address
+
+VER
+SOCKS version (0x05)
+CMD
+command code:
+0x01: establish a TCP/IP stream connection
+0x02: establish a TCP/IP port binding
+0x03: associate a UDP port
+RSV
+reserved, must be 0x00
+DSTADDR
+destination address, see the address structure above.
+DSTPORT
+port number in a network byte order
+
+VER
+SOCKS version (0x05)
+STATUS
+status code:
+0x00: request granted
+0x01: general failure
+0x02: connection not allowed by ruleset
+0x03: network unreachable
+0x04: host unreachable
+0x05: connection refused by destination host
+0x06: TTL expired
+0x07: command not supported / protocol error
+0x08: address type not supported
+RSV
+reserved, must be 0x00
+BNDADDR
+server bound address in the "SOCKS5 address" format specified above
+BNDPORT
+server bound port number in a network byte order
+Since clients are allowed to use either resolved addresses or domain names, a convention from cURL exists to label the domain name variant of SOCKS5 "socks5h", and the other simply "socks5". A similar convention exists between SOCKS4a and SOCKS4.
+
+
+== Software ==
+
+
+=== Servers ===
+
+
+==== SOCKS proxy server implementations ====
+Sun Java System Web Proxy Server is a caching proxy server running on Solaris, Linux and Windows servers that support HTTPS, NSAPI I/O filters, dynamic reconfiguration, SOCKSv5 and reverse proxy.
+WinGate is a multi-protocol proxy server and SOCKS server for Microsoft Windows which supports SOCKS4, SOCKS4a and SOCKS5 (including UDP-ASSOCIATE and GSSAPI auth).  It also supports handing over SOCKS connections to the HTTP proxy, so can cache and scan HTTP over SOCKS.
+Socksgate5 SocksGate5 is an application-SOCKS firewall with inspection feature on Layer 7 of the OSI model, the Application Layer. Because packets are inspected at 7 OSI Level the application-SOCKS firewall may search for protocol non-compliance and blocking specified content.
+Dante is a circuit-level SOCKS server that can be used to provide convenient and secure network connectivity, requiring only the host Dante runs on to have external network connectivity.
+HevSocks5Server is a high-performance and low-overhead SOCKS server for Unix (Linux/BSD/macOS). It supports standard TCP-CONNECT and UDP-ASSOCIATE methods and multiple username/password authentication.
+uSOCKS5 is a minimal SOCKS5 server in Python that supports standard TCP-CONNECT, useful for educational reading.
+
+
+==== Other programs providing SOCKS server interface ====
+OpenSSH allows dynamic creation of tunnels, specified via a subset of the SOCKS protocol, supporting the CONNECT command.
+PuTTY is a Win32 SSH client that supports local creation of SOCKS (dynamic) tunnels through remote SSH servers.
+Secure ShellFish is a SSH client for iOS and macOS that includes a SOCKS server.
+ShimmerCat is a web server that uses SOCKS5 to simulate an internal network, allowing web developers to test their local sites without modifying their /etc/hosts file.
+Tor is a system intended to enable online anonymity. Tor offers a TCP-only SOCKS server interface to its clients.
+Shadowsocks is a circumvent censorship tool. It provides a SOCKS5 interface.
+netcat implementations, as Ncat and socat.
+
+
+=== Clients ===
+Client software must have native SOCKS support in order to connect through SOCKS.
+
+
+==== Browser ====
+Chrome: support SOCKS4 and SOCKS4a.
+Firefox: support SOCKS4, SOCKS4a and SOCKS5.
+Internet Explorer and EdgeHTML-based Microsoft Edge: support SOCKS4 only.
+Chromium-based Microsoft Edge: support SOCKS4 and SOCKS4a.
+There are programs that allow users to circumvent such limitations:
+
+
+==== Socksifiers ====
+Socksifiers allow applications to access the networks to use a proxy without needing to support any proxy protocols. The most common way is to set up a virtual network adapter and appropriate routing tables to send traffic through the adapter.
+
+Proxifier, a paid proprietary program for Windows and macOS that can force programs to use a SOCKS, HTTPS or HTTP proxy using the Windows Filtering Platform (on Windows) or the Network Extension Framework (on macOS).
+tun2socks, an open-source tool that creates virtual TCP TUN adapters from a SOCKS proxy, capable of UDP if supported on another end. Works on Linux and Windows, has a macOS port and reimplementation in Golang. Another implementation, written in C with good performance, works on Linux/Android/BSD/macOS and iOS.
+proxychains, a Unix program that forces TCP traffic through SOCKS or HTTP proxies on (dynamically linked) programs it launches. Works on various Unix-like systems.
+
+
+==== Translating proxies ====
+Polipo, a discontinued forwarding and caching HTTP/1.1 proxy server with IPv4 support. Open Source running on Linux, OpenWrt, Windows, Mac OS X, and FreeBSD. Almost any Web browser can use it.
+Privoxy, a non-caching SOCKS-to-HTTP proxy.
+Tinyproxy, a light-weight HTTP/HTTPS proxy daemon for POSIX operating systems. Designed from the ground up to be fast and yet small. It presents an http proxy interface and can connect to SOCKS4/5 and http upstream proxies.
+
+
+== Security ==
+
+Lack of request and packets exchange encryption makes SOCKS practically vulnerable to man-in-the-middle attacks and IP addresses eavesdropping, which in consequence clears a way to censorship by governments.
+
+
+== Performance and limitations ==
+SOCKS proxies, particularly SOCKS5, generally provide improved performance and broader protocol support compared to SOCKS4, making them suitable for use cases involving high concurrency and UDP traffic. Unlike HTTP proxies, SOCKS5 operates at the session layer and does not inspect or filter data, which reduces overhead and can result in lower latency beneficial for latency-sensitive applications such as gaming or streaming. Benchmarks of various SOCKS5 implementations show it can handle thousands of simultaneous connections with response times often within milliseconds, demonstrating high throughput potential under load.
+However, SOCKS lacks built-in encryption, leaving traffic vulnerable to interception and making it less secure than Virtual Private Networks (VPNs) or HTTPS proxies that provide encapsulation and data integrity. Additionally, using a SOCKS proxy adds an extra network hop, potentially increasing latency and affecting performance-sensitive scenarios. While SOCKS5 supports UDP through the UDP ASSOCIATE command, the use of UDP proxying complicates firewall traversal and may be unreliable in some network environments.
+These characteristics determine the practical performance capabilities and limitations of SOCKS, defining its appropriate use in many proxying scenarios but limiting its suitability where encryption or minimal latency is required.
+
+
+== References ==
+
+
+== External links ==
+RFC 1929: Username/Password Authentication for SOCKS V5
+RFC 1961: GSS-API Authentication Method for SOCKS Version 5
+RFC 3089: A SOCKS-based IPv6/IPv4 Gateway Mechanism
+Draft-ietf-aft-socks-chap, Challenge-Handshake Authentication Protocol for SOCKS V5
+SOCKS: A protocol for TCP proxy across firewalls,  SOCKS Protocol Version 4 (NEC)

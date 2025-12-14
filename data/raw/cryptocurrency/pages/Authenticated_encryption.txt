@@ -1,0 +1,90 @@
+Authenticated encryption (AE) is any encryption scheme which simultaneously assures the data confidentiality (also known as privacy: the encrypted message is impossible to understand without the knowledge of a secret key) and authenticity (in other words, it is unforgeable: the encrypted message includes an authentication tag that the sender can calculate only while possessing the secret key). Examples of encryption modes that provide AE are GCM, CCM.
+Many (but not all) AE schemes allow the message to contain "associated data" (AD) which is not made confidential, but is integrity protected (i.e., readable, but tamperevident). A typical example is the header of a network packet that contains its destination address. To properly route the packet, all intermediate nodes in the message path need to know the destination, but for security reasons they cannot possess the secret key. Schemes that allow associated data provide authenticated encryption with associated data, or AEAD.
+
+
+== Programming interface ==
+A typical programming interface for an AE implementation provides the following functions:
+
+Encryption
+Input: plaintext, key, and optionally a header (also known as additional authenticated data, AAD, or associated data, AD) in plaintext that will not be encrypted, but will be covered by authenticity protection.
+Output: ciphertext and authentication tag (message authentication code or MAC).
+Decryption
+Input: ciphertext, key, authentication tag, and optionally a header (if used during the encryption).
+Output: plaintext, or an error if the authentication tag does not match the supplied ciphertext or header.
+The header part is intended to provide authenticity and integrity protection for networking or storage metadata for which confidentiality is unnecessary, but authenticity is desired.
+
+
+== History ==
+The need for authenticated encryption emerged from the observation that securely combining separate confidentiality and authentication block cipher operation modes could be error prone and difficult. This was confirmed by a number of practical attacks introduced into production protocols and applications by incorrect implementation, or lack of authentication.
+Around the year 2000, a number of efforts evolved around the notion of standardizing modes that ensured correct implementation. In particular, strong interest in possibly secure modes was sparked by the publication of Charanjit Jutla's integrity-aware CBC and integrity-aware parallelizable, IAPM, modes in 2000 (see OCB and chronology).
+Six different authenticated encryption modes (namely offset codebook mode 2.0, OCB 2.0; Key Wrap; counter with CBC-MAC, CCM; encrypt then authenticate then translate, EAX; encrypt-then-MAC, EtM; and Galois/counter mode, GCM) have been standardized in ISO/IEC 19772:2009. More authenticated encryption methods were developed in response to NIST solicitation. Sponge functions can be used in duplex mode to provide authenticated encryption.
+Bellare and Namprempre (2000) analyzed three compositions of encryption and MAC primitives, and demonstrated that encrypting a message and subsequently applying a MAC to the ciphertext (the Encrypt-then-MAC approach) implies security against an adaptive chosen ciphertext attack, provided that both functions meet minimum required properties. Katz and Yung investigated the notion under the name "unforgeable encryption" and proved it implies security against chosen ciphertext attacks.
+In 2013, the CAESAR competition was announced to encourage design of authenticated encryption modes.
+In 2015, ChaCha20-Poly1305 is added as an alternative AE construction to GCM in IETF protocols.
+
+
+== Variants ==
+
+
+=== Authenticated encryption with associated data ===
+Authenticated encryption with associated data (AEAD) is a variant of AE that allows the message to include "associated data" (AD, additional non-confidential information, a.k.a. "additional authenticated data", AAD). A recipient can check the integrity of both the associated data and the confidential information in a message. AD is useful, for example, in network packets where the header should be visible for routing, but the payload needs to be confidential, and both need integrity and authenticity. The notion of AEAD was formalized by Rogaway (2002).
+
+
+=== Key-committing AEAD ===
+AE was originally designed primarily to provide the ciphertext integrity: successful validation of an authentication tag by Alice using her symmetric key KA indicates that the message was not tampered with by an adversary Mallory that does not possess the KA. The AE schemes usually do not provide the key commitment, a guarantee that the decryption would fail for any other key. As of 2021, most existing AE schemes (including the very popular GCM) allow some messages to be decrypted without an error using more than just the (correct) KA; while the plaintext decrypted using a second (wrong) key KM will be incorrect, the authentication tag would still match the new plaintext. Since crafting a message with such property requires Mallory to already possess both KA and KM, the issue might appear to be one of a purely academic interest. However, under special circumstances, practical attacks can be mounted against vulnerable implementations. For example, if an identity authentication protocol is based on successful decryption of a message that uses a password-based key, Mallory's ability to craft a single message that would be successfully decrypted using 1000 different keys associated with weak, and thus known to her, potential passwords, can speed up her search for passwords by a factor of almost 1000. For this dictionary attack to succeed, Mallory also needs an ability to distinguish successful decryption by Alice from an unsuccessful one, due, for example, to a poor protocol design or implementation turning Alice's side into an oracle. Naturally, this attack cannot be mounted at all when the keys are generated randomly.    
+Key commitment was originally studied in the 2010s by Abdalla et al. and Farshim et al. under the name "robust encryption".
+To mitigate the attack described above without removing the "oracle", a key-committing AEAD that does not allow this type of crafted messages to exist can be used. AEGIS is an example of fast (if the AES instruction set is present), key-committing AEAD. It is possible to add key-commitment to an existing AEAD scheme.
+
+
+=== Misuse-resistant authenticated encryption ===
+Misuse-resistant authenticated encryption (MRAE) has the additional property that reusing the same nonce for several messages does not allow an attacker to recover the plaintext. MRAE was formalized in 2006 by Phillip Rogaway and Thomas Shrimpton. One example of a MRAE algorithm is AES-GCM-SIV.
+
+
+== Approaches to authenticated encryption ==
+
+
+=== Encrypt-then-MAC (EtM) ===
+
+The plaintext is first encrypted, then a MAC is produced based on the resulting ciphertext. The ciphertext and its MAC are sent together. ETM is the standard method according to ISO/IEC 19772:2009. It is the only method which can reach the highest definition of security in AE, but this can only be achieved when the MAC used is "strongly unforgeable".
+IPSec adopted EtM in 2005. In November 2014, TLS and DTLS received extensions for EtM with RFC 7366. Various EtM ciphersuites exist for SSHv2 as well (e.g., hmac-sha1-etm@openssh.com).
+
+
+=== Encrypt-and-MAC (E&M) ===
+
+A MAC is produced based on the plaintext, and the plaintext is encrypted without the MAC. The plaintext's MAC and the ciphertext are sent together. Used in, e.g., SSH. Even though the E&M approach has not been proved to be strongly unforgeable in itself, it is possible to apply some minor modifications to SSH to make it strongly unforgeable despite the approach.
+
+
+=== MAC-then-Encrypt (MtE) ===
+
+A MAC is produced based on the plaintext, then the plaintext and MAC are together encrypted to produce a ciphertext based on both. The ciphertext (containing an encrypted MAC) is sent. Until TLS 1.2, all available SSL/TLS  cipher suites were MtE.
+MtE has not been proven to be strongly unforgeable in itself. The SSL/TLS implementation has been proven to be strongly unforgeable by Krawczyk who showed that SSL/TLS was, in fact, secure because of the encoding used alongside the MtE mechanism. However, Krawczyk's proof contains flawed assumptions about the randomness of the initialization vector (IV). The 2011 BEAST attack exploited the non-random chained IV and broke all CBC algorithms in TLS 1.0 and under.
+In addition, deeper analysis of SSL/TLS modeled the protection as MAC-then-pad-then-encrypt, i.e. the plaintext is first padded to the block size of the encryption function. Padding errors often result in the detectable errors on the recipient's side, which in turn lead to padding oracle attacks, such as Lucky Thirteen.
+
+
+== See also ==
+Block cipher mode of operation
+CCM mode
+CWC mode
+OCB mode
+EAX mode
+GCM
+GCM-SIV
+ChaCha20-Poly1305
+SGCM
+Signcryption
+
+
+== References ==
+
+General
+Bellare, M.; Namprempre, C. (2000), "Authenticated Encryption: Relations among Notions and Analysis of the Generic Composition Paradigm", in T. Okamoto (ed.), Advances in Cryptology — ASIACRYPT 2000 (PDF), Lecture Notes in Computer Science, vol. 1976, Springer-Verlag, pp. 531–545, doi:10.1007/3-540-44448-3_41, ISBN 978-3-540-41404-9
+
+
+== Sources ==
+Katz, J.; Lindell, Y. (2020). Introduction to Modern Cryptography. Chapman & Hall/CRC Cryptography and Network Security Series. CRC Press. ISBN 978-1-351-13301-2. Retrieved 2023-06-08.
+Black, J. (2005). "Authenticated encryption". Encyclopedia of Cryptography and Security. Springer US. pp. 11–21. doi:10.1007/0-387-23483-7_15. ISBN 978-0-387-23473-1.
+Albertini, Ange; Duong, Thai; Gueron, Shay; Kölbl, Stefan; Luykx, Atul; Schmieg, Sophie (2020). "How to Abuse and Fix Authenticated Encryption Without Key Commitment" (PDF). USENIX.
+Bellare, Mihir; Hoang, Viet Tung (2022). "Efficient Schemes for Committing Authenticated Encryption" (PDF). EUROCRYPT 2022.
+Abdalla, Michel; Bellare, Mihir; Neven, Gregory (2010). "Robust Encryption". Theory of Cryptography. Vol. 5978. Berlin, Heidelberg: Springer Berlin Heidelberg. doi:10.1007/978-3-642-11799-2_28. ISBN 978-3-642-11798-5.
+Farshim, Pooya; Libert, Benoît; Paterson, Kenneth G.; Quaglia, Elizabeth A. (2013). "Robust Encryption, Revisited". Public-Key Cryptography – PKC 2013. Vol. 7778. Berlin, Heidelberg: Springer Berlin Heidelberg. doi:10.1007/978-3-642-36362-7_22. ISBN 978-3-642-36361-0.
+Chan, John; Rogaway, Phillip (2022). "On Committing Authenticated-Encryption". Computer Security – ESORICS 2022. Vol. 13555. Cham: Springer Nature Switzerland. doi:10.1007/978-3-031-17146-8_14. ISBN 978-3-031-17145-1.

@@ -1,0 +1,173 @@
+In computing, tar  is a shell command for combining multiple computer files into a single archive file. It was originally developed for magnetic tape computer storage – reading and writing data for a sequential I/O device with no file system, and the name is short for the format description "tape archive". When stored in a file system, a file that tar reads and writes is often called a tarball.
+A tarball contains metadata for the contained files including the name, ownership, timestamps, permissions and directory organization. As a file containing other files with associated metadata, a tarball is useful for software distribution and backup. 
+POSIX abandoned tar in favor of pax, yet tar continues to have widespread use.
+
+
+== History ==
+The command was introduced to Unix in January 1979, replacing the tp program (which in turn replaced "tap").  The file structure was standardized in POSIX.1-1988 and later POSIX.1-2001, and became a format supported by most modern file archiving utilities. The tar command was abandoned in POSIX.1-2001 in favor of pax, which was to support the ustar file format, and tar was indicated for withdrawal in favor of pax at least since 1994. None-the-less, many operating systems today include tools for tar files, as well as tools to compress and decompress them, such as xz, gzip, and bzip2.
+The tar command was ported to the IBM i operating system.
+BSD-tar has been in Windows since 2018, and there are other third-party tools available for Windows.
+
+
+== Rationale ==
+Many historic tape drives read and write variable-length data blocks, leaving significant wasted space on the tape between blocks (for the tape to physically start and stop moving).  Some tape drives (and raw disks) support only fixed-length data blocks. Also, when writing to any medium such as a file system or network, it takes less time to write one large block than many small blocks.  Therefore, the tar command writes data in records of many 512 B blocks.  The user can specify a blocking factor, which is the number of blocks per record. The default is 20, producing 10 KiB records.
+
+
+== File format ==
+There are multiple tar file formats, including historical and current ones. Two tar formats are codified in POSIX: ustar and pax. Not codified but still in current use is the GNU tar format.
+A tar archive consists of a series of file objects, hence the popular term tarball, referencing how a tarball  collects objects of all kinds that stick to its surface.  Each file object includes any file data, and is preceded by a 512-byte header record.  The file data is written unaltered except that its length is rounded up to a multiple of 512 bytes. The original tar implementation did not care about the contents of the padding bytes, and left the buffer data unaltered, but most modern tar implementations fill the extra space with zeros. The end of an archive is marked by at least two consecutive zero-filled records.  (The origin of tar's record size appears to be the 512-byte disk sectors used in the Version 7 Unix file system.) The final block of an archive is padded out to full length with zeros.
+
+
+=== Header ===
+The file header record contains metadata about a file.  To ensure portability across different architectures with different byte orderings, the information in the header record is encoded in ASCII.  Thus if all the files in an archive are ASCII text files, and have ASCII names, then the archive is essentially an ASCII text file (containing many NUL characters).
+The fields defined by the original Unix tar format are listed in the table below.  The link indicator/file type table includes some modern extensions.  When a field is unused it is filled with NUL bytes.  The header uses 257 bytes, then is padded with NUL bytes to make it fill a 512 byte record.  There is no "magic number" in the header, for file identification.
+Pre-POSIX.1-1988 (i.e. v7) tar header:
+
+The pre-POSIX.1-1988 Link indicator field can have the following values:
+
+Some pre-POSIX.1-1988 tar implementations indicated a directory by having a trailing slash (/) in the name.
+Numeric values are encoded as octal numbers using ASCII digits, with leading zeroes. Whilst this choice may seem counterintuitive in modern times when the four bit hexadecimal notation is generally preferred because register sizes and address widths in computers are almost always powers of two and bytes have standardized to be octets, Unix was originally developed for the PDP-7, which uses an 18-bit CPU and a six-bit character code, making the three bit octal notation more desirable.
+For historical reasons, a final NUL or space character should also be used. Thus although there are 12 bytes reserved for storing the file size, only 11 octal digits can be stored.  This gives a maximum file size of 8 gigabytes on archived files.  To overcome this limitation, in 2001 star introduced a base-256 coding that is indicated by setting the high-order bit of the leftmost byte of a numeric field. GNU-tar and BSD-tar followed this idea. Additionally, versions of tar from before the first POSIX standard from 1988 pad the values with spaces instead of zeroes.
+The checksum is calculated by taking the sum of the unsigned byte values of the header record with the eight checksum bytes taken to be ASCII spaces (decimal value 32). It is stored as a six digit octal number with leading zeroes followed by a NUL and then a space. Various implementations do not adhere to this format. In addition, some historic tar implementations treated bytes as signed. Implementations typically calculate the checksum both ways, and treat it as good if either the signed or unsigned sum matches the included checksum.
+Unix filesystems support multiple links (names) for the same file.  If several such files appear in a tar archive, only the first one is archived as a normal file; the rest are archived as hard links, with the "name of linked file" field set to the first one's name.  On extraction, such hard links should be recreated in the file system.
+
+
+=== UStar format ===
+Most modern tar programs read and write archives in the UStar (Unix Standard TAR) format, introduced by the POSIX IEEE P1003.1 standard from 1988.  It introduced additional header fields.  Older tar programs will ignore the extra information (possibly extracting partially named files), while newer programs will test for the presence of the "ustar" string to determine if the new format is in use.  
+The UStar format allows for longer file names and stores additional information about each file.  The maximum filename size is 255, but it is split among a preceding path "filename prefix" and the filename itself, so can be much less.
+
+The type flag field can have the following values:
+
+POSIX.1-1988 vendor specific extensions using link flag values 'A'–'Z' partially have a different meaning with different vendors and thus are seen as outdated and replaced by the POSIX.1-2001 extensions that also include a vendor tag.
+Type '7' (Contiguous file) is formally marked as reserved in the POSIX standard, but was meant to indicate files which ought to be contiguously allocated on disk. Few operating systems support creating such files explicitly, and hence most TAR programs do not support them, and will treat type 7 files as if they were type 0 (regular). An exception is older versions of GNU tar, when running on the MASSCOMP RTU (Real Time Unix) operating system, which supported an O_CTG flag to the open() function to request a contiguous file; however, that support was removed from GNU tar version 1.24 onwards.
+
+
+=== POSIX.1-2001/pax ===
+In 1997, Sun proposed a method for adding extensions to the tar format. This method was later accepted for the POSIX.1-2001 standard. This format is known as extended tar format or pax format. The new tar format allows users to add any type of vendor-tagged vendor-specific enhancements. The following tags are defined by the POSIX standard:
+
+atime, mtime: all timestamps of a file in arbitrary resolution (most implementations use nanosecond granularity)
+path: path names of unlimited length and character set coding
+linkpath: symlink target names of unlimited length and character set coding
+uname, gname: user and group names of unlimited length and character set coding
+size: files with unlimited size (the historic tar format is 8 GB)
+uid, gid: userid and groupid without size limitation (the historic tar format is limited to a max. id of 2097151)
+a character set definition for path names and user/group names (UTF-8)
+In 2001, the Star program became the first tar to support the new format. In 2004, GNU tar supported the new format, though it does not write it as its default output from the tar program yet.
+The pax format is designed so that all implementations able to read the UStar format will be able to read the pax format as well. The only exceptions are files that make use of extended features, such as longer file names. For compatibility, these are encoded in the tar files as special x or g type files, typically under a PaxHeaders.XXXX directory. A pax-supporting implementation would make use of the information, while non-supporting ones like 7-Zip would process them as additional files.
+
+
+== Features of the archival utilities ==
+Besides creating and extracting archives, the functionality of the various archival utilities varies. For example, implementations might automatically detect the format of compressed TAR archives for extraction so the user does not have to specify it, and let the user limit adding files to those modified after a specified date.
+
+
+== Uses ==
+
+
+=== Command syntax ===
+tar [-options] <name of the tar archive> [files or directories which to add into archive]
+
+Basic options:
+
+-c, --create — create a new archive;
+-a, --auto-compress  — additionally compress the archive with a compressor which will be automatically determined by the file name extension of the archive. If the archive's name ends with *.tar.gz then use gzip, if *.tar.xz then use xz, *.tar.zst for Zstandard etc.;
+-r, --append — append files to the end of an archive;
+-x, --extract, --get — extract files from an archive;
+-f, --file — specify the archive's name;
+-t, --list — show a list of files and folders in the archive;
+-v, --verbose — show a list of processed files.
+
+
+=== Basic usage ===
+Create an archive file archive.tar from the file README.txt and directory src:
+
+Extract contents for the archive.tar into the current directory:
+
+Create an archive file archive.tar.gz from the file README.txt and directory src and compress it with gzip :
+
+Extract contents for the archive.tar.gz into the current directory:
+
+
+=== Tarpipe ===
+A tarpipe is the method of writing an archive to standard output and piping it to another tar process on its standard input, working in another directory, where it is unpacked.  This process copies an entire source directory tree including all special files, for example:
+
+
+=== Software distribution ===
+The tar format continues to be used extensively for open-source software distribution. *NIX-distributions use it in various source- and binary-package distribution mechanisms, with most software source code made available in compressed tar archives.
+
+
+== Limitations ==
+The original tar format was created in the early days of Unix, and despite current widespread use, many of its design features are considered dated.
+Other formats have been created to address the shortcomings of tar.
+
+
+=== File names ===
+Due to the field size, the original TAR format was unable to store file paths and names in excess of 100 characters.
+To overcome this problem while maintaining readability by existing TAR utilities, GNU tar stores file paths and names in excess of the 100 characters are stored in @LongLink entries that would be seen as ordinary files by TAR utilities unaware of this feature. Similarly, the PAX format uses PaxHeaders entries.
+
+
+=== Attributes ===
+Many older tar implementations do not record nor restore extended attributes (xattrs) or access-control lists (ACLs). In 2001, Star introduced support for ACLs and extended attributes, through its own tags for POSIX.1-2001 pax. bsdtar uses the star extensions to support ACLs. More recent versions of GNU tar support Linux extended attributes, reimplementing star extensions. A number of extensions are reviewed in the filetype manual for BSD tar, tar(5).
+
+
+=== Tarbomb ===
+
+A tarbomb, in hacker slang, is a tarball containing a large number of items whose contents are written to the current directory or some other existing directory when untarred instead of the directory created by the tarball specifically for the extracted outputs. It is at best an inconvenience to the user, who is obliged to identify and delete a number of files interspersed with the directory's other contents. Such behavior is considered bad etiquette on the part of the archive's creator.
+A related problem is the use of absolute paths or parent directory references when creating tar files. Files extracted from such archives will often be created in unusual locations outside the working directory and, like a tarbomb, have the potential to overwrite existing files. However, modern versions of FreeBSD and GNU tar do not create or extract absolute paths and parent-directory references by default, unless it is explicitly allowed with the flag -P or the option --absolute-names. The bsdtar program, which is also available on many operating systems and is the default tar implementation on Mac OS X v10.6, also does not follow parent-directory references or symbolic links.
+If a user has only a very old tar available, which does not feature those security measures, these problems can be mitigated by first examining a tar file using the command tar tf archive.tar, which lists the contents and allows to exclude problematic files afterwards. These commands do not extract any files, but display the names of all files in the archive. If any are problematic, the user can create a new empty directory and extract the archive into it—or avoid the tar file entirely. Most graphical tools can display the contents of the archive before extracting them. Vim can open tar archives and display their contents. GNU Emacs is also able to open a tar archive and display its contents in a dired buffer.
+
+
+=== Random access ===
+The tar format was designed without a centralized index or table of content for files and their properties for streaming to tape backup devices. Instead, the metadata for each file (such as name, size, time stamps) for each file is stored in a header before each file. The archive must be read sequentially to list or extract files. For large tar archives, this causes a performance penalty, making tar archives unsuitable for situations that often require random access to individual files.
+In turn, this design makes TAR archives resilient against damage from missing portions, in both the form of digital files and physical tape. A truncated TAR file with missing parts on either ends still allows recovering the parts that are not missing, including the file paths and file names and metadata, by starting from the first TAR header that is not missing.
+With a well-formed tar file stored on a seekable (i.e. allows efficient random reads) medium, the tar program can still relatively quickly (in linear time relative to file count) look for a file by skipping file reads according to the "size" field in the file headers. This is the basis for option -n in GNU tar. When a tar file is compressed whole, the compression format, being usually non-seekable, prevents this optimization from being done. To maintain seekability, tar files must be also concatenated properly, by removing the trailing zero block at the end of each file.
+
+
+=== Duplicates ===
+Another issue with tar format is that it allows several (possibly different) files in archive to have identical paths and filenames. When extracting such archive, usually the latter version of a file overwrites the former.
+This can create a non-explicit (unobvious) tarbomb, which technically does not contain files with absolute paths or referring to parent directories, but still causes overwriting files outside current directory (for example, archive may contain two files with the same path and filename, first of which is a symlink to some location outside current directory, and second of which is a regular file; then extracting such archive on some tar implementations may cause writing to the location pointed to by the symlink).
+
+
+== Key implementations ==
+Historically, many systems have implemented tar, and many general file archivers have at least partial support for tar (often using one of the implementations below). The history of tar is a story of incompatibilities, known as the "tar wars". Most tar implementations can also read and create cpio and pax (the latter actually is a tar-format with POSIX-2001-extensions).
+Key implementations in order of origin:
+
+Solaris tar, based on the original Unix V7 tar  and comes as the default on the Solaris operating system
+GNU tar is the default on most Linux distributions. It is based on the public domain implementation pdtar which started in 1987. Recent versions can use various formats, including ustar, pax, GNU and v7 formats.
+FreeBSD tar (also BSD tar) has become the default tar on most Berkeley Software Distribution-based operating systems including Mac OS X. The core functionality is available as libarchive for inclusion in other applications.  This implementation automatically detects the format of the file and can extract from tar, pax, cpio, zip, rar, ar, xar, rpm and ISO 9660 cdrom images. It also comes with a functionally equivalent cpio command-line interface.
+Schily tar, better known as star (, ESS-tar), is historically significant as some of its extensions were quite popular. First published in April 1997, its developer has stated that he began development in 1982.
+Python tarfile module supports multiple tar formats, including ustar, pax and gnu; it can read but not create V7 format and the SunOS tar extended format; pax is the default format for creation of archives. Available since 2003.
+Additionally, most pax and cpio implementations can read and create multiple types of tar files.
+
+
+== Suffixes for compressed files ==
+tar archive files usually have the file suffix .tar (e.g. somefile.tar).
+A tar archive file contains uncompressed byte streams of the files which it contains. To achieve archive compression, a variety of compression programs are available, such as gzip, bzip2, xz, lzip, lzma, zstd, or compress, which compress the entire tar archive. Typically, the compressed form of the archive receives a filename by appending the format-specific compressor suffix to the archive file name. For example, a tar archive archive.tar, is named archive.tar.gz, when it is compressed by gzip.
+Popular tar programs like the BSD and GNU versions of tar support the command-line options Z (compress), z (gzip), and j (bzip2) to compress or decompress the archive file upon creation or unpacking. Relatively recent additions include --lzma (LZMA), --lzop (lzop), --xz or J (xz), --lzip (lzip), and --zstd. The decompression of these formats is handled automatically if supported filename extensions are used, and compression is handled automatically using the same filename extensions if the option --auto-compress (short form -a) is passed to an applicable version of GNU tar. BSD tar detects an even wider range of compressors (lrzip, lz4), using not the filename but the data within. Unrecognized formats are to be manually compressed or decompressed by piping.
+MS-DOS's 8.3 filename limitations resulted in additional conventions for naming compressed tar archives. However, this practice has declined with FAT now offering long filenames.
+
+
+== See also ==
+Comparison of archive formats
+Comparison of file archivers
+List of archive formats
+List of POSIX commands
+
+
+== References ==
+
+
+== External links ==
+
+X/Open CAE Specification Commands and Utilities Issue 4, Version 2 (pdf), 1994, opengroup.org – indicates tar as to be withdrawn
+tar in The Single UNIX Specification, Version 2, 1997, opengroup.org – indicates applications should migrate to pax
+C.4 Utilities in The Open Group Base Specifications Issue 6, 2004 Edition, opengroup.org – indicates tar as removed
+pax – Shell and Utilities Reference, The Single UNIX Specification, Version 5 from The Open Group – specifies the ustar and pax file formats
+tar(1) – Version 7 Unix Programmer's Manual
+tar(1) – manual from GNU
+tar(1) – Plan 9 Programmer's Manual, Volume 1
+tar(1) – Solaris 11.4 User Commands Reference Manual
+tar(1) – FreeBSD General Commands Manual
+tar(1) – OpenBSD General Commands Manual
+tar(1) – Linux User Manual – User Commands from Manned.org
+tar(5) – FreeBSD File Formats Manual
+TAR - Windows CMD - SS64.com

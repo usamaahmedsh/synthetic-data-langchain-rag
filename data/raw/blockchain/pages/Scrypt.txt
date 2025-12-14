@@ -1,0 +1,118 @@
+In cryptography, scrypt (pronounced "ess crypt") is a password-based key derivation function created by Colin Percival in March 2009, originally for the Tarsnap online backup service. The algorithm was specifically designed to make it costly to perform large-scale custom hardware attacks by requiring large amounts of memory. In 2016, the scrypt algorithm was published by IETF as RFC 7914. A simplified version of scrypt is used as a proof-of-work scheme by a number of cryptocurrencies, first implemented by an anonymous programmer called ArtForz in Tenebrix and followed by Fairbrix and Litecoin soon after.
+
+
+== Introduction ==
+A password-based key derivation function (password-based KDF) is generally designed to be computationally intensive, so that it takes a relatively long time to compute (say on the order of several hundred milliseconds). Legitimate users only need to perform the function once per operation (e.g., authentication), and so the time required is negligible. However, a brute-force attack would likely need to perform the operation billions of times, at which point the time requirements become significant and, ideally, prohibitive.
+Previous password-based KDFs (such as the popular PBKDF2 from RSA Laboratories) have relatively low resource demands, meaning they do not require elaborate hardware or very much memory to perform. They are therefore easily and cheaply implemented in hardware (for instance on an ASIC or even an FPGA). This allows an attacker with sufficient resources to launch a large-scale parallel attack by building hundreds or even thousands of implementations of the algorithm in hardware and having each search a different subset of the key space. This divides the amount of time needed to complete a brute-force attack by the number of implementations available, very possibly bringing it down to a reasonable time frame.
+The scrypt function is designed to hinder such attempts by raising the resource demands of the algorithm. Specifically, the algorithm is designed to use a large amount of memory compared to other password-based KDFs, making the size and the cost of a hardware implementation much more expensive, and therefore limiting the amount of parallelism an attacker can use, for a given amount of financial resources.
+
+
+== Overview ==
+The large memory requirements of scrypt come from a large vector of pseudorandom bit strings that are generated as part of the algorithm. Once the vector is generated, the elements of it are accessed in a pseudo-random order and combined to produce the derived key. A straightforward implementation would need to keep the entire vector in RAM so that it can be accessed as needed.
+Because the elements of the vector are generated algorithmically, each element could be generated on the fly as needed, only storing one element in memory at a time and therefore cutting the memory requirements significantly. However, the generation of each element is intended to be computationally expensive, and the elements are expected to be accessed many times throughout the execution of the function. Thus there is a significant trade-off in speed to get rid of the large memory requirements.
+This sort of time–memory trade-off often exists in computer algorithms: speed can be increased at the cost of using more memory, or memory requirements decreased at the cost of performing more operations and taking longer. The idea behind scrypt is to deliberately make this trade-off costly in either direction. Thus an attacker could use an implementation that doesn't require many resources (and can therefore be massively parallelized with limited expense) but runs very slowly, or use an implementation that runs more quickly but has very large memory requirements and is therefore more expensive to parallelize.
+
+
+== Algorithm ==
+ Function scrypt
+    Inputs: This algorithm includes the following parameters:
+       Passphrase:                Bytes    string of characters to be hashed
+       Salt:                      Bytes    string of random characters that modifies the hash to protect against Rainbow table attacks
+       CostFactor (N):            Integer  CPU/memory cost parameter – Must be a power of 2 (e.g. 1024)
+       BlockSizeFactor (r):       Integer  blocksize parameter, which fine-tunes sequential memory read size and performance. (8 is commonly used)
+       ParallelizationFactor (p): Integer  Parallelization parameter. (1 .. 232-1 * hLen/MFlen)
+       DesiredKeyLen (dkLen):     Integer  Desired key length in bytes
+                                           (Intended output length in octets of the derived key; 
+                                            a positive integer satisfying dkLen ≤ (232− 1) * hLen.)
+       hLen:                      Integer  The length in octets of the hash function (32 for SHA256).
+       MFlen:                     Integer  The length in octets of the output of the mixing function (SMix below). Defined as r * 128 in RFC7914.
+    Output:
+       DerivedKey:                Bytes    array of bytes, DesiredKeyLen long
+ 
+    Step 1. Generate expensive salt
+    blockSize ← 128*BlockSizeFactor  // Length (in bytes) of the SMix mixing function output (e.g. 128*8 = 1024 bytes)
+ 
+    Use PBKDF2 to generate initial 128*BlockSizeFactor*p bytes of data (e.g. 128*8*3 = 3072 bytes)
+    Treat the result as an array of p elements, each entry being blocksize bytes (e.g. 3 elements, each 1024 bytes)
+    [B0...Bp−1] ← PBKDF2HMAC-SHA256(Passphrase, Salt, 1, blockSize*ParallelizationFactor)
+ 
+    Mix each block in B Costfactor times using ROMix function (each block can be mixed in parallel)
+    for i ← 0 to p-1 do
+       Bi ← ROMix(Bi, CostFactor)
+ 
+    All the elements of B is our new "expensive" salt
+    expensiveSalt ← B0∥B1∥B2∥ ... ∥Bp-1  // where ∥ is concatenation
+  
+    Step 2. Use PBKDF2 to generate the desired number of bytes, but using the expensive salt we just generated
+    return PBKDF2HMAC-SHA256(Passphrase, expensiveSalt, 1, DesiredKeyLen);
+Where PBKDF2(P, S, c, dkLen) notation is defined in RFC 2898, where c is an iteration count.
+This notation is used by RFC 7914 for specifying a usage of PBKDF2 with c = 1.
+
+Function ROMix(Block, Iterations)
+
+   Create Iterations copies of X
+   X ← Block
+   for i ← 0 to Iterations−1 do
+      Vi ← X
+      X ← BlockMix(X)
+
+   for i ← 0 to Iterations−1 do
+      j ← Integerify(X) mod Iterations 
+      X ← BlockMix(X xor Vj)
+
+   return X
+
+Where RFC 7914 defines Integerify(X) as the result of interpreting the last 64 bytes of X as a little-endian integer A1.
+Since Iterations equals 2 to the power of N, only the first Ceiling(N / 8) bytes among the last 64 bytes of X, interpreted as a little-endian integer A2, are actually needed to compute Integerify(X) mod Iterations = A1 mod Iterations = A2 mod Iterations.
+
+Function BlockMix(B):
+
+    The block B is r 128-byte chunks (which is equivalent of 2r 64-byte chunks)
+    r ← Length(B) / 128;
+
+    Treat B as an array of 2r 64-byte chunks
+    [B0...B2r-1] ← B
+
+    X ← B2r−1
+    for i ← 0 to 2r−1 do
+        X ← Salsa20/8(X xor Bi)  // Salsa20/8 hashes from 64-bytes to 64-bytes
+        Yi ← X
+
+    return ← Y0∥Y2∥...∥Y2r−2 ∥ Y1∥Y3∥...∥Y2r−1
+
+Where Salsa20/8 is the 8-round version of Salsa20.
+
+
+== Cryptocurrency uses ==
+Scrypt is used in many cryptocurrencies as a proof-of-work algorithm (more precisely, as the hash function in the Hashcash proof-of-work algorithm). It was first implemented for Tenebrix (released in September 2011) and served as the basis for Litecoin and Dogecoin, which also adopted its scrypt algorithm. Mining of cryptocurrencies that use scrypt is often performed on graphics processing units (GPUs) since GPUs tend to have significantly more processing power (for some algorithms) compared to the CPU. This led to shortages of high end GPUs due to the rising price of these currencies in the months of November and December 2013.
+
+
+== Utility ==
+ 
+The scrypt utility was written in May 2009 by Colin Percival as a demonstration of the scrypt key derivation function. It's available in most Linux and BSD distributions.
+
+
+== See also ==
+
+Argon2 – winner of the Password Hashing Competition in 2015
+bcrypt – blowfish-based password-hashing function
+bcrypt – blowfish-based cross-platform file encryption utility developed in 2002
+crypt – Unix C library function
+crypt – Unix utility
+ccrypt – utility
+Key derivation function
+Key stretching
+mcrypt – utility
+PBKDF2 – a widely used standard Password-Based Key Derivation Function 2
+PufferFish – a cache-hard password hashing function based on improved bcrypt design
+Space–time tradeoff
+yescrypt – successor to scrypt
+
+
+== References ==
+
+
+== External links ==
+The scrypt page on the Tarsnap website.
+The original scrypt paper.
+scrypt on GitHub

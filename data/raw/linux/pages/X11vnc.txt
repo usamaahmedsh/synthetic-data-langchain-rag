@@ -1,0 +1,46 @@
+x11vnc is a Virtual Network Computing (VNC) server program. It allows remote access from a remote client to a computer hosting an X Window session and the x11vnc software, continuously polling the X server's frame buffer for changes. This allows the user to control their X11 desktop (KDE, GNOME, Xfce, etc.) from a remote computer either on the user's own network, or from over the Internet as if the user were sitting in front of it. x11vnc can also poll non-X11 frame buffer devices, such as webcams or TV tuner cards, iPAQ, Neuros OSD, the Linux console, and the Mac OS X graphics display.
+x11vnc is part of the LibVNCServer project and is free software available under the GNU General Public License.
+x11vnc was written by Karl Runge.
+x11vnc does not create an extra display (or X desktop) for remote control. Instead, it uses the existing X11 display shown on the monitor of a Unix-like computer in real time, unlike other Linux alternatives such as TightVNC Server. However, it is possible to use Xvnc or Xvfb to create a 'virtual' extra display, and have x11vnc connect to it, enabling X-11 access to headless servers.
+x11vnc has security features that allows the user to set an access password or to use Unix usernames and passwords. It also has options for connection via a secure SSL link. An SSL Java VNC viewer applet is provided that enables secure connections from a web browser. The VeNCrypt SSL/TLS VNC security type is also supported.
+Many of the UltraVNC extensions to VNC are supported by x11vnc, including file transfer.
+
+
+== Polling algorithm ==
+x11vnc keeps a copy of the X server's frame buffer in RAM. The X11 programming interface XShmGetImage is used to retrieve the frame buffer pixel data.  x11vnc compares the X server's frame buffer against its copy to see which pixel regions have changed (and hence need to be sent to the VNC viewers.)  Reading pixel data from the physical frame buffer can be much slower than writing to it (because graphics devices are not optimized for reading) and so a sequential pixel by pixel check would often be too slow.
+To improve the situation, x11vnc reads in full rows of pixels separated by 32 pixels vertically.  Once it gets to the bottom of the screen it starts again near the top with a slightly different offset. After 32 passes like this it has covered the entire screen. This method enables x11vnc to detect changes on the screen roughly 32 times more quickly than a sequential check would (unless the changes are very small, say only 1 pixel tall.) If the X11 DAMAGE extension is present, x11vnc uses it to provide hints where to focus its polling, thereby finding changes even more quickly and also lowering the system load.
+
+
+== Input injection ==
+When x11vnc receives user input events (keystrokes, pointer motion, and pointer button clicks) from a VNC viewer, it must inject them synthetically into the X server.  The X11 programming interfaces XTestFakeKeyEvent, XTestFakeMotionEvent, and XTestFakeButtonEvent of the XTEST extension are used to achieve this.
+For non-X11 managed devices (such as the Mac OS X graphics display) different programming interfaces must be used. x11vnc also provides an interface where the user can supply their own input injection program.
+
+
+== Interesting uses ==
+Often special-purpose systems are built using the X Window System to manage the graphical display.  x11vnc can be used to export the system's display for remote VNC access.  This enables remote monitoring, control, and troubleshooting of the special-purpose system.  Sometimes this saves sending a technician to a remote site or allows users to control equipment from their workstation or laptop.  x11vnc is known to have been run on the following types of systems: Electron microscope, MRI and Radiology image analysis system, Power plant and Oil platform management consoles, Materials distribution control, Ship self-defense system testing, NMR systems, Silicon wafer analysis microscope, and Theater and concert lighting control. x11vnc is used to export the X11 displays in embedded systems such as Linux-based PDAs and Home theater PCs.
+If x11vnc cannot be run on the special-purpose system, sometimes it can be run on a nearby computer and poll the X server frame buffer over the network.  This is how proprietary X terminal devices can be accessed via x11vnc.
+
+
+== Xvnc emulation ==
+Although x11vnc's primary use is for X servers associated with physical graphics hardware, it can also attach to virtual X servers (whose frame buffers exist in RAM only) such as Xvfb or a Sun Ray session.  x11vnc has options (-create and -svc) to start Xvfb automatically, possibly as the Unix user that logged in. The interactive response of x11vnc and Xvfb may not be as fast as Xvnc, however this mode enables features that Xvnc does not have, such as SSL encryption and Unix usernames and passwords.
+
+
+== Client-side caching ==
+The RFB (VNC) protocol is odd when compared to other network graphics protocols, such as X11 and RDP, in that there is no provision for viewer-side caching of pixel data.  While this makes the client easier to implement, there is a price to pay in terms of interactive response.  For example, every re-exposure of a window or background region needs to have its (compressed) pixel data resent over the network.  This effect is particularly noticeable for windows with complex or photo regions (such as a web browser window) that gets iconified and deiconified or re-exposed often.
+x11vnc has an experimental and somewhat brute-force implementation of client-side caching.  It is enabled via the -ncache option.  When creating the RFB frame buffer in this mode, x11vnc allocates a very large scratch region below the top portion used for the actual (on-screen) pixel data.  x11vnc can then use the RFB CopyRect command to instruct the viewer to move rectangles of pixel data into and out of the scratch region. These moves are done locally on the viewer side. In this way x11vnc can manage the scratch region to store and retrieve pixel data without having to resend it over the network.
+
+x11vnc's client-side caching mode can give noticeable interactive response improvements for many activities.  Since it uses the existing RFB CopyRect command, the scheme will work with any (i.e. unmodified) VNC viewer.  There are some disadvantages, however.  The first is that it consumes a large amount of memory.  For good performance a scratch region 10 to 20 times larger than the actual screen should be used.  So instead of using 5 MB for a 1280x1024 truecolor frame buffer, closer to 100 MB will be used (on both the VNC client and server sides).  This is not so much of an issue on modern computers, but would not be possible on a low memory device. Second, the VNC viewer may treat the scratch region in ways that confuse the user, for example displaying it to the user or automatically panning down into it if the mouse reaches the bottom of the real screen.  The Unix VNC viewer in SSVNC Archived 2010-05-24 at the Wayback Machine automatically hides the scratch region.  Finally, x11vnc's   heuristics for caching and reusing window pixel data are not perfect and can lead to unexpected flashing of a window's contents and other undesired effects.
+
+
+== See also ==
+
+KRDC
+X11
+
+
+== References ==
+
+
+== External links ==
+x11vnc on GitHub
+x11vnc: a VNC server for real X displays Archived 2006-01-12 at the Wayback Machine (old project home page)

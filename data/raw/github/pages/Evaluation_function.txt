@@ -1,0 +1,63 @@
+An evaluation function, also known as a heuristic evaluation function or static evaluation function, is a function used by game-playing computer programs to estimate the value or goodness of a position (usually at a leaf or terminal node) in a game tree. Most of the time, the value is either a real number or a quantized integer, often in nths of the value of a playing piece such as a stone in go or a pawn in chess, where n may be tenths, hundredths or other convenient fraction, but sometimes, the value is an array of three values in the unit interval, representing the win, draw, and loss percentages of the position. 
+There do not exist analytical or theoretical models for evaluation functions for unsolved games, nor are such functions entirely ad-hoc. The composition of evaluation functions is determined empirically by inserting a candidate function into an automaton and evaluating its subsequent performance. A significant body of evidence now exists for several games like chess, shogi and go as to the general composition of evaluation functions for them.
+Games in which game playing computer programs employ evaluation functions include chess, go, shogi (Japanese chess), othello, hex, backgammon, and checkers. In addition, with the advent of programs such as MuZero, computer programs also use evaluation functions to play video games, such as those from the Atari 2600. Some games like tic-tac-toe are strongly solved, and do not require search or evaluation because a discrete solution tree is available.
+
+
+== Relation to search ==
+A tree of such evaluations is usually part of a search algorithm, such as Monte Carlo tree search or a minimax algorithm like alpha–beta search. The value is presumed to represent the relative probability of winning if the game tree were expanded from that node to the end of the game. The function looks only at the current position (i.e. what spaces the pieces are on and their relationship to each other) and does not take into account the history of the position or explore possible moves forward of the node (therefore static). This implies that for dynamic positions where tactical threats exist, the evaluation function will not be an accurate assessment of the position. These positions are termed non-quiescent; they require at least a limited kind of search extension called quiescence search to resolve threats before evaluation. Some values returned by evaluation functions are absolute rather than heuristic, if a win, loss or draw occurs at the node.
+There is an intricate relationship between search and knowledge in the evaluation function. Deeper search favors less near-term tactical factors and more subtle long-horizon positional motifs in the evaluation. There is also a trade-off between efficacy of encoded knowledge and computational complexity: computing detailed knowledge may take so much time that performance decreases, so approximations to exact knowledge are often better. Because the evaluation function depends on the nominal depth of search as well as the extensions and reductions employed in the search, there is no generic or stand-alone formulation for an evaluation function. An evaluation function which works well in one application will usually need to be substantially re-tuned or re-trained to work effectively in another application.
+
+
+== In chess ==
+In computer chess, larger evaluations indicate a material imbalance or positional advantage or that a win of material is usually imminent. Very large evaluations may indicate that checkmate is imminent. An evaluation function also implicitly encodes the value of the right to move, which can vary from a small fraction of a pawn to win or loss. 
+
+
+=== Handcrafted evaluation functions ===
+The output of a handcrafted evaluation function is typically an integer whose units are typically referred to as pawns. The term 'pawn' refers to the value when the player has one more pawn than the opponent in a position, as explained in Chess piece relative value. The integer 1 usually represents some fraction of a pawn, and commonly used in computer chess are centipawns, which are a hundredth of a pawn.
+Historically in computer chess, the terms of an evaluation function are constructed (i.e. handcrafted) by the engine developer, as opposed to discovered through training neural networks. The general approach for constructing handcrafted evaluation functions is as a linear combination of various weighted terms determined to influence the value of a position. However, not all terms in a handcrafted evaluation function are linear, such as king safety and pawn structure. Each term may be considered to be composed of first order factors (those that depend only on the space and any piece on it), second order factors (the space in relation to other spaces), and nth-order factors (dependencies on history of the position). 
+A handcrafted evaluation function typically has a material balance term that usually dominates the evaluation. The conventional values used for material are Queen=9, Rook=5; Knight or Bishop=3; Pawn=1; the king is assigned an arbitrarily large value, usually larger than the total value of all the other pieces. In addition, it typically has a set of positional terms usually totaling no more than the value of a pawn, though in some positions the positional terms can get much larger, such as when checkmate is imminent. Handcrafted evaluation functions typically contain dozens to hundreds of individual terms. 
+In practice, effective handcrafted evaluation functions are not created by expanding the list of evaluated parameters, but by careful tuning or training of the weights relative to each other, of a modest set of parameters such as those described above. Toward this end, positions from various databases are employed, such as from master games, engine games, Lichess games, or even from self-play, as in reinforcement learning. 
+
+
+==== Example ====
+An example handcrafted evaluation function for chess might look like the following:
+
+c1 * material + c2 * mobility + c3 * king safety + c4 * center control + c5 * pawn structure + c6 * king tropism + ...
+Each of the terms is a weight multiplied by a difference factor: the value of white's material or positional terms minus black's. 
+
+The material term is obtained by assigning a value in pawn-units to each of the pieces.
+Mobility is the number of legal moves available to a player, or alternately the sum of the number of spaces attacked or defended by each piece, including spaces occupied by friendly or opposing pieces. Effective mobility, or the number of "safe" spaces a piece may move to, may also be taken into account.
+King safety is a set of bonuses and penalties assessed for the location of the king and the configuration of pawns and pieces adjacent to or in front of the king, and opposing pieces bearing on spaces around the king.
+Center control is derived from how many pawns and pieces occupy or bear on the four center spaces and sometimes the 12 spaces of the extended center.
+Pawn structure is a set of penalties and bonuses for various strengths and weaknesses in pawn structure, such as penalties for doubled and isolated pawns.
+King tropism is a bonus for closeness (or penalty for distance) of certain pieces, especially queens and knights, to the opposing king.
+
+
+=== Piece-square tables ===
+An important technique in evaluation since at least the early 1990s is the piece-square table (also called piece-value table). Each table is a set of 64 values corresponding to the squares of the chessboard. The most basic implementation of piece-square table consists of separate tables for each type of piece per player, which in chess results in 12 piece-square tables in total. The values in the tables are bonuses/penalties for the location of each piece on each space, and encode a composite of many subtle factors difficult to quantify analytically. In handcrafted evaluation functions, there are sometimes two sets of tables: one for the opening/middlegame, and one for the endgame; positions of the middle game are interpolated between the two.
+
+
+=== Neural networks ===
+While neural networks have been used in the evaluation functions of chess engines since the late 1980s, they did not become popular in computer chess until the late 2010s, as the hardware needed to train neural networks was not strong enough at the time, and fast training algorithms and network topology and architectures had not been developed yet. Neural network based evaluation functions generally consist of a neural network trained using reinforcement learning or supervised learning to accept a board state as input and output a real or integer value.
+Deep neural networks have been used, albeit infrequently, in computer chess after Matthew Lai's Giraffe in 2015 and Deepmind's AlphaZero in 2017 demonstrated the feasibility of deep neural networks in evaluation functions. The distributed computing project Leela Chess Zero was started shortly after to attempt to replicate the results of Deepmind's AlphaZero paper. Apart from the size of the networks, the neural networks used in AlphaZero and Leela Chess Zero also differ from those used in traditional chess engines in that they predict a distribution across subsequent moves (the policy head) in addition to the evaluation (the value head). Since deep neural networks are very large, engines using deep neural networks in their evaluation function usually require a graphics processing unit in order to efficiently calculate the evaluation function.
+The evaluation function used by most top engines  is the efficiently updatable neural network (NNUE), a sparse and shallow neural network originally proposed for computer shogi in 2018 by Yu Nasu. In fact, the most basic NNUE architecture is simply the 12 piece-square tables described above, a neural network with only one layer and no activation functions. An efficiently updatable neural network architecture was first ported to chess in a Stockfish derivative called Stockfish NNUE, publicly released on May 30, 2020, and was incorporated into the official Stockfish engine on August 6, 2020.
+
+
+=== Endgame tablebases ===
+
+Chess engines frequently use endgame tablebases to quickly and accurately evaluate endgame positions.
+
+
+== In Go ==
+Historically, evaluation functions in Computer Go took into account both territory controlled, influence of stones, number of prisoners and life and death of groups on the board.  However, modern go playing computer programs largely use deep neural networks in their evaluation functions, such as AlphaGo, Leela Zero, Fine Art, and KataGo, and output a win/draw/loss percentage rather than a value in number of stones.
+
+
+== References ==
+
+Slate, D and Atkin, L., 1983, "Chess 4.5, the Northwestern University Chess Program" in Chess Skill in Man and Machine 2nd Ed., pp. 93–100. Springer-Verlag, New York, NY.
+Ebeling, Carl, 1987, All the Right Moves: A VLSI Architecture for Chess (ACM Distinguished Dissertation), pp. 56–86. MIT Press, Cambridge, MA
+
+
+== External links ==
+Keys to Evaluating Positions
+GameDev.net - Chess Programming Part VI: Evaluation Functions

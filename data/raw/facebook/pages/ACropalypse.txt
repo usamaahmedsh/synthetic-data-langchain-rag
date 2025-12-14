@@ -1,0 +1,27 @@
+aCropalypse (CVE-2023-21036) was a vulnerability in Markup, a screenshot editing tool introduced in Google Pixel phones with the release of Android Pie. The vulnerability, discovered in 2023 by security researchers Simon Aarons and David Buchanan, allows an attacker to view an uncropped and unaltered version of a screenshot. Following aCropalypse's discovery, a similar zero-day vulnerability was also discovered, affecting Snip & Sketch for Windows 10 and Snipping Tool for Windows 11.
+
+
+== Background ==
+
+In 2018, Android Pie—the ninth major release of Android—was released. With the release of Android Pie, Google Pixel phones beginning with the Pixel 3 received a new screenshot editor known as Markup. The editor allows a user to crop screenshots and alter them using on-screen elements, such as a pen and highlighter. Users can then save these screenshots to Google Photos or save them locally on their device.
+
+
+== Discovery and usage ==
+aCropalypse was discovered by Simon Aarons and David Buchanan, two security researchers. It had previously been submitted to Google's issue tracker by Lucy Phipps on August 11, 2022. Aarons reportedly discovered the bug when he noticed that the file size for a screenshot he took of white text on a black background was abnormally large. A website was created where users can submit cropped or altered images to reveal the original.
+
+
+== Behavior ==
+aCropalypse exploits a vulnerability within Markup. Upon saving a cropped screenshot in Markup, the altered image is saved in the same location as the original image. The image is created using the ParcelFileDescriptor.open() function; the function is called using the "w" argument to ParcelFileDescriptor.parseMode(), representing "write", when "wt" should have been passed instead, truncating the original image. Although the image is not created using ParcelFileDescriptor.parseMode(), but rather ParcelFileDescriptor.open(), the former converts an argument into a bitmask for the latter. In similar functions, such as the C function fopen, using the "w" argument will automatically truncate the file to zero length. The use of "w" was implemented in Android 10 as an undocumented change.
+Markup uses zlib, a compression library that utilizes deflate compression, itself based on the lossless data compression algorithms LZ77 and LZ78, where each bit of data references the last, and dynamic Huffman coding, where a Huffman tree is defined at the start of the block. The Huffman tree in Markup screenshots are respecified every 16 kilobytes. The initial exploit for aCropalypse precomputed a list of 8 bytestrings and passed them to zlib, in order to start from a specific bit offset. Additionally, the initial exploit prefixed the image stream with 32 KB of the ASCII character "X".
+
+
+== Mitigation ==
+An internal patch for aCropalypse was finalized on January 24, 2023, although a fix only began rolling out in a security patch released on March 13, 2023. Certain social media sites, including Twitter, automatically truncate uploaded images, although others do not. One such site, Discord, mitigated the vulnerability on January 17, 2023. Cloudflare addressed the issue in JPEG files by checking the end-of-image marker in libjpeg-turbo for Rust and in PNG files with lodepng.
+
+
+== Impact ==
+aCropalypse affects Google Pixel phones running Android 10, released in September 2019. Affected photos could include credit card numbers and other private photos. By the time the vulnerability was disclosed, multiple devices, including the Pixel 3 and 3a, Pixel 4, Pixel 5, and Pixel 6 and 6a, had not received the update, thus rendering them vulnerable.
+On March 21, software engineer Chris Blume noted that the Snipping Tool in Windows 11 results in a file size equal to a cropped version of the same image. Using this, Buchanan discovered that the Snipping Tool in Windows 11, as well as Windows 10's Snip & Sketch, were susceptible to the same exploit, although not the Win32 Snipping Tool in Windows 10.
+
+
+== References ==

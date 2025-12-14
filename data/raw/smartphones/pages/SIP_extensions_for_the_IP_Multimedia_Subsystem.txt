@@ -1,0 +1,191 @@
+The Session Initiation Protocol (SIP) is the signaling protocol adopted by the 3rd Generation Partnership Project (3GPP) for multimedia sessions with multiple participants in the IP Multimedia Subsystem (IMS). It is therefore considered a core component of the IMS framework.  
+SIP was developed by the Internet Engineering Task Force (IETF) as a standard technology for multimedia communication sessions over Internet Protocol (IP) networks. Positioned in the application layer of the Internet protocol suite, SIP provides mechanisms for initiating, controlling, and terminating real-time sessions that involve voice, video, and text messages. 
+Since its standardization, several SIP extensions have been published as RFCs to expand the protocol’s capabilities, including support for advanced call control, security features, and integration with other Internet applications.
+The 3GPP, which is a collaboration between groups of telecommunications associations aimed at developing and maintaining the IMS, stated a series of requirements for SIP to be successfully used in the IMS. Some of them could be addressed by using existing capabilities and extensions in SIP while, in other cases, the 3GPP had to collaborate with the IETF to standardize new SIP extensions  to meet the new requirements. The IETF develops SIP on a generic basis, so that the use of extensions is not restricted to the IMS framework.
+
+
+== 3GPP requirements for SIP ==
+The 3GPP has stated several general requirements for operation of the IMS. These include an efficient use of the radio interface by minimizing the exchange of signaling messages between the mobile terminal and the network, a minimum session setup time by performing tasks prior to session establishment instead of during session establishment, a minimum support required in the terminal, the support for roaming and non-roaming scenarios with terminal mobility management (supported by the access network, not SIP), and support for IPv6 addressing.
+Other requirements involve protocol extensions, such as SIP header fields to exchange user or server information, and SIP methods to support new network functionality: requirement for registration, re-registration, de-registration, event notifications, instant messaging or call control primitives with additional capabilities such as call transference.
+Other specific requirements are:
+
+Quality of service support with policy and charging control, as well as resource negotiation and allocation before alerting the destination user.
+Identification of users for authentication, authorization and accounting purposes. Security between users and the network and among network nodes is a major issue to be addressed by using mutual authentication mechanisms such as private and public keys and digests, as well as media authorization extensions. It must be also possible to present both the caller and the called party the identities of their counterparts, with the ability to hide this information if required. Anonymity in session establishment and privacy are also important.
+Protection of SIP signaling with integrity and confidentiality support based on initial authentication and symmetric cryptographic keys; error recovery and verification are also needed.
+Session release initiated by the network (e.g. in case the user terminal leaves coverage or runs out of credit).
+Source-routing mechanisms. The routing of SIP messages has its own requirements in the IMS as all terminal originated session setup attempts must transit both the P-CSCF and the S-CSCF so that these call session control functions (CSCFs) servers can properly provide their services. There can be special path requirements for certain messages as well.
+Interoperation between IMS and the public switched telephone network (PSTN).
+Finally, it is also necessary that other protocols and network services such as DHCP or DNS are adapted to work with SIP, for instance for outbound proxy (P-CSCF) location and SIP Uniform Resource Identifier (URI) to IP address resolution, respectively.
+
+
+== Extension negotiation mechanism ==
+There is a mechanism in SIP for extension negotiation between user agents (UA) or servers, consisting of three header fields: supported, require and unsupported, which UAs or servers (i.e. user terminals or call session control function (CSCF) in IMS) may use to specify the extensions they understand. When a client initiates a SIP dialog with a server, it states the extensions it requires to be used and also other extensions that are understood (supported), and the server will then send a response with a list of extensions that it requires. If these extensions are not listed in the client's message, the response from the server will be an error response. Likewise, if the server does not support any of the client's required extensions, it will send an error response with a list of its unsupported extensions. This kind of extensions are called option tags, but SIP can also be extended with new methods. In that case, user agents or servers use the Allow header to state which methods they support. To require the use of a particular method in a particular dialog, they must use an option tag associated to that method.
+
+
+== SIP extensions ==
+
+
+=== Caller preferences and user agent capabilities ===
+These two extensions allow users to specify their preferences about the service the IMS provides.
+With the caller preferences extension, the calling party is able to indicate the kind of user agent they want to reach (e.g. whether it is fixed or mobile, a voicemail or a human, personal or for business, which services it is capable to provide, or which methods it supports) and how to search for it, with three header fields: Accept-Contact to describe the desired destination user agents, Reject-Contact to state the user agents to avoid, and Request-Disposition to specify how the request should be handled by servers in the network (i.e. whether or not to redirect and how to search for the user: sequentially or in parallel).
+By using the user agent capabilities extension, user agents (terminals) can describe themselves when they register so that others can search for them according to their caller preferences extension headers. For this purpose, they list their capabilities in the Contact header field of the REGISTER message.
+
+
+=== Event notification ===
+The aim of event notification is to obtain the status of a given resource (e.g. a user, one's voicemail service) and to receive updates of that status when it changes.
+Event notification is necessary in the IMS framework to inform about the presence of a user (i.e. "online" or "offline") to others that may be waiting to contact them, or to notify a user and its P-CSCF of its own registration state, so that they know if they are reachable and what public identities they have registered. Moreover, event notification can be used to provide additional services such as voicemail (i.e. to notify that they have new voice messages in their inbox).
+To this end, the specific event notification extension defines a framework for event notification in SIP, with two new methods: SUBSCRIBE and NOTIFY, new header fields and response codes and two roles: the subscriber and the notifier. The entity interested in the state information of a resource (the subscriber) sends a SUBSCRIBE message with the Uniform Resource Identifier (URI) of the resource in the request initial line, and the type of event in the Event header. Then the entity in charge of keeping track of the state of the resource (the notifier), receives the SUBSCRIBE request and sends back a NOTIFY message with a subscription-state header as well as the information about the status of the resource in the message body. Whenever the resource state changes, the notifier sends a new NOTIFY message to the subscriber. Each kind of event a subscriber can subscribe to is defined in a new event package. An event package describes a new value for the SUBSCRIBE Event header, as well as a MIME type to carry the event state information in the NOTIFY message.
+There is also an allow-events header to indicate event notification capabilities, and the 202 accepted and 489 bad event response codes to indicate if a subscription request has been preliminary accepted or has been turned down because the notifier does not understand the kind of event requested.
+In order to make an efficient use of the signaling messages, it is also possible to establish a limited notification rate (not real-time notifications) through a mechanism called event throttling. Moreover, there is also a mechanism for conditional event notification that allows the notifier to decide whether or not to send the complete NOTIFY message depending on if there is something new to notify since last subscription or there is not.
+
+
+==== State publication ====
+The event notification framework defines how a user agent can subscribe to events about the state of a resource, but it does not specify how that state can be published. The SIP extension for event state publication was defined to allow user agents to publish the state of an event to the entity (notifier) that is responsible for composing the event state and distributing it to the subscribers.
+The state publication framework defines a new method: PUBLISH, which is used to request the publication of the state of the resource specified in the request-URI, with reference to the event stated in the Event header, and with the information carried in the message body.
+
+
+=== Instant messaging ===
+The functionality of sending instant messages to provide a service similar to text messaging is defined in the instant messaging extension. These messages are unrelated to each other (i.e. they do not originate a SIP dialog) and sent through the SIP signaling network, sharing resources with control messages.
+This functionality is supported by the new MESSAGE method, which can be used to send an instant message to the resource stated in the request-URI, with the content carried in the message body. This content is defined as a MIME type, being text/plain the most common one.
+In order to have an instant messaging session with related messages, the Message Session Relay Protocol (MSRP) is available.
+
+
+=== Call transfer ===
+The REFER method extension defines a mechanism to request a user agent to contact a resource which is identified by a URI in the Refer-To header field of the request message. A typical use of this mechanism is call transfer: during a call, the participant who sends the REFER message tells the recipient to contact to the user agent identified by the URI in the corresponding header field. The REFER message also implies an event subscription to the result of the operation, so that the sender will know whether or not the recipient could contact the third person.
+However, this mechanism is not restricted to call transfer, since the Refer-To header field can be any kind of URI, for instance, an HTTP URI, to require the recipient to visit a web page.
+
+
+=== Reliability of provisional responses ===
+In the basic SIP specification, only requests and final responses (i.e. 2XX response codes) are transmitted reliably, this is, they are retransmitted by the sender until the acknowledge message arrives (i.e. the corresponding response code to a request, or the ACK request corresponding to a 2XX response code). This mechanism is necessary since SIP can run not only over reliable transport protocols (TCP) that assure that the message is delivered, but also over unreliable ones (UDP) that offer no delivery guarantees, and it is even possible that both kinds of protocols are present in different parts of the transport network.
+However, in such an scenario as the IMS framework, it is necessary to extend this reliability to provisional responses to INVITE requests (for session establishment, this is, to start a call). The reliability of provisional responses extension provides a mechanism to confirm that provisional responses such as the 180 Ringing response code, that lets the caller know that the callee is being alerted, are successfully received. To do so, this extension defines a new method: PRACK, which is the request message used to tell the sender of a provisional response that his or her message has been received. This message includes a RACK header field which is a sequence number that matches the RSeq header field of the provisional response that is being acknowledged, and also contains the CSeq number that identifies the corresponding INVITE request. To indicate that the user agent requests or supports reliable provisional responses, the 100rel option tag will be used.
+
+
+=== Session description updating ===
+The aim of the UPDATE method extension is to allow user agents to provide updated session description information within a dialog, before the final response to the initial INVITE request is generated. This can be used to negotiate and allocate the call resources before the called party is alerted.
+
+
+=== Preconditions ===
+In the IMS framework, it is required that once the callee is alerted, the chances of a session failure are minimum. An important source of failure is the inability to reserve network resources to support the session, so these resources should be allocated before the phone rings. However, in the IMS, to reserve resources the network needs to know the callee's IP address, port and session parameters and therefore it is necessary that the initial offer/answer exchange to establish a session has started (INVITE request). In basic SIP, this exchange eventually causes the callee to be alerted. To solve this problem, the concept of preconditions was introduced. In this concept the caller states a set of constraints about the session (i.e. codecs and QoS requirements) in the offer, and the callee responds to the offer without establishing the session or alerting the user. This establishment will occur if and only if both the caller and the callee agree that the preconditions are met.
+The preconditions SIP extension affects both SIP, with a new option tag (precondition) and defined offer/answer exchanges, and Session Description Protocol (SDP), which is a format used to describe streaming media initialization parameters, carried in the body of SIP messages. The new SDP attributes are meant to describe the current status of the resource reservation, the desired status of the reservation to proceed with session establishment, and the confirmation status, to indicate when the reservation status should be confirmed.
+
+
+==== The SDP offer/answer model using PRACK and UPDATE requests ====
+In the IMS, the initial session parameter negotiation can be done by using the provisional responses and session description updating extensions, along with SDP in the body of the messages.
+The first offer, described by means of SDP, can be carried by the INVITE request and will deal with the caller's supported codecs. This request will be answered by the provisional reliable response code 183 Session Progress, that will carry the SDP list of supported codecs by both the caller and the callee. The corresponding PRACK to this provisional answer will be used to select a codec and initiate the QoS negotiation.
+The QoS negotiation is supported by the PRACK request, that starts resource reservation in the calling party network, and it is answered by a 2XX response code. Once this response has been sent, the called party has selected the codec too, and starts resource reservation on its side. Subsequent UPDATE requests are sent to inform about the reservation progress, and they are answered by 2XX response codes. In a typical offer/answer exchange, one UPDATE will be sent by the calling party when its reservation is completed, then the called party will respond and eventually finish allocating the resources. It is then, when all the resources for the call are in place, when the caller is alerted.
+
+
+=== Identification and charging ===
+In the IMS framework it is fundamental to handle user identities for authentication, authorization and accounting purposes. The IMS is meant to provide multimedia services over IP networks, but also needs a mechanism to charge users for it. All this functionality is supported by new special header fields.
+
+
+==== P-headers ====
+The Private Header Extensions to SIP, also known as P-Headers, are special header fields whose applicability is limited to private networks with a certain topology and characteristics of lower layers' protocols. They were designed specifically to meet the 3GPP requirements because a more general solution was not available.
+These header fields are used for a variety of purposes including charging and information about the networks a call traverses:
+
+P-Charging-Vector: A collection of charging information, such as the IMS Charging Identity (ICID) value, the address of the SIP proxy that creates the ICID value, and the Inter Operator Identifier (IOI). It may be filled during the establishment of a session or as a standalone transaction outside a dialog.
+P-Charging-Function-Address: The addresses of the charging functions (functional entities that receive the charging records or events) in the user's home network. It also may be filled during the establishment of a dialog or as a standalone transaction, and informs each proxy involved in a transaction.
+P-Visited-Network-ID: Identification string of the visited network. It is used during registrations, to indicate to the user's home network which network is providing services to a roaming user, so that the home network is able to accept the registration according to their roaming agreements.
+P-Access-Network-Info: Information about the access technology (the network providing the connectivity), such as the radio access technology and cell identity. It is used to inform service proxies and the home network, so that they can optimize services or simply so that they can locate the user in a wireless network
+P-Called-Party-ID: The URI originally indicated in the request-URI of a request generated by the calling user agent. When the request reaches the registrar (S-CSCF) of the called user, the registrar re-writes the request-URI on the first line of the request with the registered contact address (i.e. IP address) of the called user, and stores the replaced request-URI in this header field. In the IMS, a user may be identified by several SIP URIs (address-of-record), for instance, a SIP URI for work and another SIP URI for personal use, and when the registrar replaces the request-URI with the effective contact address, the original request-URI must be stored so that the called party knows to which address-of-record was the invitation sent.
+P-Associated-URI: Additional URIs that are associated with a user that is registering. It is included in the 200 OK response to a REGISTER request to inform a user which other URIs the service provider has associated with an address-of-record (AOR) URI.
+More private headers have been defined for user database accessing:
+
+P-User-Database: The address of the user database, this is, the Home Subscriber Server (HSS), that contains the profile of the user that generated a particular request. Although the HSS is a unique master database, it can be distributed into different nodes for reliability and scalability reasons. In this case, a Subscriber location function (SLF) is needed to find the HSS that handles a particular user. When a user request reaches the I-CSCF at the edge of the administrative domain, this entity queries the SLF for the corresponding HSS and then, to prevent the S-CSCF from having to query the SLF again, sends the HSS address to the S-CSCF in the P-User-Database header. Then the S-CSCF will be able to directly query the HSS to get information about the user (e.g. authentication information during a registration).
+P-Profile-Key: The key to be used to query the user database (HSS) for a profile corresponding to the destination SIP URI of a particular SIP request. It is transmitted among proxies to perform faster database queries: the first proxy finds the key and the others query the database by directly using the key. This is useful when Wildcarded Service Identities are used, this is, Public Service Identities that match a regular expression, because the first query has to resolve the regular expression to find the key.
+
+
+==== Asserted identity ====
+The private extensions for asserted identity within trusted networks are designed to enable a network of trusted SIP servers to assert the identity of authenticated users, only within an administrative domain with previously agreed policies for generation, transport and usage of this identification information. These extensions also allow users to request privacy so that their identities are not spread outside the trust domain. To indicate so, they must insert the privacy token id into the Privacy header field.
+The main functionality is supported by the P-Asserted-Identity extension header. When a proxy server receives a request from an untrusted entity and authenticates the user (i.e. verifies that the user is who he or she says that he or she is), it then inserts this header with the identity that has been authenticated, and then forwards the request as usual. This way, other proxy servers that receive this SIP request within the Trust Domain (i.e. the network of trusted entities with previously agreed security policies) can safely rely on the identity information carried in the P-Asserted-Identity header without the necessity of re-authenticating the user.
+The P-Preferred-Identity extension header is also defined, so that a user with several public identities is able to tell the proxy which public identity should be included in the P-Asserted-Identity header when the user is authenticated.
+Finally, when privacy is requested, proxies must withhold asserted identity information outside the trusted domain by removing P-Asserted-Identity headers before forwarding user requests to untrusted identities (outside the Trust Domain).
+There exist analogous extension headers for handling the identification of services of users, instead of the users themselves. In this case, Uniform Resource Names are used to identify a service (e.g. a voice call, an instant messaging session, an IPTV streaming)
+
+
+=== Security mechanisms ===
+
+Access security in the IMS consists of first authenticating and authorizing the user, which is done by the S-CSCF, and then establishing secure connections between the P-CSCF and the user. There are several mechanisms to achieve this, such as:
+
+HTTP digest access authentication, which is part of the basic SIP specification  and leads to a Transport Layer Security connection between the user and the proxy.
+HTTP digest access authentication using AKA, a more secure version of the previous mechanism for cellular networks that uses the information from the user's smart card and commonly creates two IPsec security associations between the P-CSCF and the terminal.
+The security mechanisms agreement extension for SIP was then introduced to provide a secure mechanism for negotiating the security algorithms and parameters to be used by the P-CSCF and the terminal. This extension uses three new header fields to support the negotiation process:
+
+First, the terminal adds a security–client header field containing the mechanisms, authentication and encryption algorithms it supports to the REGISTER request.
+Then, the P-CSCF adds a security-server header field to the response that contains the same information as the client's but with reference to the P-CSCF. In case there are more than one mechanism, they are associated with a priority value.
+Finally, the user agent sends a new REGISTER request over the just created secure connection with the negotiated parameters, including a security-verify header field that carries the same contents as the previously received security-server header field. This procedure protects the negotiation mechanism from Man-in-the-middle attacks: if an attacker removed the strongest security mechanisms from the Security-Server header field in order to force the terminal to choose weaker security algorithms, then the Security-Verify and Security-Server header fields would not match. The contents of the Security-Verify header field cannot be altered as they are sent through the new established secure association, as long as this association is no breakable by the attacker in real time (i.e. before the P-CSCF discovers the Man-in-the-middle attack in progress.
+
+
+==== Media authorization ====
+The necessity in the IMS of reserving resources to provide quality of service (QoS) leads to another security issue: admission control and protection against denial-of-service attacks. To obtain transmission resources, the user agent must present an authorization token to the network (i.e. the policy enforcement point, or PEP) . This token will be obtained from its P-CSCF, which may be in charge of QoS policy control or have an interface with the policy control entity in the network (i.e. the policy decision function, or PDF) which originally provides the authorization token.
+The private extensions for media authorization link session signaling to the QoS mechanisms applied to media in the network, by defining the mechanisms for obtaining authorization tokens and the P-Media-Authorization header field to carry these tokens from the P-CSCF to the user agent. This extension is only applicable within administrative domains with trust relationships. It was particularly designed for specialized SIP networks like the IMS, and not for the general Internet.
+
+
+=== Source-routing mechanisms ===
+Source routing is the mechanism that allows the sender of a message to specify partially or completely the route the message traverses. In SIP, the route header field, filled by the sender, supports this functionality by listing a set of proxies the message will visit. In the IMS context, there are certain network entities (i.e. certain CSCFs) that must be traversed by requests from or to a user, so they are to be listed in the Route header field. To allow the sender to discover such entities and populate the route header field, there are mainly two extension header fields: path and service-route.
+
+
+==== Path ====
+The extension header field for registering non-adjacent contacts provides a Path header field which accumulates and transmits the SIP URIs of the proxies that are situated between a user agent and its registrar as the REGISTER message traverses then. This way, the registrar is able to discover and record the sequence of proxies that must be transited to get back to the user agent.
+In the IMS every user agent is served by its P-CSCF, which is discovered by using the Dynamic Host Configuration Protocol or an equivalent mechanism when the user enters the IMS network, and all requests and responses from or to the user agent must traverse this proxy. When the user registers to the home registrar (S-CSCF), the P-CSCF adds its own SIP URI in a Path header field in the REGISTER message, so that the S-CSCF receives and stores this information associated with the contact information of the user. This way, the S-CSCF will forward every request addressed to that user through the corresponding P-CSCF by listing its URI in the route header field.
+
+
+==== Service route ====
+The extension for service route discovery during registration consists of a Service-Route header field that is used by the registrar in a 2XX response to a REGISTER request to inform the registering user of the entity that must forward every request originated by him or her.
+In the IMS, the registrar is the home network's S-CSCF and it is also required that all requests are handled by this entity, so it will include its own SIP URI in the service-route header field. The user will then include this SIP URI in the Route header field of all his or her requests, so that they are forwarded through the home S-CSCF.
+
+
+=== Globally routable user agent URIs ===
+In the IMS it is possible for a user to have multiple terminals (e.g. a mobile phone, a computer) or application instances (e.g. video telephony, instant messaging, voice mail) that are identified with the same public identity (i.e. SIP URI). Therefore, a mechanism is needed in order to route requests to the desired device or application. That is what a Globally Routable User Agent URI (GRU) is: a URI that identifies a specific user agent instance (i.e. terminal or application instance) and it does it globally (i.e. it is valid to route messages to that user agent from any other user agent on the Internet).
+These URIs are constructed by adding the gr parameter to a SIP URI, either to the public SIP URI with a value that identifies the user agent instance, or to a specially created URI that does not reveal the relationship between the GRUU and the user's identity, for privacy purposes. They are commonly obtained during the registration process: the registering user agent sends a Uniform Resource Name (URN) that uniquely identifies that SIP instance, and the registrar (i.e. S-CSCF) builds the GRUU, associates it to the registered identity and SIP instance and sends it back to the user agent in the response. When the S-CSCF receives a request for that GRUU, it will be able to route the request to the registered SIP instance.
+
+
+=== Signaling compression ===
+The efficient use of network resources, which may include a radio interface or other low-bandwidth access, is essential in the IMS in order to provide the user with an acceptable experience in terms of latency. To achieve this goal, SIP messages can be compressed using the mechanism known as SigComp (signaling compression).
+Compression algorithms perform this operation by substituting repeated words in the message by its position in a dictionary where all these words only appear once. In a first approach, this dictionary may be built for each message by the compressor and sent to the decompressor along with the message itself. However, as many words are repeated in different messages, the extended operations for SigComp define a way to use a shared dictionary among subsequent messages. Moreover, in order to speed up the process of building a dictionary along subsequent messages and provide high compression ratios since the first INVITE message, SIP provides a static SIP/SDP dictionary  which is already built with common SIP and SDP terms.
+There is a mechanism to indicate that a SIP message is desired to be compressed. This mechanism defines the comp=sigcomp parameter for SIP URIs, which signals that the SIP entity identified by the URI supports SigComp and is willing to receive compressed messages. When used in request-URIs, it indicates that the request is to be compressed, while in Via header fields it signals that the subsequent response is to be compressed.
+
+
+==== Content Indirection ====
+In order to obtain even shorter SIP messages and make a very efficient use of the resources, the content indirection extension makes it possible to replace a MIME body part of the message with an external reference, typically an HTTP URI. This way the recipient of the message can decide whether or not to follow the reference to fetch the resource, depending on the bandwidth available.
+
+
+=== NAT traversal ===
+Network address translation (NAT) makes it impossible for a terminal to be reached from outside its private network, since it uses a private address that is mapped to a public one when packets originated by the terminal cross the NAT. Therefore, NAT traversal mechanisms are needed for both the signaling plane and the media plane.
+Internet Engineering Task Force's RFC 6314 summarizes and unifies different methods to achieve this, such as symmetric response routing and client-initiated connections for SIP signaling, and the use of STUN, TURN and ICE, which combines both previous ones, for media streams
+
+
+=== Internet Protocol version 6 compatibility ===
+Internet Engineering Task Force's RFC 6157 describes the necessary mechanisms to guarantee that SIP works successfully between both Internet Protocol versions during the transition to IPv6. While SIP signaling messages can be transmitted through heterogeneous IPv4/IPv6 networks as long as proxy servers and DNS entries are properly configured to relay messages across both networks according to these recommendations, user agents will need to implement extensions so that they can directly exchange media streams. These extensions are related to the Session Description Protocol offer/answer initial exchange, that will be used to gather the IPv4 and IPv6 addresses of both ends so that they can establish a direct communication.
+
+
+=== Interworking with other technologies ===
+Apart from all the explained extensions to SIP that make it possible for the IMS to work successfully, it is also necessary that the IMS framework interworks and exchanges services with existing network infrastructures, mainly the Public switched telephone network (PSTN).
+There are several standards that address this requirements, such as the following two for services interworking between the PSTN and the Internet (i.e. the IMS network):
+
+PSTN Interworking Service Protocol (PINT), that extends SIP and SDP for accessing classic telephone call services in the PSTN (e.g. basic telephone calls, fax service, receiving content over the telephone).
+Services in PSTN requesting Internet Services (SPIRITS), that provides the opposite functionality to PINT, this is, supporting the access to Internet services from the PSTN.
+And also for PSTN-SIP gateways to support calls with one end in each network:
+
+Session Initiation Protocol for Telephones (SIP-T), that describes the practices and uses of these gateways.
+ISDN User Part (ISUP) to Session Initiation Protocol (SIP) Mapping, which makes it possible to translate SIP signaling messages into ISUP messages of the Signaling System No. 7 (SS7) which is used in the PSTN, and vice versa.
+Moreover, the SIP INFO method extension is designed to carry user information between terminals without affecting the signaling dialog and can be used to transport the dual-tone multi-frequency signaling to provide telephone keypad function for users.
+
+
+== See also ==
+Next-generation network
+Voice over IP
+TISPAN
+
+
+== References ==
+
+
+== Books ==
+Poikselkä, Miikka; Mayer, Georg; Khartabil, Hisham; Niemi, Aki (March 10, 2006). The IMS: IP multimedia concepts and services (2 ed.). John Wiley & Sons. ISBN 978-0-470-01906-1. Archived from the original on November 15, 2014. Retrieved 15 November 2014.
+Camarillo, Gonzalo; García-Martín, Miguel A. (November 4, 2008). The 3G IP Multimedia Subsystem (IMS): Merging the Internet and the Cellular Worlds (3 ed.). John Wiley & Sons. ISBN 978-0-470-51662-1. Archived from the original on December 5, 2014. Retrieved 15 November 2014.
+
+
+== External links ==
+3rd Generation Partnership Project's page about the IP Multimedia Subsystem
+IP Multimedia Subsystem call flows

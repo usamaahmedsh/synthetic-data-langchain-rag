@@ -1,0 +1,44 @@
+In transaction processing and distributed computing, a compensating transaction is a transaction that reverses the effects of a previously committed transaction. It is a core concept in the saga design pattern, used to maintain data consistency across multiple services or databases in scenarios where traditional ACID transactions are not feasible or practical.
+A compensating transaction is necessary when a business process, which may consist of several individual transactions, fails after one or more of its steps have already been successfully completed (committed). Unlike a database rollback, which discards uncommitted changes, a compensating transaction is a new transaction that applies business logic to semantically undo the work of a completed transaction, thereby restoring the system to a consistent state.
+
+
+== Mechanism and principles ==
+The execution of a business process often involves a series of operations that must be treated as a single atomic unit. While a traditional database transaction achieves this atomicity with commit and rollback mechanisms, this approach is often insufficient for complex, long-running processes.
+A compensating transaction works by executing an operation that is the logical inverse of the original operation. For example, if the original transaction was "debit account by $100," its compensating transaction would be "credit account by $100." Each step in a long-running process must have a corresponding compensating transaction designed. If the process fails at any point, the system executes the compensating transactions for all previously completed steps in reverse order to undo the process.
+
+
+== Applications ==
+Compensating transactions are a key pattern for maintaining consistency in distributed and complex systems.
+
+
+=== Long-running transactions (Sagas) ===
+
+Compensating transactions are fundamental to the saga pattern. A saga is a sequence of local transactions where each transaction updates data within a single service and publishes an event. If a local transaction fails for any reason, the saga executes a series of compensating transactions to revert the changes made by the preceding local transactions.
+This pattern is essential for processes that are long-lived, such as a trip-booking process that involves coordinating flights, hotels, and car rentals. Because these operations might span a long period and involve multiple independent web services, holding database locks is impractical. Instead, each service commits its transaction and has a compensating transaction ready in case a subsequent step fails. This differs from distributed transactions using the two-phase-commit protocol, as it avoids locking resources for extended durations.
+
+
+=== Systems without a native rollback mechanism ===
+In systems where a global commit/rollback mechanism is not available—such as those integrating legacy systems, third-party APIs, or non-transactional data stores—a failed operation must be undone manually. A compensating transaction provides a formal structure for this "undo" logic. In this context, the logic is a workaround that must be explicitly designed and implemented by the system architect, who must also plan for the possibility that the compensating transaction itself could fail.
+
+
+=== Service-Oriented Architecture (SOA) ===
+Compensating transactions are often designed into Web services that participate in business processes as part of a service-oriented architecture (SOA). Standards like Business Process Execution Language (BPEL) include provisions for defining compensation logic within a business process definition, allowing for the automated handling of failures in complex, multi-service interactions.
+
+
+== Limitations and challenges ==
+While powerful, the compensation pattern has limitations:
+
+No true isolation: The results of the original transaction are visible to other processes before it is compensated. If another process reads this data, it acts on information that will be retroactively undone, potentially leading to data inconsistencies. This is known as a "dirty read."
+Complexity: Designing and implementing robust compensating logic is complex. The developer must ensure that the compensating transaction can run to completion and handle all possible states of the data.
+Compensation failure: A compensating transaction can itself fail. This is a critical problem that requires a robust error-handling strategy, such as retrying the compensation, manual intervention by an administrator, or escalating the failure.
+Incomplete reversal: It is not always possible to fully reverse an operation. For instance, if a transaction resulted in an email being sent, the email cannot be "unsent." The compensating transaction can only perform actions like sending a follow-up apology email.
+Because of these challenges, compensating transactions do not guarantee a return to the exact original state but rather to a state that is semantically consistent from a business perspective.
+
+
+== See also ==
+ACID
+Business Process Execution Language (BPEL)
+Two-phase commit protocol
+
+
+== References ==

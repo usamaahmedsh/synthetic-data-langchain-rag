@@ -1,0 +1,120 @@
+UTF-8 is a character encoding standard used for electronic communication. Defined by the Unicode Standard, the name is derived from Unicode Transformation Format –  8-bit. As of July 2025, almost every webpage is transmitted as UTF-8.
+UTF-8 supports all 1,112,064 valid Unicode code points using a variable-width encoding of one to four one-byte (8-bit) code units.
+Code points with lower numerical values, which tend to occur more frequently, are encoded using fewer bytes. It was designed for backward compatibility with ASCII: the first 128 characters of Unicode, which correspond one-to-one with ASCII, are encoded using a single byte with the same binary value as ASCII, so that a UTF-8-encoded file using only those characters is identical to an ASCII file. Most software designed for any extended ASCII can read and write UTF-8, and this results in fewer internationalization issues than any alternative text encoding.
+UTF-8 is dominant for all countries/languages on the internet, is used in most standards, often the only allowed encoding, and is supported by all modern operating systems and programming languages.
+
+
+== History ==
+
+The International Organization for Standardization (ISO) set out to compose a universal multi-byte character set in 1989. The draft ISO 10646 standard contained a non-required annex called UTF-1 that provided a byte stream encoding of its 32-bit code points. This encoding was not satisfactory on performance grounds, among other problems, and the biggest problem was probably that it did not have a clear separation between ASCII and non-ASCII: new UTF-1 tools would be backward compatible with ASCII-encoded text, but UTF-1-encoded text could confuse existing code expecting ASCII (or extended ASCII), because it could contain continuation bytes in the range 0x21–0x7E that meant something else in ASCII, e.g., 0x2F for /, the Unix path directory separator.
+In July 1992, the X/Open committee XoJIG was looking for a better encoding. Dave Prosser of Unix System Laboratories submitted a proposal for one that had faster implementation characteristics and introduced the improvement that 7-bit ASCII characters would only represent themselves; multi-byte sequences would only include bytes with the high bit set. The name File System Safe UCS Transformation Format (FSS-UTF) and most of the text of this proposal were later preserved in the final specification. In August 1992, this proposal was circulated by an IBM X/Open representative to interested parties. 
+A modification by Ken Thompson of the Plan 9 operating system group at Bell Labs made it self-synchronizing, letting a reader start anywhere and immediately detect character boundaries, at the cost of being somewhat less bit-efficient than the previous proposal. It also abandoned the use of biases that prevented overlong encodings. Thompson's design was outlined on September 2, 1992, on a placemat in a New Jersey diner with Rob Pike. In the following days, Pike and Thompson implemented it and updated Plan 9 to use it throughout, and then communicated their success back to X/Open, which accepted it as the specification for FSS-UTF. UTF-8 was first officially presented at the USENIX conference in San Diego, from January 25 to 29, 1993. The Internet Engineering Task Force adopted UTF-8 in its Policy on Character Sets and Languages in RFC 2277 (BCP 18) for future internet standards work in January 1998, replacing Single Byte Character Sets such as Latin-1 in older RFCs.
+In November 2003, UTF-8 was restricted by RFC 3629 to match the constraints of the UTF-16 character encoding: explicitly prohibiting code points corresponding to the high and low surrogate characters removed  more than 3% of the three-byte sequences, and ending at U+10FFFF removed  more than 48% of the four-byte sequences and all five- and six-byte sequences.
+
+
+== Description ==
+UTF-8 encodes code points in one to four bytes, depending on the value of the code point. In the following table, the characters u to z are replaced by the bits of the code point, from the positions U+uvwxyz:
+
+The first 128 code points (ASCII) need 1 byte. The next 1,920 code points need two bytes to encode, which covers the remainder of almost all Latin-script alphabets, and also IPA extensions, Greek, Cyrillic, Coptic, Armenian, Hebrew, Arabic, Syriac, Thaana and N'Ko alphabets, as well as Combining Diacritical Marks. Three bytes are needed for the remaining 61,440 codepoints of the Basic Multilingual Plane (BMP), including most Chinese, Japanese and Korean characters. Four bytes are needed for the 1,048,576 non-BMP code points, which include emoji, less common CJK characters, and other useful characters.
+UTF-8 is a prefix code and it is unnecessary to read past the last byte of a code point to decode it. Unlike many earlier multi-byte text encodings such as Shift-JIS, it is self-synchronizing so searches for short strings or characters are possible; and the start of a code point can be found from a random position by backing up at most 3 bytes. The values chosen for the lead bytes means sorting a list of UTF-8 strings puts them in the same order as sorting UTF-32 strings.
+
+
+=== Overlong encodings ===
+
+Using a row in the above table to encode a code point less than "First code point" (thus using more bytes than necessary) is termed an overlong encoding. These are a security problem because they allow character sequences such as malicious JavaScript and ../ to bypass security validations, which has been reported in numerous high-profile products such as Microsoft's IIS web server and Apache's Tomcat servlet container. Overlong encodings should therefore be considered an error and never decoded.
+
+
+=== Error handling ===
+Not all sequences of bytes are valid UTF-8. A UTF-8 decoder should be prepared for:
+
+A "continuation byte" (0x80–0xBF) at the start of a character
+A non-continuation byte (or the string ending) before the end of a character
+An overlong encoding (0xC0, 0xC1, 0xE0 followed by less than 0xA0, or 0xF0 followed by less than 0x90)
+A 4-byte sequence that decodes to a value greater than U+10FFFF (0xF4 followed by 0x90 or greater, 0xF5–0xFF)
+Many of the first UTF-8 decoders would decode these, ignoring incorrect bits. Carefully crafted invalid UTF-8 could make them either skip or create ASCII characters such as NUL, slash, or quotes, leading to security vulnerabilities. It is also common to throw an exception or truncate the string at an error but this turns what would otherwise be harmless errors (i.e. "file not found") into a denial of service, for instance early versions of Python 3.0 would exit immediately if the command line or environment variables contained invalid UTF-8.
+RFC 3629 states "Implementations of the decoding algorithm MUST protect against decoding invalid sequences." The Unicode Standard requires decoders to: "... treat any ill-formed code unit sequence as an error condition. This guarantees that it will neither interpret nor emit an ill-formed code unit sequence." The standard now recommends replacing each error with the replacement character "�" (U+FFFD) and continue decoding.
+Some decoders consider the sequence E1,A0,20 (a truncated 3-byte code followed by a space) as a single error. This is not a good idea as a search for a space character would find the one hidden in the error. Since Unicode 6 (October 2010) the standard (chapter 3) has recommended a "best practice" where the error is either one continuation byte, or ends at the first byte that is disallowed, so E1,A0,20 is a two-byte error followed by a space. An error is no more than three bytes long, never contains the start of a valid character, and there are 21,952 different possible errors. Many decoders instead make each byte be an error, in which case E1,A0,20 is two errors followed by a space; there are now only 128 different errors which makes it practical to store the errors in the output string, or replace them with characters from a legacy encoding.
+Only a small subset of possible byte strings are error-free UTF-8: several bytes cannot appear; a byte with the high bit set cannot be alone; and in a truly random string a byte with a high bit set has only a 1⁄15 chance of starting a valid UTF-8 character. This has the consequence of making it easy to detect if a legacy text encoding is accidentally used instead of UTF-8, making conversion of a system to UTF-8 easier and avoiding the need to require a Byte Order Mark or any other metadata.
+
+
+=== Surrogates ===
+
+Since RFC 3629 (November 2003), the high and low surrogates used by UTF-16 (U+D800 through U+DFFF) are not legal Unicode values, and their UTF-8 encodings must be treated as an invalid byte sequence. These encodings all start with 0xED followed by 0xA0 or higher. This rule is often ignored as surrogates are allowed in Windows filenames and this means there must be a way to store them in a string. UTF-8 that allows these surrogate halves has been (informally) called WTF-8, for "wobbly transformation format", while another variation that also encodes all non-BMP characters as two surrogates (6 bytes instead of 4) is called CESU-8.
+
+
+=== Byte map ===
+The chart below gives the detailed meaning of each byte in a stream encoded in UTF-8.
+
+
+=== Byte-order mark ===
+If the Unicode byte-order mark U+FEFF is at the start of a UTF-8 file, the first three bytes will be 0xEF, 0xBB, 0xBF.
+The Unicode Standard neither requires nor recommends the use of the BOM for UTF-8, but warns that it may be encountered at the start of a file trans-coded from another encoding. While ASCII text encoded using UTF-8 is backward compatible with ASCII, this is not true when Unicode Standard recommendations are ignored and a BOM is added. A BOM can confuse software that isn't prepared for it but can otherwise accept UTF-8, e.g. programming languages that permit non-ASCII bytes in string literals but not at the start of the file. Nevertheless, there was and still is software that always inserts a BOM when writing UTF-8, and refuses to correctly interpret UTF-8 unless the first character is a BOM (or the file only contains ASCII).
+
+
+== Comparison to UTF-16 ==
+
+For a long time there was considerable argument as to whether it was better to process text in UTF-16 or in UTF-8. The primary advantage of UTF-16 is that the Windows API required it for access to all Unicode characters (UTF-8 was not fully supported in Windows until May 2019). This caused several libraries such as Qt to also use UTF-16 strings which propagates this requirement to non-Windows platforms. In the early days of Unicode there were no characters greater than U+FFFF and combining characters were rarely used, so the 16-bit encoding was effectively fixed-size. Some believed fixed-size encoding could make processing more efficient, but any such advantages were lost as soon as UTF-16 became variable width as well. The code points U+0800–U+FFFF take 3 bytes in UTF-8 but only 2 in UTF-16. This led to the idea that text in Chinese and other languages would take more space in UTF-8. However, text is only larger if there are more of these code points than 1-byte ASCII code points, and this rarely happens in real-world documents due to spaces, newlines, digits, punctuation, English words, and markup. UTF-8 has the advantages of being trivial to retrofit to any system that could handle an extended ASCII, not having byte-order problems, and taking about half the space for any language using mostly Latin letters.
+
+
+== Implementations and adoption ==
+
+UTF-8 has been the most common encoding for the World Wide Web since 2008. As of July 2025, UTF-8 is used by 98.8% of surveyed web sites. Although many pages only use ASCII characters to display content, very few websites now declare their encoding to only be ASCII instead of UTF-8. Virtually all countries and  languages have 95% or more use of UTF-8 encodings on the web. 
+Many standards only support UTF-8, e.g. JSON exchange requires it (without a byte-order mark (BOM)). UTF-8 is also the recommendation from the WHATWG for HTML and DOM specifications, and stating "UTF-8 encoding is the most appropriate encoding for interchange of Unicode" and the Internet Mail Consortium recommends that all e‑mail programs be able to display and create mail using UTF-8. The World Wide Web Consortium recommends UTF-8 as the default encoding in XML and HTML (and not just using UTF-8, also declaring it in metadata), "even when all characters are in the ASCII range ... Using non-UTF-8 encodings can have unexpected results".
+Many software programs have the ability to read/write UTF-8. It may require the user to change options from the normal settings, or may require a BOM (byte-order mark) as the first character to read the file. Examples of software supporting UTF-8 include Microsoft Word, Microsoft Excel (Office 2003 and later), Google Drive, LibreOffice, and most databases.
+Software that "defaults" to UTF-8 (meaning it writes it without the user changing settings, and it reads it without a BOM) has become more common since 2010. Windows Notepad, in all currently supported versions of Windows, defaults to writing UTF-8 without a BOM (a change from Windows 7 Notepad), bringing it into line with most other text editors. Some system files on Windows 11 require UTF-8 with no requirement for a BOM, and almost all files on macOS and Linux are required to be UTF-8 without a BOM. Programming languages that default to UTF-8 for I/O include Ruby 3.0, R 4.2.2, Raku and Java 18. Although the current version of Python requires an option to open() to read/write UTF-8, plans exist to make UTF-8 I/O the default in Python 3.15. C++23 adopts UTF-8 as the only portable source code file format.
+Backwards compatibility is a serious impediment to changing code and APIs using UTF-16 to use UTF-8, but this is happening. As of May 2019, Microsoft added the capability for an application to set UTF-8 as the "code page" for the Windows API, removing the need to use UTF-16; and more recently has recommended programmers use UTF-8, and even states "UTF-16 [...] is a unique burden that Windows places on code that targets multiple platforms".
+The default string primitive in Go,
+Julia, Rust, Swift (since version 5), and PyPy uses UTF-8 internally in all cases. Python (since version 3.3) uses UTF-8 internally for Python C API extensions and sometimes for strings and a future version of Python is planned to store strings as UTF-8 by default. Modern versions of Microsoft Visual Studio use UTF-8 internally. Microsoft's SQL Server 2019 added support for UTF-8, and using it results in a 35% speed increase, and "nearly 50% reduction in storage requirements."
+Java internally uses UTF-16 for the char data type and, consequentially, the Character, String, and the StringBuffer classes, but for I/O uses Modified UTF-8 (MUTF-8), in which the null character U+0000 uses the two-byte overlong encoding 0xC0, 0x80, instead of just 0x00. Modified UTF-8 strings never contain any actual null bytes but can contain all Unicode code points including U+0000, which allows such strings (with a null byte appended) to be processed by traditional null-terminated string functions. Java reads and writes normal UTF-8 to files and streams, but it uses Modified UTF-8 for object serialization, for the Java Native Interface, and for embedding constant strings in Java class files. The dex format defined by Dalvik also uses the same modified UTF-8 to represent string values. Tcl also uses the same modified UTF-8 as Java for internal representation of Unicode data, but uses strict CESU-8 for external data. All known Modified UTF-8 implementations also treat the surrogate pairs as in CESU-8.
+The Raku programming language (formerly Perl 6) uses utf-8 encoding by default for I/O (Perl 5 also supports it); though that choice in Raku also implies "normalization into Unicode NFC (normalization form canonical). In some cases the user will want to ensure no normalization is done; for this utf8-c8" can be used. That UTF-8 Clean-8 variant, implemented by Raku, is an encoder/decoder  that preserves bytes as is (even illegal UTF-8 sequences) and allows for Normal Form Grapheme synthetics.
+Version 3 of the Python programming language treats each byte of an invalid UTF-8 bytestream as an error (see also changes with new UTF-8 mode in Python 3.7); this gives 128 different possible errors. Extensions have been created to allow any byte sequence that is assumed to be UTF-8 to be losslessly transformed to UTF-16 or UTF-32, by translating the 128 possible error bytes to 128 reserved code points, and transforming those code points back to error bytes to output UTF-8. The most common approach is to translate the codes to U+DC80...U+DCFF which are low (trailing) surrogate values and thus "invalid" UTF-16, as used by Python's PEP 383 (or "surrogateescape") approach. NumPy version 2.0, and its file formats, support UTF-8 (adding StringDType for it). Another encoding called MirBSD OPTU-8/16 converts them to U+EF80...U+EFFF in a Private Use Area. In either approach, the byte value is encoded in the low eight bits of the output code point. These encodings are needed if invalid UTF-8 is to survive translation to and then back from the UTF-16 used internally by Python, and as Unix filenames can contain invalid UTF-8 it is necessary for this to work.
+Linux and macOS filesystems support UTF-8: ext4 and Apple's APFS. Apple's older HFS Plus uses UTF-16 for file names, but uses UTF-8 in symbolic links. Windows' filesystem, NTFS, uses UTF-16 for file names.
+
+
+== Standards ==
+The official name for the encoding is UTF-8, the spelling used in all Unicode Consortium documents. The hyphen-minus is required and no spaces are allowed. Some other names used are:
+
+Most standards are also case-insensitive and utf-8 is often used.
+Web standards (which include CSS, HTML, XML, and HTTP headers) also allow utf8 and many other aliases.
+The official Internet Assigned Numbers Authority lists csUTF8 as the only alias, which is rarely used.
+In some locales UTF-8N means UTF-8 without a byte-order mark (BOM), and in this case UTF-8 may imply there is a BOM.
+In Windows, UTF-8 is codepage 65001 with the symbolic name CP_UTF8 in source code.
+In MySQL, UTF-8 is called utf8mb4, while utf8 and utf8mb3 refer to the obsolete CESU-8 variant.
+In Oracle Database, AL32UTF8 means UTF-8 (since version 9.0), while UTF8 means CESU-8 (since 8.0), and Oracle's UTF8 encoding should not be used since it's only a subset of the full (UTF8/AL32UTF8; missing support for Japanese and Chinese, only supporting Unicode 3.0, not 4-byte form; AL32UTFFSS is another incomplete subset for older Oracle databases).
+In HP PCL, the Symbol-ID for UTF-8 is 18N.
+There are several current definitions of UTF-8 in various standards documents:
+
+RFC 3629 / STD 63 (2003), which establishes UTF-8 as a standard internet protocol element
+RFC 5198 defines UTF-8 NFC for Network Interchange (2008)
+ISO/IEC 10646:2020/Amd 1:2023
+The Unicode Standard, Version 17.0.0 (2025)
+They supersede the definitions given in the following obsolete works:
+
+The Unicode Standard, Version 2.0, Appendix A (1996)
+ISO/IEC 10646-1:1993 Amendment 2 / Annex R (1996)
+RFC 2044 (1996)
+RFC 2279 (1998)
+The Unicode Standard, Version 3.0, §2.3 (2000) plus Corrigendum #1 : UTF-8 Shortest Form (2000)
+Unicode Standard Annex #27: Unicode 3.1 (2001)
+The Unicode Standard, Version 5.0 (2006)
+The Unicode Standard, Version 6.0 (2010)
+They are all the same in their general mechanics, with the main differences being on issues such as allowed range of code point values and safe handling of invalid input.
+
+
+== See also ==
+Character encodings in HTML – Use of encoding systems for international characters in HTML
+Comparison of Unicode encodings
+GB 18030 – Official Chinese character encoding
+Iconv – Standard UNIX utility
+Unicode and email – Relationship between Unicode and email
+Unicode and HTML – Relationship between Unicode characters and HTML
+UTF-EBCDIC – Character encoding for Unicode compatible with EBCDIC
+
+
+== References ==
+
+
+== External links ==
+Original UTF-8 paper (or pdf) for Plan 9 from Bell Labs
+History of UTF-8 by Rob Pike
+Characters, Symbols and the Unicode Miracle on YouTube

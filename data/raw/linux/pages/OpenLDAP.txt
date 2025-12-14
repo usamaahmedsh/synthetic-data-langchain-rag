@@ -1,0 +1,131 @@
+OpenLDAP is a free, open-source implementation of the Lightweight Directory Access Protocol (LDAP) developed by the OpenLDAP Project. It is released under its own BSD-style license called the OpenLDAP Public License.
+LDAP is a platform-independent protocol. Several common Linux distributions include OpenLDAP Software for LDAP support. The software also runs on BSD-variants, as well as AIX, Android, HP-UX, macOS, OpenVMS, Solaris, Microsoft Windows (NT and derivatives, e.g. 2000, XP, Vista, Windows 7, etc.), and z/OS.
+
+
+== History ==
+The OpenLDAP project was started in 1998 by Kurt Zeilenga. The project started by cloning the LDAP reference source from the University of Michigan where a long-running project had supported development and evolution of the LDAP protocol until that project's final release in 1996.
+As of May 2015, the OpenLDAP project has four core team members: Howard Chu (chief architect), Quanah Gibson-Mount, Hallvard Furuseth, and Kurt Zeilenga. There are numerous other important and active contributors including Ondrej Kuznik, Luke Howard, Ryan Tandy, and Gavin Henry. Past core team members include Pierangelo Masarati.
+
+
+== Components ==
+OpenLDAP has four main components:
+
+slapd – stand-alone LDAP daemon and associated modules and tools.
+lloadd - stand-alone LDAP load balancing proxy server
+libraries implementing the LDAP protocol and ASN.1 Basic Encoding Rules (BER)
+client software: ldapsearch, ldapadd, ldapdelete, and others
+Additionally, the OpenLDAP Project is home to a number of subprojects:
+
+JLDAP – LDAP class libraries for Java
+JDBC-LDAP – Java JDBC – LDAP Bridge driver
+ldapc++ – LDAP class libraries for C++
+LMDB – memory-mapped database library
+
+
+== Backends ==
+
+
+=== Overall concept ===
+Historically the OpenLDAP server (slapd, the Standalone LDAP Daemon) architecture was split between a frontend that handles network access and protocol processing, and a backend that deals strictly with data storage. This split design was a feature of the original University of Michigan code written in 1996 and carried on in all subsequent OpenLDAP releases. The original code included one main database backend and two experimental/demo backends. The architecture is modular and many different backends are now available for interfacing to other technologies, not just traditional databases.
+Note: In older (1.x) releases, the terms "backend" and "database" were often used interchangeably. To be precise, a "backend" is a class of storage interface, and a "database" is an instance of a backend. The slapd server can use arbitrarily many backends at once, and can have arbitrarily many instances of each backend (i.e., arbitrarily many databases) active at once.
+
+
+=== Available backends ===
+Currently 17 different backends are provided in the OpenLDAP distribution, and various third parties are known to maintain other backends independently. The standard backends are loosely organized into three different categories:
+
+Data storage backends – these actually store data
+back-bdb: the first transactional backend for OpenLDAP, built on Berkeley DB, removed with OpenLDAP 2.5.
+back-hdb: a variant of back-bdb that is fully hierarchical and supports subtree renames, removed with OpenLDAP 2.5.
+back-ldif: built on plain text LDIF files
+back-mdb: a transactional backend built on OpenLDAP's Lightning Memory-Mapped Database (LMDB)
+back-ndb: a transactional backend built on MySQL's NDB cluster engine, removed with OpenLDAP 2.6.
+back-wiredtiger: an experimental transactional backend built on WiredTiger, introduced with OpenLDAP 2.5.
+Proxy backends – these act as gateways to other data storage systems
+back-asyncmeta: an asynchronous proxy with meta-directory features, introduced with OpenLDAP 2.5.
+back-ldap: simple proxy to other LDAP servers
+back-meta: proxy with meta-directory features
+back-passwd: uses a Unix system's passwd and group data
+back-relay: internally redirects to other slapd backends
+back-sql: talks to arbitrary SQL databases, deprecated with OpenLDAP 2.5.
+Dynamic backends – these generate data on the fly
+back-config: slapd configuration via LDAP
+back-dnssrv: Locates LDAP servers via DNS
+back-monitor: slapd statistics via LDAP
+back-null: a sink/no-op backend, analogous to Unix /dev/null
+back-perl: invokes arbitrary perl modules in response to LDAP requests, deprecated with OpenLDAP 2.5.
+back-shell: invokes shell scripts for LDAP requests, removed with OpenLDAP 2.5.
+back-sock: forwards LDAP requests over IPC to arbitrary daemons
+Some backends available in older OpenLDAP releases have been retired from use, most notably back-ldbm which was inherited from the original UMich code, and back-tcl which was similar to back-perl and back-shell.
+Support for other backends will soon be withdrawn as well. back-ndb is removed now since the partnership with MySQL that led to its development was terminated by Oracle after Oracle acquired MySQL. back-bdb and back-hdb have been removed in favor of back-mdb since back-mdb is superior in all aspects of performance, reliability, and manageability.
+In practice, backends like -perl and -sock allow interfacing to any arbitrary programming language, thus providing limitless capabilities for customization and expansion. In effect the slapd server becomes an RPC engine with a compact, well-defined and ubiquitous API.
+
+
+== Overlays ==
+
+
+=== Overall concept ===
+Ordinarily an LDAP request is received by the frontend, decoded, and then passed to a backend for processing. When the backend completes a request, it returns a result to the frontend, which then sends the result to the LDAP client. An overlay is a piece of code that can be inserted between the frontend and the backend. It is thus able to intercept requests and trigger other actions on them before the backend receives them, and it can also likewise act on the backend's results before they reach the frontend. Overlays have complete access to the slapd internal APIs, and so can invoke anything the frontend or other backends could perform. Multiple overlays can be used at once, forming a stack of modules between the frontend and the backend.
+Overlays provide a simple means to augment the functionality of a database without requiring that an entirely new backend be written, and allow new functionalities to be added in compact, easily debuggable and maintainable modules. Since the introduction of the overlay feature in OpenLDAP 2.2 many new overlays have been contributed from the OpenLDAP community.
+
+
+=== Available overlays ===
+Currently there are 25 overlays in the core OpenLDAP distribution, with another 24 overlays in the user-contributed code section, and more awaiting approval for inclusion.
+
+
+== Other modules ==
+Backends and overlays are the two most commonly used types of modules. Backends were typically built into the slapd binary, but they may also be built as dynamically loaded modules, and overlays are usually built as dynamic modules. In addition, slapd supports dynamic modules for implementing new LDAP syntaxes, matching rules, controls, and extended operations, as well as for implementing custom access control mechanisms and password hashing mechanisms.
+OpenLDAP also supports SLAPI, the plugin architecture used by Sun and Netscape/Fedora/Red Hat. In current releases, the SLAPI framework is implemented inside a slapd overlay. While many plugins written for Sun/Netscape/Fedora/Red Hat are compatible with OpenLDAP, very few members of the OpenLDAP community use SLAPI.
+
+
+=== Available modules ===
+Native slapd modules
+acl/posixgroup – support posixGroup membership in access controls
+comp_match – support component-based matching
+kinit – maintain/refresh a Kerberos TGT for slapd
+passwd/ – additional password hashing mechanisms. Currently includes Kerberos, Netscape, RADIUS, and SHA-2.
+SLAPI plugins
+addrdnvalue – add RDN value to an entry if it was omitted in an Add request
+
+
+== Release summary ==
+The major (functional) releases of OpenLDAP Software include:
+
+OpenLDAP Version 1 was a general clean-up of the last release from the University of Michigan project (release 3.3), and consolidation of additional changes.
+OpenLDAP Version 2.0, released in August 2000, included major enhancements including LDAP version 3 (LDAPv3) support, Internet Protocol version 6 (IPv6) support, and numerous other enhancements.
+OpenLDAP Version 2.1, released in June 2002, included the transactional database backend (based on Berkeley Database or BDB), Simple Authentication and Security Layer (SASL) support, and Meta, Monitor, and Virtual experimental backends.
+OpenLDAP Version 2.2, released in December 2003, included the LDAP "sync" Engine with replication support (syncrepl), the overlay interface, and numerous database and RFC-related functional enhancements.
+OpenLDAP Version 2.3, released in June 2005, included the Configuration Backend (dynamic configuration), additional overlays including RFC-compliant Password Policy software, and numerous additional enhancements.
+OpenLDAP Version 2.4, released in October 2007, introduced N-way MultiMaster replication, Stand-by master, and the ability to delete and modify Schema elements on the fly, plus many more.
+OpenLDAP Version 2.5, released in April 2021, introduced the LDAP load balancing proxy server, LDAP transaction support, HA proxy protocol v2 support, plus much more.
+OpenLDAP Version 2.6, released in October 2021, introduced additional load balancing strategies and additional options to improve coherence with certain LDAP controls and extended operations to the LDAP Load Balancer Daemon and the ability to log directly to a file rather than via syslog for both slapd and lloadd
+
+
+== Replication ==
+OpenLDAP supports replication using Content Synchronization as specified in RFC 4533. This spec is hereafter referred to as "syncrepl". In addition to the base specification, an enhancement known as delta-syncrepl is also supported. Additional enhancements have been implemented to support multi-master replication.
+
+
+=== syncrepl ===
+The basic synchronization operation is described in RFC 4533. The protocol is defined such that a persistent database of changes is not required. Rather the set of changes is implied via change sequence number (CSN) information stored in each entry and optimized via an optional session log which is particularly useful to track recent deletes. The model of operation is that a replication client (consumer) sends a "content synchronizing search" to a replication server (provider). The consumer can provide a cookie in this search (especially when it has been in sync with the provider previously). In the OpenLDAP implementation of the RFC 4533, this cookie includes the latest CSN that has been received from the provider (called the contextCSN).
+The provider then returns as search results (or, see optimization below, sync info replies) the present (unchanged entry only used in the present phase of the refresh stage) (no attributes), added, modified (represented in the refresh phase as an add with all current attributes), or deleted (no attributes) entries to put the consumer into a synchronized state based on what is known via their cookie. If the cookie is absent or indicates that the consumer is totally out of sync, then the provider will, in the refresh stage, send an add for each entry it has. In the ideal case, the refresh stage of the response contains only a delete phase with just a small set of adds (including those that represent the current result of modifies) and deletes that have occurred since the time the consumer last synchronized with the provider. However, due to limited session log state (also non-persistent) kept in the provider, a present phase may be required, particularly including the presentation of all unchanged entries as a means (inefficient) of implying what has been deleted in the provider since the consumer last synchronized.
+The search can be done in either refresh or refreshAndPersist mode, which implies what stages occur. The refresh stage always occurs first. During the refresh stage, two phases may occur: present and delete, where present always occurs before delete. The phases are delimited via a sync info response that specifies which phase is completed. The refresh and persist stages are also delimited via such sync info response. An optional optimization to more compactly represent a group of entries that are to be presented or deleted is to use a sync info response containing a syncIdSet that identifies the list of entryUUID values of those entries.
+The present phase is differentiated from the delete phase as follows. Entries that present unchanged entries may only be returned in the present phase. Entries that delete entries may only be provided in the delete phase. In either phase, add entries (including adds that represent all current attributes of modified entries) can be returned. At the end of a present phase, each entry that the consumer has that was not identified in an add entry or present response during the present phase is implicitly no longer in the provider and thus must be deleted at the consumer so as to synchronize the consumer with the provider.
+Once the persist stage begins, the provider sends search results that indicate only the add, modify and delete of entries (no present unchanged entry indications) for those entries changed since the refresh stage completed. The persist stage continues indefinitely, meaning that search has no final "done" response. By contrast, in the refresh mode only a refresh stage occurs and such stage completes with a done response that also ends the present or delete phase (whichever phase was currently active).
+
+
+=== delta-syncrepl ===
+This protocol keeps a persistent database of write accesses (changes) and can represent each modify precisely (meaning only the attributes that have changed). It is still built on the standard syncrepl specification, which always sends changes as complete entries. But in delta-syncrepl, the transmitted entries are actually sent from a log database, where each change in the main database is recorded as a log entry. The log entries are recorded using the LDAP Log Schema.
+
+
+== See also ==
+
+List of LDAP software
+
+
+== References ==
+
+
+== External links ==
+Official website 
+The OpenLDAP Foundation
+Using libldap, A tutorial on the OpenLDAP client API
+An OpenLDAP Update Archived 10 August 2009 at the Wayback Machine article by Marty Heyman 13 September 2007

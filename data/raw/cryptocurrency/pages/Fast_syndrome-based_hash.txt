@@ -1,0 +1,1903 @@
+In cryptography, the fast syndrome-based hash functions (FSB) are a family of cryptographic hash functions introduced in 2003 by Daniel Augot, Matthieu Finiasz, and Nicolas Sendrier.
+Unlike most other cryptographic hash functions in use today, FSB can to a certain extent be proven to be secure. More exactly, it can be proven that breaking FSB is at least as difficult as solving a certain NP-complete problem known as regular syndrome decoding so FSB is provably secure. Though it is not known whether NP-complete problems are solvable in polynomial time, it is often assumed that they are not.
+Several versions of FSB have been proposed, the latest of which was submitted to the SHA-3 cryptography competition but was rejected in the first round. Though all versions of FSB claim provable security, some preliminary versions were eventually broken. 
+The design of the latest version of FSB has however taken this attack into account and remains secure to all currently known attacks.
+As usual, provable security comes at a cost. FSB is slower than traditional hash functions and uses quite a lot of memory, which makes it impractical on memory constrained environments. Furthermore, the compression function used in FSB needs a large output size to guarantee security. This last problem has been solved in recent versions by simply compressing the output by another compression function called Whirlpool. However, though the authors argue that adding this last compression does not reduce security, it makes a formal security proof impossible.
+
+
+== Description of the hash function ==
+We start with a compression function 
+  
+    
+      
+        ϕ
+      
+    
+    {\displaystyle \phi }
+  
+ with parameters 
+  
+    
+      
+        
+          n
+          ,
+          r
+          ,
+          w
+        
+      
+    
+    {\displaystyle {n,r,w}}
+  
+ such that  
+  
+    
+      
+        n
+        >
+        w
+      
+    
+    {\displaystyle n>w}
+  
+ and 
+  
+    
+      
+        w
+        log
+        ⁡
+        (
+        n
+        
+          /
+        
+        w
+        )
+        >
+        r
+      
+    
+    {\displaystyle w\log(n/w)>r}
+  
+. This function will only work on messages with length 
+  
+    
+      
+        s
+        =
+        w
+        log
+        ⁡
+        (
+        n
+        
+          /
+        
+        w
+        )
+      
+    
+    {\displaystyle s=w\log(n/w)}
+  
+; 
+  
+    
+      
+        r
+      
+    
+    {\displaystyle r}
+  
+ will be the size of the output. Furthermore, we want 
+  
+    
+      
+        n
+        ,
+        r
+        ,
+        w
+        ,
+        s
+      
+    
+    {\displaystyle n,r,w,s}
+  
+ and 
+  
+    
+      
+        log
+        ⁡
+        (
+        n
+        
+          /
+        
+        w
+        )
+      
+    
+    {\displaystyle \log(n/w)}
+  
+ to be natural numbers, where 
+  
+    
+      
+        log
+      
+    
+    {\displaystyle \log }
+  
+ denotes the binary logarithm. The reason for 
+  
+    
+      
+        w
+        ⋅
+        log
+        ⁡
+        (
+        n
+        
+          /
+        
+        w
+        )
+        >
+        r
+      
+    
+    {\displaystyle w\cdot \log(n/w)>r}
+  
+ is that we want 
+  
+    
+      
+        ϕ
+      
+    
+    {\displaystyle \phi }
+  
+ to be a compression function, so the input must be larger than the output. We will later use the Merkle–Damgård construction to extend the domain to inputs of arbitrary lengths.
+The basis of this function consists of a (randomly chosen) binary 
+  
+    
+      
+        r
+        ×
+        n
+      
+    
+    {\displaystyle r\times n}
+  
+ matrix 
+  
+    
+      
+        H
+      
+    
+    {\displaystyle H}
+  
+ which acts on a message of 
+  
+    
+      
+        n
+      
+    
+    {\displaystyle n}
+  
+ bits by matrix multiplication. Here we encode the 
+  
+    
+      
+        w
+        log
+        ⁡
+        (
+        n
+        
+          /
+        
+        w
+        )
+      
+    
+    {\displaystyle w\log(n/w)}
+  
+-bit message as a vector in 
+  
+    
+      
+        (
+        
+          
+            F
+          
+          
+            2
+          
+        
+        
+          )
+          
+            n
+          
+        
+      
+    
+    {\displaystyle (\mathbf {F} _{2})^{n}}
+  
+, the 
+  
+    
+      
+        n
+      
+    
+    {\displaystyle n}
+  
+-dimensional vector space over the field of two elements, so the output will be a message of 
+  
+    
+      
+        r
+      
+    
+    {\displaystyle r}
+  
+ bits.
+For security purposes as well as to get a faster hash speed we want to use only “regular words of weight 
+  
+    
+      
+        w
+      
+    
+    {\displaystyle w}
+  
+” as input for our matrix.
+
+
+=== Definitions ===
+A message is called a word of weight 
+  
+    
+      
+        w
+      
+    
+    {\displaystyle w}
+  
+ and length 
+  
+    
+      
+        n
+      
+    
+    {\displaystyle n}
+  
+ if it consists of 
+  
+    
+      
+        n
+      
+    
+    {\displaystyle n}
+  
+ bits and exactly 
+  
+    
+      
+        w
+      
+    
+    {\displaystyle w}
+  
+ of those bits are ones.
+A word of weight 
+  
+    
+      
+        w
+      
+    
+    {\displaystyle w}
+  
+ and length 
+  
+    
+      
+        n
+      
+    
+    {\displaystyle n}
+  
+ is called regular if in every interval 
+  
+    
+      
+        [
+        (
+        i
+        −
+        1
+        )
+        (
+        n
+        
+          /
+        
+        w
+        )
+        ,
+        i
+        (
+        n
+        
+          /
+        
+        w
+        )
+        )
+      
+    
+    {\displaystyle [(i-1)(n/w),i(n/w))}
+  
+ it contains exactly one nonzero entry for all 
+  
+    
+      
+        0
+        <
+        i
+        <
+        w
+        +
+        1
+      
+    
+    {\displaystyle 0<i<w+1}
+  
+. More intuitively, this means that if we chop up the message in w equal parts, then each part contains exactly one nonzero entry.
+
+
+=== The compression function ===
+There are exactly 
+  
+    
+      
+        (
+        n
+        
+          /
+        
+        w
+        
+          )
+          
+            w
+          
+        
+      
+    
+    {\displaystyle (n/w)^{w}}
+  
+ different regular words of weight 
+  
+    
+      
+        w
+      
+    
+    {\displaystyle w}
+  
+ and length 
+  
+    
+      
+        n
+      
+    
+    {\displaystyle n}
+  
+, so we need exactly 
+  
+    
+      
+        log
+        ⁡
+        (
+        (
+        n
+        
+          /
+        
+        w
+        
+          )
+          
+            w
+          
+        
+        )
+        =
+        w
+        log
+        ⁡
+        (
+        n
+        
+          /
+        
+        w
+        )
+        =
+        s
+      
+    
+    {\displaystyle \log((n/w)^{w})=w\log(n/w)=s}
+  
+ bits of data to encode these regular words. We fix a bijection from the set of bit strings of length 
+  
+    
+      
+        s
+      
+    
+    {\displaystyle s}
+  
+ to the set of regular words of weight 
+  
+    
+      
+        w
+      
+    
+    {\displaystyle w}
+  
+ and length 
+  
+    
+      
+        n
+      
+    
+    {\displaystyle n}
+  
+ and then the FSB compression function is defined as follows :
+
+input: a message of size 
+  
+    
+      
+        s
+      
+    
+    {\displaystyle s}
+  
+
+convert to regular word of length 
+  
+    
+      
+        n
+      
+    
+    {\displaystyle n}
+  
+ and weight 
+  
+    
+      
+        w
+      
+    
+    {\displaystyle w}
+  
+
+multiply by the matrix 
+  
+    
+      
+        H
+      
+    
+    {\displaystyle H}
+  
+
+output: hash of size 
+  
+    
+      
+        r
+      
+    
+    {\displaystyle r}
+  
+
+This version is usually called syndrome-based compression. It is very slow and in practice done in a different and faster way resulting in fast syndrome-based compression. We split 
+  
+    
+      
+        H
+      
+    
+    {\displaystyle H}
+  
+ into sub-matrices 
+  
+    
+      
+        
+          H
+          
+            i
+          
+        
+      
+    
+    {\displaystyle H_{i}}
+  
+ of size 
+  
+    
+      
+        r
+        ×
+        n
+        
+          /
+        
+        w
+      
+    
+    {\displaystyle r\times n/w}
+  
+ and we fix a bijection from the bit strings of length 
+  
+    
+      
+        w
+        log
+        ⁡
+        (
+        n
+        
+          /
+        
+        w
+        )
+      
+    
+    {\displaystyle w\log(n/w)}
+  
+ to the set of sequences of 
+  
+    
+      
+        w
+      
+    
+    {\displaystyle w}
+  
+ numbers between 1 and 
+  
+    
+      
+        n
+        
+          /
+        
+        w
+      
+    
+    {\displaystyle n/w}
+  
+. This is equivalent to a bijection  to the set of regular words of length 
+  
+    
+      
+        n
+      
+    
+    {\displaystyle n}
+  
+ and weight 
+  
+    
+      
+        w
+      
+    
+    {\displaystyle w}
+  
+, since we can see such a word as a sequence of numbers between 1 and 
+  
+    
+      
+        n
+        
+          /
+        
+        w
+      
+    
+    {\displaystyle n/w}
+  
+. The compression function looks as follows:
+
+Input: message of size 
+  
+    
+      
+        s
+      
+    
+    {\displaystyle s}
+  
+
+Convert 
+  
+    
+      
+        s
+      
+    
+    {\displaystyle s}
+  
+ to a sequence of 
+  
+    
+      
+        w
+      
+    
+    {\displaystyle w}
+  
+ numbers 
+  
+    
+      
+        
+          s
+          
+            1
+          
+        
+        ,
+        …
+        ,
+        
+          s
+          
+            w
+          
+        
+      
+    
+    {\displaystyle s_{1},\dots ,s_{w}}
+  
+ between 1 and 
+  
+    
+      
+        n
+        
+          /
+        
+        w
+      
+    
+    {\displaystyle n/w}
+  
+
+Add the corresponding columns of the matrices 
+  
+    
+      
+        
+          H
+          
+            i
+          
+        
+      
+    
+    {\displaystyle H_{i}}
+  
+ to obtain a binary string a length 
+  
+    
+      
+        r
+      
+    
+    {\displaystyle r}
+  
+
+Output: hash of size 
+  
+    
+      
+        r
+      
+    
+    {\displaystyle r}
+  
+
+We can now use the Merkle–Damgård construction to generalize the compression function to accept inputs of arbitrary lengths.
+
+
+=== Example of the compression ===
+Situation and initialization: Hash a message 
+  
+    
+      
+        s
+        =
+        010011
+      
+    
+    {\displaystyle s=010011}
+  
+ using 
+  
+    
+      
+        4
+        ×
+        12
+      
+    
+    {\displaystyle 4\times 12}
+  
+ matrix H 
+
+  
+    
+      
+        H
+        =
+        
+          (
+          
+            
+              
+                
+                  1
+                
+                
+                  0
+                
+                
+                  1
+                
+                
+                  1
+                
+                
+                   
+                
+                
+                  0
+                
+                
+                  1
+                
+                
+                  0
+                
+                
+                  0
+                
+                
+                   
+                
+                
+                  1
+                
+                
+                  0
+                
+                
+                  1
+                
+                
+                  1
+                
+              
+              
+                
+                  0
+                
+                
+                  1
+                
+                
+                  0
+                
+                
+                  0
+                
+                
+                   
+                
+                
+                  0
+                
+                
+                  1
+                
+                
+                  1
+                
+                
+                  1
+                
+                
+                   
+                
+                
+                  0
+                
+                
+                  1
+                
+                
+                  0
+                
+                
+                  0
+                
+              
+              
+                
+                  0
+                
+                
+                  1
+                
+                
+                  1
+                
+                
+                  1
+                
+                
+                   
+                
+                
+                  0
+                
+                
+                  1
+                
+                
+                  0
+                
+                
+                  0
+                
+                
+                   
+                
+                
+                  1
+                
+                
+                  0
+                
+                
+                  1
+                
+                
+                  0
+                
+              
+              
+                
+                  1
+                
+                
+                  1
+                
+                
+                  0
+                
+                
+                  0
+                
+                
+                   
+                
+                
+                  1
+                
+                
+                  0
+                
+                
+                  1
+                
+                
+                  1
+                
+                
+                   
+                
+                
+                  0
+                
+                
+                  0
+                
+                
+                  0
+                
+                
+                  1
+                
+              
+            
+          
+          )
+        
+      
+    
+    {\displaystyle H=\left({\begin{array}{llllcllllcllll}1&0&1&1&~&0&1&0&0&~&1&0&1&1\\0&1&0&0&~&0&1&1&1&~&0&1&0&0\\0&1&1&1&~&0&1&0&0&~&1&0&1&0\\1&1&0&0&~&1&0&1&1&~&0&0&0&1\end{array}}\right)}
+  
+
+that is separated into 
+  
+    
+      
+        w
+        =
+        3
+      
+    
+    {\displaystyle w=3}
+  
+ sub-blocks 
+  
+    
+      
+        
+          H
+          
+            1
+          
+        
+      
+    
+    {\displaystyle H_{1}}
+  
+, 
+  
+    
+      
+        
+          H
+          
+            2
+          
+        
+      
+    
+    {\displaystyle H_{2}}
+  
+, 
+  
+    
+      
+        
+          H
+          
+            3
+          
+        
+      
+    
+    {\displaystyle H_{3}}
+  
+.
+Algorithm:
+
+We split the input 
+  
+    
+      
+        s
+      
+    
+    {\displaystyle s}
+  
+ into 
+  
+    
+      
+        w
+        =
+        3
+      
+    
+    {\displaystyle w=3}
+  
+ parts of length 
+  
+    
+      
+        
+          log
+          
+            2
+          
+        
+        ⁡
+        (
+        12
+        
+          /
+        
+        3
+        )
+        =
+        2
+      
+    
+    {\displaystyle \log _{2}(12/3)=2}
+  
+ and we get 
+  
+    
+      
+        
+          s
+          
+            1
+          
+        
+        =
+        01
+      
+    
+    {\displaystyle s_{1}=01}
+  
+, 
+  
+    
+      
+        
+          s
+          
+            2
+          
+        
+        =
+        00
+      
+    
+    {\displaystyle s_{2}=00}
+  
+, 
+  
+    
+      
+        
+          s
+          
+            3
+          
+        
+        =
+        11
+      
+    
+    {\displaystyle s_{3}=11}
+  
+.
+We convert each 
+  
+    
+      
+        
+          s
+          
+            i
+          
+        
+      
+    
+    {\displaystyle s_{i}}
+  
+ into an integer and get 
+  
+    
+      
+        
+          s
+          
+            1
+          
+        
+        =
+        1
+      
+    
+    {\displaystyle s_{1}=1}
+  
+, 
+  
+    
+      
+        
+          s
+          
+            2
+          
+        
+        =
+        0
+      
+    
+    {\displaystyle s_{2}=0}
+  
+, 
+  
+    
+      
+        
+          s
+          
+            3
+          
+        
+        =
+        3
+      
+    
+    {\displaystyle s_{3}=3}
+  
+.
+From the first sub-matrix 
+  
+    
+      
+        
+          H
+          
+            1
+          
+        
+      
+    
+    {\displaystyle H_{1}}
+  
+, we pick the column 2, from the second sub-matrix 
+  
+    
+      
+        
+          H
+          
+            2
+          
+        
+      
+    
+    {\displaystyle H_{2}}
+  
+ the column 1 and from the third sub-matrix the column 4.
+We add the chosen columns and obtain the result 
+  
+    
+      
+        r
+        =
+        0111
+        ⊕
+        0001
+        ⊕
+        1001
+        =
+        1111
+      
+    
+    {\displaystyle r=0111\oplus 0001\oplus 1001=1111}
+  
+.
+
+
+== Security proof of FSB ==
+The Merkle–Damgård construction is proven to base its security only on the security of the used compression function. So we only need to show that the compression function 
+  
+    
+      
+        ϕ
+      
+    
+    {\displaystyle \phi }
+  
+ is secure.
+A cryptographic hash function needs to be secure in three different aspects:
+
+Pre-image resistance: Given a Hash h it should be hard to find a message m such that Hash(m)=h
+Second pre-image resistance:	Given a message m1 it should be hard to find a message m2 such that Hash(m1) = Hash(m2)
+Collision resistance: It should be hard to find two different messages m1 and m2 such that Hash(m1)=Hash(m2)
+Note that if an adversary can find a second pre-image, then it can certainly find a collision. This means that if we can prove our system to be collision resistant, it will certainly be second-pre-image resistant.
+Usually in cryptography hard means something like “almost certainly beyond the reach of any adversary who must be prevented from breaking the system”. We will however need a more exact meaning of the word hard. We will take hard to mean “The runtime of any algorithm that finds a collision or pre-image will depend exponentially on size of the hash value”. This means that by relatively small additions to the hash size, we can quickly reach high security.
+
+
+=== Pre-image resistance and regular syndrome decoding (RSD) ===
+As said before, the security of FSB depends on a problem called regular syndrome decoding (RSD). Syndrome decoding is originally a problem from coding theory but its NP-completeness makes it a nice application for cryptography. Regular syndrome decoding is a special case of syndrome decoding and is defined as follows:
+Definition of RSD: given 
+  
+    
+      
+        w
+      
+    
+    {\displaystyle w}
+  
+ matrices 
+  
+    
+      
+        
+          H
+          
+            i
+          
+        
+      
+    
+    {\displaystyle H_{i}}
+  
+ of dimension 
+  
+    
+      
+        r
+        ×
+        (
+        n
+        
+          /
+        
+        w
+        )
+      
+    
+    {\displaystyle r\times (n/w)}
+  
+ and a bit string 
+  
+    
+      
+        S
+      
+    
+    {\displaystyle S}
+  
+ of length 
+  
+    
+      
+        r
+      
+    
+    {\displaystyle r}
+  
+ such that there exists a set of 
+  
+    
+      
+        w
+      
+    
+    {\displaystyle w}
+  
+ columns, one in each 
+  
+    
+      
+        
+          H
+          
+            i
+          
+        
+      
+    
+    {\displaystyle H_{i}}
+  
+, summing to 
+  
+    
+      
+        S
+      
+    
+    {\displaystyle S}
+  
+. Find such a set of columns.
+This problem has been proven to be NP-complete by a reduction from 3-dimensional matching. Again, though it is not known whether there exist polynomial time algorithms for solving NP-complete problems, none are known and finding one would be a huge discovery.
+It is easy to see that finding a pre-image of a given hash 
+  
+    
+      
+        S
+      
+    
+    {\displaystyle S}
+  
+ is exactly equivalent to this problem, so the problem of finding pre-images in FSB must also be NP-complete.
+We still need to prove collision resistance. For this we need another NP-complete variation of RSD: 2-regular null syndrome decoding.
+
+
+=== Collision resistance and 2-regular null syndrome decoding (2-RNSD) ===
+Definition of 2-RNSD: Given 
+  
+    
+      
+        w
+      
+    
+    {\displaystyle w}
+  
+ matrices 
+  
+    
+      
+        
+          H
+          
+            i
+          
+        
+      
+    
+    {\displaystyle H_{i}}
+  
+ of dimension 
+  
+    
+      
+        r
+        ×
+        (
+        n
+        
+          /
+        
+        w
+        )
+      
+    
+    {\displaystyle r\times (n/w)}
+  
+ and a bit string 
+  
+    
+      
+        S
+      
+    
+    {\displaystyle S}
+  
+ of length 
+  
+    
+      
+        r
+      
+    
+    {\displaystyle r}
+  
+ such that there exists a set of 
+  
+    
+      
+        
+          w
+          ′
+        
+      
+    
+    {\displaystyle w'}
+  
+ columns, two or zero in each 
+  
+    
+      
+        
+          H
+          
+            i
+          
+        
+      
+    
+    {\displaystyle H_{i}}
+  
+, summing to zero. 
+  
+    
+      
+        (
+        0
+        <
+        
+          w
+          ′
+        
+        <
+        2
+        w
+        )
+      
+    
+    {\displaystyle (0<w'<2w)}
+  
+. Find such a set of columns.
+2-RNSD has also been proven to be NP-complete by a reduction from 3-dimensional matching.
+Just like RSD is in essence equivalent to finding a regular word 
+  
+    
+      
+        w
+      
+    
+    {\displaystyle w}
+  
+ such that 
+  
+    
+      
+        H
+        w
+        =
+        S
+      
+    
+    {\displaystyle Hw=S}
+  
+, 2-RNSD is equivalent to finding a 2-regular word 
+  
+    
+      
+        
+          w
+          ′
+        
+      
+    
+    {\displaystyle w'}
+  
+ such that 
+  
+    
+      
+        H
+        
+          w
+          ′
+        
+        =
+        0
+      
+    
+    {\displaystyle Hw'=0}
+  
+. A 2-regular word of length 
+  
+    
+      
+        n
+      
+    
+    {\displaystyle n}
+  
+ and weight 
+  
+    
+      
+        w
+      
+    
+    {\displaystyle w}
+  
+ is a bit string of length 
+  
+    
+      
+        n
+      
+    
+    {\displaystyle n}
+  
+ such that in every interval 
+  
+    
+      
+        [
+        (
+        i
+        −
+        1
+        )
+        w
+        ,
+        i
+        w
+        )
+      
+    
+    {\displaystyle [(i-1)w,iw)}
+  
+ exactly two or zero entries are equal to 1. Note that a 2-regular word is just a sum of two regular words.
+Suppose that we have found a collision, so we have Hash(m1) = Hash(m2) with 
+  
+    
+      
+        
+          m
+          
+            1
+          
+        
+        ≠
+        
+          m
+          
+            2
+          
+        
+      
+    
+    {\displaystyle m_{1}\neq m_{2}}
+  
+. Then we can find two regular words 
+  
+    
+      
+        
+          w
+          
+            1
+          
+        
+      
+    
+    {\displaystyle w_{1}}
+  
+ and 
+  
+    
+      
+        
+          w
+          
+            2
+          
+        
+      
+    
+    {\displaystyle w_{2}}
+  
+ such that 
+  
+    
+      
+        H
+        
+          w
+          
+            1
+          
+        
+        =
+        H
+        
+          w
+          
+            2
+          
+        
+      
+    
+    {\displaystyle Hw_{1}=Hw_{2}}
+  
+ . We then have 
+  
+    
+      
+        H
+        (
+        
+          w
+          
+            1
+          
+        
+        +
+        
+          w
+          
+            2
+          
+        
+        )
+        =
+        H
+        
+          w
+          
+            1
+          
+        
+        +
+        H
+        
+          w
+          
+            2
+          
+        
+        =
+        2
+        H
+        
+          w
+          
+            1
+          
+        
+        =
+        0
+      
+    
+    {\displaystyle H(w_{1}+w_{2})=Hw_{1}+Hw_{2}=2Hw_{1}=0}
+  
+; 
+  
+    
+      
+        (
+        
+          w
+          
+            1
+          
+        
+        +
+        
+          w
+          
+            2
+          
+        
+        )
+      
+    
+    {\displaystyle (w_{1}+w_{2})}
+  
+ is a sum of two different regular words and so must be a 2-regular word of which the hash is zero, so we have solved an instance of 2-RNSD. We conclude that finding collisions in FSB is at least as difficult as solving 2-RNSD and so must be NP-complete.
+The latest versions of FSB use the compression function Whirlpool to further compress the hash output. Though this cannot be proven, the authors argue that this last compression does not reduce security. Note that even if one were able to find collisions in Whirlpool, one would still need to find the collisions pre-images in the original FSB compression function to find a collision in FSB.
+
+
+=== Examples ===
+Solving RSD, we are in the opposite situation as when hashing. Using the same values as in the previous example, we are given 
+  
+    
+      
+        H
+      
+    
+    {\displaystyle H}
+  
+ separated into 
+  
+    
+      
+        w
+        =
+        3
+      
+    
+    {\displaystyle w=3}
+  
+ sub-blocks and a string 
+  
+    
+      
+        r
+        =
+        1111
+      
+    
+    {\displaystyle r=1111}
+  
+. We are asked to find in each sub-block exactly one column such that they would all sum to 
+  
+    
+      
+        r
+      
+    
+    {\displaystyle r}
+  
+. The expected answer is thus 
+  
+    
+      
+        
+          s
+          
+            1
+          
+        
+        =
+        1
+      
+    
+    {\displaystyle s_{1}=1}
+  
+, 
+  
+    
+      
+        
+          s
+          
+            2
+          
+        
+        =
+        0
+      
+    
+    {\displaystyle s_{2}=0}
+  
+, 
+  
+    
+      
+        
+          s
+          
+            3
+          
+        
+        =
+        3
+      
+    
+    {\displaystyle s_{3}=3}
+  
+. This is known to be hard to compute for large matrices.
+In 2-RNSD we want to find in each sub-block not one column, but two or zero such that they would sum up to 0000 (and not to 
+  
+    
+      
+        r
+      
+    
+    {\displaystyle r}
+  
+). In the example, we might use column (counting from 0) 2 and 3 from 
+  
+    
+      
+        
+          H
+          
+            1
+          
+        
+      
+    
+    {\displaystyle H_{1}}
+  
+, no column from 
+  
+    
+      
+        
+          H
+          
+            2
+          
+        
+      
+    
+    {\displaystyle H_{2}}
+  
+ column 0 and 2 from 
+  
+    
+      
+        
+          H
+          
+            3
+          
+        
+      
+    
+    {\displaystyle H_{3}}
+  
+. More solutions are possible, for example might use no columns from 
+  
+    
+      
+        
+          H
+          
+            3
+          
+        
+      
+    
+    {\displaystyle H_{3}}
+  
+.
+
+
+=== Linear cryptanalysis ===
+The provable security of FSB means that finding collisions is NP-complete. But the proof is a reduction to a problem with asymptotically hard worst-case complexity. This offers only limited security assurance as there still can be an algorithm that easily solves the problem for a subset of the problem space. For example, there exists a linearization method that can be used to produce collisions of in a matter of seconds on a desktop PC for early variants of FSB with claimed 2^128 security. It is shown that the hash function offers minimal pre-image or collision resistance when the message space is chosen in a specific way.
+
+
+=== Practical security results ===
+The following table shows the complexity of the best known attacks against FSB.
+
+
+== Genesis ==
+FSB is a speed-up version of syndrome-based hash function (SB). In the case of SB the compression function is very similar to the encoding function of Niederreiter's version of McEliece cryptosystem. Instead of using the parity check matrix of a permuted Goppa code, SB uses a random matrix 
+  
+    
+      
+        H
+      
+    
+    {\displaystyle H}
+  
+. From the security point of view this can only strengthen the system.
+
+
+== Other properties ==
+Both the block size of the hash function and the output size are completely scalable.
+The speed can be adjusted by adjusting the number of bitwise operations used by FSB per input bit.
+The security can be adjusted by adjusting the output size.
+Bad instances exist and one must take care when choosing the matrix 
+  
+    
+      
+        H
+      
+    
+    {\displaystyle H}
+  
+.
+The matrix used in the compression function may grow large in certain situations. This might be a limitation when trying to use FSB on memory constrained devices. This problem was solved in the related hash function called Improved FSB, which is still provably secure, but relies on slightly stronger assumptions.
+
+
+== Variants ==
+In 2007, IFSB was published. In 2010, S-FSB was published, which is 30% faster than the original.
+
+In 2011, D. J. Bernstein and Tanja Lange published RFSB, which is 10x faster than the original FSB-256.
+ RFSB was shown to run very fast on the Spartan 6 FPGA, reaching throughputs of around 5 Gbit/s.>
+
+
+== References ==
+
+
+== External links ==
+FSB website for SHA-3 competition

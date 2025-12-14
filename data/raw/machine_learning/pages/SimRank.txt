@@ -1,0 +1,2101 @@
+SimRank is a general similarity measure, based on a simple and intuitive graph-theoretic model.
+SimRank is applicable in any domain with object-to-object relationships, that measures similarity of the structural context in which objects occur, based on their relationships with other objects.
+Effectively, SimRank is a measure that says "two objects are considered to be similar if they are referenced by similar objects." Although SimRank is widely adopted, it may output unreasonable similarity scores which are influenced by different factors, and can be solved in several ways, such as introducing an evidence weight factor, inserting additional terms that are neglected by SimRank or using PageRank-based alternatives.
+
+
+== Introduction ==
+Many applications require a measure of "similarity" between objects.
+One obvious example is the "find-similar-document" query,
+on traditional text corpora or the World-Wide Web.
+More generally, a similarity measure can be used to cluster objects, such as for collaborative filtering in a recommender system, in which “similar” users and items are grouped based on the users’ preferences.
+Various aspects of objects can be used to determine similarity, usually depending on the domain and the appropriate definition of similarity for that domain.
+In a document corpus, matching text may be used, and for collaborative filtering, similar users may be identified by common preferences.
+SimRank is a general approach that exploits the object-to-object relationships found in many domains of interest.
+On the Web, for example, two pages are related if there are hyperlinks between them.
+A similar approach can be applied to scientific papers and their citations, or to any other document corpus with cross-reference information.
+In the case of recommender systems, a user’s preference for an item constitutes a relationship between the user and the item.
+Such domains are naturally modeled as graphs, with nodes representing objects and edges representing relationships.
+The intuition behind the SimRank algorithm is that, in many domains, similar objects are referenced by similar objects.
+More precisely, objects 
+  
+    
+      
+        a
+      
+    
+    {\displaystyle a}
+  
+ and 
+  
+    
+      
+        b
+      
+    
+    {\displaystyle b}
+  
+ are considered to be similar if they are pointed from objects 
+  
+    
+      
+        c
+      
+    
+    {\displaystyle c}
+  
+ and 
+  
+    
+      
+        d
+      
+    
+    {\displaystyle d}
+  
+, respectively, and 
+  
+    
+      
+        c
+      
+    
+    {\displaystyle c}
+  
+ and 
+  
+    
+      
+        d
+      
+    
+    {\displaystyle d}
+  
+ are themselves similar.
+The base case is that objects are maximally similar to themselves
+.
+It is important to note that SimRank is a general algorithm that determines only the similarity of structural context.
+SimRank applies to any domain where there are enough relevant relationships between objects to base at least some notion of similarity on relationships.
+Obviously, similarity of other domain-specific aspects are important as well; these can — and should be combined with relational structural-context similarity for an overall similarity measure.
+For example, for Web pages SimRank can be combined with traditional textual similarity; the same idea applies to scientific papers or other document corpora.
+For recommendation systems, there may be built-in known similarities between items (e.g., both computers, both clothing, etc.), as well as similarities between users (e.g., same gender, same spending level).
+Again, these similarities can be combined with the similarity scores that are computed based on preference patterns, in order to produce an overall similarity measure.
+
+
+== Basic SimRank equation ==
+For a node 
+  
+    
+      
+        v
+      
+    
+    {\displaystyle v}
+  
+ in a directed graph, we denote by 
+  
+    
+      
+        I
+        (
+        v
+        )
+      
+    
+    {\displaystyle I(v)}
+  
+ and 
+  
+    
+      
+        O
+        (
+        v
+        )
+      
+    
+    {\displaystyle O(v)}
+  
+ the set of in-neighbors and out-neighbors of 
+  
+    
+      
+        v
+      
+    
+    {\displaystyle v}
+  
+, respectively.
+Individual in-neighbors are denoted as 
+  
+    
+      
+        
+          I
+          
+            i
+          
+        
+        (
+        v
+        )
+      
+    
+    {\displaystyle I_{i}(v)}
+  
+, for 
+  
+    
+      
+        1
+        ≤
+        i
+        ≤
+        
+          |
+          
+            I
+            (
+            v
+            )
+          
+          |
+        
+      
+    
+    {\displaystyle 1\leq i\leq \left|I(v)\right|}
+  
+, and individual
+out-neighbors are denoted as 
+  
+    
+      
+        
+          O
+          
+            i
+          
+        
+        (
+        v
+        )
+      
+    
+    {\displaystyle O_{i}(v)}
+  
+, for 
+  
+    
+      
+        1
+        ≤
+        i
+        ≤
+        
+          |
+          
+            O
+            (
+            v
+            )
+          
+          |
+        
+      
+    
+    {\displaystyle 1\leq i\leq \left|O(v)\right|}
+  
+.
+Let us denote the similarity between objects 
+  
+    
+      
+        a
+      
+    
+    {\displaystyle a}
+  
+ and 
+  
+    
+      
+        b
+      
+    
+    {\displaystyle b}
+  
+ by 
+  
+    
+      
+        s
+        (
+        a
+        ,
+        b
+        )
+        ∈
+        [
+        0
+        ,
+        1
+        ]
+      
+    
+    {\displaystyle s(a,b)\in [0,1]}
+  
+. 
+Following the earlier motivation, a recursive equation is written for 
+  
+    
+      
+        s
+        (
+        a
+        ,
+        b
+        )
+      
+    
+    {\displaystyle s(a,b)}
+  
+.
+If 
+  
+    
+      
+        a
+        =
+        b
+      
+    
+    {\displaystyle a=b}
+  
+ then 
+  
+    
+      
+        s
+        (
+        a
+        ,
+        b
+        )
+      
+    
+    {\displaystyle s(a,b)}
+  
+ is defined to be 
+  
+    
+      
+        1
+      
+    
+    {\displaystyle 1}
+  
+.
+Otherwise,
+
+  
+    
+      
+        s
+        (
+        a
+        ,
+        b
+        )
+        =
+        
+          
+            C
+            
+              
+                |
+                
+                  I
+                  (
+                  a
+                  )
+                
+                |
+              
+              
+                |
+                
+                  I
+                  (
+                  b
+                  )
+                
+                |
+              
+            
+          
+        
+        
+          ∑
+          
+            i
+            =
+            1
+          
+          
+            
+              |
+              
+                I
+                (
+                a
+                )
+              
+              |
+            
+          
+        
+        
+          ∑
+          
+            j
+            =
+            1
+          
+          
+            
+              |
+              
+                I
+                (
+                b
+                )
+              
+              |
+            
+          
+        
+        s
+        (
+        
+          I
+          
+            i
+          
+        
+        (
+        a
+        )
+        ,
+        
+          I
+          
+            j
+          
+        
+        (
+        b
+        )
+        )
+      
+    
+    {\displaystyle s(a,b)={\frac {C}{\left|I(a)\right|\left|I(b)\right|}}\sum _{i=1}^{\left|I(a)\right|}\sum _{j=1}^{\left|I(b)\right|}s(I_{i}(a),I_{j}(b))}
+  
+
+where 
+  
+    
+      
+        C
+      
+    
+    {\displaystyle C}
+  
+ is a constant between 
+  
+    
+      
+        0
+      
+    
+    {\displaystyle 0}
+  
+ and 
+  
+    
+      
+        1
+      
+    
+    {\displaystyle 1}
+  
+.
+A slight technicality here is that either 
+  
+    
+      
+        a
+      
+    
+    {\displaystyle a}
+  
+ or 
+  
+    
+      
+        b
+      
+    
+    {\displaystyle b}
+  
+ may not have any in-neighbors.
+Since there is no way to infer any similarity between 
+  
+    
+      
+        a
+      
+    
+    {\displaystyle a}
+  
+ and 
+  
+    
+      
+        b
+      
+    
+    {\displaystyle b}
+  
+ in this case, similarity is set to 
+  
+    
+      
+        s
+        (
+        a
+        ,
+        b
+        )
+        =
+        0
+      
+    
+    {\displaystyle s(a,b)=0}
+  
+, so the summation in the above equation is defined to be 
+  
+    
+      
+        0
+      
+    
+    {\displaystyle 0}
+  
+ when 
+  
+    
+      
+        I
+        (
+        a
+        )
+        =
+        ∅
+      
+    
+    {\displaystyle I(a)=\emptyset }
+  
+ or 
+  
+    
+      
+        I
+        (
+        b
+        )
+        =
+        ∅
+      
+    
+    {\displaystyle I(b)=\emptyset }
+  
+.
+
+
+== Matrix representation of SimRank ==
+Given an arbitrary constant 
+  
+    
+      
+        C
+      
+    
+    {\displaystyle C}
+  
+ between 
+  
+    
+      
+        0
+      
+    
+    {\displaystyle 0}
+  
+ and 
+  
+    
+      
+        1
+      
+    
+    {\displaystyle 1}
+  
+, let 
+  
+    
+      
+        
+          S
+        
+      
+    
+    {\displaystyle \mathbf {S} }
+  
+ be the similarity matrix whose entry 
+  
+    
+      
+        [
+        
+          S
+        
+        
+          ]
+          
+            a
+            ,
+            b
+          
+        
+      
+    
+    {\displaystyle [\mathbf {S} ]_{a,b}}
+  
+ denotes the similarity score 
+  
+    
+      
+        s
+        (
+        a
+        ,
+        b
+        )
+      
+    
+    {\displaystyle s(a,b)}
+  
+, and 
+  
+    
+      
+        
+          A
+        
+      
+    
+    {\displaystyle \mathbf {A} }
+  
+ be the column normalized adjacency matrix whose entry 
+  
+    
+      
+        [
+        
+          A
+        
+        
+          ]
+          
+            a
+            ,
+            b
+          
+        
+        =
+        
+          
+            
+              1
+              
+                
+                  |
+                
+                
+                  
+                    I
+                  
+                
+                (
+                b
+                )
+                
+                  |
+                
+              
+            
+          
+        
+      
+    
+    {\displaystyle [\mathbf {A} ]_{a,b}={\tfrac {1}{|{\mathcal {I}}(b)|}}}
+  
+ if there is an edge from 
+  
+    
+      
+        a
+      
+    
+    {\displaystyle a}
+  
+ to 
+  
+    
+      
+        b
+      
+    
+    {\displaystyle b}
+  
+, and 0 otherwise. Then, in matrix notations, SimRank can be formulated as
+
+  
+    
+      
+        
+          
+            S
+          
+        
+        =
+        max
+        {
+        C
+        ⋅
+        (
+        
+          
+            A
+          
+          
+            T
+          
+        
+        ⋅
+        
+          
+            S
+          
+        
+        ⋅
+        
+          
+            A
+          
+        
+        )
+        ,
+        
+          
+            I
+          
+        
+        }
+        ,
+      
+    
+    {\displaystyle {\mathbf {S} }=\max\{C\cdot (\mathbf {A} ^{T}\cdot {\mathbf {S} }\cdot {\mathbf {A} }),{\mathbf {I} }\},}
+  
+
+where 
+  
+    
+      
+        
+          I
+        
+      
+    
+    {\displaystyle \mathbf {I} }
+  
+ is an identity matrix.
+
+
+== Computing SimRank ==
+A solution to the SimRank equations for a graph 
+  
+    
+      
+        G
+      
+    
+    {\displaystyle G}
+  
+ can be reached by iteration to a fixed-point.
+Let 
+  
+    
+      
+        n
+      
+    
+    {\displaystyle n}
+  
+ be the number of nodes in 
+  
+    
+      
+        G
+      
+    
+    {\displaystyle G}
+  
+.
+For each iteration 
+  
+    
+      
+        k
+      
+    
+    {\displaystyle k}
+  
+, we can keep 
+  
+    
+      
+        
+          n
+          
+            2
+          
+        
+      
+    
+    {\displaystyle n^{2}}
+  
+ entries 
+  
+    
+      
+        
+          s
+          
+            k
+          
+        
+        (
+        ∗
+        ,
+        ∗
+        )
+      
+    
+    {\displaystyle s_{k}(*,*)}
+  
+, where 
+  
+    
+      
+        
+          s
+          
+            k
+          
+        
+        (
+        a
+        ,
+        b
+        )
+      
+    
+    {\displaystyle s_{k}(a,b)}
+  
+ gives the score between 
+  
+    
+      
+        a
+      
+    
+    {\displaystyle a}
+  
+ and 
+  
+    
+      
+        b
+      
+    
+    {\displaystyle b}
+  
+ on iteration 
+  
+    
+      
+        k
+      
+    
+    {\displaystyle k}
+  
+.
+We successively compute 
+  
+    
+      
+        
+          s
+          
+            k
+            +
+            1
+          
+        
+        (
+        ∗
+        ,
+        ∗
+        )
+      
+    
+    {\displaystyle s_{k+1}(*,*)}
+  
+ based on 
+  
+    
+      
+        
+          s
+          
+            k
+          
+        
+        (
+        ∗
+        ,
+        ∗
+        )
+      
+    
+    {\displaystyle s_{k}(*,*)}
+  
+.
+We start with 
+  
+    
+      
+        
+          s
+          
+            0
+          
+        
+        (
+        ∗
+        ,
+        ∗
+        )
+      
+    
+    {\displaystyle s_{0}(*,*)}
+  
+ where each 
+  
+    
+      
+        
+          s
+          
+            0
+          
+        
+        (
+        a
+        ,
+        b
+        )
+      
+    
+    {\displaystyle s_{0}(a,b)}
+  
+ is a lower bound on the actual SimRank score 
+  
+    
+      
+        s
+        (
+        a
+        ,
+        b
+        )
+      
+    
+    {\displaystyle s(a,b)}
+  
+:
+
+  
+    
+      
+        
+          s
+          
+            0
+          
+        
+        (
+        a
+        ,
+        b
+        )
+        =
+        
+          
+            {
+            
+              
+                
+                  1
+                  
+                    
+                       
+                    
+                  
+                  ,
+                  
+                    
+                       
+                    
+                  
+                  
+                    
+                      if 
+                    
+                  
+                  a
+                  =
+                  b
+                  
+                    
+                       
+                    
+                  
+                  ,
+                
+              
+              
+                
+                  0
+                  
+                    
+                       
+                    
+                  
+                  ,
+                  
+                    
+                       
+                    
+                  
+                  
+                    
+                      if 
+                    
+                  
+                  a
+                  ≠
+                  b
+                  
+                    
+                       
+                    
+                  
+                  .
+                
+              
+            
+            
+          
+        
+      
+    
+    {\displaystyle s_{0}(a,b)={\begin{cases}1{\mbox{  }},{\mbox{    }}{\mbox{if }}a=b{\mbox{  }},\\0{\mbox{  }},{\mbox{    }}{\mbox{if }}a\neq b{\mbox{  }}.\end{cases}}}
+  
+
+To compute 
+  
+    
+      
+        
+          s
+          
+            k
+            +
+            1
+          
+        
+        (
+        a
+        ,
+        b
+        )
+      
+    
+    {\displaystyle s_{k+1}(a,b)}
+  
+ from 
+  
+    
+      
+        
+          s
+          
+            k
+          
+        
+        (
+        ∗
+        ,
+        ∗
+        )
+      
+    
+    {\displaystyle s_{k}(*,*)}
+  
+, we use the basic SimRank equation to get:
+
+  
+    
+      
+        
+          s
+          
+            k
+            +
+            1
+          
+        
+        (
+        a
+        ,
+        b
+        )
+        =
+        
+          
+            C
+            
+              
+                |
+                
+                  I
+                  (
+                  a
+                  )
+                
+                |
+              
+              
+                |
+                
+                  I
+                  (
+                  b
+                  )
+                
+                |
+              
+            
+          
+        
+        
+          ∑
+          
+            i
+            =
+            1
+          
+          
+            
+              |
+              
+                I
+                (
+                a
+                )
+              
+              |
+            
+          
+        
+        
+          ∑
+          
+            j
+            =
+            1
+          
+          
+            
+              |
+              
+                I
+                (
+                b
+                )
+              
+              |
+            
+          
+        
+        
+          s
+          
+            k
+          
+        
+        (
+        
+          I
+          
+            i
+          
+        
+        (
+        a
+        )
+        ,
+        
+          I
+          
+            j
+          
+        
+        (
+        b
+        )
+        )
+      
+    
+    {\displaystyle s_{k+1}(a,b)={\frac {C}{\left|I(a)\right|\left|I(b)\right|}}\sum _{i=1}^{\left|I(a)\right|}\sum _{j=1}^{\left|I(b)\right|}s_{k}(I_{i}(a),I_{j}(b))}
+  
+
+for 
+  
+    
+      
+        a
+        ≠
+        b
+      
+    
+    {\displaystyle a\neq b}
+  
+, and 
+  
+    
+      
+        
+          s
+          
+            k
+            +
+            1
+          
+        
+        (
+        a
+        ,
+        b
+        )
+        =
+        1
+      
+    
+    {\displaystyle s_{k+1}(a,b)=1}
+  
+ for 
+  
+    
+      
+        a
+        =
+        b
+      
+    
+    {\displaystyle a=b}
+  
+.
+That is, on each iteration 
+  
+    
+      
+        k
+        +
+        1
+      
+    
+    {\displaystyle k+1}
+  
+, we update the similarity of 
+  
+    
+      
+        (
+        a
+        ,
+        b
+        )
+      
+    
+    {\displaystyle (a,b)}
+  
+ using the similarity scores of the neighbours of 
+  
+    
+      
+        (
+        a
+        ,
+        b
+        )
+      
+    
+    {\displaystyle (a,b)}
+  
+ from the previous iteration 
+  
+    
+      
+        k
+      
+    
+    {\displaystyle k}
+  
+ according to the basic SimRank equation.
+The values 
+  
+    
+      
+        
+          s
+          
+            k
+          
+        
+        (
+        ∗
+        ,
+        ∗
+        )
+      
+    
+    {\displaystyle s_{k}(*,*)}
+  
+ are nondecreasing as 
+  
+    
+      
+        k
+      
+    
+    {\displaystyle k}
+  
+ increases.
+It was shown in  that the values converge to limits satisfying the basic SimRank equation, the SimRank scores 
+  
+    
+      
+        s
+        (
+        ∗
+        ,
+        ∗
+        )
+      
+    
+    {\displaystyle s(*,*)}
+  
+, i.e., for all 
+  
+    
+      
+        a
+        ,
+        b
+        ∈
+        V
+      
+    
+    {\displaystyle a,b\in V}
+  
+, 
+  
+    
+      
+        
+          lim
+          
+            k
+            →
+            ∞
+          
+        
+        
+          s
+          
+            k
+          
+        
+        (
+        a
+        ,
+        b
+        )
+        =
+        s
+        (
+        a
+        ,
+        b
+        )
+      
+    
+    {\displaystyle \lim _{k\to \infty }s_{k}(a,b)=s(a,b)}
+  
+.
+The original SimRank proposal suggested choosing the decay factor 
+  
+    
+      
+        C
+        =
+        0.8
+      
+    
+    {\displaystyle C=0.8}
+  
+ and a fixed number 
+  
+    
+      
+        K
+        =
+        5
+      
+    
+    {\displaystyle K=5}
+  
+ of iterations to perform.
+However, the recent research  showed that the given values for 
+  
+    
+      
+        C
+      
+    
+    {\displaystyle C}
+  
+ and 
+  
+    
+      
+        K
+      
+    
+    {\displaystyle K}
+  
+ generally imply relatively low accuracy of iteratively computed SimRank scores.
+For guaranteeing more accurate computation results, the latter paper suggests either using a smaller decay factor (in particular, 
+  
+    
+      
+        C
+        =
+        0.6
+      
+    
+    {\displaystyle C=0.6}
+  
+) or taking more iterations.
+
+
+== CoSimRank ==
+CoSimRank is a variant of SimRank with the advantage of also having a local formulation, i.e. CoSimRank can be computed for a single node pair. Let 
+  
+    
+      
+        
+          S
+        
+      
+    
+    {\displaystyle \mathbf {S} }
+  
+ be the similarity matrix whose entry 
+  
+    
+      
+        [
+        
+          S
+        
+        
+          ]
+          
+            a
+            ,
+            b
+          
+        
+      
+    
+    {\displaystyle [\mathbf {S} ]_{a,b}}
+  
+ denotes the similarity score 
+  
+    
+      
+        s
+        (
+        a
+        ,
+        b
+        )
+      
+    
+    {\displaystyle s(a,b)}
+  
+, and 
+  
+    
+      
+        
+          A
+        
+      
+    
+    {\displaystyle \mathbf {A} }
+  
+ be the column normalized adjacency matrix. Then, in matrix notations, CoSimRank can be formulated as:
+
+  
+    
+      
+        
+          
+            S
+          
+        
+        =
+        C
+        ⋅
+        (
+        
+          
+            A
+          
+          
+            T
+          
+        
+        ⋅
+        
+          
+            S
+          
+        
+        ⋅
+        
+          
+            A
+          
+        
+        )
+        +
+        
+          
+            I
+          
+        
+        ,
+      
+    
+    {\displaystyle {\mathbf {S} }=C\cdot (\mathbf {A} ^{T}\cdot {\mathbf {S} }\cdot {\mathbf {A} })+{\mathbf {I} },}
+  
+
+where 
+  
+    
+      
+        
+          I
+        
+      
+    
+    {\displaystyle \mathbf {I} }
+  
+ is an identity matrix. To compute the similarity score of only a single node pair, let 
+  
+    
+      
+        
+          p
+          
+            (
+            0
+            )
+          
+        
+        (
+        i
+        )
+        =
+        
+          e
+          
+            i
+          
+        
+      
+    
+    {\displaystyle p^{(0)}(i)=e_{i}}
+  
+, with 
+  
+    
+      
+        
+          e
+          
+            i
+          
+        
+      
+    
+    {\displaystyle e_{i}}
+  
+ being a vector of the
+standard basis, i.e., the 
+  
+    
+      
+        i
+      
+    
+    {\displaystyle i}
+  
+-th entry is 1 and all other entries are 0. Then, CoSimRank can be computed in two steps:
+
+  
+    
+      
+        
+          p
+          
+            (
+            k
+            )
+          
+        
+        =
+        A
+        
+          p
+          
+            (
+            k
+            −
+            1
+            )
+          
+        
+      
+    
+    {\displaystyle p^{(k)}=Ap^{(k-1)}}
+  
+
+  
+    
+      
+        s
+        (
+        i
+        ,
+        j
+        )
+        =
+        
+          ∑
+          
+            k
+            =
+            0
+          
+          
+            ∞
+          
+        
+        
+          C
+          
+            k
+          
+        
+        ⟨
+        
+          p
+          
+            (
+            k
+            )
+          
+        
+        (
+        i
+        )
+        ,
+        
+          p
+          
+            (
+            k
+            )
+          
+        
+        (
+        j
+        )
+        ⟩
+      
+    
+    {\displaystyle s(i,j)=\sum _{k=0}^{\infty }C^{k}\langle p^{(k)}(i),p^{(k)}(j)\rangle }
+  
+
+Step one can be seen a simplified version of Personalized PageRank. Step two sums up the vector similarity of each iteration. Both, matrix and local representation, compute the same similarity score. CoSimRank can also be used to compute the similarity of sets of nodes, by modifying 
+  
+    
+      
+        
+          p
+          
+            (
+            0
+            )
+          
+        
+        (
+        i
+        )
+      
+    
+    {\displaystyle p^{(0)}(i)}
+  
+.
+
+
+== Further research on SimRank ==
+Fogaras and Racz  suggested speeding up SimRank computation through probabilistic computation using the Monte Carlo method.
+Antonellis et al. extended SimRank equations to take into consideration (i) evidence factor for incident nodes and (ii) link weights.
+Yu et al. further improved SimRank computation via a fine-grained memoization method to share small common parts among different partial sums.
+Chen and Giles discussed the limitations and proper use cases of SimRank.
+
+
+=== Partial Sums Memoization ===
+Lizorkin et al. proposed three optimization techniques for speeding up the computation of SimRank:
+
+Essential nodes selection may eliminate the computation of a fraction of node pairs with a-priori zero scores.
+Partial sums memoization can effectively reduce repeated calculations of the similarity among different node pairs by caching part of similarity summations for later reuse.
+A threshold setting on the similarity enables a further reduction in the number of node pairs to be computed.
+In particular, the second observation of partial sums memoization plays a paramount role in greatly speeding up the computation of SimRank from 
+  
+    
+      
+        
+          
+            O
+          
+        
+        (
+        K
+        
+          d
+          
+            2
+          
+        
+        
+          n
+          
+            2
+          
+        
+        )
+      
+    
+    {\displaystyle {\mathcal {O}}(Kd^{2}n^{2})}
+  
+ to 
+  
+    
+      
+        
+          
+            O
+          
+        
+        (
+        K
+        d
+        
+          n
+          
+            2
+          
+        
+        )
+      
+    
+    {\displaystyle {\mathcal {O}}(Kdn^{2})}
+  
+, where 
+  
+    
+      
+        K
+      
+    
+    {\displaystyle K}
+  
+ is the number of iterations, 
+  
+    
+      
+        d
+      
+    
+    {\displaystyle d}
+  
+ is average degree of a graph, and 
+  
+    
+      
+        n
+      
+    
+    {\displaystyle n}
+  
+ is the number of nodes in a graph. The central idea of partial sums memoization consists of two steps:
+First, the partial sums over 
+  
+    
+      
+        I
+        (
+        a
+        )
+      
+    
+    {\displaystyle I(a)}
+  
+ are memoized as
+
+  
+    
+      
+        
+          
+            Partial
+          
+          
+            I
+            (
+            a
+            )
+          
+          
+            
+              s
+              
+                k
+              
+            
+          
+        
+        (
+        j
+        )
+        =
+        
+          ∑
+          
+            i
+            ∈
+            I
+            (
+            a
+            )
+          
+        
+        
+          s
+          
+            k
+          
+        
+        (
+        i
+        ,
+        j
+        )
+        ,
+        
+        (
+        ∀
+        j
+        ∈
+        I
+        (
+        b
+        )
+        )
+      
+    
+    {\displaystyle {\text{Partial}}_{I(a)}^{s_{k}}(j)=\sum _{i\in I(a)}s_{k}(i,j),\qquad (\forall j\in I(b))}
+  
+
+and then 
+  
+    
+      
+        
+          s
+          
+            k
+            +
+            1
+          
+        
+        (
+        a
+        ,
+        b
+        )
+      
+    
+    {\displaystyle s_{k+1}(a,b)}
+  
+ is iteratively computed from 
+  
+    
+      
+        
+          
+            Partial
+          
+          
+            I
+            (
+            a
+            )
+          
+          
+            
+              s
+              
+                k
+              
+            
+          
+        
+        (
+        j
+        )
+      
+    
+    {\displaystyle {\text{Partial}}_{I(a)}^{s_{k}}(j)}
+  
+ as
+
+  
+    
+      
+        
+          s
+          
+            k
+            +
+            1
+          
+        
+        (
+        a
+        ,
+        b
+        )
+        =
+        
+          
+            C
+            
+              
+                |
+              
+              I
+              (
+              a
+              )
+              
+                |
+              
+              
+                |
+              
+              I
+              (
+              b
+              )
+              
+                |
+              
+            
+          
+        
+        
+          ∑
+          
+            j
+            ∈
+            I
+            (
+            b
+            )
+          
+        
+        
+          
+            Partial
+          
+          
+            I
+            (
+            a
+            )
+          
+          
+            
+              s
+              
+                k
+              
+            
+          
+        
+        (
+        j
+        )
+        .
+      
+    
+    {\displaystyle s_{k+1}(a,b)={\frac {C}{|I(a)||I(b)|}}\sum _{j\in I(b)}{\text{Partial}}_{I(a)}^{s_{k}}(j).}
+  
+
+Consequently, the results of 
+  
+    
+      
+        
+          
+            Partial
+          
+          
+            I
+            (
+            a
+            )
+          
+          
+            
+              s
+              
+                k
+              
+            
+          
+        
+        (
+        j
+        )
+      
+    
+    {\displaystyle {\text{Partial}}_{I(a)}^{s_{k}}(j)}
+  
+, 
+  
+    
+      
+        ∀
+        j
+        ∈
+        I
+        (
+        b
+        )
+      
+    
+    {\displaystyle \forall j\in I(b)}
+  
+,
+can be reused later when we compute the similarities 
+  
+    
+      
+        
+          s
+          
+            k
+            +
+            1
+          
+        
+        (
+        a
+        ,
+        ∗
+        )
+      
+    
+    {\displaystyle s_{k+1}(a,*)}
+  
+ for a given vertex 
+  
+    
+      
+        a
+      
+    
+    {\displaystyle a}
+  
+ as the first argument.
+
+
+== See also ==
+PageRank
+
+
+== Citations ==
+
+
+== Sources ==
+Cai, Y.; Cong, G.; Jia, X.; Liu, H.; He, J.; Lu, J.; Du, X. (2009-12-01). "Efficient Algorithm for Computing Link-Based Similarity in Real World Networks". 2009 Ninth IEEE International Conference on Data Mining. pp. 734–739. doi:10.1109/ICDM.2009.136. ISBN 978-1-4244-5242-2. S2CID 9799597.

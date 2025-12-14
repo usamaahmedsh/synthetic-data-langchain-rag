@@ -1,0 +1,42 @@
+splice() is a Linux-specific system call that moves data between a file descriptor and a pipe without a round trip to user space. The related system call vmsplice() moves or copies data between a pipe and user space.  Ideally, splice and vmsplice work by remapping pages and do not actually copy any data, which may improve I/O performance. As linear addresses do not necessarily correspond to contiguous physical addresses, this may not be possible in all cases and on all hardware combinations.
+
+
+== Workings ==
+With splice(), one can move data from one file descriptor to another without incurring any copies from user space into kernel space, which is usually required to enforce system security and also to keep a simple interface for processes to read and write to files. splice() works by using the pipe buffer. A pipe buffer is an in-kernel memory buffer that is opaque to the userspace process. A user process can splice the contents of a source file into this pipe buffer, then splice the pipe buffer into the destination file, all without moving any data through userspace.
+
+
+== Origins ==
+Linus Torvalds described splice() in a 2006 email, which was included in a KernelTrap article.
+The Linux splice implementation borrows some ideas from an original proposal by Larry McVoy in 1998. The splice system calls first appeared in Linux kernel version 2.6.17 and were written by Jens Axboe.
+
+
+== Prototype ==
+
+Some constants that are of interest are:
+
+
+== Example ==
+This is an example of splice in action:
+
+
+== Complementary system calls ==
+splice() is one of three system calls that complete the splice() architecture. vmsplice() can map an application data area into a pipe (or vice versa), thus allowing transfers between pipes and user memory where sys_splice() transfers between a file descriptor and a pipe. tee() is the last part of the trilogy. It duplicates one pipe to another, enabling forks in the way applications are connected with pipes.
+
+
+== Requirements ==
+When using splice() with sockets, the network controller (NIC) should support DMA, otherwise splice() will not deliver a large performance improvement. The reason for this is that each page of the pipe will just fill up to frame size (1460 bytes of the available 4096 bytes per page).
+Not all filesystem types support splice().
+
+
+== See also ==
+System call
+Zero-copy
+
+
+== References ==
+
+
+== External links ==
+Linux kernel 2.6.17 (kernelnewbies.org)
+Two new system calls: splice() and sync_file_range() (LWN.net)
+Some new system calls (LWN.net)

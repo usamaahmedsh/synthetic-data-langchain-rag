@@ -1,0 +1,39 @@
+In the C and C++ programming languages, #pragma once is a non-standard but widely supported preprocessor directive designed to cause the current header file to be included only once in a single compilation. Thus, #pragma once serves the same purpose as #include guards, but with several advantages, including less code, avoidance of name clashes, and sometimes improvement in compilation speed. While #pragma once is available in most modern compilers, its implementation is tricky and might not always be reliable.
+Modules, introduced in C++20, eliminate the necessity of #pragma once, due to not being handled by the preprocessor. Modules can only be imported at most one time into a translation unit.
+
+
+== Example ==
+File "Grandparent.h"
+
+File "Parent.h"
+
+File "Child.c"
+
+In this example, the inclusion of Grandparent.h in both Parent.h and Child.c would ordinarily cause a compilation error, because a struct with a given name can only be defined a single time in a given compilation. The #pragma once directive serves to avoid this by ignoring subsequent inclusions of Grandparent.h.
+
+
+== Advantages ==
+Using #pragma once allows the C preprocessor to include a header file when it is needed and to ignore an #include directive otherwise. This has the effect of altering the behavior of the C preprocessor itself, and allows programmers to express file dependencies in a simple fashion, obviating the need for manual management.
+The most common alternative to #pragma once is to use #define to set an #include guard macro, the name of which is picked by the programmer to be unique to that file. For example,
+
+This approach minimally ensures that the contents of the include file are not seen more than once. This is more verbose, requires greater manual intervention, and is prone to programmer error as there are no mechanisms available to the compiler for prevention of accidental use of the same macro name in more than one file, which would result in only one of the files being included. Such errors are unlikely to remain undetected but can complicate the interpretation of a compiler error report. Since the pre-processor itself is responsible for handling #pragma once, the programmer cannot make errors which cause name clashes.
+In the absence of #include guards around #include directives, the use of #pragma once will improve compilation speed for some compilers since it is a higher-level mechanism; the compiler itself can compare filenames or inodes without having to invoke the C preprocessor to scan the header for #ifndef and #endif. Yet, since include guards appear very often and the overhead of opening files is significant, it is common for compilers to optimize the handling of include guards, making them as fast as #pragma once.
+
+
+== Caveats ==
+Identifying the same file on a file system is not a trivial task. Symbolic links and especially hard links may cause the same file to be found under different names in different directories. Compilers may use a heuristic that compares file size, modification time and content. Additionally, #pragma once can do the wrong thing if the same file is intentionally copied into several parts of a project, e.g. when preparing the build. Whereas include guards would still protect from double definitions, #pragma once may or may not treat them as the same file in a compiler-dependent way.  These difficulties, together with difficulties related to defining what constitutes the same file in the presence of hard links, networked file systems, etc. has so far prevented the standardization of #pragma once.
+The use of #include guard macros allows dependent code to recognize and respond to slight differences in semantics or interfaces of competing alternatives. For example,
+
+In this case, the direct determination for which API is available would make use of the fact that the include file had advertised itself with its #include guard macro.
+The #include directive is defined to represent a programmer's intention to actually include the text of a file at the point of the directive. This may occur several times within a single compilation unit, and is useful for evaluating macro-containing contents multiple times against changing definitions of the macro.
+The use of #pragma once, like the use of #include guard macros within an include file places the responsibility upon its authors in order to protect against undesired multiple inclusion. Over-reliance upon either mechanism on the part of programmers by direct, unprotected use of #include directives without their own #include guard will lead to failure when using an include file that has not protected itself with either mechanism.
+
+
+== Portability ==
+
+
+== References ==
+
+
+== External links ==
+P0538R0 A Qualified Replacement for #pragma once

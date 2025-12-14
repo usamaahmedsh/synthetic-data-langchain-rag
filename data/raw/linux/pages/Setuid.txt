@@ -1,0 +1,84 @@
+In Unix-like systems, the access rights flags setuid and setgid (short for set user identity and set group identity) allow users to run an executable with the file system permissions of the executable's owner or group respectively and to change behaviour in directories. They are often used to allow users on a computer system to run programs with temporarily elevated privileges to perform a specific task. While the assumed user id or group id privileges provided are not always elevated, at a minimum they are specific.
+The flags setuid and setgid are needed for tasks that require different privileges than what the user is normally granted, such as the ability to alter system files or databases to change their login password. Some of the tasks that require additional privileges may not immediately be obvious, though, such as the ping command, which must send and listen for control packets on a network interface.
+
+
+== File modes ==
+The setuid and setgid bits are normally represented as the values 4 for setuid and 2 for setgid in the high-order octal digit of the file mode. For example, 6711 has both the setuid and setgid bits (4 + 2 = 6) set, and also the file read/write/executable for the owner (7), and executable by the group (first 1) and others (second 1). Most implementations have a symbolic representation of these bits; in the previous example, this could be u=rwx,go=x,ug+s.
+Typically, chmod does not have a recursive mode restricted to directories, so modifying an existing directory tree must be done manually, with a command such as find /path/to/directory -type d -exec chmod g+s '{}' '\'.
+
+
+== Effects ==
+The setuid and setgid flags have different effects, depending on whether they are applied to a file, to a directory or binary executable or non-binary executable file. The setuid and setgid flags have an effect only on binary executable files and not on scripts (e.g., Bash, Perl, Python).
+
+
+=== When set on an executable file ===
+When the setuid or setgid attributes are set on an executable file, then any users able to execute the file will automatically execute the file with the privileges of the file's owner (commonly root) and/or the file's group, depending upon the flags set. This allows the system designer to permit trusted programs to be run which a user would otherwise not be allowed to execute. These may not always be obvious. For example, the ping command may need access to networking privileges that a normal user cannot access; therefore it may be given the setuid flag to ensure that a user who needs to ping another system can do so, even if their account does not have the required privilege for sending packets.
+
+
+==== Security impact ====
+For security purposes, the invoking user is usually prohibited by the system from altering the new process in any way, such as by using ptrace, LD_LIBRARY_PATH or sending signals to it, to exploit the raised privilege, although signals from the terminal will still be accepted.
+While the setuid feature is very useful in many cases, its improper use can pose a security risk if the setuid attribute is assigned to executable programs that are not carefully designed. Due to potential security issues, many operating systems ignore the setuid attribute when applied to executable shell scripts.
+The presence of setuid executables explains why the chroot system call is not available to non-root users on Unix. See limitations of chroot for more details.
+
+
+=== When set on a directory ===
+Setting the setgid permission on a directory causes files and subdirectories created within to inherit its group ownership, rather than the primary group of the file-creating process. Created subdirectories also inherit the setgid bit. The policy is only applied during creation and, thus, only prospectively. Directories and files existing when the setgid bit is applied are unaffected, as are directories and files moved into the directory on which the bit is set.
+Thus is granted a capacity to work with files amongst a group of users without explicitly setting permissions, but limited by the security model expectation that existing files permissions do not implicitly change.
+The setuid permission set on a directory is ignored on most UNIX and Linux systems. However FreeBSD can be configured to interpret setuid in a manner similar to setgid, in which case it forces all files and sub-directories created in a directory to be owned by that directory's owner - a simple form of inheritance. This is generally not needed on most systems derived from BSD, since by default directories are treated as if their setgid bit is always set, regardless of the actual value. As is stated in open(2), "When a new file is created it is given the group of the directory which contains it."
+
+
+== Examples ==
+
+
+=== Checking permissions ===
+Permissions of a file can be checked in octal form and/or alphabetic form with the command line tool stat
+
+
+=== SUID ===
+4701 on an executable file owned by 'root' and the group 'root'
+A user named 'thompson' attempts to execute the file. The executable permission for all users is set (the '1') so 'thompson' can execute the file. The file owner is 'root' and the SUID permission is set (the '4') - so the file is executed as 'root'.
+The reason an executable would be run as 'root' is so that it can modify specific files that the user would not normally be allowed to, without giving the user full root access.
+
+A default use of this can be seen with the /usr/bin/passwd binary file. /usr/bin/passwd needs to modify /etc/passwd and /etc/shadow which store account information and password hashes for all users, and these can only be modified by the user 'root'.
+The owner of the process is not the user running the executable file but the owner of the executable file
+
+
+=== SGID ===
+2770 on a directory named 'music' owned by the user 'root' and the group 'engineers'
+A user named 'torvalds' who belongs primarily to the group 'torvalds' but secondarily to the group 'engineers' makes a directory named 'electronic' under the directory named 'music'. The group ownership of the new directory named 'electronic' inherits 'engineers.' This is the same when making a new file named 'imagine.txt'
+Without SGID the group ownership of the new directory/file would have been 'torvalds' as that is the primary group of user 'torvalds'.
+
+
+=== Sticky bit ===
+
+1770 on a directory named 'videogames' owned by the user 'torvalds' and the group 'engineers'.
+A user named 'torvalds' creates a file named 'tekken' under the directory named 'videogames'. A user named 'wozniak', who is also part of the group 'engineers', attempts to delete the file named 'tekken' but he cannot, since he is not the owner.
+Without sticky bit, 'wozniak' could have deleted the file, because the directory named 'videogames' allows read and write by 'engineers'. A default use of this can be seen at the /tmp folder.
+
+
+=== Sticky bit with SGID ===
+3171 on a directory named 'blog' owned by the group 'engineers' and the user 'root'
+A user named 'torvalds' who belongs primarily to the group 'torvalds' but secondarily to the group 'engineers' creates a file or directory named 'thoughts' inside the directory 'blog'. A user named 'wozniak' who also belongs to the group 'engineers' cannot delete, rename, or move the file or directory named 'thoughts', because he is not the owner and the sticky bit is set. However, if 'thoughts' is a file, then 'wozniak' can edit it.
+
+Sticky bit has the final decision. If sticky bit and SGID had not been set, the user 'wozniak' could rename, move, or delete the file named 'thoughts' because the directory named 'blog' allows read and write by group, and wozniak belongs to the group, and the default 0002 umask allows new files to be edited by group. Sticky bit and SGID could be combined with something such as a read-only umask or an append only attribute.
+
+
+== Security ==
+Developers design and implement programs that use this bit on executables carefully in order to avoid security vulnerabilities including buffer overruns and path injection. Successful buffer-overrun attacks on vulnerable applications allow the attacker to execute arbitrary code under the rights of the process exploited. In the event that a vulnerable process uses the setuid bit to run as root, the code will execute with root privileges, in effect giving the attacker root access to the system on which the vulnerable process is running.
+Of particular importance in the case of a setuid process is the environment of the process. If the environment is not properly sanitized by a privileged process, its behavior can be changed by the unprivileged process that started it. For example, GNU libc was at one point vulnerable to an exploit using setuid and an environment variable that allowed executing code from untrusted shared libraries.
+
+
+== History ==
+The setuid bit was invented by Dennis Ritchie and included in su. His employer, then Bell Telephone Laboratories, applied for a patent in 1972; the patent was granted in 1979 as patent number US 4135240  "Protection of data file contents". The patent was later placed in the public domain.
+
+
+== See also ==
+
+
+== References ==
+
+
+== External links ==
+Chen, Hao; Wagner, David; and Dean, Drew; Setuid Demystified (pdf)
+Tsafrir, Dan; Da Silva, Dilma; and Wagner, David; The Murky Issue of Changing Process Identity: Revising Setuid Demystified (pdf)
+Pollock, Wayne; Unix File and Directory Permissions and Modes

@@ -1,0 +1,124 @@
+The Linux-IO (LIO) is an open-source Small Computer System Interface (SCSI) target implementation included with the Linux kernel.
+Unlike initiators, which begin sessions, LIO functions as a target, presenting one or more Logical Unit Numbers (LUNs) to a SCSI initiator, receiving SCSI commands, and managing the input/output data transfers.
+LIO supports a wide range of storage protocols and transport fabrics, including but not limited to Fibre Channel over Ethernet (FCoE), Fibre Channel, IEEE 1394 and iSCSI.
+It is utilized in several Linux distributions and is a popular choice for cloud environments due to its integration with tools like QEMU/KVM, libvirt, and OpenStack.
+The LIO project is maintained by Datera, a Silicon Valley-based storage solutions provider. On January 15, 2011, LIO was merged into the Linux kernel mainline with version 2.6.38, which was officially released on March 14, 2011. Subsequent versions of the Linux kernel have introduced additional fabric modules to expand its compatibility.
+LIO competes with other SCSI target modules in the Linux ecosystem. The SCSI Target Framework (SCST) is a prominent alternative for general SCSI target functionality, while for iSCSI-specific targets, the older iSCSI Enterprise Target (IET) and SCSI Target Framework (STGT) also have industry adoption.
+
+
+== Background ==
+The SCSI standard provides an extensible semantic abstraction for computer data storage devices, and is used with data storage systems. The SCSI T10 standards define the commands and protocols of the SCSI command processor (sent in SCSI CDBs), and the electrical and optical interfaces for various implementations.
+A SCSI initiator is an endpoint that initiates a SCSI session. A SCSI target is the endpoint that waits for initiator commands and executes the required I/O data transfers. The SCSI target usually exports one or more LUNs for initiators to operate on.
+The LIO Linux SCSI Target implements a generic SCSI target that provides remote access to most data storage device types over all prevalent storage fabrics and protocols. LIO neither directly accesses data nor does it directly communicate with applications.
+
+
+== Architecture ==
+
+LIO implements a modular and extensible architecture around a parallelised SCSI command processing engine.
+The LIO SCSI target engine is independent of specific fabric modules or backstore types. Thus, LIO supports mixing and matching any number of fabrics and backstores at the same time. The LIO SCSI target engine implements a comprehensive SPC-3/SPC-4 feature set with support for high-end features, including SCSI-3/SCSI-4 Persistent Reservations (PRs), SCSI-4 Asymmetric Logical Unit Assignment (ALUA), VMware vSphere APIs for Array Integration (VAAI), T10 DIF, etc.
+LIO is configurable via a configfs-based kernel API, and can be managed via a command-line interface and API (targetcli).
+
+
+=== SCSI target ===
+The concept of a SCSI target isn't restricted to physical devices on a SCSI bus, but instead provides a generalised model for all receivers on a logical SCSI fabric. This includes SCSI sessions across interconnects with no physical SCSI bus at all. Conceptually, the SCSI target provides a generic block storage service or server in this scenario.
+
+
+=== Back-stores ===
+Back-stores provide the SCSI target with generalised access to data storage devices by importing them via corresponding device drivers. Back-stores do not need to be physical SCSI devices.
+The most important back-store media types are:
+
+Block: The block driver allows using raw Linux block devices as back-stores for export via LIO. This includes physical devices, such as HDDs, SSDs, CDs/DVDs, RAM disks, etc., and logical devices, such as software or hardware RAID volumes or LVM volumes.
+File: The file driver allows using files that can reside in any Linux file system or clustered file system as back-stores for export via LIO.
+Raw: The raw driver allows using unstructured memory as back-stores for export via LIO.
+As a result, LIO provides a generalised model to export block storage.
+
+
+=== Fabric modules ===
+Fabric modules implement the front-end of the SCSI target by encapsulating and abstracting the properties of the various supported interconnect. The following fabric modules are available.
+
+
+==== FCoE ====
+
+The Fibre Channel over Ethernet (FCoE) fabric module allows the transport of Fibre Channel protocol (FCP) traffic across lossless Ethernet networks. The specification, supported by a large number of network and storage vendors, is part of the Technical Committee T11 FC-BB-5 standard.
+LIO supports all standard Ethernet NICs.
+The FCoE fabric module was contributed by Cisco and Intel, and released with Linux 3.0 on July 21, 2011.
+
+
+==== Fibre Channel ====
+Fibre Channel is a high-speed network technology primarily used for storage networking. It is standardized in the Technical Committee T11 of the InterNational Committee for Information Technology Standards (INCITS).
+The QLogic Fibre Channel fabric module supports 4- and 8-gigabit speeds with the following HBAs:
+
+QLogic 2400 Series (QLx246x), 4GFC
+QLogic 2500 Series (QLE256x), 8GFC (fully qual'd)
+The Fibre Channel fabric module and low-level driver (LLD) were released with Linux 3.5 on July 21, 2012.
+With Linux 3.9, the following QLogic HBAs and CNAs are also supported:
+
+QLogic 2600 Series (QLE266x), 16GFC, SR-IOV
+QLogic 8300 Series (QLE834x), 16GFS/10 GbE, PCIe Gen3 SR-IOV
+QLogic 8100 Series (QLE81xx), 8GFC/10 GbE, PCIe Gen2
+This makes LIO the first open source target to support 16-gigabit Fibre Channel.
+
+
+==== IEEE 1394 ====
+
+The FireWire SBP-2 fabric module enables Linux to export local storage devices via IEEE 1394, so that other systems can mount them as an ordinary IEEE 1394 storage device.
+IEEE 1394 is a serial-bus interface standard for high-speed communications and isochronous real-time data transfer. It was developed by Apple as "FireWire" in the late 1980s and early 1990s, and Macintosh computers have supported "FireWire target disk mode" since 1999.
+The FireWire SBP-2 fabric module was released with Linux 3.5 on July 21, 2012.
+
+
+==== iSCSI ====
+The Internet Small Computer System Interface (iSCSI) fabric module allows the transport of SCSI traffic across standard IP networks.
+By carrying SCSI sessions across IP networks, iSCSI is used to facilitate data transfers over intranets and manage storage over long distances. iSCSI can be used to transmit data over local area networks (LANs), wide area networks (WANs), or the Internet, and can enable location-independent and location-transparent data storage and retrieval.
+The LIO iSCSI fabric module also implements a number of advanced iSCSI features that increase performance and resiliency, such as Multiple Connections per Session (MC/S) and Error Recovery Levels 0-2 (ERL=0,1,2).
+LIO supports all standard Ethernet NICs.
+The iSCSI fabric module was released with Linux 3.1 on October 24, 2011.
+
+
+==== iSER ====
+Networks supporting remote direct memory access (RDMA) can use the iSCSI Extensions for RDMA (iSER) fabric module to transport iSCSI traffic. iSER permits data to be transferred directly into and out of remote SCSI computer memory buffers without intermediate data copies (direct data placement or DDP) by using RDMA. RDMA is supported on InfiniBand networks, on Ethernet with data center bridging (DCB) networks via RDMA over Converged Ethernet (RoCE), and on standard Ethernet networks with iWARP enhanced TCP offload engine controllers.
+The iSER fabric module was developed together by Datera and Mellanox Technologies, and first released with Linux 3.10 on June 30, 2013.
+
+
+==== SRP ====
+The SCSI RDMA Protocol (SRP) fabric module allows the transport of SCSI traffic across RDMA (see above) networks. As of 2013, SRP was more widely used than iSER, although it is more limited, as SCSI is only a peer-to-peer protocol, whereas iSCSI is fully routable. The SRP fabric module supports the following Mellanox host channel adapters (HCAs):
+
+Mellanox ConnectX-2 VPI PCIe Gen2 HCAs (x8 lanes), single/dual-port QDR 40 Gbit/s
+Mellanox ConnectX-3 VPI PCIe Gen3 HCAs (x8 lanes), single/dual-port FDR 56 Gbit/s
+Mellanox ConnectX-IB PCIe Gen3 HCAs (x16 lanes), single/dual-port FDR 56 Gbit/s
+The SRP fabric module was released with Linux 3.3 on March 18, 2012.
+In 2012, c't magazine measured almost 5000 MB/s throughput with LIO SRP Target over one Mellanox ConnectX-3 port in 56 Gbit/s FDR mode on a Sandy Bridge PCI Express 3.0 system with four Fusion-IO ioDrive PCI Express flash memory cards.
+
+
+==== USB ====
+The USB Gadget fabric module enables Linux to export local storage devices via the Universal Serial Bus (USB), so that other systems can mount them as an ordinary storage device.
+USB was designed in the mid-1990s to standardize the connection of computer peripherals, and has also become common for data storage devices.
+The USB Gadget fabric module was released with Linux 3.5 on July 21, 2012.
+
+
+=== Targetcli ===
+targetcli is a user space single-node management command line interface (CLI) for LIO. It supports all fabric modules and is based on a modular, extensible architecture, with plug-in modules for additional fabric modules or functionality.
+targetcli provides a CLI that uses an underlying generic target library through a well-defined API. Thus the CLI can easily be replaced or complemented by a UI with other metaphors, such as a GUI.
+targetcli is implemented in Python and consists of three main modules:
+
+the underlying rtslib and API.
+the configshell, which encapsulates the fabric-specific attributes in corresponding 'spec' files.
+the targetcli shell itself.
+Detailed instructions on how to set up LIO targets can be found on the LIO wiki.
+
+
+== Linux distributions ==
+targetcli and LIO are included in most Linux distributions per default. Here is an overview of the most popular ones, together with the initial inclusion dates:
+
+
+== See also ==
+
+
+== Notes ==
+
+
+== References ==
+
+
+== External links ==
+Official website at the Wayback Machine (archived 2022-10-13)
+Datera website

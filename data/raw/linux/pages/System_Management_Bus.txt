@@ -1,0 +1,107 @@
+The System Management Bus (SMBus or SMB) is a single-ended simple two-wire bus for the purpose of lightweight communication. Most commonly it is found in chipsets of computer motherboards for communication with the power source for ON/OFF instructions. The exact functionality and hardware interfaces vary with vendors.
+It is derived from I²C for communication with low-bandwidth devices on a motherboard, especially power related chips such as a laptop's rechargeable battery subsystem (see Smart Battery System and ACPI). Other devices might include external master hosts, temperature sensor, fan or voltage sensors, lid switches, clock generator, and RGB lighting. Peripheral Component Interconnect (PCI) add-in cards may connect to an SMBus segment.
+A device can provide manufacturer information, indicate its model/part number, save its state for a suspend event, report different types of errors, accept control parameters, return status over SMBus, and poll chipset registers. The SMBus is generally not user configurable or accessible. Although SMBus devices usually can't identify their functionality, a new PMBus coalition has extended SMBus to include conventions allowing that.
+The SMBus was defined by Intel and Duracell in 1994. It carries clock, data, and instructions and is based on Philips' I²C serial bus protocol. Its clock frequency range is 10 kHz to 100 kHz. (PMBus extends this to 400 kHz.) Its voltage levels and timings are more strictly defined than those of I²C, but devices belonging to the two systems are often successfully mixed on the same bus. 
+SMBus is used as an interconnect in several platform management standards including: Alert Standard Format (ASF), Desktop and mobile Architecture for System Hardware (DASH), Intelligent Platform Management Interface (IPMI).
+SMBus is used to access DRAM configuration information as part of serial presence detect (SPD). SMBus has grown into a wide variety of system enumeration use cases other than power management.
+
+
+== SMBus/I²C Interoperability ==
+While SMBus is derived from I²C, there are several major differences between the specifications of the two busses in the areas of electricals, timing, protocols and operating modes.
+
+
+=== Electrical ===
+
+
+==== Input Voltage (VIL and VIH) ====
+When mixing devices, the I²C specification defines the input levels to be 30% and 70% of the supply voltage VDD, which may be 5 V, 3.3 V, or any other value. Instead of relating the bus input levels to VDD, SMBus defines them to be fixed. SMBus 2.0 defines VIL,max at 0.8 V and VIH,min at 2.1 V, and supports a VDD ranging from 3 to 5 V, while in SMBus 3.0, the levels are defined at 0.8 and 1.35 V, with a VDD ranging from 1.8 to 5 V.
+
+
+==== Sink Current (IOL) ====
+SMBus 2.0 defines a ‘High Power’ class that includes a 4 mA sink current that cannot be driven by I²C chips unless the pull-up resistor is sized to I²C-bus levels.
+NXP devices have a higher power set of electrical characteristics than SMBus 1.0. The main difference is the current sink capability with VOL = 0.4 V.
+
+SMBus low power = 350 μA
+SMBus high power = 4 mA
+I²C-bus = 3 mA
+SMBus ‘high power’ devices and I²C-bus devices will work together if the pull-up resistor is sized for 3 mA.
+
+
+==== Frequency (FMAX and FMIN) ====
+The SMBus clock is defined from 10 to 100 kHz while I²C can be 0–100 kHz, 0–400 kHz, 0–1 MHz and 0–3.4 MHz, depending on the mode. This means that an I²C bus running at less than 10 kHz will not be SMBus compliant since the SMBus devices may time out. Many SMBus devices will however support lower frequencies.
+SMBus 3.0 adds 400 kHz and 1 MHz bus speeds.
+
+
+==== Timing ====
+SMBus defines a clock low time-out, TIMEOUT of 35 ms. I²C does not specify any timeout limit.
+SMBus specifies TLOW:SEXT as the cumulative clock low extend time for a slave device. I²C does not have a similar specification.
+SMBus specifies TLOW:MEXT as the cumulative clock low extend time for a master device. Again I²C does not have a similar specification.
+SMBus defines both rise and fall time of bus signals. I²C does not.
+The SMBus time-out specifications do not preclude I²C devices co-operating reliably on the SMBus. It is the responsibility of the designer to ensure that I²C devices are not going to violate these bus timing parameters.
+
+
+=== Protocols ===
+
+
+==== ACK and NACK usage ====
+There are the following differences in the use of the NACK bus signaling:
+In I²C, a slave receiver is allowed to not acknowledge the slave address, if for example it's unable to receive because it's performing some real time task. SMBus requires devices to acknowledge their own address always, as a mechanism to detect a removable device's presence on the bus (battery, docking station, etc.)
+I²C specifies that a slave device, although it may acknowledge its own address, may decide, some time later in the transfer, that it cannot receive any more data bytes. I²C specifies that the device may indicate this by generating the not acknowledge on the first byte to follow.
+Other than to indicate a slave's device-busy condition, SMBus also uses the NACK mechanism to indicate the reception of an invalid command or datum. Since such a condition may occur on the last byte of the transfer, it is required that SMBus devices have the ability to generate the not acknowledge after the transfer of each byte and before the completion of the transaction. This is important because SMBus does not provide any other resend signaling. This difference in the use of the NACK signaling has implications on the specific implementation of the SMBus port, especially in devices that handle critical system data such as the SMBus host and the SBS components.
+
+
+==== SMBus protocols ====
+Each message transaction on SMBus follows the format of one of the defined SMBus protocols. The SMBus protocols are a subset of the data transfer formats defined in the I²C specifications. I²C devices that can be accessed through one of the SMBus protocols are compatible with the SMBus specifications. I²C devices that do not adhere to these protocols cannot be accessed by standard methods as defined in the SMBus and Advanced Configuration and Power Interface (ACPI) specifications.
+
+
+==== Address Resolution Protocol ====
+The SMBus uses I²C hardware and I²C hardware addressing, but adds second-level software for building special systems. In particular its specifications include an Address Resolution Protocol that can make dynamic address allocations.
+Dynamic reconfiguration of the hardware and software allow bus devices to be
+‘hot-plugged’ and used immediately, without restarting the system. The devices are recognized automatically and assigned unique addresses. This advantage results in a plug-and-play user interface. In both those protocols there is a very useful distinction made between a System Host and all the other devices in the system that can have the names and functions of masters or slaves.
+In the context of motherboard PCI Express slots, the PCIe Electromechanical Specification expects ARP to be provided for the SMBus pins. However, because ARP is marked "optional" in the SMBus specification, it's commonly left unimplemented.
+
+
+==== Time-out feature ====
+SMBus has a time-out feature which resets devices if a communication takes too long.
+This explains the minimum clock frequency of 10 kHz to prevent locking up the bus. I²C can be a ‘DC’ bus, meaning that a slave device stretches the master clock when performing some routine while the master is accessing it. This will notify to the master that the slave is busy but does not want to lose the communication. The slave device will allow continuation after its task is complete. There is no limit in the I²C-bus protocol as to how long this delay can be, whereas for an SMBus system, it would be limited to 35 ms.
+The SMBus protocol just assumes that if something takes too long, then it means that there is a problem on the bus and that all devices must reset in order to clear this mode. Slave devices are not then allowed to hold the clock LOW too long.
+
+
+==== Packet Error Checking ====
+SMBus 1.1 and later define optional Packet Error Checking (PEC). In that mode, a PEC (packet error code) byte is appended at the end of each transaction. The byte is calculated as CRC-8 checksum, calculated over the entire message including the address and read/write bit. The polynomial used is x8+x2+x+1 (the CRC-8-ATM HEC algorithm, initialized to zero).
+
+
+==== SMBALERT# ====
+The SMBus has an extra optional shared interrupt signal called SMBALERT#, which can be used by slaves to tell the host to ask its slaves about events of interest.
+SMBus also defines a less common "Host Notify Protocol", providing similar notifications but passing more data and building on the I²C multi-master mode.
+
+
+== Support ==
+SMBus devices are supported by FreeBSD, OpenBSD, NetBSD, DragonFly BSD, Linux, Windows 98 and newer and Windows CE.
+
+
+== Replacement ==
+DDR5 introduces I3C for its presence detect communication, replacing SMBus.
+PCI express devices commonly use SMBus as a "out-of-band management port". However, device vendors frequently use SMBus multiplexers (Mux) to manage address clashes (which are in turn caused by them not implementing the Address Resolution Protocol), causing link interruptions that break Management Component Transport Protocol and other protocols when the Mux switches targets. To solve this problem, SNIA's Enterprise and Data Center Standard Form Factor version 3.1 (January 2023) describes a way to use I3C basic over the PCIe two-wire interface. NVM Express 2.1 (August 2024) is also reworded to allow the use of I3C, "to match the new conventions used by SNIA SFF TA's EDSFF and PCI-SIG specifications for I3C".
+
+
+== See also ==
+List of network buses
+Embedded controller (EC)
+Super I/O
+Low Pin Count (LPC)
+Serial Peripheral Interface (SPI)
+Platform Environment Control Interface (PECI)
+Host Embedded Controller Interface (HECI)
+Power Management Bus (PMBus)
+System Management Controller (SMC)
+
+
+== References ==
+
+
+== External links ==
+Official website
+Official SMBus specifications (free)
+SBS forum
+SMBus at tech-faq.com

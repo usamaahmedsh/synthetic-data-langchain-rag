@@ -1,0 +1,6923 @@
+In artificial neural networks, batch normalization (also known as batch norm) is a normalization technique used to make training faster and more stable by adjusting the inputs to each layer—re-centering them around zero and re-scaling them to a standard size. It was introduced by Sergey Ioffe and Christian Szegedy in 2015.
+Experts still debate why batch normalization works so well. It was initially thought to tackle internal covariate shift, a problem where parameter initialization and changes in the distribution of the inputs of each layer affect the learning rate of the network. However, newer research suggests it doesn’t fix this shift but instead smooths the objective function—a mathematical guide the network follows to improve—enhancing performance. In very deep networks, batch normalization can initially cause a severe gradient explosion—where updates to the network grow uncontrollably large—but this is managed with shortcuts called skip connections in residual networks. Another theory is that batch normalization adjusts data by handling its size and path separately, speeding up training.
+
+
+== Internal covariate shift ==
+Each layer in a neural network has inputs that follow a specific distribution, which shifts during training due to two main factors: the random starting values of the network’s settings (parameter initialization) and the natural variation in the input data. This shifting pattern affecting the inputs to the network’s inner layers is called internal covariate shift. While a strict definition isn’t fully agreed upon, experiments show that it involves changes in the means and variances of these inputs during training.
+Batch normalization was first developed to address internal covariate shift. During training, as the parameters of preceding layers adjust, the distribution of inputs to the current layer changes accordingly, such that the current layer needs to constantly readjust to new distributions. This issue is particularly severe in deep networks, because small changes in shallower hidden layers will be amplified as they propagate within the network, resulting in significant shift in deeper hidden layers. Batch normalization was proposed to reduced these unwanted shifts to speed up training and produce more reliable models.
+Beyond possibly tackling internal covariate shift, batch normalization offers several additional advantages. It allows the network to use a higher learning rate—a setting that controls how quickly the network learns—without causing problems like vanishing or exploding gradients, where updates become too small or too large. It also appears to have a regularizing effect, improving the network’s ability to generalize to new data, reducing the need for dropout, a technique used to prevent overfitting (when a model learns the training data too well and fails on new data). Additionally, networks using batch normalization are less sensitive to the choice of starting settings or learning rates, making them more robust and adaptable.
+
+
+== Procedures ==
+
+
+=== Transformation ===
+In a neural network, batch normalization is achieved through a normalization step that fixes the means and variances of each layer's inputs. Ideally, the normalization would be conducted over the entire training set, but to use this step jointly with stochastic optimization methods, it is impractical to use the global information. Thus, normalization is restrained to each mini-batch in the training process.
+Let us use B to denote a mini-batch of size m of the entire training set. The empirical mean and variance of B could thus be denoted as
+
+  
+    
+      
+        
+          μ
+          
+            B
+          
+        
+        =
+        
+          
+            1
+            m
+          
+        
+        
+          ∑
+          
+            i
+            =
+            1
+          
+          
+            m
+          
+        
+        
+          x
+          
+            i
+          
+        
+      
+    
+    {\displaystyle \mu _{B}={\frac {1}{m}}\sum _{i=1}^{m}x_{i}}
+  
+ and 
+  
+    
+      
+        
+          σ
+          
+            B
+          
+          
+            2
+          
+        
+        =
+        
+          
+            1
+            m
+          
+        
+        
+          ∑
+          
+            i
+            =
+            1
+          
+          
+            m
+          
+        
+        (
+        
+          x
+          
+            i
+          
+        
+        −
+        
+          μ
+          
+            B
+          
+        
+        
+          )
+          
+            2
+          
+        
+      
+    
+    {\displaystyle \sigma _{B}^{2}={\frac {1}{m}}\sum _{i=1}^{m}(x_{i}-\mu _{B})^{2}}
+  
+.
+For a layer of the network with d-dimensional input, 
+  
+    
+      
+        x
+        =
+        (
+        
+          x
+          
+            (
+            1
+            )
+          
+        
+        ,
+        .
+        .
+        .
+        ,
+        
+          x
+          
+            (
+            d
+            )
+          
+        
+        )
+      
+    
+    {\displaystyle x=(x^{(1)},...,x^{(d)})}
+  
+, each dimension of its input is then normalized (i.e. re-centered and re-scaled) separately,
+
+  
+    
+      
+        
+          
+            
+              
+                x
+                ^
+              
+            
+          
+          
+            i
+          
+          
+            (
+            k
+            )
+          
+        
+        =
+        
+          
+            
+              
+                x
+                
+                  i
+                
+                
+                  (
+                  k
+                  )
+                
+              
+              −
+              
+                μ
+                
+                  B
+                
+                
+                  (
+                  k
+                  )
+                
+              
+            
+            
+              
+                
+                  (
+                  
+                    σ
+                    
+                      B
+                    
+                    
+                      (
+                      k
+                      )
+                    
+                  
+                  )
+                
+                
+                  2
+                
+              
+              +
+              ϵ
+            
+          
+        
+      
+    
+    {\displaystyle {\hat {x}}_{i}^{(k)}={\frac {x_{i}^{(k)}-\mu _{B}^{(k)}}{\sqrt {\left(\sigma _{B}^{(k)}\right)^{2}+\epsilon }}}}
+  
+, where 
+  
+    
+      
+        k
+        ∈
+        [
+        1
+        ,
+        d
+        ]
+      
+    
+    {\displaystyle k\in [1,d]}
+  
+ and  
+  
+    
+      
+        i
+        ∈
+        [
+        1
+        ,
+        m
+        ]
+      
+    
+    {\displaystyle i\in [1,m]}
+  
+; 
+  
+    
+      
+        
+          μ
+          
+            B
+          
+          
+            (
+            k
+            )
+          
+        
+      
+    
+    {\displaystyle \mu _{B}^{(k)}}
+  
+ and 
+  
+    
+      
+        
+          σ
+          
+            B
+          
+          
+            (
+            k
+            )
+          
+        
+      
+    
+    {\displaystyle \sigma _{B}^{(k)}}
+  
+ are the per-dimension mean and standard deviation, respectively.
+
+  
+    
+      
+        ϵ
+      
+    
+    {\displaystyle \epsilon }
+  
+ is added in the denominator for numerical stability and is an arbitrarily small positive constant. The resulting normalized activation 
+  
+    
+      
+        
+          
+            
+              
+                x
+                ^
+              
+            
+          
+          
+            (
+            k
+            )
+          
+        
+      
+    
+    {\displaystyle {\hat {x}}^{(k)}}
+  
+ have zero mean and unit variance, if 
+  
+    
+      
+        ϵ
+      
+    
+    {\displaystyle \epsilon }
+  
+ is not taken into account. To restore the representation power of the network, a transformation step then follows as
+
+  
+    
+      
+        
+          y
+          
+            i
+          
+          
+            (
+            k
+            )
+          
+        
+        =
+        
+          γ
+          
+            (
+            k
+            )
+          
+        
+        
+          
+            
+              
+                x
+                ^
+              
+            
+          
+          
+            i
+          
+          
+            (
+            k
+            )
+          
+        
+        +
+        
+          β
+          
+            (
+            k
+            )
+          
+        
+      
+    
+    {\displaystyle y_{i}^{(k)}=\gamma ^{(k)}{\hat {x}}_{i}^{(k)}+\beta ^{(k)}}
+  
+,
+where the parameters 
+  
+    
+      
+        
+          γ
+          
+            (
+            k
+            )
+          
+        
+      
+    
+    {\displaystyle \gamma ^{(k)}}
+  
+ and 
+  
+    
+      
+        
+          β
+          
+            (
+            k
+            )
+          
+        
+      
+    
+    {\displaystyle \beta ^{(k)}}
+  
+ are subsequently learned in the optimization process.
+Formally, the operation that implements batch normalization is a transform 
+  
+    
+      
+        B
+        
+          N
+          
+            
+              γ
+              
+                (
+                k
+                )
+              
+            
+            ,
+            
+              β
+              
+                (
+                k
+                )
+              
+            
+          
+        
+        :
+        
+          x
+          
+            1...
+            m
+          
+          
+            (
+            k
+            )
+          
+        
+        →
+        
+          y
+          
+            1...
+            m
+          
+          
+            (
+            k
+            )
+          
+        
+      
+    
+    {\displaystyle BN_{\gamma ^{(k)},\beta ^{(k)}}:x_{1...m}^{(k)}\rightarrow y_{1...m}^{(k)}}
+  
+ called the Batch Normalizing transform. The output of the BN transform 
+  
+    
+      
+        
+          y
+          
+            (
+            k
+            )
+          
+        
+        =
+        B
+        
+          N
+          
+            
+              γ
+              
+                (
+                k
+                )
+              
+            
+            ,
+            
+              β
+              
+                (
+                k
+                )
+              
+            
+          
+        
+        (
+        
+          x
+          
+            (
+            k
+            )
+          
+        
+        )
+      
+    
+    {\displaystyle y^{(k)}=BN_{\gamma ^{(k)},\beta ^{(k)}}(x^{(k)})}
+  
+ is then passed to other network layers, while the normalized output  
+  
+    
+      
+        
+          
+            
+              
+                x
+                ^
+              
+            
+          
+          
+            i
+          
+          
+            (
+            k
+            )
+          
+        
+      
+    
+    {\displaystyle {\hat {x}}_{i}^{(k)}}
+  
+ remains internal to the current layer.
+
+
+=== Backpropagation ===
+The described BN transform is a differentiable operation, and the gradient of the loss l  with respect to the different parameters can be computed directly with the chain rule.
+Specifically, 
+  
+    
+      
+        
+          
+            
+              ∂
+              l
+            
+            
+              ∂
+              
+                y
+                
+                  i
+                
+                
+                  (
+                  k
+                  )
+                
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\frac {\partial l}{\partial y_{i}^{(k)}}}}
+  
+ depends on the choice of activation function, and the gradient against other parameters could be expressed as a function of 
+  
+    
+      
+        
+          
+            
+              ∂
+              l
+            
+            
+              ∂
+              
+                y
+                
+                  i
+                
+                
+                  (
+                  k
+                  )
+                
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\frac {\partial l}{\partial y_{i}^{(k)}}}}
+  
+:
+
+  
+    
+      
+        
+          
+            
+              ∂
+              l
+            
+            
+              ∂
+              
+                
+                  
+                    
+                      x
+                      ^
+                    
+                  
+                
+                
+                  i
+                
+                
+                  (
+                  k
+                  )
+                
+              
+            
+          
+        
+        =
+        
+          
+            
+              ∂
+              l
+            
+            
+              ∂
+              
+                y
+                
+                  i
+                
+                
+                  (
+                  k
+                  )
+                
+              
+            
+          
+        
+        
+          γ
+          
+            (
+            k
+            )
+          
+        
+      
+    
+    {\displaystyle {\frac {\partial l}{\partial {\hat {x}}_{i}^{(k)}}}={\frac {\partial l}{\partial y_{i}^{(k)}}}\gamma ^{(k)}}
+  
+,
+
+  
+    
+      
+        
+          
+            
+              ∂
+              l
+            
+            
+              ∂
+              
+                γ
+                
+                  (
+                  k
+                  )
+                
+              
+            
+          
+        
+        =
+        
+          ∑
+          
+            i
+            =
+            1
+          
+          
+            m
+          
+        
+        
+          
+            
+              ∂
+              l
+            
+            
+              ∂
+              
+                y
+                
+                  i
+                
+                
+                  (
+                  k
+                  )
+                
+              
+            
+          
+        
+        
+          
+            
+              
+                x
+                ^
+              
+            
+          
+          
+            i
+          
+          
+            (
+            k
+            )
+          
+        
+      
+    
+    {\displaystyle {\frac {\partial l}{\partial \gamma ^{(k)}}}=\sum _{i=1}^{m}{\frac {\partial l}{\partial y_{i}^{(k)}}}{\hat {x}}_{i}^{(k)}}
+  
+, 
+  
+    
+      
+        
+          
+            
+              ∂
+              l
+            
+            
+              ∂
+              
+                β
+                
+                  (
+                  k
+                  )
+                
+              
+            
+          
+        
+        =
+        
+          ∑
+          
+            i
+            =
+            1
+          
+          
+            m
+          
+        
+        
+          
+            
+              ∂
+              l
+            
+            
+              ∂
+              
+                y
+                
+                  i
+                
+                
+                  (
+                  k
+                  )
+                
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\frac {\partial l}{\partial \beta ^{(k)}}}=\sum _{i=1}^{m}{\frac {\partial l}{\partial y_{i}^{(k)}}}}
+  
+,
+  
+    
+      
+        
+          
+            
+              ∂
+              l
+            
+            
+              ∂
+              
+                σ
+                
+                  B
+                
+                
+                  (
+                  k
+                  
+                    )
+                    
+                      2
+                    
+                  
+                
+              
+            
+          
+        
+        =
+        
+          ∑
+          
+            i
+            =
+            1
+          
+          
+            m
+          
+        
+        
+          
+            
+              ∂
+              l
+            
+            
+              ∂
+              
+                y
+                
+                  i
+                
+                
+                  (
+                  k
+                  )
+                
+              
+            
+          
+        
+        (
+        
+          x
+          
+            i
+          
+          
+            (
+            k
+            )
+          
+        
+        −
+        
+          μ
+          
+            B
+          
+          
+            (
+            k
+            )
+          
+        
+        )
+        
+          (
+          
+            −
+            
+              
+                
+                  γ
+                  
+                    (
+                    k
+                    )
+                  
+                
+                2
+              
+            
+            (
+            
+              σ
+              
+                B
+              
+              
+                (
+                k
+                
+                  )
+                  
+                    2
+                  
+                
+              
+            
+            +
+            ϵ
+            
+              )
+              
+                −
+                3
+                
+                  /
+                
+                2
+              
+            
+          
+          )
+        
+      
+    
+    {\displaystyle {\frac {\partial l}{\partial \sigma _{B}^{(k)^{2}}}}=\sum _{i=1}^{m}{\frac {\partial l}{\partial y_{i}^{(k)}}}(x_{i}^{(k)}-\mu _{B}^{(k)})\left(-{\frac {\gamma ^{(k)}}{2}}(\sigma _{B}^{(k)^{2}}+\epsilon )^{-3/2}\right)}
+  
+, 
+  
+    
+      
+        
+          
+            
+              ∂
+              l
+            
+            
+              ∂
+              
+                μ
+                
+                  B
+                
+                
+                  (
+                  k
+                  )
+                
+              
+            
+          
+        
+        =
+        
+          ∑
+          
+            i
+            =
+            1
+          
+          
+            m
+          
+        
+        
+          
+            
+              ∂
+              l
+            
+            
+              ∂
+              
+                y
+                
+                  i
+                
+                
+                  (
+                  k
+                  )
+                
+              
+            
+          
+        
+        
+          
+            
+              −
+              
+                γ
+                
+                  (
+                  k
+                  )
+                
+              
+            
+            
+              
+                σ
+                
+                  B
+                
+                
+                  (
+                  k
+                  
+                    )
+                    
+                      2
+                    
+                  
+                
+              
+              +
+              ϵ
+            
+          
+        
+        +
+        
+          
+            
+              ∂
+              l
+            
+            
+              ∂
+              
+                σ
+                
+                  B
+                
+                
+                  (
+                  k
+                  
+                    )
+                    
+                      2
+                    
+                  
+                
+              
+            
+          
+        
+        
+          
+            1
+            m
+          
+        
+        
+          ∑
+          
+            i
+            =
+            1
+          
+          
+            m
+          
+        
+        (
+        −
+        2
+        )
+        ⋅
+        (
+        
+          x
+          
+            i
+          
+          
+            (
+            k
+            )
+          
+        
+        −
+        
+          μ
+          
+            B
+          
+          
+            (
+            k
+            )
+          
+        
+        )
+      
+    
+    {\displaystyle {\frac {\partial l}{\partial \mu _{B}^{(k)}}}=\sum _{i=1}^{m}{\frac {\partial l}{\partial y_{i}^{(k)}}}{\frac {-\gamma ^{(k)}}{\sqrt {\sigma _{B}^{(k)^{2}}+\epsilon }}}+{\frac {\partial l}{\partial \sigma _{B}^{(k)^{2}}}}{\frac {1}{m}}\sum _{i=1}^{m}(-2)\cdot (x_{i}^{(k)}-\mu _{B}^{(k)})}
+  
+,
+and 
+  
+    
+      
+        
+          
+            
+              ∂
+              l
+            
+            
+              ∂
+              
+                x
+                
+                  i
+                
+                
+                  (
+                  k
+                  )
+                
+              
+            
+          
+        
+        =
+        
+          
+            
+              ∂
+              l
+            
+            
+              ∂
+              
+                
+                  
+                    
+                      x
+                      ^
+                    
+                  
+                
+                
+                  i
+                
+                
+                  (
+                  k
+                  )
+                
+              
+            
+          
+        
+        
+          
+            1
+            
+              
+                σ
+                
+                  B
+                
+                
+                  (
+                  k
+                  
+                    )
+                    
+                      2
+                    
+                  
+                
+              
+              +
+              ϵ
+            
+          
+        
+        +
+        
+          
+            
+              ∂
+              l
+            
+            
+              ∂
+              
+                σ
+                
+                  B
+                
+                
+                  (
+                  k
+                  
+                    )
+                    
+                      2
+                    
+                  
+                
+              
+            
+          
+        
+        
+          
+            
+              2
+              (
+              
+                x
+                
+                  i
+                
+                
+                  (
+                  k
+                  )
+                
+              
+              −
+              
+                μ
+                
+                  B
+                
+                
+                  (
+                  k
+                  )
+                
+              
+              )
+            
+            m
+          
+        
+        +
+        
+          
+            
+              ∂
+              l
+            
+            
+              ∂
+              
+                μ
+                
+                  B
+                
+                
+                  (
+                  k
+                  )
+                
+              
+            
+          
+        
+        
+          
+            1
+            m
+          
+        
+      
+    
+    {\displaystyle {\frac {\partial l}{\partial x_{i}^{(k)}}}={\frac {\partial l}{\partial {\hat {x}}_{i}^{(k)}}}{\frac {1}{\sqrt {\sigma _{B}^{(k)^{2}}+\epsilon }}}+{\frac {\partial l}{\partial \sigma _{B}^{(k)^{2}}}}{\frac {2(x_{i}^{(k)}-\mu _{B}^{(k)})}{m}}+{\frac {\partial l}{\partial \mu _{B}^{(k)}}}{\frac {1}{m}}}
+  
+.
+
+
+=== Inference ===
+During the training stage, the normalization steps depend on the mini-batches to ensure efficient and reliable training. However, in the inference stage, this dependence is not useful any more. Instead, the normalization step in this stage is computed with the population statistics such that the output could depend on the input in a deterministic manner. The population mean, 
+  
+    
+      
+        E
+        [
+        
+          x
+          
+            (
+            k
+            )
+          
+        
+        ]
+      
+    
+    {\displaystyle E[x^{(k)}]}
+  
+, and variance, 
+  
+    
+      
+        Var
+        ⁡
+        [
+        
+          x
+          
+            (
+            k
+            )
+          
+        
+        ]
+      
+    
+    {\displaystyle \operatorname {Var} [x^{(k)}]}
+  
+, are computed as:
+
+  
+    
+      
+        E
+        [
+        
+          x
+          
+            (
+            k
+            )
+          
+        
+        ]
+        =
+        
+          E
+          
+            B
+          
+        
+        [
+        
+          μ
+          
+            B
+          
+          
+            (
+            k
+            )
+          
+        
+        ]
+      
+    
+    {\displaystyle E[x^{(k)}]=E_{B}[\mu _{B}^{(k)}]}
+  
+, and 
+  
+    
+      
+        Var
+        ⁡
+        [
+        
+          x
+          
+            (
+            k
+            )
+          
+        
+        ]
+        =
+        
+          
+            m
+            
+              m
+              −
+              1
+            
+          
+        
+        
+          E
+          
+            B
+          
+        
+        [
+        
+          
+            (
+            
+              σ
+              
+                B
+              
+              
+                (
+                k
+                )
+              
+            
+            )
+          
+          
+            2
+          
+        
+        ]
+      
+    
+    {\displaystyle \operatorname {Var} [x^{(k)}]={\frac {m}{m-1}}E_{B}[\left(\sigma _{B}^{(k)}\right)^{2}]}
+  
+.
+The population statistics thus is a complete representation of the mini-batches.
+The BN transform in the inference step thus becomes
+
+  
+    
+      
+        
+          y
+          
+            (
+            k
+            )
+          
+        
+        =
+        B
+        
+          N
+          
+            
+              γ
+              
+                (
+                k
+                )
+              
+            
+            ,
+            
+              β
+              
+                (
+                k
+                )
+              
+            
+          
+          
+            inf
+          
+        
+        (
+        
+          x
+          
+            (
+            k
+            )
+          
+        
+        )
+        =
+        
+          γ
+          
+            (
+            k
+            )
+          
+        
+        
+          
+            
+              
+                x
+                
+                  (
+                  k
+                  )
+                
+              
+              −
+              E
+              [
+              
+                x
+                
+                  (
+                  k
+                  )
+                
+              
+              ]
+            
+            
+              Var
+              ⁡
+              [
+              
+                x
+                
+                  (
+                  k
+                  )
+                
+              
+              ]
+              +
+              ϵ
+            
+          
+        
+        +
+        
+          β
+          
+            (
+            k
+            )
+          
+        
+      
+    
+    {\displaystyle y^{(k)}=BN_{\gamma ^{(k)},\beta ^{(k)}}^{\text{inf}}(x^{(k)})=\gamma ^{(k)}{\frac {x^{(k)}-E[x^{(k)}]}{\sqrt {\operatorname {Var} [x^{(k)}]+\epsilon }}}+\beta ^{(k)}}
+  
+,
+where 
+  
+    
+      
+        
+          y
+          
+            (
+            k
+            )
+          
+        
+      
+    
+    {\displaystyle y^{(k)}}
+  
+ is passed on to next layers instead of 
+  
+    
+      
+        
+          x
+          
+            (
+            k
+            )
+          
+        
+      
+    
+    {\displaystyle x^{(k)}}
+  
+. Since the parameters are fixed in this transformation, the batch normalization procedure is essentially applying a linear transform to the activation function.
+
+
+== Theory ==
+Although batch normalization has become popular due to its strong empirical performance, the working mechanism of the method is not yet well-understood. The explanation made in the original paper was that batch norm works by reducing internal covariate shift, but this has been challenged by more recent work. One experiment trained a VGG-16 network under 3 different training regimes: standard (no batch norm), batch norm, and batch norm with noise added to each layer during training. In the third model, the noise has non-zero mean and non-unit variance, i.e. it explicitly introduces covariate shift. Despite this, it showed similar accuracy to the second model, and both performed better than the first, suggesting that covariate shift is not the reason that batch norm improves performance.
+Using batch normalization causes the items in a batch to no longer be iid, which can lead to difficulties in training due to lower quality gradient estimation.
+
+
+=== Smoothness ===
+One alternative explanation is that the improvement with batch normalization is instead due to producing a smoother parameter space and smoother gradients, as formalized by a smaller Lipschitz constant. 
+Consider two identical networks, one contains batch normalization layers and the other does not, the behaviors of these two networks are then compared. Denote the loss functions as 
+  
+    
+      
+        
+          
+            
+              L
+              ^
+            
+          
+        
+      
+    
+    {\displaystyle {\hat {L}}}
+  
+ and 
+  
+    
+      
+        L
+      
+    
+    {\displaystyle L}
+  
+, respectively. Let the input to both networks be 
+  
+    
+      
+        x
+      
+    
+    {\displaystyle x}
+  
+, and the output be 
+  
+    
+      
+        y
+      
+    
+    {\displaystyle y}
+  
+, for which 
+  
+    
+      
+        y
+        =
+        W
+        x
+      
+    
+    {\displaystyle y=Wx}
+  
+, where 
+  
+    
+      
+        W
+      
+    
+    {\displaystyle W}
+  
+ is the layer weights. For the second network, 
+  
+    
+      
+        y
+      
+    
+    {\displaystyle y}
+  
+ additionally goes through a batch normalization layer. Denote the normalized activation as 
+  
+    
+      
+        
+          
+            
+              y
+              ^
+            
+          
+        
+      
+    
+    {\displaystyle {\hat {y}}}
+  
+, which has zero mean and unit variance. Let the transformed activation be 
+  
+    
+      
+        z
+        =
+        γ
+        
+          
+            
+              y
+              ^
+            
+          
+        
+        +
+        β
+      
+    
+    {\displaystyle z=\gamma {\hat {y}}+\beta }
+  
+, and suppose 
+  
+    
+      
+        γ
+      
+    
+    {\displaystyle \gamma }
+  
+ and 
+  
+    
+      
+        β
+      
+    
+    {\displaystyle \beta }
+  
+ are constants. Finally, denote the standard deviation over a mini-batch 
+  
+    
+      
+        
+          
+            
+              
+                y
+                
+                  j
+                
+              
+              ^
+            
+          
+        
+        ∈
+        
+          
+            R
+          
+          
+            m
+          
+        
+      
+    
+    {\displaystyle {\hat {y_{j}}}\in \mathbb {R} ^{m}}
+  
+ as 
+  
+    
+      
+        
+          σ
+          
+            j
+          
+        
+      
+    
+    {\displaystyle \sigma _{j}}
+  
+.
+First, it can be shown that the gradient magnitude of a batch normalized network, 
+  
+    
+      
+        
+          |
+        
+        
+          |
+        
+        
+          ▽
+          
+            
+              y
+              
+                i
+              
+            
+          
+        
+        
+          
+            
+              L
+              ^
+            
+          
+        
+        
+          |
+        
+        
+          |
+        
+      
+    
+    {\displaystyle ||\triangledown _{y_{i}}{\hat {L}}||}
+  
+, is bounded, with the bound expressed as
+
+  
+    
+      
+        
+          |
+        
+        
+          |
+        
+        
+          ▽
+          
+            
+              y
+              
+                i
+              
+            
+          
+        
+        
+          
+            
+              L
+              ^
+            
+          
+        
+        
+          |
+        
+        
+          
+            |
+          
+          
+            2
+          
+        
+        ≤
+        
+          
+            
+              γ
+              
+                2
+              
+            
+            
+              σ
+              
+                j
+              
+              
+                2
+              
+            
+          
+        
+        
+          
+            (
+          
+        
+        
+          |
+        
+        
+          |
+        
+        
+          ▽
+          
+            
+              y
+              
+                i
+              
+            
+          
+        
+        L
+        
+          |
+        
+        
+          
+            |
+          
+          
+            2
+          
+        
+        −
+        
+          
+            1
+            m
+          
+        
+        ⟨
+        1
+        ,
+        
+          ▽
+          
+            
+              y
+              
+                i
+              
+            
+          
+        
+        L
+        
+          ⟩
+          
+            2
+          
+        
+        −
+        
+          
+            1
+            m
+          
+        
+        ⟨
+        
+          ▽
+          
+            
+              y
+              
+                i
+              
+            
+          
+        
+        L
+        ,
+        
+          
+            
+              
+                y
+                ^
+              
+            
+          
+          
+            j
+          
+        
+        
+          ⟩
+          
+            2
+          
+        
+        
+          
+            )
+          
+        
+      
+    
+    {\displaystyle ||\triangledown _{y_{i}}{\hat {L}}||^{2}\leq {\frac {\gamma ^{2}}{\sigma _{j}^{2}}}{\Bigg (}||\triangledown _{y_{i}}L||^{2}-{\frac {1}{m}}\langle 1,\triangledown _{y_{i}}L\rangle ^{2}-{\frac {1}{m}}\langle \triangledown _{y_{i}}L,{\hat {y}}_{j}\rangle ^{2}{\bigg )}}
+  
+.
+Since the gradient magnitude represents the Lipschitzness of the loss, this relationship indicates that a batch normalized network could achieve greater Lipschitzness comparatively. Notice that the bound gets tighter when the gradient 
+  
+    
+      
+        
+          ▽
+          
+            
+              y
+              
+                i
+              
+            
+          
+        
+        
+          
+            
+              L
+              ^
+            
+          
+        
+      
+    
+    {\displaystyle \triangledown _{y_{i}}{\hat {L}}}
+  
+ correlates with the activation 
+  
+    
+      
+        
+          
+            
+              
+                y
+                
+                  i
+                
+              
+              ^
+            
+          
+        
+      
+    
+    {\displaystyle {\hat {y_{i}}}}
+  
+, which is a common phenomena. The scaling of 
+  
+    
+      
+        
+          
+            
+              γ
+              
+                2
+              
+            
+            
+              σ
+              
+                j
+              
+              
+                2
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\frac {\gamma ^{2}}{\sigma _{j}^{2}}}}
+  
+ is also significant, since the variance is often large.
+Secondly, the quadratic form of the loss Hessian with respect to activation in the gradient direction can be bounded as
+
+  
+    
+      
+        (
+        
+          ▽
+          
+            
+              y
+              
+                j
+              
+            
+          
+        
+        
+          
+            
+              L
+              ^
+            
+          
+        
+        
+          )
+          
+            T
+          
+        
+        
+          
+            
+              ∂
+              
+                
+                  
+                    L
+                    ^
+                  
+                
+              
+            
+            
+              ∂
+              
+                y
+                
+                  j
+                
+              
+              ∂
+              
+                y
+                
+                  j
+                
+              
+            
+          
+        
+        (
+        
+          ▽
+          
+            
+              y
+              
+                j
+              
+            
+          
+        
+        
+          
+            
+              L
+              ^
+            
+          
+        
+        )
+        ≤
+        
+          
+            
+              γ
+              
+                2
+              
+            
+            
+              σ
+              
+                2
+              
+            
+          
+        
+        
+          
+            (
+          
+        
+        
+          
+            
+              ∂
+              
+                
+                  
+                    L
+                    ^
+                  
+                
+              
+            
+            
+              ∂
+              
+                y
+                
+                  j
+                
+              
+            
+          
+        
+        
+          
+            
+              )
+            
+          
+          
+            T
+          
+        
+        
+          
+            (
+          
+        
+        
+          
+            
+              ∂
+              L
+            
+            
+              ∂
+              
+                y
+                
+                  j
+                
+              
+              ∂
+              
+                y
+                
+                  j
+                
+              
+            
+          
+        
+        
+          
+            )
+          
+        
+        
+          
+            (
+          
+        
+        
+          
+            
+              ∂
+              
+                
+                  
+                    L
+                    ^
+                  
+                
+              
+            
+            
+              ∂
+              
+                y
+                
+                  j
+                
+              
+            
+          
+        
+        
+          
+            )
+          
+        
+        −
+        
+          
+            γ
+            
+              m
+              
+                σ
+                
+                  2
+                
+              
+            
+          
+        
+        ⟨
+        
+          ▽
+          
+            
+              y
+              
+                j
+              
+            
+          
+        
+        L
+        ,
+        
+          
+            
+              
+                y
+                
+                  j
+                
+              
+              ^
+            
+          
+        
+        ⟩
+        
+          
+            |
+          
+        
+        
+          
+            |
+          
+        
+        
+          
+            
+              ∂
+              
+                
+                  
+                    L
+                    ^
+                  
+                
+              
+            
+            
+              ∂
+              
+                y
+                
+                  j
+                
+              
+            
+          
+        
+        
+          
+            |
+          
+        
+        
+          
+            
+              |
+            
+          
+          
+            2
+          
+        
+      
+    
+    {\displaystyle (\triangledown _{y_{j}}{\hat {L}})^{T}{\frac {\partial {\hat {L}}}{\partial y_{j}\partial y_{j}}}(\triangledown _{y_{j}}{\hat {L}})\leq {\frac {\gamma ^{2}}{\sigma ^{2}}}{\bigg (}{\frac {\partial {\hat {L}}}{\partial y_{j}}}{\bigg )}^{T}{\bigg (}{\frac {\partial L}{\partial y_{j}\partial y_{j}}}{\bigg )}{\bigg (}{\frac {\partial {\hat {L}}}{\partial y_{j}}}{\bigg )}-{\frac {\gamma }{m\sigma ^{2}}}\langle \triangledown _{y_{j}}L,{\hat {y_{j}}}\rangle {\bigg |}{\bigg |}{\frac {\partial {\hat {L}}}{\partial y_{j}}}{\bigg |}{\bigg |}^{2}}
+  
+.
+The scaling of 
+  
+    
+      
+        
+          
+            
+              γ
+              
+                2
+              
+            
+            
+              σ
+              
+                j
+              
+              
+                2
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\frac {\gamma ^{2}}{\sigma _{j}^{2}}}}
+  
+ indicates that the loss Hessian is resilient to the mini-batch variance, whereas the second term on the right hand side suggests that it becomes smoother when the Hessian and the inner product are non-negative. If the loss is locally convex, then the Hessian is positive semi-definite, while the inner product is positive if 
+  
+    
+      
+        
+          
+            
+              
+                g
+                
+                  j
+                
+              
+              ^
+            
+          
+        
+      
+    
+    {\displaystyle {\hat {g_{j}}}}
+  
+ is in the direction towards the minimum of the loss. It could thus be concluded from this inequality that the gradient generally becomes more predictive with the batch normalization layer.
+It then follows to translate the bounds related to the loss with respect to the normalized activation to a bound on the loss with respect to the network weights:
+
+  
+    
+      
+        
+          
+            
+              
+                g
+                
+                  j
+                
+              
+              ^
+            
+          
+        
+        ≤
+        
+          
+            
+              γ
+              
+                2
+              
+            
+            
+              σ
+              
+                j
+              
+              
+                2
+              
+            
+          
+        
+        (
+        
+          g
+          
+            j
+          
+          
+            2
+          
+        
+        −
+        m
+        
+          μ
+          
+            
+              g
+              
+                j
+              
+            
+          
+          
+            2
+          
+        
+        −
+        
+          λ
+          
+            2
+          
+        
+        ⟨
+        
+          ▽
+          
+            
+              y
+              
+                j
+              
+            
+          
+        
+        L
+        ,
+        
+          
+            
+              
+                y
+                ^
+              
+            
+          
+          
+            j
+          
+        
+        
+          ⟩
+          
+            2
+          
+        
+        )
+      
+    
+    {\displaystyle {\hat {g_{j}}}\leq {\frac {\gamma ^{2}}{\sigma _{j}^{2}}}(g_{j}^{2}-m\mu _{g_{j}}^{2}-\lambda ^{2}\langle \triangledown _{y_{j}}L,{\hat {y}}_{j}\rangle ^{2})}
+  
+, where 
+  
+    
+      
+        
+          g
+          
+            j
+          
+        
+        =
+        m
+        a
+        
+          x
+          
+            
+              |
+            
+            
+              |
+            
+            X
+            
+              |
+            
+            
+              |
+            
+            ≤
+            λ
+          
+        
+        
+          |
+        
+        
+          |
+        
+        
+          ▽
+          
+            W
+          
+        
+        L
+        
+          |
+        
+        
+          
+            |
+          
+          
+            2
+          
+        
+      
+    
+    {\displaystyle g_{j}=max_{||X||\leq \lambda }||\triangledown _{W}L||^{2}}
+  
+ and 
+  
+    
+      
+        
+          
+            
+              
+                g
+                ^
+              
+            
+          
+          
+            j
+          
+        
+        =
+        m
+        a
+        
+          x
+          
+            
+              |
+            
+            
+              |
+            
+            X
+            
+              |
+            
+            
+              |
+            
+            ≤
+            λ
+          
+        
+        
+          |
+        
+        
+          |
+        
+        
+          ▽
+          
+            W
+          
+        
+        
+          
+            
+              L
+              ^
+            
+          
+        
+        
+          |
+        
+        
+          
+            |
+          
+          
+            2
+          
+        
+      
+    
+    {\displaystyle {\hat {g}}_{j}=max_{||X||\leq \lambda }||\triangledown _{W}{\hat {L}}||^{2}}
+  
+.
+In addition to the smoother landscape, it is further shown that batch normalization could result in a better initialization with the following inequality:
+
+  
+    
+      
+        
+          |
+        
+        
+          |
+        
+        
+          W
+          
+            0
+          
+        
+        −
+        
+          
+            
+              
+                W
+                ^
+              
+            
+          
+          
+            ∗
+          
+        
+        
+          |
+        
+        
+          
+            |
+          
+          
+            2
+          
+        
+        ≤
+        
+          |
+        
+        
+          |
+        
+        
+          W
+          
+            0
+          
+        
+        −
+        
+          W
+          
+            ∗
+          
+        
+        
+          |
+        
+        
+          
+            |
+          
+          
+            2
+          
+        
+        −
+        
+          
+            1
+            
+              
+                |
+              
+              
+                |
+              
+              
+                W
+                
+                  ∗
+                
+              
+              
+                |
+              
+              
+                
+                  |
+                
+                
+                  2
+                
+              
+            
+          
+        
+        (
+        
+          |
+        
+        
+          |
+        
+        
+          W
+          
+            ∗
+          
+        
+        
+          |
+        
+        
+          
+            |
+          
+          
+            2
+          
+        
+        −
+        ⟨
+        
+          W
+          
+            ∗
+          
+        
+        ,
+        
+          W
+          
+            0
+          
+        
+        ⟩
+        
+          )
+          
+            2
+          
+        
+      
+    
+    {\displaystyle ||W_{0}-{\hat {W}}^{*}||^{2}\leq ||W_{0}-W^{*}||^{2}-{\frac {1}{||W^{*}||^{2}}}(||W^{*}||^{2}-\langle W^{*},W_{0}\rangle )^{2}}
+  
+, where 
+  
+    
+      
+        
+          W
+          
+            ∗
+          
+        
+      
+    
+    {\displaystyle W^{*}}
+  
+ and 
+  
+    
+      
+        
+          
+            
+              
+                W
+                ^
+              
+            
+          
+          
+            ∗
+          
+        
+      
+    
+    {\displaystyle {\hat {W}}^{*}}
+  
+ are the local optimal weights for the two networks, respectively.
+Some scholars argue that the above analysis cannot fully capture the performance of batch normalization, because the proof only concerns the largest eigenvalue, or equivalently, one direction in the landscape at all points. It is suggested that the complete eigenspectrum needs to be taken into account to make a conclusive analysis.
+
+
+=== Measure ===
+Since it is hypothesized that batch normalization layers could reduce internal covariate shift, an experiment is set up to measure quantitatively how much covariate shift is reduced. First, the notion of internal covariate shift needs to be defined mathematically. Specifically, to quantify the adjustment that a layer's parameters make in response to updates in previous layers, the correlation between the gradients of the loss before and after all previous layers are updated is measured, since gradients could capture the shifts from the first-order training method. If the shift introduced by the changes in previous layers is small, then the correlation between the gradients would be close to 1.
+The correlation between the gradients are computed for four models: a standard VGG network, a VGG network with batch normalization layers, a 25-layer deep linear network (DLN) trained with full-batch gradient descent, and a DLN network with batch normalization layers. Interestingly, it is shown that the standard VGG and DLN models both have higher correlations of gradients compared with their counterparts, indicating that the additional batch normalization layers are not reducing internal covariate shift.
+
+
+=== Vanishing/exploding gradients ===
+Even though batch norm was originally introduced to alleviate gradient vanishing or explosion problems, a deep batch norm network in fact suffers from gradient explosion at initialization time, no matter what it uses for nonlinearity. Thus, the optimization landscape is very far from smooth for a randomly initialized, deep batch norm network.
+More precisely, if the network has 
+  
+    
+      
+        L
+      
+    
+    {\displaystyle L}
+  
+ layers, then the gradient of the first layer weights has norm 
+  
+    
+      
+        >
+        c
+        
+          λ
+          
+            L
+          
+        
+      
+    
+    {\displaystyle >c\lambda ^{L}}
+  
+ for some 
+  
+    
+      
+        λ
+        >
+        1
+        ,
+        c
+        >
+        0
+      
+    
+    {\displaystyle \lambda >1,c>0}
+  
+ depending only on the nonlinearity.
+For any fixed nonlinearity, 
+  
+    
+      
+        λ
+      
+    
+    {\displaystyle \lambda }
+  
+ decreases as the batch size increases. For example, for ReLU, 
+  
+    
+      
+        λ
+      
+    
+    {\displaystyle \lambda }
+  
+ decreases to 
+  
+    
+      
+        π
+        
+          /
+        
+        (
+        π
+        −
+        1
+        )
+        ≈
+        1.467
+      
+    
+    {\displaystyle \pi /(\pi -1)\approx 1.467}
+  
+ as the batch size tends to infinity.
+Practically, this means deep batch norm networks are untrainable.
+This is only relieved by skip connections in the fashion of residual networks.
+This gradient explosion on the surface contradicts the smoothness property explained in the previous section, but in fact they are consistent. The previous section studies the effect of inserting a single batch norm in a network, while the gradient explosion depends on stacking batch norms typical of modern deep neural networks.
+
+
+=== Decoupling ===
+Another possible reason for the success of batch normalization is that it decouples the length and direction of the weight vectors and thus facilitates better training.
+By interpreting batch norm as a reparametrization of weight space, it can be shown that the length and the direction of the weights are separated and can thus be trained separately. For a particular neural network unit with input 
+  
+    
+      
+        x
+      
+    
+    {\displaystyle x}
+  
+ and weight vector 
+  
+    
+      
+        w
+      
+    
+    {\displaystyle w}
+  
+, denote its output as 
+  
+    
+      
+        f
+        (
+        w
+        )
+        =
+        
+          E
+          
+            x
+          
+        
+        [
+        ϕ
+        (
+        
+          x
+          
+            T
+          
+        
+        w
+        )
+        ]
+      
+    
+    {\displaystyle f(w)=E_{x}[\phi (x^{T}w)]}
+  
+, where 
+  
+    
+      
+        ϕ
+      
+    
+    {\displaystyle \phi }
+  
+ is the activation function, and denote 
+  
+    
+      
+        S
+        =
+        E
+        [
+        x
+        
+          x
+          
+            T
+          
+        
+        ]
+      
+    
+    {\displaystyle S=E[xx^{T}]}
+  
+. Assume that 
+  
+    
+      
+        E
+        [
+        x
+        ]
+        =
+        0
+      
+    
+    {\displaystyle E[x]=0}
+  
+, and that the spectrum of the matrix 
+  
+    
+      
+        S
+      
+    
+    {\displaystyle S}
+  
+ is bounded as 
+  
+    
+      
+        0
+        <
+        μ
+        =
+        
+          λ
+          
+            m
+            i
+            n
+          
+        
+        (
+        S
+        )
+      
+    
+    {\displaystyle 0<\mu =\lambda _{min}(S)}
+  
+, 
+  
+    
+      
+        L
+        =
+        
+          λ
+          
+            m
+            a
+            x
+          
+        
+        (
+        S
+        )
+        <
+        ∞
+      
+    
+    {\displaystyle L=\lambda _{max}(S)<\infty }
+  
+, such that 
+  
+    
+      
+        S
+      
+    
+    {\displaystyle S}
+  
+ is symmetric positive definite. Adding batch normalization to this unit thus results in
+
+  
+    
+      
+        
+          f
+          
+            B
+            N
+          
+        
+        (
+        w
+        ,
+        γ
+        ,
+        β
+        )
+        =
+        
+          E
+          
+            x
+          
+        
+        [
+        ϕ
+        (
+        B
+        N
+        (
+        
+          x
+          
+            T
+          
+        
+        w
+        )
+        )
+        ]
+        =
+        
+          E
+          
+            x
+          
+        
+        
+          
+            [
+          
+        
+        ϕ
+        
+          
+            (
+          
+        
+        γ
+        (
+        
+          
+            
+              
+                x
+                
+                  T
+                
+              
+              w
+              −
+              
+                E
+                
+                  x
+                
+              
+              [
+              
+                x
+                
+                  T
+                
+              
+              w
+              ]
+            
+            
+              v
+              a
+              
+                r
+                
+                  x
+                
+              
+              [
+              
+                x
+                
+                  T
+                
+              
+              w
+              
+                ]
+                
+                  1
+                  
+                    /
+                  
+                  2
+                
+              
+            
+          
+        
+        )
+        +
+        β
+        
+          
+            )
+          
+        
+        
+          
+            ]
+          
+        
+      
+    
+    {\displaystyle f_{BN}(w,\gamma ,\beta )=E_{x}[\phi (BN(x^{T}w))]=E_{x}{\bigg [}\phi {\bigg (}\gamma ({\frac {x^{T}w-E_{x}[x^{T}w]}{var_{x}[x^{T}w]^{1/2}}})+\beta {\bigg )}{\bigg ]}}
+  
+, by definition.
+The variance term can be simplified such that 
+  
+    
+      
+        v
+        a
+        
+          r
+          
+            x
+          
+        
+        [
+        
+          x
+          
+            T
+          
+        
+        w
+        ]
+        =
+        
+          w
+          
+            T
+          
+        
+        S
+        w
+      
+    
+    {\displaystyle var_{x}[x^{T}w]=w^{T}Sw}
+  
+. Assume that 
+  
+    
+      
+        x
+      
+    
+    {\displaystyle x}
+  
+ has zero mean and 
+  
+    
+      
+        β
+      
+    
+    {\displaystyle \beta }
+  
+ can be omitted, then it follows that
+
+  
+    
+      
+        
+          f
+          
+            B
+            N
+          
+        
+        (
+        w
+        ,
+        γ
+        )
+        =
+        
+          E
+          
+            x
+          
+        
+        
+          
+            [
+          
+        
+        ϕ
+        
+          
+            (
+          
+        
+        γ
+        
+          
+            
+              
+                x
+                
+                  T
+                
+              
+              w
+            
+            
+              (
+              
+                w
+                
+                  T
+                
+              
+              S
+              w
+              
+                )
+                
+                  1
+                  
+                    /
+                  
+                  2
+                
+              
+            
+          
+        
+        
+          
+            )
+          
+        
+        
+          
+            ]
+          
+        
+      
+    
+    {\displaystyle f_{BN}(w,\gamma )=E_{x}{\bigg [}\phi {\bigg (}\gamma {\frac {x^{T}w}{(w^{T}Sw)^{1/2}}}{\bigg )}{\bigg ]}}
+  
+, where 
+  
+    
+      
+        (
+        
+          w
+          
+            T
+          
+        
+        S
+        w
+        
+          )
+          
+            
+              1
+              2
+            
+          
+        
+      
+    
+    {\displaystyle (w^{T}Sw)^{\frac {1}{2}}}
+  
+ is the induced norm of 
+  
+    
+      
+        S
+      
+    
+    {\displaystyle S}
+  
+, 
+  
+    
+      
+        
+          |
+        
+        
+          |
+        
+        w
+        
+          |
+        
+        
+          
+            |
+          
+          
+            s
+          
+        
+      
+    
+    {\displaystyle ||w||_{s}}
+  
+.
+Hence, it could be concluded that 
+  
+    
+      
+        
+          f
+          
+            B
+            N
+          
+        
+        (
+        w
+        ,
+        γ
+        )
+        =
+        
+          E
+          
+            x
+          
+        
+        [
+        ϕ
+        (
+        
+          x
+          
+            T
+          
+        
+        
+          
+            
+              w
+              ~
+            
+          
+        
+        )
+        ]
+      
+    
+    {\displaystyle f_{BN}(w,\gamma )=E_{x}[\phi (x^{T}{\tilde {w}})]}
+  
+, where 
+  
+    
+      
+        
+          
+            
+              w
+              ~
+            
+          
+        
+        =
+        γ
+        
+          
+            w
+            
+              
+                |
+              
+              
+                |
+              
+              w
+              
+                |
+              
+              
+                
+                  |
+                
+                
+                  s
+                
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\tilde {w}}=\gamma {\frac {w}{||w||_{s}}}}
+  
+, and 
+  
+    
+      
+        γ
+      
+    
+    {\displaystyle \gamma }
+  
+ and 
+  
+    
+      
+        w
+      
+    
+    {\displaystyle w}
+  
+ account for its length and direction separately. This property could then be used to prove the faster convergence of problems with batch normalization.
+
+
+== Linear convergence ==
+
+
+=== Least-square problem ===
+With the reparametrization interpretation, it could then be proved that applying batch normalization to the ordinary least squares problem achieves a linear convergence rate in gradient descent, which is faster than the regular gradient descent with only sub-linear convergence.
+Denote the objective of minimizing an ordinary least squares problem as
+
+  
+    
+      
+        
+          min
+          
+            
+              
+                
+                  w
+                  ~
+                
+              
+            
+            ∈
+            
+              R
+              
+                d
+              
+            
+          
+        
+        
+          f
+          
+            O
+            L
+            S
+          
+        
+        (
+        
+          
+            
+              w
+              ~
+            
+          
+        
+        )
+        =
+        
+          min
+          
+            
+              
+                
+                  w
+                  ~
+                
+              
+            
+            ∈
+            
+              R
+              
+                d
+              
+            
+          
+        
+        (
+        
+          E
+          
+            x
+            ,
+            y
+          
+        
+        [
+        (
+        y
+        −
+        
+          x
+          
+            T
+          
+        
+        
+          
+            
+              w
+              ~
+            
+          
+        
+        
+          )
+          
+            2
+          
+        
+        ]
+        )
+        =
+        
+          min
+          
+            
+              
+                
+                  w
+                  ~
+                
+              
+            
+            ∈
+            
+              R
+              
+                d
+              
+            
+          
+        
+        (
+        2
+        
+          u
+          
+            T
+          
+        
+        
+          
+            
+              w
+              ~
+            
+          
+        
+        +
+        
+          
+            
+              
+                w
+                ~
+              
+            
+          
+          
+            T
+          
+        
+        S
+        
+          
+            
+              w
+              ~
+            
+          
+        
+        )
+      
+    
+    {\displaystyle \min _{{\tilde {w}}\in R^{d}}f_{OLS}({\tilde {w}})=\min _{{\tilde {w}}\in R^{d}}(E_{x,y}[(y-x^{T}{\tilde {w}})^{2}])=\min _{{\tilde {w}}\in R^{d}}(2u^{T}{\tilde {w}}+{\tilde {w}}^{T}S{\tilde {w}})}
+  
+, where 
+  
+    
+      
+        u
+        =
+        E
+        [
+        −
+        y
+        x
+        ]
+      
+    
+    {\displaystyle u=E[-yx]}
+  
+ and 
+  
+    
+      
+        S
+        =
+        E
+        [
+        x
+        
+          x
+          
+            T
+          
+        
+        ]
+      
+    
+    {\displaystyle S=E[xx^{T}]}
+  
+.
+Since 
+  
+    
+      
+        
+          
+            
+              w
+              ~
+            
+          
+        
+        =
+        γ
+        
+          
+            w
+            
+              
+                |
+              
+              
+                |
+              
+              w
+              
+                |
+              
+              
+                
+                  |
+                
+                
+                  s
+                
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\tilde {w}}=\gamma {\frac {w}{||w||_{s}}}}
+  
+, the objective thus becomes
+
+  
+    
+      
+        
+          min
+          
+            w
+            ∈
+            
+              R
+              
+                d
+              
+            
+            ∖
+            {
+            0
+            }
+            ,
+            γ
+            ∈
+            R
+          
+        
+        
+          f
+          
+            O
+            L
+            S
+          
+        
+        (
+        w
+        ,
+        γ
+        )
+        =
+        
+          min
+          
+            w
+            ∈
+            
+              R
+              
+                d
+              
+            
+            ∖
+            {
+            0
+            }
+            ,
+            γ
+            ∈
+            R
+          
+        
+        
+          
+            (
+          
+        
+        2
+        γ
+        
+          
+            
+              
+                u
+                
+                  T
+                
+              
+              w
+            
+            
+              
+                |
+              
+              
+                |
+              
+              w
+              
+                |
+              
+              
+                
+                  |
+                
+                
+                  S
+                
+              
+              +
+              
+                γ
+                
+                  2
+                
+              
+            
+          
+        
+        
+          
+            )
+          
+        
+      
+    
+    {\displaystyle \min _{w\in R^{d}\backslash \{0\},\gamma \in R}f_{OLS}(w,\gamma )=\min _{w\in R^{d}\backslash \{0\},\gamma \in R}{\bigg (}2\gamma {\frac {u^{T}w}{||w||_{S}+\gamma ^{2}}}{\bigg )}}
+  
+, where 0 is excluded to avoid 0 in the denominator.
+Since the objective is convex with respect to 
+  
+    
+      
+        γ
+      
+    
+    {\displaystyle \gamma }
+  
+, its optimal value could be calculated by setting the partial derivative of the objective against 
+  
+    
+      
+        γ
+      
+    
+    {\displaystyle \gamma }
+  
+ to 0. The objective could be further simplified to be
+
+  
+    
+      
+        
+          min
+          
+            w
+            ∈
+            
+              R
+              
+                d
+              
+            
+            ∖
+            {
+            0
+            }
+          
+        
+        ρ
+        (
+        w
+        )
+        =
+        
+          min
+          
+            w
+            ∈
+            
+              R
+              
+                d
+              
+            
+            ∖
+            {
+            0
+            }
+          
+        
+        
+          
+            (
+          
+        
+        −
+        
+          
+            
+              
+                w
+                
+                  T
+                
+              
+              u
+              
+                u
+                
+                  T
+                
+              
+              w
+            
+            
+              
+                w
+                
+                  T
+                
+              
+              S
+              w
+            
+          
+        
+        
+          
+            )
+          
+        
+      
+    
+    {\displaystyle \min _{w\in R^{d}\backslash \{0\}}\rho (w)=\min _{w\in R^{d}\backslash \{0\}}{\bigg (}-{\frac {w^{T}uu^{T}w}{w^{T}Sw}}{\bigg )}}
+  
+.
+Note that this objective is a form of the generalized Rayleigh quotient
+
+  
+    
+      
+        
+          
+            
+              ρ
+              ~
+            
+          
+        
+        (
+        w
+        )
+        =
+        
+          
+            
+              
+                w
+                
+                  T
+                
+              
+              B
+              w
+            
+            
+              
+                w
+                
+                  T
+                
+              
+              A
+              w
+            
+          
+        
+      
+    
+    {\displaystyle {\tilde {\rho }}(w)={\frac {w^{T}Bw}{w^{T}Aw}}}
+  
+, where 
+  
+    
+      
+        B
+        ∈
+        
+          R
+          
+            d
+            ×
+            d
+          
+        
+      
+    
+    {\displaystyle B\in R^{d\times d}}
+  
+ is a symmetric matrix and 
+  
+    
+      
+        A
+        ∈
+        
+          R
+          
+            d
+            ×
+            d
+          
+        
+      
+    
+    {\displaystyle A\in R^{d\times d}}
+  
+ is a symmetric positive definite matrix.
+It is proven that the gradient descent convergence rate of the generalized Rayleigh quotient is
+
+  
+    
+      
+        
+          
+            
+              
+                λ
+                
+                  1
+                
+              
+              −
+              ρ
+              (
+              
+                w
+                
+                  t
+                  +
+                  1
+                
+              
+              )
+            
+            
+              ρ
+              (
+              
+                w
+                
+                  t
+                  +
+                  1
+                
+              
+              −
+              
+                λ
+                
+                  2
+                
+              
+              )
+            
+          
+        
+        ≤
+        
+          
+            (
+          
+        
+        1
+        −
+        
+          
+            
+              
+                λ
+                
+                  1
+                
+              
+              −
+              
+                λ
+                
+                  2
+                
+              
+            
+            
+              
+                λ
+                
+                  1
+                
+              
+              −
+              
+                λ
+                
+                  m
+                  i
+                  n
+                
+              
+            
+          
+        
+        
+          
+            
+              )
+            
+          
+          
+            2
+            t
+          
+        
+        
+          
+            
+              
+                λ
+                
+                  1
+                
+              
+              −
+              ρ
+              (
+              
+                w
+                
+                  t
+                
+              
+              )
+            
+            
+              ρ
+              (
+              
+                w
+                
+                  t
+                
+              
+              )
+              −
+              
+                λ
+                
+                  2
+                
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\frac {\lambda _{1}-\rho (w_{t+1})}{\rho (w_{t+1}-\lambda _{2})}}\leq {\bigg (}1-{\frac {\lambda _{1}-\lambda _{2}}{\lambda _{1}-\lambda _{min}}}{\bigg )}^{2t}{\frac {\lambda _{1}-\rho (w_{t})}{\rho (w_{t})-\lambda _{2}}}}
+  
+, where 
+  
+    
+      
+        
+          λ
+          
+            1
+          
+        
+      
+    
+    {\displaystyle \lambda _{1}}
+  
+ is the largest eigenvalue of 
+  
+    
+      
+        B
+      
+    
+    {\displaystyle B}
+  
+, 
+  
+    
+      
+        
+          λ
+          
+            2
+          
+        
+      
+    
+    {\displaystyle \lambda _{2}}
+  
+ is the second largest eigenvalue of 
+  
+    
+      
+        B
+      
+    
+    {\displaystyle B}
+  
+, and 
+  
+    
+      
+        
+          λ
+          
+            m
+            i
+            n
+          
+        
+      
+    
+    {\displaystyle \lambda _{min}}
+  
+ is the smallest eigenvalue of 
+  
+    
+      
+        B
+      
+    
+    {\displaystyle B}
+  
+.
+In our case, 
+  
+    
+      
+        B
+        =
+        u
+        
+          u
+          
+            T
+          
+        
+      
+    
+    {\displaystyle B=uu^{T}}
+  
+ is a rank one matrix, and the convergence result can be simplified accordingly. Specifically, consider gradient descent steps of the form 
+  
+    
+      
+        
+          w
+          
+            t
+            +
+            1
+          
+        
+        =
+        
+          w
+          
+            t
+          
+        
+        −
+        
+          η
+          
+            t
+          
+        
+        ▽
+        ρ
+        (
+        
+          w
+          
+            t
+          
+        
+        )
+      
+    
+    {\displaystyle w_{t+1}=w_{t}-\eta _{t}\triangledown \rho (w_{t})}
+  
+ with step size 
+  
+    
+      
+        
+          η
+          
+            t
+          
+        
+        =
+        
+          
+            
+              
+                w
+                
+                  t
+                
+                
+                  T
+                
+              
+              S
+              
+                w
+                
+                  t
+                
+              
+            
+            
+              2
+              L
+              
+                |
+              
+              ρ
+              (
+              
+                w
+                
+                  t
+                
+              
+              )
+              
+                |
+              
+            
+          
+        
+      
+    
+    {\displaystyle \eta _{t}={\frac {w_{t}^{T}Sw_{t}}{2L|\rho (w_{t})|}}}
+  
+, and starting from 
+  
+    
+      
+        ρ
+        (
+        
+          w
+          
+            0
+          
+        
+        )
+        ≠
+        0
+      
+    
+    {\displaystyle \rho (w_{0})\neq 0}
+  
+, then
+
+  
+    
+      
+        ρ
+        (
+        
+          w
+          
+            t
+          
+        
+        )
+        −
+        ρ
+        (
+        
+          w
+          
+            ∗
+          
+        
+        )
+        ≤
+        
+          
+            (
+          
+        
+        1
+        −
+        
+          
+            μ
+            L
+          
+        
+        
+          
+            
+              )
+            
+          
+          
+            2
+            t
+          
+        
+        (
+        ρ
+        (
+        
+          w
+          
+            0
+          
+        
+        )
+        −
+        ρ
+        (
+        
+          w
+          
+            ∗
+          
+        
+        )
+        )
+      
+    
+    {\displaystyle \rho (w_{t})-\rho (w^{*})\leq {\bigg (}1-{\frac {\mu }{L}}{\bigg )}^{2t}(\rho (w_{0})-\rho (w^{*}))}
+  
+.
+
+
+=== Learning halfspace problem ===
+The problem of learning halfspaces refers to the training of the Perceptron, which is the simplest form of neural network. The optimization problem in this case is
+
+  
+    
+      
+        
+          min
+          
+            
+              
+                
+                  w
+                  ~
+                
+              
+            
+            ∈
+            
+              R
+              
+                d
+              
+            
+          
+        
+        
+          f
+          
+            L
+            H
+          
+        
+        (
+        
+          
+            
+              w
+              ~
+            
+          
+        
+        )
+        =
+        
+          E
+          
+            y
+            ,
+            x
+          
+        
+        [
+        ϕ
+        (
+        
+          z
+          
+            T
+          
+        
+        
+          
+            
+              w
+              ~
+            
+          
+        
+        )
+        ]
+      
+    
+    {\displaystyle \min _{{\tilde {w}}\in R^{d}}f_{LH}({\tilde {w}})=E_{y,x}[\phi (z^{T}{\tilde {w}})]}
+  
+, where 
+  
+    
+      
+        z
+        =
+        −
+        y
+        x
+      
+    
+    {\displaystyle z=-yx}
+  
+ and 
+  
+    
+      
+        ϕ
+      
+    
+    {\displaystyle \phi }
+  
+ is an arbitrary loss function.
+Suppose that 
+  
+    
+      
+        ϕ
+      
+    
+    {\displaystyle \phi }
+  
+ is infinitely differentiable and has a bounded derivative. Assume that the objective function 
+  
+    
+      
+        
+          f
+          
+            L
+            H
+          
+        
+      
+    
+    {\displaystyle f_{LH}}
+  
+ is 
+  
+    
+      
+        ζ
+      
+    
+    {\displaystyle \zeta }
+  
+-smooth, and that a solution 
+  
+    
+      
+        
+          α
+          
+            ∗
+          
+        
+        =
+        a
+        r
+        g
+        m
+        i
+        
+          n
+          
+            α
+          
+        
+        
+          |
+        
+        
+          |
+        
+        ▽
+        f
+        (
+        α
+        w
+        )
+        
+          |
+        
+        
+          
+            |
+          
+          
+            2
+          
+        
+      
+    
+    {\displaystyle \alpha ^{*}=argmin_{\alpha }||\triangledown f(\alpha w)||^{2}}
+  
+ exists and is bounded such that 
+  
+    
+      
+        −
+        ∞
+        <
+        
+          α
+          
+            ∗
+          
+        
+        <
+        ∞
+      
+    
+    {\displaystyle -\infty <\alpha ^{*}<\infty }
+  
+. Also assume 
+  
+    
+      
+        z
+      
+    
+    {\displaystyle z}
+  
+ is a multivariate normal random variable. With the Gaussian assumption, it can be shown that all critical points lie on the same line, for any choice of loss function 
+  
+    
+      
+        ϕ
+      
+    
+    {\displaystyle \phi }
+  
+. Specifically, the gradient of 
+  
+    
+      
+        
+          f
+          
+            L
+            H
+          
+        
+      
+    
+    {\displaystyle f_{LH}}
+  
+ could be represented as
+
+  
+    
+      
+        
+          ▽
+          
+            
+              
+                w
+                ~
+              
+            
+          
+        
+        
+          f
+          
+            L
+            H
+          
+        
+        (
+        
+          
+            
+              w
+              ~
+            
+          
+        
+        )
+        =
+        
+          c
+          
+            1
+          
+        
+        (
+        
+          
+            
+              w
+              ~
+            
+          
+        
+        )
+        u
+        +
+        
+          c
+          
+            2
+          
+        
+        (
+        
+          
+            
+              w
+              ~
+            
+          
+        
+        )
+        S
+        
+          
+            
+              w
+              ~
+            
+          
+        
+      
+    
+    {\displaystyle \triangledown _{\tilde {w}}f_{LH}({\tilde {w}})=c_{1}({\tilde {w}})u+c_{2}({\tilde {w}})S{\tilde {w}}}
+  
+, where  
+  
+    
+      
+        
+          c
+          
+            1
+          
+        
+        (
+        
+          
+            
+              w
+              ~
+            
+          
+        
+        )
+        =
+        
+          E
+          
+            z
+          
+        
+        [
+        
+          ϕ
+          
+            (
+            1
+            )
+          
+        
+        (
+        
+          z
+          
+            T
+          
+        
+        
+          
+            
+              w
+              ~
+            
+          
+        
+        )
+        ]
+        −
+        
+          E
+          
+            z
+          
+        
+        [
+        
+          ϕ
+          
+            (
+            2
+            )
+          
+        
+        (
+        
+          z
+          
+            T
+          
+        
+        
+          
+            
+              w
+              ~
+            
+          
+        
+        )
+        ]
+        (
+        
+          u
+          
+            T
+          
+        
+        
+          
+            
+              w
+              ~
+            
+          
+        
+        )
+      
+    
+    {\displaystyle c_{1}({\tilde {w}})=E_{z}[\phi ^{(1)}(z^{T}{\tilde {w}})]-E_{z}[\phi ^{(2)}(z^{T}{\tilde {w}})](u^{T}{\tilde {w}})}
+  
+, 
+  
+    
+      
+        
+          c
+          
+            2
+          
+        
+        (
+        
+          
+            
+              w
+              ~
+            
+          
+        
+        )
+        =
+        
+          E
+          
+            z
+          
+        
+        [
+        
+          ϕ
+          
+            (
+            2
+            )
+          
+        
+        (
+        
+          z
+          
+            T
+          
+        
+        
+          
+            
+              w
+              ~
+            
+          
+        
+        )
+        ]
+      
+    
+    {\displaystyle c_{2}({\tilde {w}})=E_{z}[\phi ^{(2)}(z^{T}{\tilde {w}})]}
+  
+, and 
+  
+    
+      
+        
+          ϕ
+          
+            (
+            i
+            )
+          
+        
+      
+    
+    {\displaystyle \phi ^{(i)}}
+  
+ is the 
+  
+    
+      
+        i
+      
+    
+    {\displaystyle i}
+  
+-th derivative of 
+  
+    
+      
+        ϕ
+      
+    
+    {\displaystyle \phi }
+  
+.
+By setting the gradient to 0, it thus follows that the bounded critical points 
+  
+    
+      
+        
+          
+            
+              
+                w
+                ~
+              
+            
+          
+          
+            ∗
+          
+        
+      
+    
+    {\displaystyle {\tilde {w}}_{*}}
+  
+ can be expressed as 
+  
+    
+      
+        
+          
+            
+              
+                w
+                ~
+              
+            
+          
+          
+            ∗
+          
+        
+        =
+        
+          g
+          
+            ∗
+          
+        
+        
+          S
+          
+            −
+            1
+          
+        
+        u
+      
+    
+    {\displaystyle {\tilde {w}}_{*}=g_{*}S^{-1}u}
+  
+, where 
+  
+    
+      
+        
+          g
+          
+            ∗
+          
+        
+      
+    
+    {\displaystyle g_{*}}
+  
+ depends on 
+  
+    
+      
+        
+          
+            
+              
+                w
+                ~
+              
+            
+          
+          
+            ∗
+          
+        
+      
+    
+    {\displaystyle {\tilde {w}}_{*}}
+  
+ and 
+  
+    
+      
+        ϕ
+      
+    
+    {\displaystyle \phi }
+  
+. Combining this global property with length-direction decoupling, it could thus be proved that this optimization problem converges linearly.
+First, a variation of gradient descent with batch normalization, Gradient Descent in Normalized Parameterization (GDNP), is designed for the objective function 
+  
+    
+      
+        
+          min
+          
+            w
+            ∈
+            
+              R
+              
+                d
+              
+            
+            ∖
+            {
+            0
+            }
+            ,
+            γ
+            ∈
+            R
+          
+        
+        
+          f
+          
+            L
+            H
+          
+        
+        (
+        w
+        ,
+        γ
+        )
+      
+    
+    {\displaystyle \min _{w\in R^{d}\backslash \{0\},\gamma \in R}f_{LH}(w,\gamma )}
+  
+, such that the direction and length of the weights are updated separately. Denote the stopping criterion of GDNP as
+
+  
+    
+      
+        h
+        (
+        
+          w
+          
+            t
+          
+        
+        ,
+        
+          γ
+          
+            t
+          
+        
+        )
+        =
+        
+          E
+          
+            z
+          
+        
+        [
+        
+          ϕ
+          ′
+        
+        (
+        
+          z
+          
+            T
+          
+        
+        
+          
+            
+              
+                w
+                ~
+              
+            
+          
+          
+            t
+          
+        
+        )
+        ]
+        (
+        
+          u
+          
+            T
+          
+        
+        
+          w
+          
+            t
+          
+        
+        )
+        −
+        
+          E
+          
+            z
+          
+        
+        [
+        
+          ϕ
+          ″
+        
+        (
+        
+          z
+          
+            T
+          
+        
+        
+          
+            
+              
+                w
+                ~
+              
+            
+          
+          
+            t
+          
+        
+        )
+        ]
+        (
+        
+          u
+          
+            T
+          
+        
+        
+          w
+          
+            t
+          
+        
+        
+          )
+          
+            2
+          
+        
+      
+    
+    {\displaystyle h(w_{t},\gamma _{t})=E_{z}[\phi '(z^{T}{\tilde {w}}_{t})](u^{T}w_{t})-E_{z}[\phi ''(z^{T}{\tilde {w}}_{t})](u^{T}w_{t})^{2}}
+  
+.
+Let the step size be
+
+  
+    
+      
+        
+          s
+          
+            t
+          
+        
+        =
+        s
+        (
+        
+          w
+          
+            t
+          
+        
+        ,
+        
+          γ
+          
+            t
+          
+        
+        )
+        =
+        −
+        
+          
+            
+              
+                |
+              
+              
+                |
+              
+              
+                w
+                
+                  t
+                
+              
+              
+                |
+              
+              
+                
+                  |
+                
+                
+                  S
+                
+                
+                  3
+                
+              
+            
+            
+              L
+              
+                g
+                
+                  t
+                
+              
+              h
+              (
+              
+                w
+                
+                  t
+                
+              
+              ,
+              
+                γ
+                
+                  t
+                
+              
+              )
+            
+          
+        
+      
+    
+    {\displaystyle s_{t}=s(w_{t},\gamma _{t})=-{\frac {||w_{t}||_{S}^{3}}{Lg_{t}h(w_{t},\gamma _{t})}}}
+  
+.
+For each step, if 
+  
+    
+      
+        h
+        (
+        
+          w
+          
+            t
+          
+        
+        ,
+        
+          γ
+          
+            t
+          
+        
+        )
+        ≠
+        0
+      
+    
+    {\displaystyle h(w_{t},\gamma _{t})\neq 0}
+  
+, then update the direction as
+
+  
+    
+      
+        
+          w
+          
+            t
+            +
+            1
+          
+        
+        =
+        
+          w
+          
+            t
+          
+        
+        −
+        
+          s
+          
+            t
+          
+        
+        
+          ▽
+          
+            w
+          
+        
+        f
+        (
+        
+          w
+          
+            t
+          
+        
+        ,
+        
+          γ
+          
+            t
+          
+        
+        )
+      
+    
+    {\displaystyle w_{t+1}=w_{t}-s_{t}\triangledown _{w}f(w_{t},\gamma _{t})}
+  
+.
+Then update the length according to
+
+  
+    
+      
+        
+          γ
+          
+            t
+          
+        
+        =
+        
+          Bisection
+        
+        (
+        
+          T
+          
+            s
+          
+        
+        ,
+        f
+        ,
+        
+          w
+          
+            t
+          
+        
+        )
+      
+    
+    {\displaystyle \gamma _{t}={\text{Bisection}}(T_{s},f,w_{t})}
+  
+, where 
+  
+    
+      
+        
+          Bisection()
+        
+      
+    
+    {\displaystyle {\text{Bisection()}}}
+  
+ is the classical bisection algorithm, and 
+  
+    
+      
+        
+          T
+          
+            s
+          
+        
+      
+    
+    {\displaystyle T_{s}}
+  
+ is the total iterations ran in the bisection step.
+Denote the total number of iterations as 
+  
+    
+      
+        
+          T
+          
+            d
+          
+        
+      
+    
+    {\displaystyle T_{d}}
+  
+, then the final output of GDNP is
+
+  
+    
+      
+        
+          
+            
+              
+                w
+                ~
+              
+            
+          
+          
+            
+              T
+              
+                d
+              
+            
+          
+        
+        =
+        
+          γ
+          
+            
+              T
+              
+                d
+              
+            
+          
+        
+        
+          
+            
+              w
+              
+                
+                  T
+                  
+                    d
+                  
+                
+              
+            
+            
+              
+                |
+              
+              
+                |
+              
+              
+                w
+                
+                  
+                    T
+                    
+                      d
+                    
+                  
+                
+              
+              
+                |
+              
+              
+                
+                  |
+                
+                
+                  S
+                
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\tilde {w}}_{T_{d}}=\gamma _{T_{d}}{\frac {w_{T_{d}}}{||w_{T_{d}}||_{S}}}}
+  
+.
+The GDNP algorithm thus slightly modifies the batch normalization step for the ease of mathematical analysis.
+It can be shown that in GDNP, the partial derivative of 
+  
+    
+      
+        
+          f
+          
+            L
+            H
+          
+        
+      
+    
+    {\displaystyle f_{LH}}
+  
+ against the length component converges to zero at a linear rate, such that
+
+  
+    
+      
+        (
+        
+          ∂
+          
+            γ
+          
+        
+        
+          f
+          
+            L
+            H
+          
+        
+        (
+        
+          w
+          
+            t
+          
+        
+        ,
+        
+          a
+          
+            t
+          
+          
+            (
+            
+              T
+              
+                s
+              
+            
+            )
+          
+        
+        
+          )
+          
+            2
+          
+        
+        ≤
+        
+          
+            
+              
+                2
+                
+                  −
+                  
+                    T
+                    
+                      s
+                    
+                  
+                
+              
+              ζ
+              
+                |
+              
+              
+                b
+                
+                  t
+                
+                
+                  (
+                  0
+                  )
+                
+              
+              −
+              
+                a
+                
+                  t
+                
+                
+                  (
+                  0
+                  )
+                
+              
+              
+                |
+              
+            
+            
+              μ
+              
+                2
+              
+            
+          
+        
+      
+    
+    {\displaystyle (\partial _{\gamma }f_{LH}(w_{t},a_{t}^{(T_{s})})^{2}\leq {\frac {2^{-T_{s}}\zeta |b_{t}^{(0)}-a_{t}^{(0)}|}{\mu ^{2}}}}
+  
+, where 
+  
+    
+      
+        
+          a
+          
+            t
+          
+          
+            (
+            0
+            )
+          
+        
+      
+    
+    {\displaystyle a_{t}^{(0)}}
+  
+ and 
+  
+    
+      
+        
+          b
+          
+            t
+          
+          
+            0
+          
+        
+      
+    
+    {\displaystyle b_{t}^{0}}
+  
+ are the two starting points of the bisection algorithm on the left and on the right, correspondingly.
+Further, for each iteration, the norm of the gradient of 
+  
+    
+      
+        
+          f
+          
+            L
+            H
+          
+        
+      
+    
+    {\displaystyle f_{LH}}
+  
+ with respect to 
+  
+    
+      
+        w
+      
+    
+    {\displaystyle w}
+  
+ converges linearly, such that
+
+  
+    
+      
+        
+          |
+        
+        
+          |
+        
+        
+          w
+          
+            t
+          
+        
+        
+          |
+        
+        
+          
+            |
+          
+          
+            S
+          
+          
+            2
+          
+        
+        
+          |
+        
+        
+          |
+        
+        ▽
+        
+          f
+          
+            L
+            H
+          
+        
+        (
+        
+          w
+          
+            t
+          
+        
+        ,
+        
+          g
+          
+            t
+          
+        
+        )
+        
+          |
+        
+        
+          
+            |
+          
+          
+            
+              S
+              
+                −
+                1
+              
+            
+          
+          
+            2
+          
+        
+        ≤
+        
+          
+            (
+          
+        
+        1
+        −
+        
+          
+            μ
+            L
+          
+        
+        
+          
+            
+              )
+            
+          
+          
+            2
+            t
+          
+        
+        
+          Φ
+          
+            2
+          
+        
+        
+          γ
+          
+            t
+          
+          
+            2
+          
+        
+        (
+        ρ
+        (
+        
+          w
+          
+            0
+          
+        
+        )
+        −
+        
+          ρ
+          
+            ∗
+          
+        
+        )
+      
+    
+    {\displaystyle ||w_{t}||_{S}^{2}||\triangledown f_{LH}(w_{t},g_{t})||_{S^{-1}}^{2}\leq {\bigg (}1-{\frac {\mu }{L}}{\bigg )}^{2t}\Phi ^{2}\gamma _{t}^{2}(\rho (w_{0})-\rho ^{*})}
+  
+.
+Combining these two inequalities, a bound could thus be obtained for the gradient with respect to 
+  
+    
+      
+        
+          
+            
+              
+                w
+                ~
+              
+            
+          
+          
+            
+              T
+              
+                d
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\tilde {w}}_{T_{d}}}
+  
+:
+
+  
+    
+      
+        
+          |
+        
+        
+          |
+        
+        
+          ▽
+          
+            
+              
+                w
+                ~
+              
+            
+          
+        
+        f
+        (
+        
+          
+            
+              
+                w
+                ~
+              
+            
+          
+          
+            
+              T
+              
+                d
+              
+            
+          
+        
+        )
+        
+          |
+        
+        
+          
+            |
+          
+          
+            2
+          
+        
+        ≤
+        
+          
+            (
+          
+        
+        1
+        −
+        
+          
+            μ
+            L
+          
+        
+        
+          
+            
+              )
+            
+          
+          
+            2
+            
+              T
+              
+                d
+              
+            
+          
+        
+        
+          Φ
+          
+            2
+          
+        
+        (
+        ρ
+        (
+        
+          w
+          
+            0
+          
+        
+        )
+        −
+        
+          ρ
+          
+            ∗
+          
+        
+        )
+        +
+        
+          
+            
+              
+                2
+                
+                  −
+                  
+                    T
+                    
+                      s
+                    
+                  
+                
+              
+              ζ
+              
+                |
+              
+              
+                b
+                
+                  t
+                
+                
+                  (
+                  0
+                  )
+                
+              
+              −
+              
+                a
+                
+                  t
+                
+                
+                  (
+                  0
+                  )
+                
+              
+              
+                |
+              
+            
+            
+              μ
+              
+                2
+              
+            
+          
+        
+      
+    
+    {\displaystyle ||\triangledown _{\tilde {w}}f({\tilde {w}}_{T_{d}})||^{2}\leq {\bigg (}1-{\frac {\mu }{L}}{\bigg )}^{2T_{d}}\Phi ^{2}(\rho (w_{0})-\rho ^{*})+{\frac {2^{-T_{s}}\zeta |b_{t}^{(0)}-a_{t}^{(0)}|}{\mu ^{2}}}}
+  
+, such that the algorithm is guaranteed to converge linearly.
+Although the proof stands on the assumption of Gaussian input, it is also shown in experiments that GDNP could accelerate optimization without this constraint.
+
+
+=== Neural networks ===
+Consider a multilayer perceptron (MLP) with one hidden layer and 
+  
+    
+      
+        m
+      
+    
+    {\displaystyle m}
+  
+ hidden units with mapping from input 
+  
+    
+      
+        x
+        ∈
+        
+          R
+          
+            d
+          
+        
+      
+    
+    {\displaystyle x\in R^{d}}
+  
+ to a scalar output described as
+
+  
+    
+      
+        
+          F
+          
+            x
+          
+        
+        (
+        
+          
+            
+              W
+              ~
+            
+          
+        
+        ,
+        Θ
+        )
+        =
+        
+          ∑
+          
+            i
+            =
+            1
+          
+          
+            m
+          
+        
+        
+          θ
+          
+            i
+          
+        
+        ϕ
+        (
+        
+          x
+          
+            T
+          
+        
+        
+          
+            
+              
+                w
+                ~
+              
+            
+          
+          
+            (
+            i
+            )
+          
+        
+        )
+      
+    
+    {\displaystyle F_{x}({\tilde {W}},\Theta )=\sum _{i=1}^{m}\theta _{i}\phi (x^{T}{\tilde {w}}^{(i)})}
+  
+, where 
+  
+    
+      
+        
+          
+            
+              
+                w
+                ~
+              
+            
+          
+          
+            (
+            i
+            )
+          
+        
+      
+    
+    {\displaystyle {\tilde {w}}^{(i)}}
+  
+ and 
+  
+    
+      
+        
+          θ
+          
+            i
+          
+        
+      
+    
+    {\displaystyle \theta _{i}}
+  
+ are the input and output weights of unit 
+  
+    
+      
+        i
+      
+    
+    {\displaystyle i}
+  
+ correspondingly, and 
+  
+    
+      
+        ϕ
+      
+    
+    {\displaystyle \phi }
+  
+ is the activation function and is assumed to be a tanh function.
+The input and output weights could then be optimized with
+
+  
+    
+      
+        
+          min
+          
+            
+              
+                
+                  W
+                  ~
+                
+              
+            
+            ,
+            Θ
+          
+        
+        (
+        
+          f
+          
+            N
+            N
+          
+        
+        (
+        
+          
+            
+              W
+              ~
+            
+          
+        
+        ,
+        Θ
+        )
+        =
+        
+          E
+          
+            y
+            ,
+            x
+          
+        
+        [
+        l
+        (
+        −
+        y
+        
+          F
+          
+            x
+          
+        
+        (
+        
+          
+            
+              W
+              ~
+            
+          
+        
+        ,
+        Θ
+        )
+        )
+        ]
+        )
+      
+    
+    {\displaystyle \min _{{\tilde {W}},\Theta }(f_{NN}({\tilde {W}},\Theta )=E_{y,x}[l(-yF_{x}({\tilde {W}},\Theta ))])}
+  
+, where 
+  
+    
+      
+        l
+      
+    
+    {\displaystyle l}
+  
+ is a loss function, 
+  
+    
+      
+        
+          
+            
+              W
+              ~
+            
+          
+        
+        =
+        {
+        
+          
+            
+              
+                w
+                ~
+              
+            
+          
+          
+            (
+            1
+            )
+          
+        
+        ,
+        .
+        .
+        .
+        ,
+        
+          
+            
+              
+                w
+                ~
+              
+            
+          
+          
+            (
+            m
+            )
+          
+        
+        }
+      
+    
+    {\displaystyle {\tilde {W}}=\{{\tilde {w}}^{(1)},...,{\tilde {w}}^{(m)}\}}
+  
+, and 
+  
+    
+      
+        Θ
+        =
+        {
+        
+          θ
+          
+            (
+            1
+            )
+          
+        
+        ,
+        .
+        .
+        .
+        ,
+        
+          θ
+          
+            (
+            m
+            )
+          
+        
+        }
+      
+    
+    {\displaystyle \Theta =\{\theta ^{(1)},...,\theta ^{(m)}\}}
+  
+.
+Consider fixed 
+  
+    
+      
+        Θ
+      
+    
+    {\displaystyle \Theta }
+  
+ and optimizing only 
+  
+    
+      
+        
+          
+            
+              W
+              ~
+            
+          
+        
+      
+    
+    {\displaystyle {\tilde {W}}}
+  
+, it can be shown that the critical points of 
+  
+    
+      
+        
+          f
+          
+            N
+            N
+          
+        
+        (
+        
+          
+            
+              W
+              ~
+            
+          
+        
+        )
+      
+    
+    {\displaystyle f_{NN}({\tilde {W}})}
+  
+ of a particular hidden unit 
+  
+    
+      
+        i
+      
+    
+    {\displaystyle i}
+  
+, 
+  
+    
+      
+        
+          
+            
+              
+                w
+                ^
+              
+            
+          
+          
+            (
+            i
+            )
+          
+        
+      
+    
+    {\displaystyle {\hat {w}}^{(i)}}
+  
+, all align along one line depending on incoming information into the hidden layer, such that
+
+  
+    
+      
+        
+          
+            
+              
+                w
+                ^
+              
+            
+          
+          
+            (
+            i
+            )
+          
+        
+        =
+        
+          
+            
+              
+                c
+                ^
+              
+            
+          
+          
+            (
+            i
+            )
+          
+        
+        
+          S
+          
+            −
+            1
+          
+        
+        u
+      
+    
+    {\displaystyle {\hat {w}}^{(i)}={\hat {c}}^{(i)}S^{-1}u}
+  
+, where 
+  
+    
+      
+        
+          
+            
+              
+                c
+                ^
+              
+            
+          
+          
+            (
+            i
+            )
+          
+        
+        ∈
+        R
+      
+    
+    {\displaystyle {\hat {c}}^{(i)}\in R}
+  
+ is a scalar, 
+  
+    
+      
+        i
+        =
+        1
+        ,
+        .
+        .
+        .
+        ,
+        m
+      
+    
+    {\displaystyle i=1,...,m}
+  
+.
+This result could be proved by setting the gradient of 
+  
+    
+      
+        
+          f
+          
+            N
+            N
+          
+        
+      
+    
+    {\displaystyle f_{NN}}
+  
+ to zero and solving the system of equations.
+Apply the GDNP algorithm to this optimization problem by alternating optimization over the different hidden units. Specifically, for each hidden unit, run GDNP to find the optimal 
+  
+    
+      
+        W
+      
+    
+    {\displaystyle W}
+  
+ and 
+  
+    
+      
+        γ
+      
+    
+    {\displaystyle \gamma }
+  
+. With the same choice of stopping criterion and stepsize, it follows that
+
+  
+    
+      
+        
+          |
+        
+        
+          |
+        
+        
+          ▽
+          
+            
+              
+                
+                  
+                    w
+                    ~
+                  
+                
+              
+              
+                (
+                i
+                )
+              
+            
+          
+        
+        f
+        (
+        
+          
+            
+              
+                w
+                ~
+              
+            
+          
+          
+            t
+          
+          
+            (
+            i
+            )
+          
+        
+        )
+        
+          |
+        
+        
+          
+            |
+          
+          
+            
+              S
+              
+                −
+                1
+              
+            
+          
+          
+            2
+          
+        
+        ≤
+        
+          
+            (
+          
+        
+        1
+        −
+        
+          
+            μ
+            L
+          
+        
+        
+          
+            
+              )
+            
+          
+          
+            2
+            t
+          
+        
+        C
+        (
+        ρ
+        (
+        
+          w
+          
+            0
+          
+        
+        )
+        −
+        
+          ρ
+          
+            ∗
+          
+        
+        )
+        +
+        
+          
+            
+              
+                2
+                
+                  −
+                  
+                    T
+                    
+                      s
+                    
+                    
+                      (
+                      i
+                      )
+                    
+                  
+                
+              
+              ζ
+              
+                |
+              
+              
+                b
+                
+                  t
+                
+                
+                  (
+                  0
+                  )
+                
+              
+              −
+              
+                a
+                
+                  t
+                
+                
+                  (
+                  0
+                  )
+                
+              
+              
+                |
+              
+            
+            
+              μ
+              
+                2
+              
+            
+          
+        
+      
+    
+    {\displaystyle ||\triangledown _{{\tilde {w}}^{(i)}}f({\tilde {w}}_{t}^{(i)})||_{S^{-1}}^{2}\leq {\bigg (}1-{\frac {\mu }{L}}{\bigg )}^{2t}C(\rho (w_{0})-\rho ^{*})+{\frac {2^{-T_{s}^{(i)}}\zeta |b_{t}^{(0)}-a_{t}^{(0)}|}{\mu ^{2}}}}
+  
+.
+Since the parameters of each hidden unit converge linearly, the whole optimization problem has a linear rate of convergence.
+
+
+== References ==
+
+
+== Further reading ==
+Ioffe, Sergey; Szegedy, Christian (2015). "Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift", ICML'15: Proceedings of the 32nd International Conference on International Conference on Machine Learning - Volume 37, July 2015 Pages 448–456
+Simonyan, Karen; Zisserman, Andrew (2014). "Very Deep Convolutional Networks for Large-Scale Image Recognition". arXiv:1409.1556 [cs.CV].

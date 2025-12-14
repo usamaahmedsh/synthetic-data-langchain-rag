@@ -1,0 +1,69 @@
+VirtualGL (VGL) is an open-source software package that redirects the 3D rendering commands from Unix and Linux OpenGL applications to 3D accelerator hardware in a dedicated server and sends the rendered output to a (thin) client located elsewhere on the network. On the server side, VirtualGL consists of a library that handles the redirection and a wrapper program that instructs applications to use this library. Clients can connect to the server either using a remote X11 connection or using an X11 proxy such as a Virtual Network Computing (VNC) server. In case of an X11 connection some client-side VirtualGL software is also needed to receive the rendered graphics output separately from the X11 stream. In case of a VNC connection no specific client-side software is needed other than the VNC client itself.
+
+
+== Problem ==
+The performance of OpenGL applications can be greatly improved by rendering the graphics on dedicated hardware accelerators that are typically present in a GPU. GPUs have become so commonplace that applications have come to rely on them for acceptable performance. But VNC and other thin client environments for Unix and Linux do not have access to such hardware on the server side. Therefore they either do not support OpenGL applications at all or resort to slower methods such as rendering on the client or in software on the server. 
+Remotely displaying 3D applications with hardware acceleration has traditionally required the use of "indirect rendering."  Indirect rendering uses the GLX extension to the X Window System ("X11" or "X") to encapsulate the OpenGL commands inside of the X11 protocol stream and ship them from an application to an X display.  Traditionally, the application runs on a remotely located application server, and the X display runs on the user's desktop.  In this scenario, all of the OpenGL commands are executed by the user's desktop machine, so that machine must have a fast 3D graphics accelerator.  This limits the type of machine that can remotely display a 3D application using this method.
+Indirect rendering can perform well if the network is sufficiently fast (Gigabit Ethernet, for instance), if the application does not dynamically modify the geometry of the object being rendered, if the application uses display lists, and if the application does not use a great deal of texture mapping.  Many OpenGL applications, however, do not meet these criteria.  To further complicate matters, some OpenGL extensions do not work in an indirect rendering environment.  Some of these extensions require the ability to directly access the 3D graphics hardware and thus can never be made to work indirectly.  In other cases, the user's X display may not provide explicit support for a needed OpenGL extension, or the extension may rely on a specific hardware configuration that is not present on the user's desktop machine.
+Performing OpenGL rendering on the application server circumvents the issues introduced by indirect rendering, since the application now has a fast and direct path to the 3D rendering hardware.  If the 3D rendering occurs on the application server, then only the resulting 2D images must be sent to the client.  Images can be delivered at the same frame rate regardless of how big the 3D data was that was used to generate them, so performing 3D rendering on the application server effectively converts the 3D performance problem into a 2D performance problem.  The problem then becomes how to stream 1-2 megapixels of image data over a network at interactive frame rates, but commodity technologies (HDTV, to name one) already address this problem.
+
+
+== VirtualGL's solution ==
+VirtualGL uses "GLX forking" to perform OpenGL rendering on the application server.  Unix and Linux OpenGL applications normally send both GLX commands and ordinary X11 commands to the same X display.  The GLX commands are used to bind OpenGL rendering contexts to a particular X window, obtain a list of pixel formats that the X display supports, etc.  VirtualGL takes advantage of a feature in Unix and Linux that allows one to "preload" a library into an application, effectively intercepting (AKA "interposing") certain function calls that the application would normally make to shared libraries with which it is linked.  Once VirtualGL is preloaded into a Unix or Linux OpenGL application, it intercepts the GLX function calls from the application and rewrites them such that the corresponding GLX commands are sent to the application server's X display (the "3D X Server"), which presumably has a 3D hardware accelerator attached.  Thus, VirtualGL prevents GLX commands from being sent over the network to the user's X display or to a virtual X display ("X proxy"), such as VNC, that does not support GLX.  In the process of rewriting the GLX calls, VirtualGL also redirects the OpenGL rendering into off-screen pixel buffers ("Pbuffers.")  Meanwhile, the rest of the function calls from the application, including the ordinary X11 commands used to draw the application's user interface, are allowed to pass through VirtualGL without modification.
+Internally, VirtualGL's interposer engine also maintains a map of windows to Pbuffers, matches visual attributes between the destination X display (the "2D X Server") and the 3D X Server, and performs a variety of other hashing functions to assure that the GLX redirection is seamless.  But essentially, once the OpenGL context is established on the application server's X display, VirtualGL gets out of the way and allows all subsequent OpenGL commands to pass through unimpeded to the application server's 3D hardware.  Thus, the application can automatically use whatever OpenGL features and extensions are provided by the application server's hardware and drivers.
+Apart from marshaling GLX commands and managing Pbuffers, VirtualGL also reads back the rendered pixels at the appropriate time (usually by monitoring glXSwapBuffers() or glFinish()) and then draws those pixels into application's X window using standard X image drawing commands.  Since VirtualGL is redirecting the GLX commands away from the 2D X Server, it can be used to add accelerated 3D support to X proxies (such as VNC) as well as to prevent indirect OpenGL rendering from occurring when using a remote X display.
+
+Using VirtualGL in concert with VNC or another X proxy allows multiple users to simultaneously run 3D applications on a single application server and multiple clients to share each session.  However, VNC and its ilk are tuned to handle 2D applications with large areas of solid color, few colors, and few inter-frame differences.  3D applications, on the other hand, generate images with fine-grained, complex color patterns and much less correlation between subsequent frames.  The workload generated by drawing rendered images from an OpenGL application into an X window is essentially the same workload as a video player, and off-the-shelf thin client software typically lacks sufficiently fast image codecs to be able to handle this workload with interactive frame rates.
+VirtualGL works around this problem in two ways:
+
+TurboVNC
+The VGL Transport
+
+
+=== TurboVNC and TigerVNC ===
+TurboVNC and TigerVNC are offshoots of TightVNC that accelerate the Tight and JPEG encoding, in part by using libjpeg-turbo, a SIMD-accelerated version of libjpeg.  Both projects provide VNC servers as well as client applications.
+TurboVNC was developed by the same team as VirtualGL. On 100 Megabit Ethernet networks it can display more than 50 Megapixels/second with perceptually lossless image quality.  TurboVNC includes further optimizations that allow it to display 10–12 Megapixels/second over a 5 Megabit broadband link, with noticeably less but usable image quality.  TurboVNC also extends TightVNC to include client-side double buffering and other features targeted at 3D applications, such as the ability to send a lossless copy of the screen image during periods of inactivity.  TurboVNC and VirtualGL are used by the Texas Advanced Computing Center at University of Texas at Austin to allow users of TeraGrid to remotely access the 3D rendering capabilities of the Stampede Visualization Cluster.
+TigerVNC is a more recent fork of TightVNC that provides similar performance to TurboVNC in most cases but has different project goals and features.
+
+
+=== VGL Transport ===
+
+When using the VGL Transport, VirtualGL compresses the rendered 3D images in process using the same optimized JPEG codec that TurboVNC uses. VirtualGL then sends the compressed images over a dedicated TCP socket to a VirtualGL Client application running on the client machine. The VirtualGL Client is responsible for decompressing the images and drawing the pixels into the appropriate X window. Meanwhile, the non-OpenGL elements of the application's display are sent over the network using the standard remote X11 protocol and rendered on the client machine.
+This approach requires that an X display be present on the client machine, and the reliance upon the remote X11 protocol for performing 2D rendering means that many applications will perform poorly when using the VGL Transport on high-latency networks. Additionally, the VGL Transport does not inherently support collaboration (multiple clients per session), since the images are being pushed to the users' machines rather than being pulled. But the use of the VGL Transport does provide a completely seamless application experience, whereby every application window corresponds to a single desktop window. The VGL Transport also reduces the server CPU load, since the 2D rendering is occurring on the client, and the VGL Transport allows advanced OpenGL features, such as quad-buffered stereo, to be used.
+The developers of VirtualGL envision the primary users of the VGL Transport to be laptop users with an 802.11g wireless or a fast Ethernet connection to the application server.
+
+
+== Commercial products using VirtualGL ==
+VirtualGL and TurboVNC were core components of the Sun Visualization System product from Sun Microsystems, which was discontinued in April 2009. The two open source packages were combined with a closed source plugin that allowed VirtualGL to send compressed images to Sun Ray thin clients and another closed source package that integrated VirtualGL with Sun Grid Engine, providing resource management and scheduling for remote 3D jobs. The combination of these packages, dubbed "Sun Shared Visualization", was available as a free download. Sun charged for support.
+v4.x.x of NoMachine supports VirtualGL to allow users to run 3D applications in NoMachine desktop sessions.
+v2.1 of the Scalable Visualization Array software from HP includes components that integrate with VirtualGL and TurboVNC, allowing 3D jobs to be scheduled on and remotely displayed from a visualization cluster.
+v3.0.0 of ThinLinc is designed to work in conjunction with VirtualGL.
+v2010 of EnginFrame Views supports VirtualGL as one of the remote protocol options.
+The Exceed onDemand and Exceed Freedom products from OpenText use code from VirtualGL to implement server-side rendering.
+
+
+== See also ==
+
+Xgl
+AIGLX
+
+
+== References ==
+
+
+=== Footnotes ===
+
+
+=== General references ===
+"VirtualGL Background". VirtualGL.org. Retrieved 20 February 2016.
+"User's Guide for VirtualGL 2.5". VirtualGL.org. Retrieved 20 February 2016.
+"User's Guide for TurboVNC 2.0.1". TurboVNC.org. Retrieved 20 February 2016.
+
+
+== External links ==
+Official website 
+VirtualGL on SourceForge
+VirtualGL on GitHub
+Official TurboVNC website
+TurboVNC on SourceForge
+TurboVNC on GitHub

@@ -1,0 +1,34 @@
+A log-structured filesystem is a file system in which data and metadata are written sequentially to a circular buffer, called a log. The design was first proposed by John K. Ousterhout and Fred Douglis in 1988 and first implemented in 1992 by Ousterhout and Mendel Rosenblum for the Unix-like Sprite distributed operating system.
+
+
+== Rationale ==
+
+Conventional file systems lay out files with great care for spatial locality and make in-place changes to their data structures in order to perform well on optical and magnetic disks, which tend to seek relatively slowly.
+The design of log-structured file systems is based on the hypothesis that this will no longer be effective because ever-increasing memory sizes on modern computers would lead to I/O becoming write-heavy since reads would be almost always satisfied from memory cache. A log-structured file system thus treats its storage as a circular log and writes sequentially to the head of the log.
+This has several important side effects:
+
+Write throughput on optical and magnetic disks is improved because they can be batched into large sequential runs and costly seeks are kept to a minimum.
+The structure is naturally suited to media with append-only zones or pages such as flash storages and shingled magnetic recording HDDs
+Writes create multiple, chronologically-advancing versions of both file data and meta-data. Some implementations make these old file versions nameable and accessible, a feature sometimes called time-travel or snapshotting. This is very similar to a versioning file system.
+Recovery from crashes is simpler. Upon its next mount, the file system does not need to walk all its data structures to fix any inconsistencies, but can reconstruct its state from the last consistent point in the log.
+Log-structured file systems, must reclaim free space from the tail of the log to prevent the file system from becoming full when the head of the log wraps around to meet it. The tail can release space and move forward by skipping over data where newer versions exist further ahead in the log. If there are no newer versions, then the data is moved and appended to the head.
+To reduce the overhead incurred by this garbage collection, most implementations avoid purely circular logs and divide up their storage into segments. The head of the log simply advances into non-adjacent segments which are already free. If space is needed, the least-full segments are reclaimed first. This decreases the I/O load (and decreases the write amplification) of the garbage collector, but becomes increasingly ineffective as the file system fills up and nears capacity.
+
+
+== Disadvantages ==
+The design rationale for log-structured file systems assumes that most reads will be optimized away by ever-enlarging memory caches. This assumption does not always hold:
+
+On magnetic media—where seeks are relatively expensive—the log structure may actually make reads much slower, since it fragments files that conventional file systems normally keep contiguous with in-place writes.
+On flash memory—where seek times are usually negligible—the log structure may not confer a worthwhile performance gain because write fragmentation has much less of an impact on write throughput. Another issue is stacking one log on top of another log, which is not a very good idea as it forces multiple erases with unaligned access. However, many flash based devices cannot rewrite part of a block, and they must first perform a (slow) erase cycle of each block before being able to re-write. By putting all the writes in one block, this can help performance as opposed to writes scattered into various blocks, and each one must be copied into a buffer, erased, and written back, which is a clear advantage for so-called "raw" flash memory where flash translation layer is bypassed.
+
+
+== See also ==
+Comparison of file systems
+List of log-structured file systems
+
+
+== References ==
+
+
+== Further reading ==
+Log-structured File Systems (2014), Arpaci-Dusseau, Remzi H.; Arpaci-Dusseau, Andrea C.; Arpaci-Dusseau Books

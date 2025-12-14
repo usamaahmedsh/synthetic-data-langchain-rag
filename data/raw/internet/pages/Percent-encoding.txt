@@ -1,0 +1,93 @@
+URL encoding, officially known as percent-encoding, is a method to encode arbitrary data in a uniform resource identifier (URI) using only the US-ASCII characters legal within a URI. Percent-encoding is used to ensure special characters do not interfere with the URI's structure and interpretation. Special characters are replaced with a percent sign (%) followed by two hexadecimal digits representing the character's byte value. For example, a space is commonly encoded as %20:
+
+original: http://example.com/my file.txt
+encoded: http://example.com/my%20file.txt
+Although it is known as URL encoding, it is also used more generally within the main Uniform Resource Identifier (URI) set, which includes both Uniform Resource Locator (URL) and Uniform Resource Name (URN). Consequently, it is also used in the preparation of data of the application/x-www-form-urlencoded media type, as is often used in the submission of HTML form data in HTTP requests. Percent-encoding is not case-sensitive.
+
+
+== Types ==
+
+
+=== Percent-encoding in a URI ===
+
+
+==== Types of URI characters ====
+The characters allowed in a URI are either reserved or unreserved (or a percent character as part of a percent-encoding). Reserved characters are those characters that sometimes have special meaning. For example, forward slash characters are used to separate different parts of a URL (or, more generally, a URI). Unreserved characters have no such meanings. Using percent-encoding, reserved characters are represented using special character sequences. The sets of reserved and unreserved characters and the circumstances under which certain reserved characters have special meaning have changed slightly with each revision of specifications that govern URIs and URI schemes.
+
+Other characters in a URI must be percent-encoded.
+
+
+=== Reserved characters ===
+When a character from the reserved set (a "reserved character") has a special meaning (a "reserved purpose") in a certain context, and a URI scheme says that it is necessary to use that character for some other purpose, then the character must be percent-encoded. Percent-encoding a reserved character involves converting the character to its corresponding byte value in ASCII and then representing that value as a pair of hexadecimal digits (if there is a single hex digit, a leading zero is added). The digits, preceded by a percent sign (%) as an escape character, are then used in the URI in place of the reserved character.
+(A non-ASCII character is typically converted to its byte sequence in UTF-8, and then each byte value is represented as above.)
+The reserved character /, for example, if used in the "path" component of a URI, has the special meaning of being a delimiter between path segments. If, according to a given URI scheme, / needs to be in a path segment, then the three characters %2F or %2f must be used in the segment instead of a raw /.
+
+Reserved characters that have no reserved purpose in a particular context may also be percent-encoded but are not semantically different from those that are not.
+In the "query" component of a URI (the part after a ? character), for example, / is still considered a reserved character but it normally has no reserved purpose, unless a particular URI scheme says otherwise. The character does not need to be percent-encoded when it has no reserved purpose.
+URIs that differ only by whether a reserved character is percent-encoded or appears literally are normally considered not equivalent (denoting the same resource) unless it can be determined that the reserved characters in question have no reserved purpose. This determination is dependent upon the rules established for reserved characters by individual URI schemes.
+
+
+=== Unreserved characters ===
+Characters from the unreserved set never need to be percent-encoded.
+URIs that differ only by whether an unreserved character is percent-encoded or appears literally are equivalent by definition, but URI processors, in practice, may not always recognize this equivalence. For example, URI consumers should not treat %41 differently from A or %7E differently from ~, but some do. For maximal interoperability, URI producers are discouraged from percent-encoding unreserved characters.
+
+
+==== Percent character ====
+Because the percent character ( % ) serves to indicate percent-encoded octets, it must itself be percent-encoded as %25 to be used as data within a URI.
+
+
+==== Arbitrary data ====
+Most URI schemes involve the representation of arbitrary data, such as an IP address or file system path, as components of a URI. URI scheme specifications should, but often do not, provide an explicit mapping between URI characters and all possible data values being represented by those characters.
+
+
+===== Binary data =====
+Since the publication of RFC 1738 in 1994 it has been specified that schemes that provide for the representation of binary data in a URI must divide the data into 8-bit bytes and percent-encode each byte in the same manner as above. Byte value 0x0F, for example, should be represented by %0F, but byte value 0x41 can be represented by A, or %41. The use of unencoded characters for alphanumeric and other unreserved characters is typically preferred, as it results in shorter URLs.
+
+
+===== Character data =====
+The procedure for percent-encoding binary data has often been extrapolated, sometimes inappropriately or without being fully specified, to apply to character-based data. In the World Wide Web's formative years, when dealing with data characters in the ASCII repertoire and using their corresponding bytes in ASCII as the basis for determining percent-encoded sequences, this practice was relatively harmless; it was just assumed that characters and bytes mapped one-to-one and were interchangeable. The need to represent characters outside the ASCII range, however, grew quickly, and URI schemes and protocols often failed to provide standard rules for preparing character data for inclusion in a URI. Web applications consequently began using different multi-byte, stateful, and other non-ASCII-compatible encodings as the basis for percent-encoding, leading to ambiguities and difficulty interpreting URIs reliably.
+For example, many URI schemes and protocols based on RFCs 1738 and 2396 presume that the data characters will be converted to bytes according to some unspecified character encoding before being represented in a URI by unreserved characters or percent-encoded bytes. If the scheme does not allow the URI to provide a hint as to what encoding was used, or if the encoding conflicts with the use of ASCII to percent-encode reserved and unreserved characters, then the URI cannot be reliably interpreted. Some schemes fail to account for encoding at all and instead just suggest that data characters map directly to URI characters, which leaves it up to implementations to decide whether and how to percent-encode data characters that are in neither the reserved nor unreserved sets.
+
+Arbitrary character data is sometimes percent-encoded and used in non-URI situations, such as for password-obfuscation programs or other system-specific translation protocols.
+
+
+==== Current standard ====
+
+The generic URI syntax recommends that new URI schemes that provide for the representation of character data in a URI should, in effect, represent characters from the unreserved set without translation and should convert all other characters to bytes according to UTF-8, and then percent-encode those values. This suggestion was introduced in January 2005 with the publication of RFC 3986. URI schemes introduced before this date are not affected.
+Not addressed by the current specification is what to do with encoded character data. For example, in computers, character data manifests in encoded form, at some level, and thus could be treated as either binary or character data when being mapped to URI characters. Presumably, it is up to the URI scheme specifications to account for this possibility and require one or the other, but in practice, few, if any, actually do.
+
+
+==== Non-standard implementations ====
+There exists a non-standard encoding for Unicode characters: %uxxxx, where xxxx is a UTF-16 code unit represented as four hexadecimal digits. For example, the 13th edition of ECMA-262 includes an escape function that uses this syntax. However, this behavior is not specified by any RFC, and has been rejected by the W3C.
+
+
+=== The application/x-www-form-urlencoded type ===
+When data that has been entered into HTML forms is submitted, the form field names and values are encoded and sent to the server in an HTTP request message using method GET or POST, or, historically, via email. The encoding used by default is based on an early version of the general URI percent-encoding rules, with a number of modifications such as newline normalization and replacing spaces with + instead of %20. The media type of data encoded this way is application/x-www-form-urlencoded, and it is currently defined in the HTML and XForms specifications. In addition, the CGI specification contains rules for how web servers decode data of this type and make it available to applications.
+When HTML form data is sent in an HTTP GET request, it is included in the query component of the request URI using the same syntax described above. When sent in an HTTP POST request or via email, the data is placed in the body of the message, and application/x-www-form-urlencoded is included in the message's Content-Type header.
+
+
+== See also ==
+
+Base64 – Encoding for a sequence of byte values using 64 printable characters
+Binary-to-text encoding – Representation of binary data as text
+Internationalized Resource Identifier – Expanded set of characters on the URI protocol
+Punycode – Encoding for Unicode domain names
+Shellcode – Code intended as a payload to exploit a software vulnerability
+
+
+== Notes ==
+
+
+== References ==
+
+
+== External links ==
+The following specifications all discuss and define reserved characters, unreserved characters, and percent-encoding, in some form or other:
+
+RFC 3986 / STD STD 66. (plus errata), the current generic URI syntax specification.
+RFC 2396 (obsolete, plus errata) and RFC 2732 (plus errata) together comprised the previous version of the generic URI syntax specification.
+RFC 1738 (mostly obsolete) and RFC 1808 (obsolete), which define URLs.
+RFC 1630 (obsolete), the first generic URI syntax specification.
+"Naming and Addressing: URIs, URLs, ..." W3C. Retrieved 17 September 2025. (guideline)
+"URI encoding programs". W3C. Retrieved 17 September 2025. (W3C explanation of UTF-8 in URIs, the page is no longer maintained and may be inaccurate)
+"Forms". W3C. Retrieved 17 September 2025. (W3C HTML form content types)

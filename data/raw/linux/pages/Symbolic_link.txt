@@ -1,0 +1,144 @@
+In computing, a symbolic link (a.k.a. symlink or soft link) is a special computer file that refers to another file or directory by storing a path to it, thus providing an alternative access path without duplicating the target's content. Apps that use operating system services may treat a symbolic link like other files or directories, and would not know that it is a symbolic link unless they investigate its nature. A symbolic link could break if its target is moved or deleted.
+Symbolic links are supported in Unix-like operating systems and Microsoft Windows, although they impose varying limitations on them. Alternatives to symbolic links include hard links, shortcut files, and Windows shell objects.
+
+
+== Overview ==
+A symbolic link is an independent file that stores a file system path that, except for special situations, is treated as the file system item to which the path refers; the target. If a symbolic link is deleted, its target is not affected. If the target is moved, renamed or deleted, the symbolic link is not automatically updated or deleted. Its target path would point to nothing and might be described as broken, orphaned, dead, or dangling. The symbolic link differs from the hard link. The latter cannot link to a target on a different volume or file system, but the former can. A hard link always refers to an existing target, whereas a symbolic link might be a path to nothing.
+Symbolic links were introduced in 1982 in 4.1a BSD Unix. The POSIX standard defines the symbolic link as found in most Unix-like operating systems, such as FreeBSD, Linux, and macOS. CTSS on IBM 7090 supported files linked by name in 1963. By 1978, some symbolic links were supported in minicomputer operating systems from DEC, and Data General's RDOS.
+Symbolic links may be implemented in a context-dependent or variable fashion, such that the link points to varying targets depending on a configuration parameter, run-time parameter, or other instantaneous condition. A variable or variant symbolic link has a variable name (such as username of environment specific info) embedded in its path definition, allowing some flexibility that is not possible with a standard symbolic link. NetBSD, DragonFly BSD, and Domain/OS support such links. Tru64 uses a context dependent symbolic link where the context is the cluster member number. Pyramid Technology's OSx operating system supports conditional symbolic links.
+The aforesaid context-dependent symbolic links serve to restructure the file system hierarchy, allow for a more intuitive or application-specific directory structure, and to reorganize the file system without redesigning core system functions and utilities. Because of its nature, the symbolic link feature causes a hierarchical file system to be a directed graph instead of a tree, which can affect otherwise simple operations. For example, navigating to a directory's parent may not work reliably with symbolic links. Some Unix shells heuristically try to uphold the illusion of a tree-shaped hierarchy, but this causes them to produce different results compared to other programs that manipulate paths without such heuristics; relying on the operating system instead.
+Windows 95 also had a similar intuitiveness concern, but instead of adopting symbolic links, created the Windows shell, special folders, and shortcut files (see § Alternatives for details).
+
+
+== Unix-like ==
+
+
+=== Use ===
+In a Unix-like OS, the ln shell command can create either a hard link (via the link() API function ) or a symbolic link (via the symlink() function). The command's syntax for creating a symbolic link is as follows:
+
+Ideally, the target should exist, although a symbolic link may be created to a non-existent target. 
+The following example creates an empty file called "foo", then creates a symbolic link called "bar" that points to "foo". 
+
+Most operations treat a link as an alias for the target. For example, shell commands that access file content access the content of the target file. But file management operations may operate on the link or the target. The lstat(), lchown() and readlink() APIs apply directly to link file; not their targets. An app (e.g., ls or find) can use lstat() rather than stat() to distinguish and report on symbolic links instead of their targets. Because the rename() and unlink() API functions are coded to operate  on symbolic links, the rm and mv commands (which use these APIs) affect the symbolic link itself. The cp command has options that allow either the symbolic link or the target to be copied. 
+The ls -l command can reveal a symbolic link's target. The output shows the link's name, followed by a -> mark and the link's target. In this example, ls reveals the symbolic link that the previous example created.
+
+
+=== Storage ===
+Early implementations stored the link path in a regular file. The file contained the target path as text, and the file mode bits marked the file as a symbolic link. The reported size of such a symbolic link is the number of characters in the path it points to. The file system permissions of a symbolic link are not used; the access modes of the target file are controlled by the target file's own permissions. (FreeBSD, NetBSD, DragonFly BSD, and macOS can modify file permissions and file attributes of a symbolic link, through lchmod() and lchflags() APIs respectively.)
+To enhance storage space and performance, the fast symlink allowed storage of the target path within the data structures used for storing file information on disk (inodes). This space stores a list of disk block addresses allocated to a file. Thus, symbolic links with short target paths are accessed quickly. Systems with fast symlinks often fall back to using the original method if the target path exceeds the available inode space. The original style was retroactively termed a slow symlink. It is also used for disk compatibility with other or older versions of operating systems.
+Although storing the link value inside the inode saves a disk block and a disk read, the operating system still needs to parse the path name in the link, which always requires reading additional inodes and generally requires reading other, and potentially many, directories, processing both the list of files and the inodes of each of them until it finds a match with the link's path components. Only when a link points to a file in the same directory do "fast symlinks" provide significantly better performance than other symbolic links.
+
+
+== Windows ==
+
+Microsoft Windows support symbolic links in the NTFS and ReFS file systems, as well as the Windows kernel namespace.
+
+
+=== NTFS junctions and volume mount points ===
+
+Starting with Windows 2000, NTFS supports junction points, also known as soft links. Junction points are similar to symbolic links, but only link to other directories, not files. They are implemented via NTFS reparse points. Windows 7 and Vista support a maximum of 31 reparse points for a given path (i.e. any given path can have at most 31 redirections before Windows gives up). 
+Also starting with 2000, NTFS supports volume mount points. Normally, Windows volumes are assigned a drive letter. Volume mount points act like a symbolic link to the root of another volume that is not assigned a drive letter.
+
+
+=== NTFS symbolic link ===
+
+NTFS version 3.1 introduced support for symbolic links. Windows XP partially implemented NTFS 3.1, leaving out symbolic links. Thus, a third-party driver ise required to enable support for NTFS symbolic links in Windows XP. Windows Vista and later enabled support for symbolic links. Unlike NTFS junction points, a symbolic link can also point to a file or remote Server Message Block (SMB) network path. Additionally, the NTFS symbolic link implementation provides full support for cross-volume links. However, the functionality enabling cross-host symbolic links requires that the remote system to also support them.
+Symbolic links are designed to aid in migration and application compatibility with POSIX operating systems. Microsoft aimed for Windows Vista's symbolic links to "function just like UNIX links". To create a symbolic link, the user account must possess the new "Create Symbolic Link" privilege (SeCreateSymbolicLinkPrivilege), which, by default, only admins have. In Windows Vista and later, when the working directory path ends with a symbolic link, the current parent path reference, .., will refer to the parent directory of the symbolic link rather than that of its target.
+Users could use Command Prompt or PowerShell to create symbolic links. The following creates a symbolic link called "Downloads" at "E:\" that points to the Downloads folder in the user's profile. This works in Command Prompt only as mklink is a built-in shell command.
+
+The /D switch in this command requests a junction point instead of a file symbolic link. This command succeeds even if the target doesn't exist.
+The following PowerShell command also creates a symbolic link with the same source and target as above:
+
+Unlike Command Prompt, PowerShell returns an error if the source object path is invalid. In exchange, PowerShell correctly determines the type of the source object and creates the right type of symbolic link.
+In addition to file and folders, NTFS symbolic links can point to an alternate data stream. The following example creates a symbolic link called "Test.txt" that points the "Zone.Identifier:$DATA" alternative stream of a file called "npcap-1.83.exe". (This particular alternative stream is the mark of the web.)The low-function responsible for creating symbolic links is the CreateSymbolicLink() function of Windows API, introduced in 2008. It can create both file and directory symbolic links. Much later, in 2021, Microsoft introduced File.CreateSymbolicLink() and Directory.CreateSymbolicLink() methods to .NET 6. They are free and open-source.
+
+
+=== Kernel symbolic links ===
+
+
+=== Cygwin symbolic links ===
+Cygwin simulates POSIX-conforming symbolic links in the Windows file system. It uses identical programming and user utility interfaces as Unix (see above), but creates Windows shortcuts (.lnk files) with additional information used by Cygwin at the time of symbolic link resolution. Cygwin symbolic links comply with the POSIX standard in terms of how they are resolved, and with Windows standards in terms of their on-disk representation.
+Additionally, Cygwin can be set up to support native Windows symbolic links which can be used out of Cygwin without restrictions. This requires:
+
+Changing the CYGWIN environment variable to contain winsymlinks:native;
+Running the Cygwin with elevated rights because Windows restricts the creation of symbolic links to privileged users
+Some differences exist, however. Cygwin has no way to specify shortcut-related information – such as working directory or icon – as there is no place for such parameters in ln -s command. To create standard Microsoft .lnk files Cygwin provides the mkshortcut and readshortcut utilities.
+The Cygwin User's Guide has more information on this topic. MSYS2, which is based on Cygwin, has a similar set of winsymlinks settings but defaults to copying the files.
+
+
+== Comparison of symbolic link implementations ==
+The following table compares various aspects of the symbolic link (both UNIX-based and Windows), junction point (NTFS) and hard link (UNIX-based).
+
+
+== Other implementations ==
+Implementations of features similar to symbolic links.
+
+
+=== Early MIT ===
+MIT Compatible Time-Sharing System c. 1963 and Incompatible Timesharing System both have linked files where the name of the target file is specified in a directory entry.
+
+
+=== Data General RDOS ===
+Data General's RDOS for its Nova computers supports "link entries", which are directory entries that contain both the name of the entry and the name of another file, so that a reference to a file using the name of the entry refers to the other file.
+
+
+=== Amiga ===
+The command creating symbolic links is makelink, which is also used for hard links. Internally the dos.library returns an error code indicating that a target is a soft link if you try to perform actions on it that are only legal for a file, and applications that wish to follow the symbolic link then needs to explicitly make a call to follow the link and retry the operation. The AmigaDOS shell will follow links automatically.
+
+
+=== Classic Mac OS ===
+
+In the classic Mac OS, applications or users can use aliases, which, unlike symbolic links, follow the target, even if it is moved to another location on the same volume. (This is not to be confused with the shell command alias on several shells for Unix-like systems.)
+macOS also supports aliases; they are not supported by Unix APIs such as open(), but are supported by Carbon and Cocoa higher-level APIs.
+
+
+=== OS/2 ===
+In the OS/2 operating system, symbolic links somewhat resemble shadows in the graphical Workplace Shell. However, shadows, due to the fully object-oriented System Object Model, are considerably more powerful and robust than a simple link. For example, shadows do not lose their capabilities when renamed or when either the object or subject of the link is relocated.
+
+
+== Alternatives ==
+
+
+=== File shortcuts ===
+Shortcuts, which are supported by the graphical file browsers of some operating systems, may resemble symbolic links but differ in a number of important ways. One difference is what type of software is able to follow them:
+
+Symbolic links are automatically resolved by the file system. Any software program, upon accessing a symbolic link, will see the target instead, whether the program is aware of symbolic links or not.
+Shortcuts are treated like ordinary files by the file system and by software programs that are not aware of them. Only software programs that understand shortcuts (such as the Windows shell and file browsers) treat them as references to other files.
+The mechanisms also have different capabilities:
+
+Windows shortcuts normally refer to a destination by an absolute path (starting from the root directory), whereas POSIX symbolic links can refer to destinations via either an absolute or a relative path. The latter is useful if both the symbolic link and its target share some common ancestor path which is not known at creation (e.g., in an archive file that can be unpacked anywhere).
+Windows application shortcuts contain additional metadata that can be associated with the destination, whereas POSIX symbolic links are just strings that will be interpreted as absolute or relative pathnames.
+Unlike symbolic links, Windows shortcuts maintain their references to their targets even when the target is moved or renamed. Windows domain clients may subscribe to a Windows service called Distributed Link Tracking to track the changes in files and folders to which they are interested. The service maintains the integrity of shortcuts, even when files and folders are moved across the network. Additionally, in Windows 9x and later, Windows shell tries to find the target of a broken shortcut before proposing to delete it.
+
+
+=== Folder shortcuts ===
+The Windows shell allows ordinary directories on file systems to act as "junction points". They are transparent to the Windows shell, but useless in other environments. Windows offers two methods to implement a folder shortcut. The first is through a special naming convention. The folder shortcut must be adhere to the following syntax: Name.{CLSID}. Windows shell will replace the entire name with the associated CLSID's display name. For example, Test.{B4BFCC3A-DB2C-424C-B029-7FE99A87C641} becomes a shortcut Windows Desktop.
+The second requires the following:
+
+Adding the "Read-Only" attribute to the folder.
+Making the folder a system folder by calling the PathMakeSystemFolder() function.
+Placing a hidden Desktop.ini file in the folder. An example of Desktop.ini is as follows:
+
+
+=== Shell objects in Windows shell ===
+The shell objects or shell folders are defined in the Windows Registry and can be used to implement a sort of symbolic link too. Like folder shortcuts, they are transparent to the Windows shell.
+The following is a general template. {########-####-####-####-############}, 0x####, and <Path> are placeholders.
+
+The My Documents folder on the Desktop as well as the Fonts and the Administrative Tools folders in the Control Panel are examples of shell objects redirected to file-system folders.
+
+
+== See also ==
+Symlink race — a security-vulnerability caused by symbolic links
+freedup — generates links between identical data automatically
+Pointer (computer programming)
+
+
+== References ==
+
+
+== External links ==
+
+Q & A: The difference between hard and soft links as applied to Linux
+Junction: maintain NTFS junction points (for Windows 2000 and above)
+FSUtil Hardlink: Microsoft Technet page on using the command-line tool FSUtil to create hardlinks (for Windows 2000 and above)
+Symbolic Drivers for Windows XP (in Japanese): file system drivers to enable Symbolic Links for Windows XP (also mirrored on Link Shell Extension site). Sources available.

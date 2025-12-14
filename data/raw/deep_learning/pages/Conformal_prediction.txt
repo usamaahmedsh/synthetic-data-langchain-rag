@@ -1,0 +1,104 @@
+Conformal prediction (CP) is an algorithm for uncertainty quantification that produces statistically valid prediction regions (multidimensional prediction intervals) for any underlying point predictor (whether statistical, machine learning, or deep learning) only assuming exchangeability of the data. CP works by computing "nonconformity scores" on previously labeled data, and using these to create prediction sets on a new (unlabeled) test data point. A transductive version of CP was first proposed in 1998 by Gammerman, Vovk, and Vapnik, and since, several variants of conformal prediction have been developed with different computational complexities, formal guarantees, and practical applications.
+Conformal prediction requires a user-specified significance level for which the algorithm should produce its predictions. This significance level restricts the frequency of errors that the algorithm is allowed to make. For example, a significance level of 0.1 means that the algorithm can make at most 10% erroneous predictions. To meet this requirement, the output is a set prediction, instead of a point prediction produced by standard supervised machine learning models. For classification tasks, this means that predictions are not a single class, for example 'cat', but instead a set like {'cat', 'dog'}. Depending on how good the underlying model is (how well it can discern between cats, dogs and other animals) and the specified significance level, these sets can be smaller or larger. For regression tasks, the output is prediction intervals, where a smaller significance level (fewer allowed errors) produces wider intervals which are less specific, and vice versa – more allowed errors produce tighter prediction intervals.
+
+
+== History ==
+The conformal prediction first arose in a collaboration between Gammerman, Vovk, and Vapnik in 1998; this initial version of conformal prediction used what are now called E-values though the version of conformal prediction best known today uses p-values and was proposed a year later by Saunders et al. Vovk, Gammerman, and their students and collaborators, particularly Craig Saunders, Harris Papadopoulos, and Kostas Proedrou, continued to develop the ideas of conformal prediction; major developments include the proposal of inductive conformal prediction (a.k.a. split conformal prediction), in 2002.
+A book on the topic was written by Vovk and Shafer in 2005, and a tutorial was published in 2008.
+
+
+== Theory ==
+
+The data has to conform to some standards, such as data being exchangeable (a slightly weaker assumption than the standard IID imposed in standard machine learning). For conformal prediction, a n% prediction region is said to be valid if the truth is in the output n% of the time. The efficiency is the size of the output. For classification, this size is the number of classes; for regression, it is interval width.
+In the purest form, conformal prediction is made for an online (transductive) section. That is, after a label is predicted, its true label is known before the next prediction. Thus, the underlying model can be re-trained using this new data point and the next prediction will be made on a calibration set containing n + 1 data points, where the previous model had n data points.
+
+
+=== Classification algorithms ===
+The goal of standard classification algorithms is to classify a test object into one of several discrete classes. Conformal classifiers instead compute and output the p-value for each available class by performing a ranking of the nonconformity measure (α-value) of the test object against examples from the training data set. Similar to standard hypothesis testing, the p-value together with a threshold (referred to as significance level in the CP field) is used to determine whether the label should be in the prediction set. For example, for a significance level of 0.1, all classes with a p-value of 0.1 or greater are added to the prediction set. Transductive algorithms compute the nonconformity score using all available training data, while inductive algorithms compute it on a subset of the training set.
+
+
+==== Inductive conformal prediction (ICP) ====
+Inductive Conformal Prediction  was first known as inductive confidence machines, but was later re-introduced as ICP. It has gained popularity in practical settings because the underlying model does not need to be retrained for every new test example. This makes it interesting for any model that is heavy to train, such as neural networks.
+
+
+==== Mondrian inductive conformal prediction (MICP) ====
+In MICP, the alpha values are class-dependent (Mondrian) and the underlying model does not follow the original online setting introduced in 2005.
+Training algorithm:
+
+Train a machine learning model (MLM)
+Run a calibration set through the MLM, save output from the chosen stage
+In deep learning, the softmax values are often used
+Use a non-conformity function to compute α-values
+A data point in the calibration set will result in an α-value for its true class
+Prediction algorithm:
+
+For a test data point, generate a new α-value
+Find a p-value for each class of the data point
+If the p-value is greater than the significance level, include the class in the output
+
+
+=== Regression algorithms ===
+Conformal prediction was initially formulated for the task of classification, but was later modified for regression. Unlike classification, which outputs p-values without a given significance level, regression requires a fixed significance level at prediction time in order to produce prediction intervals for a new test object. For classic conformal regression, there is no transductive algorithm. This is because it is impossible to postulate all possible labels for a new test object, because the label space is continuous. The available algorithms are all formulated in the inductive setting, which computes a prediction rule once and applies it to all future predictions.
+
+
+==== Inductive conformal prediction (ICP) ====
+All inductive algorithms require splitting the available training examples into two disjoint sets: one set used for training the underlying model (the proper training set) and one set for calibrating the prediction (the calibration set). In ICP, this split is done once, thus training a single ML model. If the split is performed randomly and that data is exchangeable, the ICP model is proven to be automatically valid (i.e. the error rate corresponds to the required significance level).
+Training algorithm:
+
+Split the training data into proper training set and calibration set
+Train the underlying ML model using the proper training set
+Predict the examples from the calibration set using the derived ML model → ŷ-values
+Optional: if using a normalized nonconformity function
+Train the normalization ML model
+Predict normalization scores → 𝜺 -values
+Compute the nonconformity measures (α-values) for all calibration examples, using ŷ- and 𝜺-values
+Sort the nonconformity measure and generate nonconformity scores
+Save underlying ML model, normalization ML model (if any) and nonconformity scores
+Prediction algorithm:
+Required input: significance level (s)
+
+Predict the test object using the ML model → ŷt
+Optional: if using a normalized nonconformity function
+Predict the test object using normalization model → 𝜺t
+Pick the nonconformity score from the list of scores produced by the calibration set in training, corresponding to the significance level s → αs
+Compute the prediction interval half width (d) from rearranging the nonconformity function and input αs (and optionally 𝜺) → d
+Output prediction interval (ŷ − d, ŷ + d) for the given significance level s
+
+
+==== Split conformal prediction (SCP) ====
+The SCP, often called aggregated conformal predictor (ACP), can be considered an ensemble of ICPs. SCP usually improves the efficiency of predictions (that is, it creates smaller prediction intervals) compared to a single ICP, but loses the automatic validity in the generated predictions.
+A common type of SCPs is the cross-conformal predictor (CCP), which splits the training data into proper training and calibration sets multiple times in a strategy similar to k-fold cross-validation. Regardless of the splitting technique, the algorithm performs n splits and trains an ICP for each split. When predicting a new test object, it uses  the median ŷ and d from the n ICPs to create the final prediction interval as (ŷmedian − dmedian, ŷmedian + dmedian).
+
+
+== Applications ==
+
+
+=== Types of learning models ===
+Several machine learning models can be used in conjunction with conformal prediction. Studies have shown that it can be applied to for example convolutional neural networks, support-vector machines and others.
+
+
+=== Use case ===
+Conformal prediction is used in a variety of fields and is an active area of research. For example, in biotechnology it has been used to predict uncertainties in breast cancer, stroke risks, data storage, and disk drive scrubbing. In the domain of hardware security it has been used to detect the evolving hardware trojans. Within language technology, conformal prediction papers are routinely presented at the Symposium on Conformal and Probabilistic Prediction with Applications (COPA). Conformal prediction has also been applied to small molecule drug discovery.
+
+
+=== Use in handling uncertainty and concept drift ===
+Conformal prediction is in many instances used to give machine learning models a better understanding of uncertainty in their outputs. In conformal prediction, a non-conformity score measures how unusual a new example is compared to the training data, and these scores are used to compute the p-values that determine the final prediction set. Instead of creating a single label, p-values are generated by the model to show how each possible label correlates with the new data point. These p-values are then used to form prediction sets and credibility scores that indicate whether the model's real-time assumptions remain valid for the input they are evaluating.
+Because conformal prediction compares patterns learned from past data with new input, it can help reveal when the underlying data distribution has shifted. When Concept drift is present, new data may receive lower p-value scores, indicating that the model is encountering inputs that differ from its training distribution. This makes conformal prediction useful for assessing whether a model remains reliable as data naturally evolves over time.
+Researchers have applied conformal prediction in domains such as cybersecurity and anomaly detection, where data changes rapidly. In the context of malware classification, conformal scores and p-values can help highlight files that deviate from previously observed patterns, signaling uncertainty or possible adversarial manipulation. This makes conformal prediction valuable for strengthening machine learning defenses in environments where threats evolve continually.
+
+
+== Conferences ==
+Conformal prediction is one of the main subjects discussed during the COPA conference each year. Both theory and applications of conformal predictions are presented by leaders of the field. The conference has been held since 2012. It has been hosted in several different European countries including Greece, Great Britain, Italy and Sweden.
+
+
+== Books ==
+Published books on Conformal Prediction includes Algorithmic Learning in a Random World, Conformal Prediction for Reliable Machine Learning: Theory, Adaptations and Applications, Practical Guide to Applied Conformal Prediction in Python: Learn and Apply the Best Uncertainty Frameworks to Your Industry Applications, Conformal Prediction: A Gentle Introduction (Foundations and Trends in Machine Learning), and Conformal Prediction for Inventors.
+
+
+== See also ==
+Calibration (statistics)
+Bootstrap method
+Quantile regression
+
+
+== References ==

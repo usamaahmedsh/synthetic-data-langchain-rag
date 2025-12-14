@@ -1,0 +1,191 @@
+GNUnet is a software framework for decentralized, peer-to-peer networking and an official GNU package. The framework offers link encryption, peer discovery, resource allocation, communication over many transports (such as TCP, UDP, HTTP, HTTPS, WLAN and Bluetooth) and various basic peer-to-peer algorithms for routing, multicast and network size estimation.
+GNUnet's basic network topology is that of a mesh network. GNUnet includes a distributed hash table (DHT) which is a randomized variant of Kademlia that can still efficiently route in small-world networks. GNUnet offers a "F2F topology" option for restricting connections to only the users' trusted friends. The users' friends' own friends (and so on) can then indirectly exchange files with the users' computer, never using its IP address directly.
+GNUnet uses Uniform resource identifiers (not approved by IANA, although an application has been made). GNUnet URIs consist of two major parts: the module and the module specific identifier. A GNUnet URI is of form gnunet://module/identifier where module is the module name and identifier is a module specific string.
+The primary codebase is written in C, but there are bindings in other languages to produce an API for developing extensions in those languages. GNUnet is part of the GNU Project. It has gained interest in the hacker community after the PRISM revelations.
+GNUnet consists of several subsystems, of which essential ones are Transport and Core subsystems. Transport subsystem provides insecure link-layer communications, while Core provides peer discovery and encryption. On top of the core subsystem various applications are built.
+GNUnet includes various P2P applications in the main distribution of the framework, including filesharing, chat and VPN; additionally, a few external projects (such as secushare) are also extending the GNUnet infrastructure.
+GNUnet is unrelated to the older Gnutella P2P protocol. Gnutella is not an official GNU project, while GNUnet is.
+
+
+== Transport ==
+Originally, GNUnet used UDP for underlying transport. The GNUnet transport subsystem were expanded to included additional options, such as TCP and SMTP. Support for the latter was later dropped due to a lack of maintenance.
+The communication port, officially registered at IANA, is 2086 (tcp + udp).
+
+
+== Trust system ==
+GNUnet provides trust system based on an excess-based economic model. The idea of employing an economic system is taken from the MojoNation network.
+GNUnet network has no trusted entities so it is impossible to maintain a global reputation. Instead, each peer maintains its own trust for each of its local links.
+When resources, such as bandwidth and CPU time, are in excess, the peer provides them to all requesting neighbors without reducing trust or otherwise charging them. When a node is under stress, it denies requests of those neighbors that it trusts less and charges others by reducing their trust.
+
+
+== File sharing ==
+The primary application at this point is anonymous, censorship-resistant file-sharing, allowing users to anonymously publish or retrieve information of all kinds. The GNUnet protocol which provides anonymity is called GAP (GNUnet anonymity protocol). GNUnet FS can additionally make use of GNU libextractor to automatically annotate shared files with metadata.
+
+
+=== File encoding ===
+Files shared with GNUnet are ECRS (Encoding for Censorship-Resistant Sharing) coded.
+All content is represented as GBlocks. Each GBlock contains 1024 bytes. There are several types of GBlocks, each of them serves a particular purpose. Any GBlock 
+  
+    
+      
+        B
+      
+    
+    {\displaystyle B}
+  
+ is uniquely identified by its RIPEMD-160 hash 
+  
+    
+      
+        H
+        (
+        B
+        )
+      
+    
+    {\displaystyle H(B)}
+  
+.
+DBlocks store actual file contents and nothing else. File is split at 1024 byte boundaries and resulting chunks are stored in DBlocks. DBlocks are linked together into Merkle tree by means of IBlocks that store DBlock identifiers.
+Blocks are encrypted with a symmetric key derived from 
+  
+    
+      
+        H
+        (
+        B
+        )
+      
+    
+    {\displaystyle H(B)}
+  
+ when they are stored in the network.
+
+
+=== Queries and replies ===
+GNUnet Anonymity Protocol consists of queries and replies. Depending on load of the forwarding node, messages are forwarded to zero or more nodes.
+Queries are used to search for content and request data blocks.
+Query contains resource identifier, reply address, priority and TTL (Time-to-Live).
+Resource identifier of datum 
+  
+    
+      
+        Q
+      
+    
+    {\displaystyle Q}
+  
+ is a triple-hash 
+  
+    
+      
+        H
+        (
+        H
+        (
+        H
+        (
+        Q
+        )
+        )
+        )
+      
+    
+    {\displaystyle H(H(H(Q)))}
+  
+. Peer that replies to query provides 
+  
+    
+      
+        H
+        (
+        H
+        (
+        Q
+        )
+        )
+      
+    
+    {\displaystyle H(H(Q))}
+  
+to prove that it indeed has the requested resource without providing 
+  
+    
+      
+        H
+        (
+        Q
+        )
+      
+    
+    {\displaystyle H(Q)}
+  
+ to intermediate nodes, so intermediate nodes can't decrypt 
+  
+    
+      
+        Q
+      
+    
+    {\displaystyle Q}
+  
+.
+Reply address is the major difference compared to Freenet protocol. While in Freenet reply always propagates back using the same path as the query, in GNUnet the path may be shorter. Peer receiving a query may drop it, forward it without rewriting reply address or indirect it by replacing reply address with its own address. By indirecting queries peer provides cover traffic for its own queries, while by forwarding them peer avoids being a link in reply propagation and preserves its bandwidth. This feature allows the user to trade anonymity for efficiency. User can specify an anonymity level for each publish, search and download operation. An anonymity level of zero can be used to select non-anonymous file-sharing. GNUnet's DHT infrastructure is only used if non-anonymous file-sharing is specified. The anonymity level determines how much cover traffic a peer must have to hide the user's own actions.
+Priority specifies how much of its trust user wants to spend in case of a resource shortage.
+TTL is used to prevent queries from staying in the network for too long.
+
+
+=== File sharing URIs ===
+The fs module identifier consists of either chk, sks, ksk or loc followed by a slash and a category specific value. Most URIs contain hashes, which are encoded in base32hex.
+
+chk identifies files, typically: gnunet://fs/chk/[file hash].[query hash].[file size in bytes]
+File hash is the hash of the plaintext file, which allows decrypting it once it is downloaded. Query hash is the hash of topmost GBlock which allows downloading the whole tree of GBlocks that contain encrypted file. File size is required to determine the shape of the tree.
+sks identifies files within namespaces, typically: gnunet://fs/sks/NAMESPACE/IDENTIFIER
+ksk identifies search queries, typically: gnunet://fs/ksk/KEYWORD[+KEYWORD]*
+loc identifies a datum on a specific machine, typically: gnunet://fs/loc/PEER/QUERY.TYPE.KEY.SIZE
+
+
+==== Examples ====
+A type of GNUnet filesharing URI pointing to a specific copy of GNU GPL license text:
+
+gnunet://fs/chk/9E4MDN4VULE8KJG6U1C8FKH5HA8C5CHSJTILRTTPGK8MJ6VHORERHE68JU8Q0FDTOH1DGLUJ3NLE99N0ML0N9PIBAGKG7MNPBTT6UKG.1I823C58O3LKS24LLI9KB384LH82LGF9GUQRJHACCUINSCQH36SI4NF88CMAET3T3BHI93D4S0M5CC6MVDL1K8GFKVBN69Q6T307U6O.17992
+Another type of GNUnet filesharing URI, pointing to the search results of a search with keyword "gpl":
+
+gnunet://fs/ksk/gpl
+
+
+== GNU Name System ==
+GNUnet includes an implementation of the GNU Name System (GNS), a decentralized and censorship-resistant replacement for DNS. In GNS, each user manages their own zones and can delegate subdomains to zones managed by other users. Lookups of records defined by other users are performed using GNUnet's DHT. GNS was standardized in RFC 9498 in 2023. The GANA registry manages the ".alt" top-level domain in GNS.
+
+
+== Protocol translation ==
+GNUnet can tunnel IP traffic over the peer-to-peer network. If necessary, GNUnet can perform IPv4-IPv6 protocol translation in the process. GNUnet provides a DNS Application-level gateway to proxy DNS requests and map addresses to the desired address family as necessary. This way, GNUnet offers a possible technology to facilitate IPv6 transition. Furthermore, in combination with GNS, GNUnet's protocol translation system can be used to access hidden services — IP-based services that run locally at some peer in the network and which can only be accessed by resolving a GNS name.
+
+
+== Social API ==
+Gabor X Toth published in early September 2013 a thesis to present the design of a social messaging service for the GNUnet peer-to-peer framework that offers scalability, extensibility, and end-to-end encrypted communication. The scalability property is achieved through multicast message delivery, while extensibility is made possible by using PSYC (Protocol for SYnchronous Conferencing), which provides an extensible RPC (Remote Procedure Call) syntax that can evolve over time without having to upgrade the software on all nodes in the network. Another key feature provided by the PSYC layer are stateful multicast channels, which are used to store e.g. user profiles. End-to-end encrypted communication is provided by the mesh service of GNUnet, upon which the multicast channels are built. Pseudonymous users and social places in the system have cryptographical identities — identified by their public key — these are mapped to human memorable names using GNS (GNU Name System), where each pseudonym has a zone pointing to its places.
+That is the required building block for turning the GNUnet framework into a fully peer-to-peer social networking platform.
+
+
+== Chat ==
+A chat has been implemented in the CADET module, for which a GTK interface for GNOME exists, specifically designed for the emerging Linux phones (such as the Librem 5 or the PinePhone).
+
+
+== See also ==
+
+InterPlanetary File System
+Comparison of file-sharing applications
+Synchronous conferencing
+
+
+== Notes ==
+
+
+== References ==
+
+
+== Further references ==
+
+
+== External links ==
+Official website

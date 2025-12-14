@@ -1,0 +1,45 @@
+rdiff-backup is a backup software written in Python that creates reverse incremental backups. The most recent backup is thus directly accessible, while earlier backups will be reconstructed from diff files by rdiff-backup. 
+As the name implies, rdiff-backup uses the rdiff method (more exactly, the reimplementation of rsync within librsync) to compute the differences between file versions. rdiff-backup is able to back up files across different machines via ssh.
+
+
+== Usage ==
+Beginning with version 2.2, the flags passed to rdiff-backup are either general, or specific to the operation. For example, disabling fsync (see below) is an option that is general, and thus comes after rdiff-backup. --no-compression is specific to the backup mode, and thus comes after backup. 
+
+
+=== Backup ===
+Normal operation is rdiff-backup backup <source directory> <backup directory>. gzip compression of increment files can be disabled with --no-compression after the backup flag. The options -v 5 and --print-statistics show the backup's progress and some statistics.
+Specifying --no-fsync will disable fsync and write the backup to RAM instead of directly to the physical disk, causing a significant speedup. This comes with an elevated risk of data loss, though.
+
+
+=== Restoration of files or directories ===
+rdiff-backup --restore-as-of <date> <backup> <source> will restore to <source> the entire backup, a single file or a sub-directory. <date> can be specified in one of several ways:
+
+as a date, for example "2020-02-14" (which will be interpreted as midnight of the day in question), or as a datetime string like "2020-02-14T12:26:53+02:00" (which can be found by running rdiff-backup --list-increments <backup> first)
+as a time span, for example "1M" will restore the files as they were one month ago
+as a number of backups, so "10B" will restore the 10th most-recent version
+or "now", which will restore the most recent backup.
+It is also possible to find the relevant time-stamped file in the rdiff-backup-data/increments directory, and run rdiff-backup <time-stamped file> <file or folder to be restored>.
+Simpler (but not always correctly, as the file permissions might not be properly restored), the most recent backup can also be restored by copying a backed-up file or directory with cp -a or rsync -a. A deleted file – recognizable by the suffix snapshot.gz – can also be restored by retrieving it in the rdiff-backup-data/increments directory, copying it to the source directory, and unpacking with gzip.
+
+
+=== Deleting old backups ===
+Only the oldest backups can be removed, with rdiff-backup --remove-older-than <date> <backup directory>. The ability to delete the oldest versions of specific files (or directories) is scheduled to appear in version 2.2.
+When deleting old versions, <date> takes the same arguments as when restoring files or directories (see above).
+
+
+=== Problems ===
+rdiff-backup does not work under Linux with SSHFS and exFAT file systems, though FAT and NTFS do work.
+This is mostly due to their implementation as FUSE module, causing delays in certain operations, making it probably unfit for backup purposes.
+No file system is explicitly supported or unsupported, but rdiff-backup does tests before starting a backup, and refuses to progress on file systems deemed unfit.
+Regarding exFAT, by using the newer in-kernel exFAT-driver, this limitation should be overcome.
+rdiff-backup cannot backup to a SFTP destination.
+rdiff-backup recognizes changed files only by file size as well as modification time (mtime). To make sure all changed files have been backed-up, running rdiff-backup --compare-hash <source directory> <backup directory> (or rdiff-backup --compare-full <source directory> <backup directory> for a byte-wise comparison) will display all changed files. Then, using touch, the modification time of all problematic files can be reset to now, and thus, they will be included during the next rdiff-backup run.
+
+
+== References ==
+
+
+== External links ==
+Official website
+Rdiff-backup on GitHub
+man page for rdiff-backup

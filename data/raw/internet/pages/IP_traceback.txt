@@ -1,0 +1,336 @@
+IP traceback is any method for reliably determining the origin of a packet on the Internet. The IP protocol does not provide for the authentication of the source IP address of an IP packet, enabling the source address to be falsified in a strategy called IP address spoofing, and creating potential internet security and stability problems.
+Use of false source IP addresses allows denial-of-service attacks (DoS) or one-way attacks (where the response from the victim host is so well known that return packets need not be received to continue the attack). IP traceback is critical for identifying sources of attacks and instituting protection measures for the Internet. Most existing approaches to this problem have been tailored toward DoS attack detection. Such solutions require high numbers of packets to converge on the attack path(s).
+
+
+== Probabilistic packet marking ==
+Savage et al. suggested probabilistically marking packets as they traverse routers through the Internet.  They propose that the router mark the packet with either the router’s IP address or the edges of the path that the packet traversed to reach the router.
+For the first alternative, marking packets with the router's IP address, analysis shows that in order to gain the correct attack path with 95% accuracy as many as 294,000 packets are required.  The second approach, edge marking, requires that the two nodes that make up an edge mark the path with their IP addresses along with the distance between them. This approach would require more state information in each packet than simple node marking but would converge much faster.  They suggest three ways to reduce the state information of these approaches into something more manageable.
+The first approach is to XOR each node forming an edge in the path with each other.  Node a inserts its IP address into the packet and sends it to b.  Upon being detected at b (by detecting a 0 in the distance), b XORs its address with the address of a. This new data entity is called an edge id and reduces the required state for edge sampling by half.
+Their next approach is to further take this edge id and fragment it into k smaller fragments. Then, randomly select a fragment and encode it, along with the fragment offset so that the correct corresponding fragment is selected from a downstream router for processing.
+When enough packets are received, the victim can reconstruct all of the edges the series of packets traversed (even in the presence of multiple attackers).
+Due to the high number of combinations required to rebuild a fragmented edge id, the reconstruction of such an attack graph is computationally intensive according to research by Song and Perrig.  Furthermore, the approach results in a large number of false positives.  As an example, with only 25 attacking hosts in a DDoS attack the reconstruction process takes days to build and results in thousands of false positives.
+Accordingly, Song and Perrig propose the following traceback scheme: instead of encoding the IP address interleaved with a hash, they suggest encoding the IP address into an 11-bit hash and maintain a 5-bit hop count, both stored in the 16-bit fragment ID field. This is based on the observation that a 5-bit hop count (32 max hops) is sufficient for almost all Internet routes. Further, they suggest that two different hashing functions be used so that the order of the routers in the markings can be determined. Next, if any given hop decides to mark it first checks the distance field for a 0, which implies that a previous router has already marked it. If this is the case, it generates an 11-bit hash of its own IP address and then XORs it with the previous hop. If it finds a non-zero hop count it inserts its IP hash, sets the hop count to zero and forwards the packet on. If a router decides not to mark the packet it merely increments the hop count in the overloaded fragment id field.
+Song and Perrig identify that this is not robust enough against collisions and thus suggest using a set of independent hash functions, randomly selecting one, and then hashing the IP along with a FID or function id and then encoding this. They state that this approach essentially reduces the probability of collision to (1/(211)m). For further details see Song and Perrig.
+Researchers have also given rigorous information‑theoretic analyses of probabilistic packet marking (PPM). Adler showed that in the single‑path case PPM can succeed even when only one header bit is available—at the expense of an exponential number of packets—and proved a matching lower bound of 
+  
+    
+      
+        Ω
+        (
+        
+          2
+          
+            n
+          
+        
+        )
+      
+    
+    {\displaystyle \Omega (2^{n})}
+  
+ packets for any one‑bit scheme (where 𝑛 is the length, in bits, of a path description). He further established trade‑offs for using 𝑏 header bits: there is a simple stateless 𝑏-bit scheme that reconstructs the path with high probability using at most 
+  
+    
+      
+        O
+        
+          
+            (
+          
+        
+        (
+        2
+        +
+        ε
+        
+          )
+          
+            4
+            n
+            
+              /
+            
+            
+              2
+              
+                b
+              
+            
+          
+        
+        ⋅
+        
+          p
+          o
+          l
+          y
+        
+        (
+        n
+        ,
+        b
+        )
+        
+          
+            )
+          
+        
+      
+    
+    {\displaystyle O{\big (}(2+\varepsilon )^{4n/2^{b}}\cdot \mathrm {poly} (n,b){\big )}}
+  
+ packets for any fixed 
+  
+    
+      
+        ε
+        >
+        0
+      
+    
+    {\displaystyle \varepsilon >0}
+  
+, while any 𝑏-bit scheme requires at least 
+  
+    
+      
+        Ω
+        
+          
+            (
+          
+        
+        
+          2
+          
+            n
+            
+              /
+            
+            
+              2
+              
+                b
+              
+            
+          
+        
+        
+          
+            )
+          
+        
+      
+    
+    {\displaystyle \Omega {\big (}2^{n/2^{b}}{\big )}}
+  
+ packets in expectation. In other words, the packet complexity is singly exponential in 𝑛 but decreases doubly exponentially with 𝑏: each additional marking bit halves the exponent in the base‑2 growth. For multi‑path attacks that use 𝑘 distinct paths, Adler proved that at least 
+  
+    
+      
+        log
+        ⁡
+        (
+        2
+        k
+        −
+        1
+        )
+      
+    
+    {\displaystyle \log(2k-1)}
+  
+ marking bits are necessary (information‑theoretically), and gave a Vandermonde‑matrix–based encoding achieving 
+  
+    
+      
+        ⌈
+        log
+        ⁡
+        (
+        2
+        k
+        +
+        1
+        )
+        ⌉
+      
+    
+    {\displaystyle \lceil \log(2k+1)\rceil }
+  
+ bits under restricted attacker models.
+These bounds were improved by Adler, Edmonds, and Matoušek. For a single attack path, they proved that any memoryless PPM scheme requires at least 
+  
+    
+      
+        Ω
+        
+        
+          
+            (
+          
+        
+        
+          2
+          
+            b
+          
+        
+        ⋅
+        
+          2
+          
+            
+            2
+            n
+            
+              /
+            
+            (
+            
+              2
+              
+                b
+              
+            
+            −
+            1
+            )
+          
+        
+        
+          
+            )
+          
+        
+      
+    
+    {\displaystyle \Omega \!{\big (}2^{b}\cdot 2^{\,2n/(2^{b}-1)}{\big )}}
+  
+ packets. They also gave a near-matching (“quasi-optimal”) upper bound: in a model with 
+  
+    
+      
+        m
+      
+    
+    {\displaystyle m}
+  
+ routers where each router chooses one of 
+  
+    
+      
+        s
+      
+    
+    {\displaystyle s}
+  
+ possible messages (
+  
+    
+      
+        n
+        =
+        m
+        ⋅
+        
+          log
+          
+            2
+          
+        
+        ⁡
+        (
+        s
+        )
+      
+    
+    {\displaystyle n=m\cdot \log _{2}(s)}
+  
+), they show that 
+  
+    
+      
+        O
+        
+          
+            (
+          
+        
+        m
+        ⋅
+        
+          2
+          
+            2
+            m
+            
+              log
+              
+                2
+              
+            
+            ⁡
+            (
+            s
+            )
+            
+              /
+            
+            (
+            
+              2
+              
+                b
+              
+            
+            −
+            1
+            )
+          
+        
+        
+          
+            )
+          
+        
+      
+    
+    {\displaystyle O{\big (}m\cdot 2^{2m\log _{2}(s)/(2^{b}-1)}{\big )}}
+  
+ packets suffice. Thus, the true bound is roughly the square root of the upper bound originally provided by Adler, and roughly the square of his lower bound. The paper also presents a new protocol and analysis for multi-path attacks, generalizing the scenarios in which PPM remains effective.
+
+
+== Deterministic packet marking ==
+Belenky and Ansari, outline a deterministic packet marking scheme. They describe a more realistic topology for the Internet – that is composed of LANs and ASs with a connective boundary – and attempt to put a single mark on inbound packets at the point of network ingress. Their idea is to put, with random probability of .5, the upper or lower half of the IP address of the ingress interface into the fragment id field of the packet, and then set a reserve bit indicating which portion of the address is contained in the fragment field. By using this approach they claim to be able to obtain 0 false positives with .99 probability after only 7 packets.
+Rayanchu and Barua provide another spin on this approach (called DERM). Their approach is similar in that they wish to use and encoded IP address of the input interface in the fragment id field of the packet. Where they differ from Belenky and Ansari is that they wish to encode the IP address as a 16-bit hash of that IP address. Initially they choose a known hashing function. They state that there would be some collisions if there were greater than 2^16 edge routers doing the marking.
+They attempt to mitigate the collision problem by introducing a random distributed selection of a hash function from the universal set, and then applying it to the IP address.  In either hashing scenario, the source address and the hash are mapped together in a table for later look-up along with a bit indicating which portion of the address they have received. Through a complicated procedure and a random hash selection, they are capable of reducing address collision. By using a deterministic approach they reduce the time for their reconstruction procedure for their mark (the 16-bit hash). However, by encoding that mark through hashing they introduce the probability of collisions, and thus false-positives.
+Shokri and Varshovi introduced the concepts of Dynamic Marking and Mark-based Detection with "Dynamic Deterministic Packet Marking," (DDPM). In dynamic marking it is possible to find the attack agents in a large-scale DDoS network. In the case of a DRDoS it enables the victim to trace the attack one step further back to the source, to find a master machine or the real attacker with only a few numbers of packets. The proposed marking procedure increases the possibility of DRDoS attack detection at the victim through mark-based detection. In the mark-based method, the detection engine takes into account the marks of the packets to identify varying sources of a single site involved in a DDoS attack. This significantly increases the probability of detection. In order to satisfy the end-to-end arguments approach, fate-sharing and also respect to the need for scalable and applicable schemes, only edge routers implement a simple marking procedure. The fairly negligible amount of delay and bandwidth overhead added to the edge routers make the DDPM implementable.
+S. Majumdar, D. Kulkarni and C. Ravishankar proposes a new method to traceback the origin of DHCP packets in ICDCN 2011. Their method adds a new DHCP option that contains the MAC address and the ingress port of the edge switch which had received the DHCP packet. This new option will be added to the DHCP packet by the edge switch. This solution follows DHCP RFCs. Previous IP traceback mechanisms have overloaded IP header fields with traceback information and thus are violating IP RFCs. Like other mechanisms, this paper also assumes that the network is trusted. The paper presents various performance issues in routers/switches that were considered while designing this practical approach. However, this approach is not applicable to any general IP packet.
+
+
+== Router-based approach ==
+With router-based approaches, the router is charged with maintaining information regarding packets that pass through it.  For example, Sager proposes to log packets and then data mine them later. This has the benefit of being out of band and thus not hindering the fast path.
+Snoeren et al. propose marking within the router. The idea proposed in their paper is to generate a fingerprint of the packet, based upon the invariant portions of the packet (source, destination, etc.) and the first 8 bytes of payload (which is unique enough to have a low probability of collision).  More specifically, m independent simple hash functions each generate an output in the range of 2n-1.  A bit is then set at the index generated to create a fingerprint when combined with the output of all other hash functions. All fingerprints are stored in a 2n bit table for later retrieval.  The paper shows a simple family of hash functions suitable for this purpose and present a hardware implementation of it.
+The space needed at each router is limited and controllable (2n bits).  A small n makes the probability of collision of packet hashes (and false identification) higher.  When a packet is to be traced back, it is forwarded to originating routers where fingerprint matches are checked.  As time passes, the fingerprint information is “clobbered” by hashes generated by other packets.  Thus, the selectivity of this approach degrades with the time that has passed between the passage of the packet and the traceback interrogation.
+Another known take on the router-based schemes comes from Hazeyama et al. In their approach, they wish to integrate the SPIE approach as outlined by Snoeren, with their approach of recording the layer 2 link-id along with the network ID (VLAN or true ID), the MAC address of the layer 2 switch that received the packet and the link id it came in on. This information is then put into two look-up tables – both containing the switch (layer 2 router) MAC id for look-up. They rely on the MAC:port tuple as a method of tracing a packet back (even if the MAC address has been spoofed).
+To help mitigate the problem of storage limitations they use Snoeren’s hashing approach and implementation (SPIE) – modifying it to accept their information for hashing. They admit their algorithm is slow (O(N2)) and with only 3.3 million packet hashes being stored the approximate time before the digest tables are invalid is 1 minute. This dictates that any attack response must be real-time – a possibility only on single-administrative LAN domains.
+
+
+== Out-of-band approaches ==
+The ICMP traceback scheme Steven M. Bellovin proposes probabilistically sending an ICMP traceback packet forward to the destination host of an IP packet with some low probability. Thus, the need to maintain state in either the packet or the router is obviated.  Furthermore, the low probability keeps the processing overhead as well as the bandwidth requirement low.   Bellovin suggests that the selection also be based on pseudo-random numbers to help block attempts to time attack bursts.   The problem with this approach is that routers commonly block ICMP messages because of security issues associated with them.
+
+
+== Trace-back of active attack flows ==
+In this type of solution, an observer tracks an existing attack flow by examining incoming and outgoing ports on routers starting from the host under attack.  Thus, such a solution requires having privileged access to routers along the attack path.
+To bypass this restriction and automate this process, Stone proposes routing suspicious packets on an overlay network using ISP edge routers. By simplifying the topology, suspicious packets can easily be re-routed to a specialized network for further analysis.
+By nature of DoS, any such attack will be sufficiently long lived for tracking in such a fashion to be possible.  Layer-three topology changes, while hard to mask to a determined attacker, have the possibility of alleviating the DoS until the routing change is discovered and subsequently adapted to.  Once the attacker has adapted, the re-routing scheme can once again adapt and re-route, causing an oscillation in the DoS attack, granting some ability to absorb the impact of such an attack.
+
+
+== Other approaches ==
+Hal Burch and William Cheswick propose a controlled flooding of links to determine how this flooding affects the attack stream. Flooding a link will cause all packets, including packets from the attacker, to be dropped with the same probability. We can conclude from this that if a given link were flooded, and packets from the attacker slowed, then this link must be part of the attack path. Then recursively upstream routers are “coerced” into performing this test until the attack path is discovered.
+The traceback problem is complicated because of spoofed packets.  Thus, a related effort is targeted towards preventing spoofed packets, known as ingress filtering. Ingress Filtering restricts spoofed packets at ingress points to the network by tracking the set of legitimate source networks that can use this router.
+Park and Lee present an extension of Ingress Filtering at layer 3. They present a means of detecting false packets, at least to the subnet, by essentially making use of existing OSPF routing state to have routers make intelligent decisions about whether or not a packet should be routed.
+
+
+== References ==

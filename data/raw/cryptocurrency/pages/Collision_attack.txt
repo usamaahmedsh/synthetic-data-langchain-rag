@@ -1,0 +1,123 @@
+In cryptography, a collision attack on a cryptographic hash tries to find two inputs producing the same hash value, i.e. a hash collision. This is in contrast to a preimage attack where a specific target hash value is specified.
+There are roughly two types of collision attacks:
+
+Classical collision attack
+Find two different messages m1 and m2 such that hash(m1) = hash(m2).
+More generally:
+
+Chosen-prefix collision attack
+Given two different prefixes p1 and p2, find two suffixes s1 and s2 such that hash(p1 ∥ s1) = hash(p2 ∥ s2), where ∥ denotes the concatenation operation.
+
+
+== Classical collision attack ==
+Much like symmetric-key ciphers are vulnerable to brute force attacks, every cryptographic hash function is inherently vulnerable to collisions using a birthday attack. Due to the birthday problem, these attacks are much faster than a brute force would be. A hash of n bits can be broken in 2n/2 time steps (evaluations of the hash function).
+Mathematically stated, a collision attack finds two different messages ⁠
+  
+    
+      
+        
+          m
+          
+            1
+          
+        
+      
+    
+    {\displaystyle m_{1}}
+  
+⁠ and ⁠
+  
+    
+      
+        
+          m
+          
+            2
+          
+        
+      
+    
+    {\displaystyle m_{2}}
+  
+⁠, such that 
+  
+    
+      
+        h
+        a
+        s
+        h
+        (
+        
+          m
+          
+            1
+          
+        
+        )
+        =
+        h
+        a
+        s
+        h
+        (
+        
+          m
+          
+            2
+          
+        
+        )
+      
+    
+    {\displaystyle hash(m_{1})=hash(m_{2})}
+  
+. In a classical collision attack, the attacker has no control over the content of either message, but they are arbitrarily chosen by the algorithm.
+More efficient attacks are possible by employing cryptanalysis to specific hash functions. When a collision attack is discovered and is found to be faster than a birthday attack, a hash function is often denounced as "broken". The NIST hash function competition was largely induced by published collision attacks against two very commonly used hash functions, MD5 and SHA-1. The collision attacks against MD5 have improved so much that, as of 2007, it takes just a few seconds on a regular computer. Hash collisions created this way are usually constant length and largely unstructured, so cannot directly be applied to attack widespread document formats or protocols.
+However, workarounds are possible by abusing dynamic constructs present in many formats. In this way, two documents would be created which are as similar as possible in order to have the same hash value. One document would be shown to an authority to be signed, and then the signature could be copied to the other file. Such a malicious document would contain two different messages in the same document, but conditionally display one or the other through subtle changes to the file:
+
+Some document formats like PostScript, or macros in Microsoft Word, have conditional constructs. (if-then-else) that allow testing whether a location in the file has one value or another in order to control what is displayed.
+TIFF files can contain cropped images, with a different part of an image being displayed without affecting the hash value.
+PDF files are vulnerable to collision attacks by using color value (such that text of one message is displayed with a white color that blends into the background, and text of the other message is displayed with a dark color) which can then be altered to change the signed document's content.
+
+
+== Chosen-prefix collision attack ==
+An extension of the collision attack is the chosen-prefix collision attack, which is specific to Merkle–Damgård hash functions. In this case, the attacker can choose two arbitrarily different documents, and then append different calculated values that result in the whole documents having an equal hash value. This attack is normally harder, a hash of n bits can be broken in 2(n/2)+1 time steps, but is much more powerful than a classical collision attack.
+Mathematically stated, given two different prefixes p1, p2, the attack finds two suffixes s1 and s2 such that hash(p1 ∥ s1) = hash(p2 ∥ s2) (where ∥ is the concatenation operation).
+More efficient attacks are also possible by employing cryptanalysis to specific hash functions. In 2007, a chosen-prefix collision attack was found against MD5, requiring roughly 250 evaluations of the MD5 function. The paper also demonstrates two X.509 certificates for different domain names, with colliding hash values. This means that a certificate authority could be asked to sign a certificate for one domain, and then that certificate (specially its signature) could be used to create a new rogue certificate to impersonate another domain.
+A real-world collision attack was published in December 2008 when a group of security researchers published a forged X.509 signing certificate that could be used to impersonate a certificate authority, taking advantage of a prefix collision attack against the MD5 hash function. This meant that an attacker could impersonate any SSL-secured website as a man-in-the-middle, thereby subverting the certificate validation built in every web browser to protect electronic commerce.  The rogue certificate may not be revokable by real authorities, and could also have an arbitrary forged expiry time. Even though MD5 was known to be very weak in 2004, certificate authorities were still willing to sign MD5-verified certificates in December 2008, and at least one Microsoft code-signing certificate was still using MD5 in May 2012.
+The Flame malware successfully used a new variation of a chosen-prefix collision attack to spoof code signing of its components by a Microsoft root certificate that still used the compromised MD5 algorithm.
+In 2019, researchers found a chosen-prefix collision attack against SHA-1 with computing complexity between 266.9 and 269.4 and cost less than 100,000 US dollars.  In 2020, researchers reduced the complexity of a chosen-prefix collision attack against SHA-1 to 263.4. 
+
+
+== Attack scenarios ==
+Many applications of cryptographic hash functions do not rely on collision resistance, thus collision attacks do not affect their security. For example, HMACs are not vulnerable. For the attack to be useful, the attacker must be in control of the input to the hash function.
+
+
+=== Digital signatures ===
+Because digital signature algorithms cannot sign a large amount of data efficiently, most implementations use a hash function to reduce ("compress") the amount of data that needs to be signed down to a constant size. Digital signature schemes often become vulnerable to hash collisions as soon as the underlying hash function is practically broken; techniques like randomized (salted) hashing will buy extra time by requiring the harder preimage attack.
+The usual attack scenario goes like this:
+
+Mallory creates two different documents A and B that have an identical hash value, i.e., a collision. Mallory seeks to deceive Bob into accepting document B, ostensibly from Alice.
+Mallory sends document A to Alice, who agrees to what the document says, signs its hash, and sends the signature to Mallory.
+Mallory attaches the signature from document A to document B.
+Mallory then sends the signature and document B to Bob, claiming that Alice signed B. Because the digital signature matches document B's hash, Bob's software is unable to detect the substitution.
+In 2008, researchers used a chosen-prefix collision attack against MD5 using this scenario, to produce a rogue certificate authority certificate. They created two versions of a TLS public key certificate, one of which appeared legitimate and was submitted for signing by the RapidSSL certificate authority. The second version, which had the same MD5 hash, contained flags which signal web browsers to accept it as a legitimate authority for issuing arbitrary other certificates.
+
+
+=== Hash flooding ===
+Hash flooding (also known as HashDoS) is a denial of service attack that uses hash collisions to exploit the worst-case (linear probe) runtime of hash table lookups. It was originally described in 2003 as an example of an algorithmic complexity attack. To execute such an attack, the attacker sends the server multiple pieces of data that hash to the same value and then tries to get the server to perform slow lookups. As the main focus of hash functions used in hash tables was speed instead of security, most major programming languages were affected, with new vulnerabilities of this class still showing up a decade after the original presentation.
+To prevent hash flooding without making the hash function overly complex, newer keyed hash functions are introduced, with the security objective that collisions are hard to find as long as the key is unknown. They may be slower than previous hashes, but are still much easier to compute than cryptographic hashes. As of 2021, Jean-Philippe Aumasson and Daniel J. Bernstein's SipHash (2012) is the most widely used hash function in this class. (Non-keyed "simple" hashes remain safe to use as long as the application's hash table is not controllable from the outside.)
+It is possible to perform an analogous attack to fill up Bloom filters using a (partial) preimage attack.
+
+
+== See also ==
+Puzzle friendliness
+
+
+== References ==
+
+
+== External links ==
+"Meaningful Collisions", attack scenarios for exploiting cryptographic hash collisions
+Fast MD5 and MD4 Collision Generators - Bishop Fox (formerly Stach & Liu).  Create MD4 and MD5 hash collisions using groundbreaking new code that improves upon the techniques originally developed by Xiaoyun Wang.  Using a 1.6 GHz Pentium 4, MD5 collisions can be generated in an average of 45 minutes, and MD4 collisions can be generated in an average of 5 seconds. Originally released on 22Jun2006.

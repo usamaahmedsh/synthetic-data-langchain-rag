@@ -1,0 +1,80 @@
+passwd is a command on Unix, Plan 9, Inferno, and most Unix-like operating systems used to change a user's password. The password entered by the user is run through a key derivation function to create a hashed version of the new password, which is saved. Only the hashed version is stored; the entered password is not saved for security reasons.
+When the user logs on, the password entered by the user during the log on process is run through the same key derivation function and the resulting hashed version is compared with the saved version. If the hashes are identical, the entered password is considered to be correct, and the user is authenticated. In theory, it is possible for two different passwords to produce the same hash. However, cryptographic hash functions are designed in such a way that finding any password that produces the same hash is very difficult and practically infeasible, so if the produced hash matches the stored one, the user can be authenticated. 
+The passwd command may be used to change passwords for local accounts, and on most systems, can also be used to change passwords managed in a distributed authentication mechanism such as NIS, Kerberos, or LDAP.
+
+
+== Password file ==
+The /etc/passwd file is a text-based database of information about users that may log into the system or other operating system user identities that own running processes.
+In many operating systems, this file is just one of many possible back-ends for the more general passwd name service.
+The file's name originates from one of its initial functions as it contained the data used to verify passwords of user accounts.  However, on modern Unix systems the security-sensitive password information is instead often stored in a different file using shadow passwords, or other database implementations.
+The /etc/passwd file typically has file system permissions that allow it to be readable by all users of the system (world-readable), although it may only be modified by the superuser or by using a few special purpose privileged commands.
+The /etc/passwd file is a text file with one record per line, each describing a user account.
+Each record consists of seven fields separated by colons. The ordering of the records within the file is generally unimportant.
+An example record may be:
+
+The fields, in order from left to right, are:
+
+jsmith: User name: the string a user would type in when logging into the operating system: the logname.  Must be unique across users listed in the file.
+x: Information used to validate a user's password. The format is the same as that of the analogous field in the shadow password file, with the additional convention that setting it to "x" means the actual password is found in the shadow file, a common occurrence on modern systems.
+1001: user identifier number, used by the operating system for internal purposes.  It must be unique as it identifies users uniquely.
+1000: group identifier number, which identifies the primary group of the user; all files that are created by this user may initially be accessible to this group.
+Joe Smith,Room 1007...: Gecos field, commentary that describes the person or account. Typically, this is a set of comma-separated values including the user's full name and contact details.
+/home/jsmith: Path to the user's home directory.
+/bin/sh: Program that is started every time the user logs into the system. For an interactive user, this is usually one of the system's command line interpreters (shells).
+
+
+== Shadow file ==
+/etc/shadow is used to increase the security level of passwords by restricting all but highly privileged users' access to hashed password data. Typically, that data is kept in files owned by and accessible only by the super user. 
+Systems administrators can reduce the likelihood of brute-force attacks by making the list of hashed passwords unreadable by unprivileged users. The obvious way to do this is to make the passwd database itself readable only by the root user. However, this would restrict access to other data in the file such as username-to-userid mappings, which would break many existing utilities and provisions. One solution is a "shadow" password file to hold the password hashes separate from the other data in the world-readable passwd file. For local files, this is usually /etc/shadow on Linux and Unix systems, or /etc/master.passwd on BSD systems; each is readable only by root. (Root access to the data is considered acceptable since on systems with the traditional "all-powerful root" security model, the root user would be able to obtain the information in other ways in any case). Virtually all recent Unix-like operating systems use shadowed passwords.
+The shadow password file does not entirely solve the problem of attacker access to hashed passwords, as some network authentication schemes operate by transmitting the hashed password over the network (sometimes in cleartext, e.g., Telnet), making it vulnerable to interception.  Copies of system data, such as system backups written to tape or optical media, can also become a means for illicitly obtaining hashed passwords. In addition, the functions used by legitimate password-checking programs need to be written in such a way that malicious programs cannot make rapid authentication checks.
+Regardless of whether password shadowing is in effect on a given system, the passwd file is readable by all users so that various system utilities (e.g., grep) can work (e.g., to ensure that user names existing on the system can be found inside the file), while only the root user can write to it. Without password shadowing, this means that an attacker with unprivileged access to the system can obtain the hashed form of every user's password. Those values can be used to mount a brute force attack offline, testing possible passwords against the hashed passwords relatively quickly without alerting system security arrangements designed to detect an abnormal number of failed login attempts. Especially when the hash is not salted it is also possible to look up these hashed passwords in rainbow tables, databases specially made for giving back a password for a unique hash.
+With a shadowed password scheme in use, the /etc/passwd file typically shows a character such as '*', or 'x' in the password field for each user instead of the hashed password, and /etc/shadow usually contains the following user information:
+
+User login name
+salt and hashed password OR a status exception value e.g.:
+$id$salt$hashed, the printable form of a password hash as produced by crypt (C), where $id is the algorithm used. Other Unix-like systems may have different values, like NetBSD. Key stretching is used to increase password cracking difficulty, using by default 1000 rounds of modified MD5, 64 rounds of Blowfish, 5000 rounds of SHA-256 or SHA-512. The number of rounds may be varied for Blowfish, or for SHA-256 and SHA-512 by using $A$rounds=X$, where "A" and "X" are the algorithm IDs and the number of rounds.  Common id values include:
+$1$ – MD5
+$2$, $2a$, $2b$ – bcrypt
+$5$ – SHA-256
+$6$ – SHA-512
+$y$ – yescrypt
+Empty string – No password, the account has no password (reported by passwd on Solaris with "NP").
+"!", "*" – the account is password locked, user will be unable to log in via password authentication but other methods (e.g. ssh key, logging in as root) may be still allowed.
+"*LK*" – the account itself is locked, user will be unable to log in.
+"*NP*", "!!" – the password has never been set
+Days since epoch of last password change
+Days until change allowed
+Days before change required
+Days warning for expiration
+Days after no logins before account is locked
+Days since epoch when account expires
+Reserved and unused
+The format of the shadow file is simple, and basically identical to that of the password file, to wit, one line per user, ordered fields on each line, and fields separated by colons. Many systems require the order of user lines in the shadow file be identical to the order of the corresponding users in the password file.
+
+
+== History ==
+Prior to password shadowing, a Unix user's hashed password was stored in the second field of their record in the /etc/passwd file (within the seven-field format as outlined above).
+Password shadowing first appeared in Unix systems with the development of SunOS in the mid-1980s, System V Release 3.2 in 1988 and BSD4.3 Reno in 1990.  But, vendors who had performed ports from earlier UNIX releases did not always include the new password shadowing features in their releases, leaving users of those systems exposed to password file attacks.
+System administrators may also arrange for the storage of passwords in distributed databases such as NIS and LDAP, rather than in files on each connected system.  In the case of NIS, the shadow password mechanism is often still used on the NIS servers; in other distributed mechanisms the problem of access to the various user authentication components is handled by the security mechanisms of the underlying data repository.
+In 1987, the author of the original Shadow Password Suite, Julie Haugh, experienced a computer break-in and wrote the initial release of the Shadow Suite containing the login, passwd and su commands. The original release, written for the SCO Xenix operating system, quickly got ported to other platforms.  The Shadow Suite was ported to Linux in 1992 one year after the original announcement of the Linux project, and was included in many early distributions, and continues to be included in many current Linux distributions.
+In the past, it was necessary to have different commands to change passwords in different authentication schemes.  For example, the command to change a NIS password was yppasswd.  This required users to be aware of the different methods to change passwords for different systems, and also resulted in wasteful duplication of code in the various programs that performed the same functions with different back ends.  In most implementations, there is now a single passwd command, and the control of where the password is actually changed is handled transparently to the user via pluggable authentication modules (PAMs). For example, the type of hash used is dictated by the configuration of the pam_unix.so module. By default, the MD5 hash has been used, while current modules are also capable of stronger hashes such as blowfish, SHA256 and SHA512.
+
+
+== See also ==
+chsh
+Crypt (C) (the library function) and Crypt (Unix) (the utility)
+getent
+Security Account Manager (the Microsoft Windows equivalent of the password file)
+Unix security
+vipw
+
+
+== References ==
+
+
+== External links ==
+Manual page from Unix First Edition describing /etc/passwd
+passwd(1): update a user's authentication token(s) – FreeBSD General Commands Manual
+passwd(1) – Plan 9 Programmer's Manual, Volume 1
+passwd(1) – Inferno General commands Manual
+authconfig, a command-line tool for controlling the use of shadow passwords

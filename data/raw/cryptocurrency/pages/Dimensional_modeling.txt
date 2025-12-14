@@ -1,0 +1,73 @@
+Dimensional modeling is part of the Business Dimensional Lifecycle methodology developed by Ralph Kimball which includes a set of methods, techniques and concepts for use in data warehouse design.  The approach focuses on identifying the key business processes within a business and modelling and implementing these first before adding additional business processes, as a bottom-up approach.  An alternative approach from Inmon advocates a top down design of the model of all the enterprise data using tools such as entity-relationship modeling (ER).
+
+
+== Description ==
+Dimensional modeling always uses the concepts of facts (measures), and dimensions (context). Facts are typically (but not always) numeric values that can be aggregated, and dimensions are groups of hierarchies and descriptors that define the facts. For example, sales amount is a fact; timestamp, product, register#, store#, etc. are elements of dimensions. Dimensional models are built by business process area, e.g. store sales, inventory, claims, etc. Because the different business process areas share some but not all dimensions, efficiency in design, operation, and consistency, is achieved using conformed dimensions, i.e. using one copy of the shared dimension across subject areas.
+Dimensional modeling does not necessarily involve a relational database. The same modeling approach, at the logical level, can be used for any physical form, such as multidimensional database or even flat files.  It is oriented around understandability and performance.
+
+
+== Design method ==
+
+
+=== Designing the model ===
+The dimensional model is built on a star-like schema or snowflake schema, with dimensions surrounding the fact table. To build the schema, the following design model is used:
+
+Choose the business process
+Declare the grain
+Identify the dimensions
+Identify the fact
+Choose the business process
+
+The process of dimensional modeling builds on a 4-step design method that helps to ensure the usability of the dimensional model and the use of the data warehouse. The basics in the design build on the actual business process which the data warehouse should cover. Therefore, the first step in the model is to describe the business process which the model builds on. This could for instance be a sales situation in a retail store. To describe the business process, one can choose to do this in plain text or use basic Business Process Model and Notation (BPMN) or other design guides like the Unified Modeling Language |UML).
+
+Declare the grain
+
+After describing the business process, the next step in the design is to declare the grain of the model. The grain of the model is the exact description of what the dimensional model should be focusing on. This could for instance be “An individual line item on a customer slip from a retail store”. To clarify  what the grain means,  you should pick the central process and describe it with one sentence. Furthermore, the grain (sentence) is what you are going to build your dimensions and fact table from. You might find it necessary to go back to this step to alter the grain due to new information gained on what your model is supposed to be able to deliver.
+
+Identify the dimensions
+
+The third step in the design process is to define the dimensions of the model. The dimensions must be defined within the grain from the second step of the 4-step process. Dimensions are the foundation of the fact table, and is where the data for the fact table is collected. Typically dimensions are nouns like date, store, inventory etc. These dimensions are where all the data is stored. For example, the date dimension could contain data such as year, month and weekday.
+
+Identify the facts
+
+After defining the dimensions, the next step in the process is to make keys for the fact table. This step is to identify the numeric facts that will populate each fact table row. This step is closely related to the business users of the system, since this is where they get access to data stored in the data warehouse. Therefore, most of the fact table rows are numerical, additive figures such as quantity or cost per unit, etc.
+
+
+=== Dimension normalization ===
+Dimensional normalization or snowflaking removes redundant attributes, which are known in the normal flatten de-normalized dimensions. Dimensions are strictly joined together in sub dimensions. 
+Snowflaking has an influence on the data structure that differs from many philosophies of data warehouses.
+Single data (fact) table surrounded by multiple descriptive (dimension) tables
+Developers often don't normalize dimensions due to several reasons:
+
+Normalization makes the data structure more complex
+Performance can be slower, due to the many joins between tables
+The space savings are minimal
+Bitmap indexes can't be used
+Query performance. 3NF databases suffer from performance problems when aggregating or retrieving many dimensional values that may require analysis. If you are only going to do operational reports then you may be able to get by with 3NF because your operational user will be looking for very fine grain data.
+There are some arguments on why normalization can be useful. It can be an advantage when part of hierarchy is common to more than one dimension. For example, a geographic dimension may be reusable because both the customer and supplier dimensions use it.
+
+
+== Benefits of dimensional modeling ==
+Commonly cited benefits of dimensional modeling include:
+
+Understandability and simplicity. Dimensional models organize data by business processes and shared business terms (dimensions), which makes schemas easier for analysts to navigate than highly normalized designs.
+Query performance for analytic workloads. Star-schema queries typically join a large fact table to a few small dimensions; many systems implement star-join optimizations, and benchmarks specifically evaluate this workload (e.g., the Star Schema Benchmark).
+Extensibility (resilience to change). New facts or dimensions can be added without breaking existing queries so long as the fact-table grain is preserved; this allows incremental evolution of the warehouse.
+Integration and consistency across subject areas. Reusable conformed dimensions enable consistent cross-process analysis and reduce duplication in future projects.
+Support for time-variant analysis. Techniques for slowly changing dimensions record attribute history so that analyses reflect the state of a dimension member at the time of each fact.
+
+
+== Dimensional models, Hadoop, and big data ==
+We still get the benefits of dimensional models on Hadoop and similar big data frameworks. However, some features of Hadoop require us to slightly adapt the standard approach to dimensional modelling.
+
+The Hadoop File System is immutable. We can only add but not update data. As a result we can only append records to dimension tables. Slowly Changing Dimensions on Hadoop become the default behavior. In order to get the latest and most up to date record in a dimension table we have three options. First, we can create a View that retrieves the latest record using windowing functions. Second, we can have a compaction service running in the background that recreates the latest state. Third, we can store our dimension tables in mutable storage, e.g. HBase and federate queries across the two types of storage.
+The way data is distributed across HDFS makes it expensive to join data. In a distributed relational database (MPP) we can co-locate records with the same primary and foreign keys on the same node in a cluster. This makes it relatively cheap to join very large tables. No data needs to travel across the network to perform the join. This is very different on Hadoop and HDFS. On HDFS tables are split into big chunks and distributed across the nodes on our cluster. We don’t have any control on how individual records and their keys are spread across the cluster. As a result joins on Hadoop for two very large tables are quite expensive as data has to travel across the network. We should avoid joins where possible. For a large fact and dimension table we can de-normalize the dimension table directly into the fact table. For two very large transaction tables we can nest the records of the child table inside the parent table and flatten out the data at run time.
+
+
+== Literature ==
+Kimball, Ralph; Margy Ross (2013). The Data Warehouse Toolkit: The Definitive Guide to Dimensional Modeling (3rd ed.). Wiley. ISBN 978-1-118-53080-1.
+Ralph Kimball (1997). "A Dimensional Modeling Manifesto". DBMS and Internet Systems. 10 (9).
+Margy Ross (Kimball Group) (2005). "Identifying Business Processes". Kimball Group, Design Tips (69). Archived from the original on 12 June 2013.
+
+
+== References ==

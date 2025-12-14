@@ -1,0 +1,130 @@
+dd is a shell command for reading, writing and converting file data. Originally developed for Unix, it has been implemented on many other environments including Unix-like operating systems, Windows, Plan 9 and Inferno. 
+The command can be used for many purposes. For relatively simple copying operations, it tends to be slower than domain-specific alternatives, but it excels at overwriting or truncating a file at any point or seeking in a file.
+The command supports reading and writing files, and if a driver is available to support file-like access, the command can access devices too. Such access is typically supported on Unix-based systems that provide file-like access to devices (such as storage) and special device files (such as /dev/zero and /dev/random). Therefore, the command can be used for tasks such as backing up the boot sector of a drive, and obtaining random data. 
+The command can also support converting data while copying; including byte order swapping and converting between ASCII and EBCDIC text encodings.
+dd is sometimes humorously called "Disk Destroyer", due to its drive-erasing capabilities involving typos.
+
+
+== History ==
+In 1974, the dd command appeared as part of Version 5 Unix. According to Dennis Ritchie, the name is an allusion to the DD statement found in IBM's Job Control Language (JCL), where DD is short for data definition. Explaining the cultural context of its syntax, Douglas McIlroy, has remarked that dd "originally intended for converting files between the ASCII, little-endian, byte-stream world of DEC computers and the EBCDIC, big-endian, blocked world of IBM". Eric S. Raymond believes "the interface design was clearly a prank", due to the command's syntax resembling a JCL statement more than other Unix commands do.
+In 1987, the dd command is specified in the X/Open Portability Guide issue 2 of 1987. This is inherited by IEEE Std 1003.1-2008 (POSIX), which is part of the Single UNIX Specification.
+In 1990, David MacKenzie announced GNU fileutils (now part of coreutils) which includes the dd command; it was written by Paul Rubin, David MacKenzie, and Stuart Kemp. Since 1991, Jim Meyering is its maintainer.
+In 1995, Plan 9 2nd edition was released with a dd command with a more traditional command-line option style than the JCL statement style.
+Since at least 1999, UnxUtils has provided a native implementation for the Windows platform.
+
+
+== Use ==
+The command line interface significantly differs from most modern shell commands in that an option is formatted as option=value instead of the more typical syntax that denotes an option with a dash prefix such as: -x, -y value, --abc, --def value.
+By default, dd reads from standard input and writes to standard output, but input and output can be overridden. Option if specifies an input file and option of specifies an output file.
+Non-standardized aspects of dd depend on the underlying system or implementation, including:
+
+Direct memory access
+Signal handling
+End-of-file (EOF) handling; in particular the Windows ports vary: Cygwin uses Ctrl+D (the usual for Unix) and MKS Toolkit uses Ctrl+Z (the usual for Windows)
+
+
+=== Output messages ===
+On completion, dd writes statistics to standard error. The format is standardized in POSIX. The manual page for GNU dd does not describe this format, but the BSD manuals do. Each of the "Records in" and "Records out" lines shows the number of complete blocks transferred + the number of partial blocks, e.g. because the physical medium ended before a complete block was read, or a physical error prevented reading the complete block.
+If dd receives a SIGINFO signal while it's running – typically triggered by the user pressing Ctrl+T – it writes intermediate statistics to standard error and continues processing.
+
+
+=== Block size ===
+The command processes data in blocks. The default size is 512 (the POSIX-mandated size and a common legacy size for disk hardware) but can be specified via command-line options. Option bs specifies the size for both input (read) and output (write) operations. Alternatively, option ibs specifies the size for input operations and obs for output operations. Option cbs affects conversion operations.
+Options count, skip and seek specify a number of blocks: maximum to read, to start reading at offset from the start of the input, and to start writing at offset from the start of the output, respectively.
+A block size option value is specified as a whole decimal number of bytes with an optional suffix to indicate a multiplier. POSIX requires suffixes b (blocks) for 512 and k (kibibytes) for 1024, but implementations differ on other suffixes. (Free) BSD uses m for mebibytes, g for gibibytes and so on for larger power of two units. GNU uses M and G and so on for these units and uses kB, MB, and GB for SI units. For example, for GNU dd, bs=16M indicates a size of 16 MiB (16777216 bytes) and bs=3kB specifies 3000 bytes.
+For POSIX compliance, some implementations interpret the x character as a multiplication operator for both block size and count option values. For example, bs=2x80x18b is interpreted as 2 × 80 × 18 × 512 = 1474560 bytes, the size of a 1440 KiB floppy disk. For implementations that do not support this feature, the POSIX shell arithmetic syntax of bs=$((2*80*18))b may be used.
+Block size affects performance. Many small reads and writes is often slower than fewer, larger ones. On the downside, larger blocks require more RAM and can complicate error recovery. 
+When used with a variable block size device such as a tape drive or a network, the block size may determine the tape record size or network packet size, depending on the network protocol.
+
+
+== Examples ==
+The examples below apply to many implementations, but are specifically written for GNU dd. Generally, the only difference between implementations is block size values and can be portable by using shell arithmetic expression instead of a size multiplier suffix. For example, instead of bs=64M use bs=$((64*1024*1024)) or bs=$((64 << 20)).
+
+
+=== Data transfer ===
+The command can duplicate data across files, devices, partitions and volumes, and it can transform data during transfer as specified via option conv. In some cases, data transfer is faster with cat.
+To create an ISO disk image from a CD-ROM, DVD or Blu-ray disc:
+
+blocks=$(isosize -d 2048 /dev/sr0)
+dd if=/dev/sr0 of=isoimage.iso bs=2048 count=$blocks status=progress
+
+To restore a drive from an image file:
+
+To create an image of partition sdb2, using a 64 MiB block size:
+
+To clone one partition to another:
+
+To clone drive ad0 to ad1; ignoring any errors:
+
+
+=== In-place modification ===
+The command can modify data in place. For example, this overwrites the first 512 bytes of a file with null bytes:
+
+Option conv=notrunc requests to not truncate the output file. That is, if the output file already exists, replace the specified bytes and leave the rest of the output file as-is. Without this option, the command would create an output file 512 bytes long.
+
+
+=== Master boot record backup and restore ===
+The example above can also be used to backup and restore any region of a device to a file; including a master boot record. To duplicate the first two sectors of a floppy disk:
+
+
+=== Disk wipe ===
+
+For security reasons, it is sometimes necessary to have a disk wipe of a discarded device. This can be achieved by a "data transfer" from the Unix special files.
+
+To write zeros to a disk, use dd if=/dev/zero of=/dev/sda bs=16M.
+To write random data to a disk, use dd if=/dev/urandom of=/dev/sda bs=16M.
+When compared to the data modification example above, notrunc conversion option is not required as it has no effect when the output file is a block device.
+Option bs=16M makes dd read and write 16 MiB at a time. For modern systems, an even greater block size may be faster. Note that filling the drive with random data may take longer than zeroing the drive, because the random data must be created by the CPU, while creating zeroes is very fast. On modern hard-disk drives, zeroing the drive will render most data it contains permanently irrecoverable.  However, with other kinds of drives such as flash memories, much data may still be recoverable by data remanence.
+Modern hard disk drives contain a Secure Erase command designed to permanently and securely erase every accessible and inaccessible portion of a drive.  It may also work for some solid-state drives (flash drives).  As of 2017, it does not work on USB flash drives nor on Secure Digital flash memories.  When available, this is both faster than using dd, and more secure.  On Linux machines it is accessible via the hdparm command's --security-erase-enhanced option.
+The shred program offers multiple overwrites, as well as more secure deletion of individual files.
+
+
+=== Data recovery ===
+Data recovery involves reading from a drive with some parts potentially inaccessible. The command is a good fit with this job with its flexible skipping (seek) and other low-level settings. The vanilla dd, however, is clumsy to use as the user has to read the error messages and manually calculate the regions that can be read. The single block size also limits the granularity of the recovery, as a trade-off has to be made: either use a small one for more data recovered or use a large one for speed.
+A C program called dd_rescue  was written in October 1999. It did away with the conversion functionality of dd, and supports two block sizes to deal with the dilemma. If a read using a large size fails, it falls back to the smaller size to gather as much as data possible. It can also run backwards. In 2003, a dd_rhelp script was written to automate the process of using dd_rescue, keeping track of what areas have been read on its own.
+In 2004, GNU wrote a separate utility, unrelated to dd, called ddrescue. It has a more sophisticated dynamic block-size algorithm and keeps track of what has been read internally. The authors of both dd_rescue and dd_rhelp consider it superior to their implementation. To help distinguish the newer GNU program from the older script, alternate names are sometimes used for GNU's ddrescue, including addrescue (the name on freecode.com and freshmeat.net), gddrescue (Debian package name), and gnu_ddrescue (openSUSE package name).
+
+
+=== Benchmark drive performance ===
+To make drive benchmark test and analyze the sequential (and usually single-threaded) system read and write performance for 1024-byte blocks:
+
+Write performance: dd if=/dev/zero bs=1024 count=1000000 of=1GB_file_to_write
+Read performance: dd if=1GB_file_to_read of=/dev/null bs=1024
+
+
+=== Generate a file with random data ===
+To make a file of 100 random bytes using the random driver:
+
+
+=== Convert a file to upper case ===
+To convert a file to uppercase:
+
+
+=== Progress feedback ===
+On request, the command reports progress. When it receives signal USR1 (INFO on BSD systems), it writes the number of transferred blocks to standard error.
+The following bash script requests progress every 10 s until the transfer completes. The text PID stands for the dd process identifier.
+
+Newer versions of GNU dd support the option status=progress which enables periodic status feedback.
+
+
+== Forks ==
+
+
+=== dcfldd ===
+dcfldd is a fork of GNU dd that is an enhanced version developed by Nick Harbour, who at the time was working for the United States'  Department of Defense Computer Forensics Lab. Compared to dd, dcfldd allows more than one output file, supports simultaneous multiple checksum calculations, provides a verification mode for file matching, and can display the percentage progress of an operation. As of February 2024, the last release was 1.9.1 from April 2023.
+
+
+=== dc3dd ===
+dc3dd is another fork of GNU dd from the United States Department of Defense Cyber Crime Center (DC3). It can be seen as a continuation of the dcfldd, with a stated aim of updating whenever the GNU upstream is updated. As of June 2023, the last release was 7.3.1 from April 2023.
+
+
+== See also ==
+
+Backup – Stored data in computer systems
+Disk cloning – Process of duplicating all data on a digital storage drive
+Disk Copy – Utility in Mac OS
+Disk image – Computer file consisting of the contents of a storage device
+List of POSIX commands
+
+
+== References ==

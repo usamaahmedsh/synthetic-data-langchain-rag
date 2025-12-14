@@ -1,0 +1,981 @@
+Isolation Forest is an algorithm for data anomaly detection using binary trees. It was developed by Fei Tony Liu in 2008.  It has a linear time complexity and a low memory use, which works well for high-volume data. It is based on the assumption that because anomalies are few and different from other data, they can be isolated using few partitions. Like decision tree algorithms, it does not perform density estimation. Unlike decision tree algorithms, it uses only path length to output an anomaly score, and does not use leaf node statistics of class distribution or target value.
+Isolation Forest is fast because it splits the data space, randomly selecting an attribute and split point.  The anomaly score is inversely associated with the path-length because anomalies need fewer splits to be isolated, because they are few and different. 
+
+
+== History ==
+The Isolation Forest (iForest) algorithm was initially proposed by Fei Tony Liu, Kai Ming Ting and Zhi-Hua Zhou in 2008. In 2012 the same authors showed that iForest has linear time complexity, a small memory requirement, and is applicable to high-dimensional data. In 2010, an extension of the algorithm, SCiforest, was published to address clustered and axis-paralleled anomalies.
+
+
+== Isolation trees ==
+
+The premise of the Isolation Forest algorithm is that anomalous data points are easier to separate from the rest of the sample. In order to isolate a data point, the algorithm recursively generates partitions on the sample by randomly selecting an attribute and then randomly selecting a split value between the minimum and maximum values allowed for that attribute.
+
+An example of random partitioning in a 2D dataset of normally distributed points is shown in the first figure for a non-anomalous point and in the second one for a point that is more likely to be an anomaly. It is apparent from the pictures how anomalies require fewer random partitions to be isolated, compared to normal points.
+Recursive partitioning can be represented by a tree structure named Isolation Tree, while the number of partitions required to isolate a point can be interpreted as the length of the path, within the tree, to reach a terminating node starting from the root. For example, the path length of point 
+  
+    
+      
+        
+          x
+          
+            i
+          
+        
+      
+    
+    {\displaystyle x_{i}}
+  
+ in the first figure is greater than the path length of 
+  
+    
+      
+        
+          x
+          
+            j
+          
+        
+      
+    
+    {\displaystyle x_{j}}
+  
+ in the second figure.
+Let 
+  
+    
+      
+        X
+        =
+        {
+        
+          x
+          
+            1
+          
+        
+        ,
+        …
+        ,
+        
+          x
+          
+            n
+          
+        
+        }
+      
+    
+    {\displaystyle X=\{x_{1},\dots ,x_{n}\}}
+  
+ be a set of d-dimensional points and 
+  
+    
+      
+        
+          X
+          ′
+        
+        ⊂
+        X
+      
+    
+    {\displaystyle X'\subset X}
+  
+. An Isolation Tree (iTree) is defined as a data structure with the following properties:
+
+for each node 
+  
+    
+      
+        T
+      
+    
+    {\displaystyle T}
+  
+ in the Tree, 
+  
+    
+      
+        T
+      
+    
+    {\displaystyle T}
+  
+ is either an external-node with no child, or an internal-node with one “test” and exactly two child nodes (
+  
+    
+      
+        
+          T
+          
+            l
+          
+        
+      
+    
+    {\displaystyle T_{l}}
+  
+ and  
+  
+    
+      
+        
+          T
+          
+            r
+          
+        
+      
+    
+    {\displaystyle T_{r}}
+  
+)
+a test at node 
+  
+    
+      
+        T
+      
+    
+    {\displaystyle T}
+  
+ consists of an attribute 
+  
+    
+      
+        q
+      
+    
+    {\displaystyle q}
+  
+ and a split value 
+  
+    
+      
+        p
+      
+    
+    {\displaystyle p}
+  
+ such that the test 
+  
+    
+      
+        q
+        <
+        p
+      
+    
+    {\displaystyle q<p}
+  
+ determines the traversal of a data point to either 
+  
+    
+      
+        
+          T
+          
+            l
+          
+        
+      
+    
+    {\displaystyle T_{l}}
+  
+ or 
+  
+    
+      
+        
+          T
+          
+            r
+          
+        
+      
+    
+    {\displaystyle T_{r}}
+  
+.
+In order to build an iTree, the algorithm recursively divides 
+  
+    
+      
+        
+          X
+          ′
+        
+      
+    
+    {\displaystyle X'}
+  
+ by randomly selecting an attribute 
+  
+    
+      
+        q
+      
+    
+    {\displaystyle q}
+  
+ and a split value 
+  
+    
+      
+        p
+      
+    
+    {\displaystyle p}
+  
+, until either
+
+the node has only one instance, or
+all data at the node have the same values.
+When the iTree is fully grown, each point in 
+  
+    
+      
+        X
+      
+    
+    {\displaystyle X}
+  
+ is isolated at one of the external nodes. Intuitively, the anomalous points are those (easier to isolate, hence) with the smaller path length in the tree, where the path length 
+  
+    
+      
+        h
+        (
+        
+          x
+          
+            i
+          
+        
+        )
+      
+    
+    {\displaystyle h(x_{i})}
+  
+ of point 
+  
+    
+      
+        
+          x
+          
+            i
+          
+        
+        ∈
+        X
+      
+    
+    {\displaystyle x_{i}\in X}
+  
+ is defined as the number of edges 
+  
+    
+      
+        
+          x
+          
+            i
+          
+        
+      
+    
+    {\displaystyle x_{i}}
+  
+ traverses from the root node to get to an external node.
+A probabilistic explanation of iTree is provided in the original iForest paper.
+
+
+== Anomaly detection ==
+Anomaly detection with Isolation Forest is done as follows:
+
+Use the training dataset to build some number of iTrees
+For each data point in the test set:
+Pass it through all the iTrees, counting the path length for each tree
+Assign an “anomaly score” to the instance
+Label the point as “anomaly” if its score is greater than a predefined threshold, which depends on the domain
+
+
+=== Anomaly score ===
+The algorithm for computing the anomaly score of a data point is based on the observation that the structure of iTrees is equivalent to that of Binary Search Trees (BST): a termination to an external node of the iTree corresponds to an unsuccessful search in the BST. Therefore, the estimation of average 
+  
+    
+      
+        h
+        (
+        x
+        )
+      
+    
+    {\displaystyle h(x)}
+  
+ for external node terminations is the same as that of the unsuccessful searches in BST, that is
+
+  
+    
+      
+        c
+        (
+        m
+        )
+        =
+        
+          
+            {
+            
+              
+                
+                  2
+                  H
+                  (
+                  m
+                  −
+                  1
+                  )
+                  −
+                  
+                    
+                      
+                        2
+                        (
+                        m
+                        −
+                        1
+                        )
+                      
+                      n
+                    
+                  
+                
+                
+                  
+                    for 
+                  
+                  m
+                  >
+                  2
+                
+              
+              
+                
+                  1
+                
+                
+                  
+                    for 
+                  
+                  m
+                  =
+                  2
+                
+              
+              
+                
+                  0
+                
+                
+                  
+                    otherwise
+                  
+                
+              
+            
+            
+          
+        
+      
+    
+    {\displaystyle c(m)={\begin{cases}2H(m-1)-{\frac {2(m-1)}{n}}&{\text{for }}m>2\\1&{\text{for }}m=2\\0&{\text{otherwise}}\end{cases}}}
+  
+
+where 
+  
+    
+      
+        n
+      
+    
+    {\displaystyle n}
+  
+ is the test set size, 
+  
+    
+      
+        m
+      
+    
+    {\displaystyle m}
+  
+ is the sample set size and 
+  
+    
+      
+        H
+      
+    
+    {\displaystyle H}
+  
+ is the harmonic number, which can be estimated by 
+  
+    
+      
+        H
+        (
+        i
+        )
+        =
+        l
+        n
+        (
+        i
+        )
+        +
+        γ
+      
+    
+    {\displaystyle H(i)=ln(i)+\gamma }
+  
+, where 
+  
+    
+      
+        γ
+        =
+        0.5772156649
+      
+    
+    {\displaystyle \gamma =0.5772156649}
+  
+ is the Euler-Mascheroni constant.
+Above, 
+  
+    
+      
+        c
+        (
+        m
+        )
+      
+    
+    {\displaystyle c(m)}
+  
+ is the average 
+  
+    
+      
+        h
+        (
+        x
+        )
+      
+    
+    {\displaystyle h(x)}
+  
+ given 
+  
+    
+      
+        m
+      
+    
+    {\displaystyle m}
+  
+, so we can use it to normalize 
+  
+    
+      
+        h
+        (
+        x
+        )
+      
+    
+    {\displaystyle h(x)}
+  
+ to get an estimate of the anomaly score for a given instance x:
+
+  
+    
+      
+        s
+        (
+        x
+        ,
+        m
+        )
+        =
+        
+          2
+          
+            
+              
+                −
+                E
+                (
+                h
+                (
+                x
+                )
+                )
+              
+              
+                c
+                (
+                m
+                )
+              
+            
+          
+        
+      
+    
+    {\displaystyle s(x,m)=2^{\frac {-E(h(x))}{c(m)}}}
+  
+
+where 
+  
+    
+      
+        E
+        (
+        h
+        (
+        x
+        )
+        )
+      
+    
+    {\displaystyle E(h(x))}
+  
+ is the average value of 
+  
+    
+      
+        h
+        (
+        x
+        )
+      
+    
+    {\displaystyle h(x)}
+  
+ from a collection of iTrees. For any data point 
+  
+    
+      
+        x
+      
+    
+    {\displaystyle x}
+  
+:
+
+if 
+  
+    
+      
+        s
+      
+    
+    {\displaystyle s}
+  
+ is close to 
+  
+    
+      
+        1
+      
+    
+    {\displaystyle 1}
+  
+ then 
+  
+    
+      
+        x
+      
+    
+    {\displaystyle x}
+  
+ is very likely an anomaly
+if 
+  
+    
+      
+        s
+      
+    
+    {\displaystyle s}
+  
+ is smaller than 
+  
+    
+      
+        0.5
+      
+    
+    {\displaystyle 0.5}
+  
+ then 
+  
+    
+      
+        x
+      
+    
+    {\displaystyle x}
+  
+ is likely normal
+if all points in the sample score around 
+  
+    
+      
+        0.5
+      
+    
+    {\displaystyle 0.5}
+  
+, then likely they are all normal
+
+
+== Application of isolation forest for credit card fraud detection (anomaly) ==
+The Isolation Forest algorithm has shown its effectiveness in spotting anomalies in data sets like uncovering credit card fraud instances among transactions, by European cardholders with an unbalanced dataset where it can distinguish fraudulent activities from legitimate ones by identifying rare patterns that show notable differences.
+
+
+=== Dataset and preprocessing ===
+In this research projects dataset, there are 284807 transactions recorded in total out of which only 492 are identified as fraudulent (0.172%). Due to this imbalance between authentic and fraudulent transactions detection of fraud becomes quite demanding; hence specialized metrics such as the Area Under the Precision Recall Curve (AUPRC) are essential for accurate evaluation rather, than relying solely on traditional accuracy measures.
+The dataset consists of PCA transformed features (from V1, to V28) well as the Time (time elapsed since the initial transaction) and Amount (transaction value). We processed the dataset using the steps:
+Scaling : The Time and Amount features by utilizing StandardScaler to standardize their input range.
+Imputation:  Missing data in the dataset were filled in by using the average of the corresponding columns, with SimpleImputer.
+Feature Selection : To enhance the model's effectiveness and accuracy in predictions and analysis tasks was to choose features with the kurtosis value for further examination because these particular features tend to have the most significant outliers that could potentially signal irregularities or anomalies within the data set used for modeling purposes. For training purposes specifically, a selection of the 10 features were identified and prioritized as key components, in refining the model's capabilities and enhancing its overall performance.
+
+
+=== Model training and hyperparameter tuning ===
+The Isolation Forest model was specifically trained on transactions (Class=0) focusing on recognizing common behavioral patterns in data analysis tasks. The algorithm separates out instances by measuring the distance needed to isolate them within a collection of randomly divided trees.
+Hyperparameter Tuning:
+A grid search was performed over the following hyperparameters
+Contamination: Expected percentage of anomalies in the dataset, tested at values 0.01, 0.02, and 0.05 
+Max Features: Number of features to sample for each tree, tested at values 5, 8, and 10.
+The best configuration was found with:
+
+Contamination: 0.01
+Max Features: 10
+
+
+=== Results and evaluation ===
+The model was evaluated on a separate test set using accuracy, precision, recall, and the Area Under the Precision-Recall Curve (AUPRC). Below are the key results:
+
+Accuracy: 0.99
+Precision: 0.06
+Recall: 0.38
+AUPRC: 0.22
+While the accuracy seems impressive at glance it mainly showcases the prevalence of regular transactions within the dataset. Precision and recall emphasize the challenges in detecting fraud because of the significant imbalance present. In assessing both precision and recall the AUPRC offers an evaluation by considering the balance between precision and recall.
+
+
+=== Visualizing results ===
+1. Scatter Plot of Detected Anomalies
+
+
+==== Key details ====
+Red Points: Represent the fraudulent transactions flagged by the model as anomalies. These points deviate significantly from the dense clusters of normal transactions, showcasing the algorithm's capability to isolate outliers effectively.
+Blue Points: Represent the normal transactions, which form the dense     cluster at the center of the plot. These are transactions the model identified as not being anomalies.
+Interpretability: The use of two features with high kurtosis helps in visually understanding the model's decision-making process. In high-dimensional data like this (28 PCA-transformed features), reducing to two dimensions with the most extreme outliers provides an interpretable representation of the results.
+Observation: The plot shows that many fraudulent transactions (red points) are located on the edges or far from the central cluster of normal transactions (blue points). However, some red points overlap with the blue cluster, indicating potential false positives or challenging cases for the model.
+
+
+==== 2. Precision-Recall Curve ====
+
+Key Details:
+
+X-axis (Recall): Represents the proportion of true fraudulent transactions (positives) that were correctly identified by the model. A higher recall indicates fewer missed frauds.
+Y-axis(Precision): Represents the proportion of transactions flagged as fraud that were fraudulent. A higher precision indicates fewer false positives.
+AUPRC Value: The Area Under the Precision-Recall Curve (AUPRC) quantifies the model's performance. For this dataset, the AUPRC is 0.22, reflecting the difficulty of detecting fraud in a highly imbalanced dataset.
+Observation:
+
+At high recall values, precision decreases sharply, indicating that as the model becomes more aggressive in identifying anomalies, it also flags more normal transactions as fraud, leading to a higher false-positive rate.
+Conversely, at higher precision values, recall decreases, meaning the model becomes more conservative and misses many fraudulent transactions.
+
+
+==== Strengths of isolation forest ====
+Scalability: With a linear time complexity of O(n*logn), Isolation Forest is efficient  for large datasets.
+Unsupervised Nature: The model does not rely on labeled data, making it suitable for anomaly detection in various domains.
+Feature-agnostic: The algorithm adapts to different datasets without making assumptions about feature distributions.
+
+
+===== Challenges =====
+Imbalanced Data: Low precision indicates that many normal transactions are incorrectly flagged as fraud, leading to false positives.
+Sensitivity to Hyperparameters: Contamination rate and feature sampling heavily influence the model's performance, requiring extensive tuning.
+Interpretability: While effective, the algorithm's outputs can be challenging to interpret without domain-specific knowledge.
+
+
+====== Future directions ======
+Combining Models: A hybrid approach, integrating supervised learning with Isolation Forest, may enhance performance by leveraging labeled data for known fraud cases.
+Active Learning: Incorporating feedback loops to iteratively refine the model using misclassified transactions could improve recall and precision.
+Feature Engineering: Adding transaction metadata, such as merchant location and transaction type, could further aid anomaly detection.
+
+
+=== Conclusion ===
+The Isolation Forest algorithm provides a robust solution for anomaly detection, particularly in domains like fraud detection where anomalies are rare and challenging to identify. However, its reliance on hyperparameters and sensitivity to imbalanced data necessitate careful tuning and complementary techniques for optimal results.
+
+
+== Properties ==
+Sub-sampling: Because iForest does not need to isolate normal instances, it can often ignore most of the training set. Thus, it works very well when the sampling size is kept small, unlike most other methods, which benefit from a large sample size.
+Swamping: When normal instances are too close to anomalies, the number of partitions required to separate anomalies increases, a phenomenon known as swamping, which makes it more difficult for iForest to discriminate between anomalies and normal points. A main reason for swamping is the presence of too much data; so a possible solution is sub-sampling. Because iForest performs well under sub-sampling, reducing the number of points in the sample is also a good way to reduce the effect of swamping. In real-time settings, the combination of small sequential data windows and sub-sampling has been shown to improve anomaly detection performance without compromising accuracy.
+Masking: When there are many anomalies, some of them can aggregate in a dense, large cluster, making it more difficult to separate the single anomalies and so to identify them. This phenomenon is called “masking”, and as with swamping, is more likely when the sample is big and can be alleviated through sub-sampling.
+High-dimensional data: A main limitation of standard, distance-based methods is their inefficiency in dealing with high dimensional data. The main reason is that in a high-dimensional space, every point is equally sparse, so using a distance-based measure of separation is ineffective. Unfortunately, high-dimensional data also affects the detection performance of iForest, but the performance can be vastly improved by using feature selection, like Kurtosis, to reduce the dimensionality of the sample.
+Normal instances only: iForest performs well even if the training set contains no anomalous points. This is because iForest describes data distributions such that long tree paths correspond to normal data points. Thus, the presence of anomalies is irrelevant to detection performance.
+
+
+== Parameter selection ==
+The performance of the Isolation Forest algorithm is highly dependent on the selection of its parameters. Properly tuning these parameters can significantly enhance the algorithm's ability to accurately identify anomalies. Understanding the role and impact of each parameter is crucial for optimizing the model's performance.  
+
+The Isolation Forest algorithm involves several key parameters that influence its behavior and effectiveness. These parameters control various aspects of the tree construction process, the size of the sub-samples, and the thresholds for identifying anomalies. Selecting appropriate parameters is the key to the performance of the Isolation Forest algorithm. Each of the parameters influences anomaly detection differently. Key parameters include:
+Number of Trees : This parameter determines the number of trees in the Isolation Forest. A higher number of trees improves anomaly detection accuracy but increases computational costs. The optimal number balances resource availability with performance needs. For example, a smaller dataset might require fewer trees to save on computation, while larger datasets benefit from additional trees to capture more complexity.
+Subsample Size : The subsample size dictates the number of data points used to construct each tree. Smaller subsample sizes reduce computational complexity but may capture less variability in the data. For instance, a subsample size of 256 is commonly used, but the optimal value depends on dataset characteristics. 
+Contamination Factor : This parameter estimates the proportion of outliers in the dataset. Higher contamination values flag more data points as anomalies, which can lead to false positives. Tuning this parameter carefully based on domain knowledge or cross-validation is critical to avoid bias or misclassification.
+Maximum Features: This parameter specifies the number of random features to consider for each split in the tree. Limiting the number of features increases randomness, making the model more robust. However, in high-dimensional datasets, selecting only the most informative features prevents overfitting and improves generalization. 
+Tree Depth : Tree depth determines the maximum number of splits for a tree. Deeper trees better capture data complexity but risk overfitting, especially in small datasets. Shallow trees, on the other hand, improve computational efficiency.
+The table below summarizes parameter selection strategies based on dataset characteristics.
+
+Benefits of Proper Parameter Tuning:
+Improved Accuracy: Fine-tuning parameters helps the algorithm better distinguish between normal data and anomalies, reducing false positives and negatives.Computational Efficiency: Selecting appropriate values for parameters like the number of trees and sub-sample size makes the algorithm more efficient without sacrificing accuracy.Generalization: Limiting tree depth and using bootstrap sampling helps the model generalize better to new data, reducing overfitting.
+
+
+== SCiForest ==
+SCiForest (Isolation Forest with Split-selection Criterion) is an extension of the original Isolation Forest algorithm, specifically designed to target clustered anomalies. It introduces a split-selection criterion and uses random hyper-planes that are non-axis-parallel to the original attributes. SCiForest does not require an optimal hyper-plane at every node; instead, it generates multiple random hyper-planes, and through sufficient trials, a good-enough hyper-plane is selected. This approach makes the resulting model highly effective due to the aggregate power of the ensemble learner.
+
+
+=== Steps in SCiForest implementation ===
+The implementation of SciForest involves four primary steps, each tailored to improve anomaly detection by isolating clustered anomalies more effectively than standard Isolation Forest methods.
+
+
+==== 1. Subspace selection ====
+Using techniques like KMeans or hierarchical clustering, SciForest organizes features into clusters to identify meaningful subsets. By sampling random subspaces, SciForest emphasizes meaningful feature groups, reducing noise and improving focus. This reduces the impact of irrelevant or noisy dimensions.
+
+
+==== 2. Isolation tree construction ====
+Within each selected subspace, isolation trees are constructed. These trees isolate points through random recursive splitting:
+
+A feature is selected randomly from the subspace.
+A random split value within the feature's range is chosen to partition the data.
+Anomalous points, being sparse or distinct, are isolated more quickly (shorter path lengths) compared to normal points.
+
+
+==== 3. Anomaly scoring ====
+For each data point, the isolation depth (
+  
+    
+      
+        h
+        (
+        x
+        )
+      
+    
+    {\displaystyle h(x)}
+  
+) is calculated for all trees across all subspaces. The anomaly score 
+  
+    
+      
+        S
+        (
+        x
+        )
+      
+    
+    {\displaystyle S(x)}
+  
+ for a data point 
+  
+    
+      
+        x
+      
+    
+    {\displaystyle x}
+  
+ is defined as:
+
+  
+    
+      
+        S
+        (
+        x
+        )
+        =
+        
+          
+            1
+            n
+          
+        
+        
+          ∑
+          
+            i
+            =
+            1
+          
+          
+            n
+          
+        
+        
+          h
+          
+            i
+          
+        
+        (
+        x
+        )
+      
+    
+    {\displaystyle S(x)={\frac {1}{n}}\sum _{i=1}^{n}h_{i}(x)}
+  
+
+Where:
+
+  
+    
+      
+        
+          h
+          
+            i
+          
+        
+        (
+        x
+        )
+      
+    
+    {\displaystyle h_{i}(x)}
+  
+: Path length for data point 
+  
+    
+      
+        x
+      
+    
+    {\displaystyle x}
+  
+ in the 
+  
+    
+      
+        i
+      
+    
+    {\displaystyle i}
+  
+-th tree.
+
+  
+    
+      
+        n
+      
+    
+    {\displaystyle n}
+  
+: Total number of isolation trees.
+Points with lower average path lengths (
+  
+    
+      
+        S
+        (
+        x
+        )
+      
+    
+    {\displaystyle S(x)}
+  
+) are more likely to be anomalies. 
+
+
+==== 4. Thresholding ====
+The final anomaly scores are compared against a predefined threshold 
+  
+    
+      
+        θ
+      
+    
+    {\displaystyle \theta }
+  
+ to classify data points. If 
+  
+    
+      
+        S
+        (
+        x
+        )
+        >
+        θ
+      
+    
+    {\displaystyle S(x)>\theta }
+  
+, the point is classified as anomalous; otherwise, it is normal. The anomaly score threshold, θ, can be tailored to specific applications to control the proportion of identified anomalies. 
+These steps collectively enable SciForest to adapt to varied data distributions while maintaining efficiency in anomaly detection.
+
+
+=== SCiForest implementation flowchart ===
+This flowchart visually represents the step-by-step process of SCiForest implementation, from inputting high-dimensional datasets to detecting anomalies. Each step is highlighted with its key functionality, providing a clear overview of the methodology.
+
+
+== Extended isolation forest ==
+Extended Isolation Forest (Extended IF or EIF) is another extension of the original Isolation Forest algorithm. Extended IF uses rotated trees in different planes, similarly to SCiForest and random values are selected to split the data, such as a random slope or intercept.
+The standard Isolation Forest requires two pieces of information, those being 1) a random feature or coordinate, and 2) a random value for the feature from the range of available values in the data. The Extended IF also requires only two pieces of information, this time being 1) a random slope for the branch cut, and 2) a random intercept for the branch cut which is chosen from the range of available values of the training data. This makes the Extended IF simpler than using rotation trees.
+
+The figure depicts a score map of a regular Isolation Forest in comparison to an Extended Isolation Forest for a sinusoidal-shaped data-set. This image allows us to clearly observe the improvement made by the Extended Isolation Forest in evaluating the scores much more accurately when compared to the shape of the data. While the regular isolation forest fails in capturing the sinusoid shape of the data and properly evaluating the anomaly scores. The regular Isolation Forest shapes the anomaly scores into a rectangular shape and simply assumes that any region nearby the sinusoid data point is not to be anomalous. In comparison, the EIF is more accurate in evaluating anomaly scores with more detail and unlike its predecessor, the EIF is able to detect anomalies that are close to the sinusoid shape of the data but are still anomalous. The original EIF publication includes also this comparison with a single-blob-shaped data-set and a two-blob-shaped data-set, also comparing the EIF results to isolation forest using rotation trees.
+
+
+=== Improvements in extended isolation forest ===
+The Extended Isolation Forest enhances the traditional Isolation Forest algorithm by addressing some of its limitations, particularly in handling high-dimensional data and improving anomaly detection accuracy. Key improvements in EIF include:
+Enhanced Splitting Mechanism: Unlike traditional Isolation Forest, which uses random axis-aligned splits, EIF uses hyperplanes for splitting data. This approach allows for more flexible and accurate partitioning of the data space, which is especially useful in high-dimensional datasets.
+Improved Anomaly Scoring: EIF refines the anomaly scoring process by considering the distance of data points from the hyperplane used in splitting. This provides a more granular and precise anomaly score, leading to better differentiation between normal and anomalous points.
+Handling of High-Dimensional Data: The use of hyperplanes also improves EIF's performance in high-dimensional spaces. Traditional Isolation Forest can suffer from the curse of dimensionality in such scenarios, but EIF mitigates this issue by creating more meaningful and informative partitions in the data space.
+
+
+== Open source implementations ==
+Original implementation by Fei Tony Liu is Isolation Forest in R.
+Other implementations (in alphabetical order):
+
+ELKI contains a Java implementation.
+Isolation Forest - A distributed Spark/Scala implementation with Open Neural Network Exchange (ONNX) export for easy cross-platform inference.
+Isolation Forest by H2O-3 - A Python implementation.
+Package solitude implementation in R.
+Python implementation with examples in scikit-learn.
+Spark iForest - A distributed Apache Spark implementation in Scala/Python.
+PyOD IForest - Another Python implementation in the popular Python Outlier Detection (PyOD) library.
+Other variations of Isolation Forest algorithm implementations:
+
+Extended Isolation Forest – An implementation of Extended Isolation Forest. 
+Extended Isolation Forest by H2O-3 - An implementation of Extended Isolation Forest.
+(Python, R, C/C++) Isolation Forest and variations - An implementation of Isolation Forest and its variations.
+
+
+== Python implementation with Scikit-learn ==
+The isolation forest algorithm is commonly used by data scientists through the version made available in the scikit-learn library. The snippet below depicts a brief implementation of an isolation forest, with direct explanations with comments.
+
+In this snippet we can observe the simplicity of a standard implementation of the algorithm. The only requirement data that the user needs to adjust is the outlier fraction in which the user determines a percentage of the samples to be classifier as outliers. This can be commonly done by selection a group among the positive and negative samples according to a giving classification. Most of the other steps are pretty standard to any decision tree based technique made available  through scikit-learn, in which the user simply needs to split the target variable from the features and fit the model after it is defined with a giving number of estimators (or trees).
+This snippet is a shortened adapted version of an implementation explored by GeeksforGeeks, which can be accessed for further explorations.
+
+
+== See also ==
+Anomaly detection
+
+
+== References ==

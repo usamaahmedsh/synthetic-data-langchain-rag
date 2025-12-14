@@ -1,0 +1,129 @@
+DNS-based Authentication of Named Entities (DANE) is an Internet security protocol to allow X.509 digital certificates, commonly used for Transport Layer Security (TLS), to be bound to domain names using Domain Name System Security Extensions (DNSSEC).
+It is proposed in RFC 6698 as a way to authenticate TLS client and server entities without a certificate authority (CA). It is updated with operational and deployment guidance in RFC 7671. Application specific usage of DANE is defined in RFC 7672 for SMTP and RFC 7673 for using DANE with Service (SRV) records.
+
+
+== Rationale ==
+TLS/SSL encryption is currently based on certificates issued by certificate authorities (CAs). Within the last few years, a number of CA providers suffered serious security breaches, allowing the issuance of certificates for well-known domains to those who don't own those domains. Trusting a large number of CAs might be a problem because any breached CA could issue a certificate for any domain name. DANE enables the administrator of a domain name to certify the keys used in that domain's TLS clients or servers by storing them in the Domain Name System (DNS). DANE needs the DNS records to be signed with DNSSEC for its security model to work.
+Additionally DANE allows a domain owner to specify which CA is allowed to issue certificates for a particular resource, which solves the problem of any CA being able to issue certificates for any domain.
+DANE solves similar problems as:
+
+Certificate Transparency
+Ensuring that rogue CAs cannot issue certificates without the permission of the domain holder without being detected
+DNS Certification Authority Authorization
+Limiting which CAs can issue certificates for a given domain
+However, unlike DANE, those technologies have wide support from browsers.
+
+
+== Email encryption ==
+Until recently, there has been no widely implemented standard for encrypted email transfer. Sending an email is security agnostic; there is no URI scheme to designate secure SMTP. Consequently, most email that is delivered over TLS uses only opportunistic encryption. Since DNSSEC provides authenticated denial of existence (allows a resolver to validate that a certain domain name does not exist), DANE enables an incremental transition to verified, encrypted SMTP without any other external mechanisms, as described by RFC 7672. A DANE record indicates that the sender must use TLS.
+Additionally, RFC 8162 exists for applying DANE to S/MIME, and RFC 7929 standardises bindings for OpenPGP.
+
+
+== Support ==
+
+
+=== Applications ===
+Google Chrome does not support DANE, since Google Chrome wishes to eliminate the use of 1024-bit RSA within the browser (DNSSEC previously used a 1024-bit RSA signed root, and many zones are still signed with 1024-bit RSA, although the modern default is 256-bit ECDSA). According to Adam Langley the code was written and, although it is not in Chrome today, it remains available in add-on form.
+Mozilla Firefox does not support DANE. Based on the reactions in tickets on the subjects ("We have no plans to implement this feature"), DNSSEC and DANE are currently seen by Mozilla developers as outside of the scope of Firefox. Addon support was available until Firefox 56 (last updated 2016), but no longer exists. It can no longer be implemented with the more recent, more restrictive Firefox-extension APIs.
+GNU Privacy Guard Allows fetching keys via OpenPGP DANE (--auto-key-locate). New option --export-options export-dane. (version 2.1.14)
+Cheogram Android allows verifying via DANE and shows the status if DANE was used or not
+FairEmail for Android allows verifying DANE for SMTP and POP/IMAP servers
+
+
+=== Servers ===
+Postfix
+PowerMTA 
+Exim
+Prosody
+
+
+=== Services ===
+Posteo
+Tutanota
+
+
+=== Libraries ===
+OpenSSL
+GnuTLS
+
+
+== TLSA RR ==
+The TLSA RR (Resource Record) for a service is located at a DNS name that specifies certificate constraints should be applied for the services at a certain TCP or UDP port. At least one of the TLSA RRs must provide a validation (path) for the certificate offered by the service at the specified address.
+Not all protocols handle Common Name matching the same way. HTTP requires that the Common Name in the X.509 certificate provided by the service matches regardless of the TLSA asserting its validity. SMTP does not require the Common Name matches, if the certificate usage value is 3 (DANE-EE), but otherwise does require a Common Name match. It is important to verify if there are specific instructions for the protocol being used.
+
+
+=== RR data fields ===
+The RR itself has 4 fields of data, describing which level of validation the domain owner provides.
+
+the certificate usage field
+the selector field
+the matching type field
+the certificate association data
+E.g. _25._tcp.somehost.example.com. TLSA 3 1 1 0123456789ABCDEF
+
+
+==== Certificate usage ====
+
+The first field after the TLSA text in the DNS RR, specifies how to verify the certificate.
+
+A value of 0 is for what is commonly called CA constraint (and PKIX-TA). The certificate provided when establishing TLS must be issued by the listed root-CA or one of its intermediate CAs, with a valid certification path to a root-CA already trusted by the application doing the verification. The record may just point to an intermediate CA, in which case the certificate for this service must come via this CA, but the entire chain to a trusted root-CA must still be valid.
+A value of 1 is for what is commonly called service certificate constraint (and PKIX-EE). The certificate used must match the TLSA record, and it must also pass PKIX certification path validation to a trusted root-CA.
+A value of 2 is for what is commonly called trust anchor assertion (and DANE-TA). The TLSA record matches the certificate of the root CA, or one of the intermediate CAs, of the certificate in use by the service. The certification path must be valid up to the matching certificate, but there is no need for a trusted root-CA.
+A value of 3 is for what is commonly called domain issued certificate (and DANE-EE). The TLSA record matches the used certificate itself. The used certificate does not need to be signed by other parties. This is useful for self-signed certificates, but also for cases where the validator does not have a list of trusted root certificates.
+
+
+==== Selector ====
+When connecting to the service and a certificate is received, the selector field specifies which parts of it should be checked.
+
+A value of 0 means to select the entire certificate for matching.
+A value of 1 means to select just the public key for certificate matching. Matching the public key is often sufficient, as this is likely to be unique.
+
+
+==== Matching type ====
+A type of 0 means the entire information selected is present in the certificate association data.
+A type of 1 means to do a SHA-256 hash of the selected data.
+A type of 2 means to do a SHA-512 hash of the selected data.
+
+
+==== Certificate association data ====
+The actual data to be matched given the settings of the other fields. This is a long "text string" of hexadecimal data.
+
+
+=== Examples ===
+The TLSA record for www.ietf.org specifies to check the SHA-256 hash of the public key of the certificate provided, ignoring any CA.
+
+Their mail service has the same exact certificate and TLSA.
+
+Finally, the following example, does the same as the others, but does the hash calculation over the entire certificate.
+
+
+== Standards ==
+RFC 6394 Use Cases and Requirements for DNS-Based Authentication of Named Entities (DANE)
+RFC 6698 The DNS-Based Authentication of Named Entities (DANE) Transport Layer Security (TLS) Protocol: TLSA
+RFC 7218 Adding Acronyms to Simplify Conversations about DNS-Based Authentication of Named Entities (DANE)
+RFC 7671 The DNS-Based Authentication of Named Entities (DANE) Protocol: Updates and Operational Guidance
+RFC 7672 SMTP Security via Opportunistic DNS-Based Authentication of Named Entities (DANE) Transport Layer Security (TLS)
+RFC 7673 Using DNS-Based Authentication of Named Entities (DANE) TLSA Records with SRV Records
+RFC 7929 DNS-Based Authentication of Named Entities (DANE) Bindings for OpenPGP
+RFC 4255 Using DNS to Securely Publish Secure Shell (SSH) Key Fingerprints
+RFC 8162 Using Secure DNS to Associate Certificates with Domain Names for S/MIME
+Draft: Opportunistic Encryption with DANE Semantics and IPsec: IPSECA
+
+
+== See also ==
+DNS Certification Authority Authorization
+SMTP MTA Strict Transport Security (MTA-STS)
+
+
+== Notes ==
+
+
+== References ==
+
+
+== External links ==
+DNSSEC is unnecessary - Against DNSSEC
+For DNSSEC - A rebuttal to the points in "Against DNSSEC"
+List of DANE test sites
+Online tool to check mail servers for DNSSEC and DANE support
+Illustrated DANE advocacy with links to howtos and tools

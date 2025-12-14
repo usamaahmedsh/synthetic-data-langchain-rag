@@ -1,0 +1,134 @@
+Waveform Audio File Format (WAVE, or WAV due to its filename extension; pronounced  or  ) is an audio file format standard for storing an audio bitstream on personal computers. The format was developed and published for the first time in 1991 by IBM and Microsoft. It is the main format used on Microsoft Windows systems for uncompressed audio. The usual bitstream encoding is the linear pulse-code modulation (LPCM) format.
+WAV is an application of the Resource Interchange File Format (RIFF) bitstream format method for storing data in chunks, and thus is similar to the 8SVX and the Audio Interchange File Format (AIFF) format used on Amiga and Macintosh computers, respectively.
+
+
+== Description ==
+
+The WAV file is an instance of a Resource Interchange File Format (RIFF) defined by IBM and Microsoft. The RIFF format acts as a wrapper for various audio coding formats.
+Though a WAV file can contain compressed audio, the most common WAV audio format is uncompressed audio in the linear pulse-code modulation (LPCM) format. LPCM is also the standard audio coding format for audio CDs, which store two-channel LPCM audio sampled at 44.1 kHz with 16 bits per sample. Since LPCM is uncompressed and retains all of the samples of an audio track, professional users or audio experts may use the WAV format with LPCM audio for maximum audio quality. WAV files can also be edited and manipulated with relative ease using software.
+On Microsoft Windows, the WAV format supports compressed audio using the Audio Compression Manager (ACM). Any ACM codec can be used to compress a WAV file. The user interface (UI) for ACM may be accessed through various programs that use it, including Sound Recorder in some versions of Windows.
+Beginning with Windows 2000, a WAVE_FORMAT_EXTENSIBLE header was defined which specifies multiple audio channel data along with speaker positions, eliminates ambiguity regarding sample types and container sizes in the standard WAV format and supports defining custom extensions to the format.
+
+
+== File specifications ==
+
+
+=== RIFF ===
+A RIFF file is a tagged file format. It has a specific container format (a chunk) with a header that includes a four-character tag (FourCC) and the size (number of bytes) of the chunk. The tag specifies how the data within the chunk should be interpreted, and there are several standard FourCC tags. Tags consisting of all capital letters are reserved tags. The outermost chunk of a RIFF file has a RIFF tag; the first four bytes of chunk data are an additional FourCC tag that specify the form type and are followed by a sequence of subchunks. In the case of a WAV file, the additional tag is WAVE. The remainder of the RIFF data is a sequence of chunks describing the audio information.
+The advantage of a tagged file format is that the format can be extended later while maintaining backward compatibility. The rule for a RIFF (or WAV) reader is that it should ignore any tagged chunk that it does not recognize. The reader will not be able to use the new information, but the reader should not be confused.
+The specification for RIFF files includes the definition of an INFO chunk. The chunk may include information such as the title of the work, the author, the creation date, and copyright information. Although the INFO chunk was defined for RIFF in version 1.0, the chunk was not referenced in the formal specification of a WAV file. Many readers had trouble processing this. Consequently, the safest thing to do from an interchange standpoint was to omit the INFO chunk and other extensions and send a lowest-common-denominator file. There are other INFO chunk placement problems.
+RIFF files were expected to be used in international environments, so there is CSET chunk to specify the country code, language, dialect, and code page for the strings in a RIFF file. For example, specifying an appropriate CSET chunk should allow the strings in an INFO chunk (and other chunks throughout the RIFF file) to be interpreted as Cyrillic or Japanese characters.
+RIFF also defines a JUNK chunk whose contents are uninteresting.  The chunk allows a chunk to be deleted by just changing its FourCC. The chunk could also be used to reserve some space for future edits so the file could be modified without being resized. A later definition of RIFF introduced a similar PAD chunk.
+
+
+=== RIFF WAVE ===
+The top-level definition of a WAV file is:
+
+<WAVE-form> → RIFF('WAVE'
+                   <fmt-ck>            // Format of the file
+                   [<fact-ck>]         // Fact chunk
+                   [<cue-ck>]          // Cue points
+                   [<playlist-ck>]     // Playlist
+                   [<assoc-data-list>] // Associated data list
+                   <wave-data> )       // Wave data
+
+The top-level RIFF form uses a WAVE tag. It is followed by a mandatory <fmt-ck> chunk that describes the format of the sample data that follows. This chunk includes information such as the sample encoding, number of bits per channel, the number of channels, and the sample rate. 
+The WAV specification includes some optional features. The optional <fact-ck> chunk reports the number of samples for some compressed coding schemes. The <cue-ck> chunk identifies some significant sample numbers in the wave file. The <playlist-ck> chunk allows the samples to be played out of order or repeated rather than just from beginning to end.  The associated data list (<assoc-data-list>) allows labels and notes to be attached to cue points; text annotation may be given for a group of samples (e.g., caption information).  
+Finally, the mandatory <wave-data> chunk contains the actual samples in the format previously specified.
+Note that the WAV file definition does not show where an INFO chunk should be placed. It is also silent about the placement of a CSET chunk (which specifies the character set used).
+The RIFF specification attempts to be a formal specification, but its formalism lacks the precision seen in other tagged formats. For example, the RIFF specification does not clearly distinguish between a set of subchunks and an ordered sequence of subchunks. The RIFF form chunk suggests it should be a sequence container. Sequencing information is specified in the RIFF form of a WAV file consistent with the formalism: "However, <fmt-ck> must always occur before <wave-data>, and both of these chunks are mandatory in a WAVE file." The specification suggests a LIST chunk is also a sequence: "A LIST chunk contains a list, or ordered sequence, of subchunks." However, the specification does not give a formal specification of the INFO chunk; an example INFO LIST chunk ignores the chunk sequence implied in the INFO description. The LIST chunk definition for <wave-data> does use the LIST chunk as a sequence container with good formal semantics.
+The WAV specification supports, and most WAV files use, a single contiguous array of audio samples. The specification also supports discrete blocks of samples and silence that are played in order. The specification for the sample data contains apparent errors:
+
+The <wave-data> contains the waveform data. It is defined as follows:
+  <wave-data>  → { <data-ck> | <data-list> }
+  <data-ck>    → data( <wave-data> )
+  <wave-list>  → LIST( 'wavl' { <data-ck> | // Wave samples
+                                <silence-ck> }... ) // Silence
+  <silence-ck> → slnt( <dwSamples:DWORD> ) // Count of silent samples
+
+Apparently <data-list> (undefined) and <wave-list> (defined but not referenced) should be identical. Even with this resolved, the productions then allow a <data-ck> to contain a recursive <wave-data> (which implies data interpretation problems). To avoid the recursion, the specification can be interpreted as:
+
+<wave-data>  → { <data-ck> | <wave-list> }
+  <data-ck>    → data( <bSampleData:BYTE> ... )
+  <wave-list>  → LIST( 'wavl' { <data-ck> | // Wave samples
+                                <silence-ck> }... ) // Silence
+  <silence-ck> → slnt( <dwSamples:DWORD> ) // Count of silent samples
+
+WAV files can contain embedded IFF lists, which can contain several sub-chunks.
+
+
+=== WAV file header ===
+This is an example of a WAV file header (44 bytes). Data is stored in little-endian byte order.
+
+[Master RIFF chunk]
+   FileTypeBlocID  (4 bytes) : Identifier « RIFF »  (0x52, 0x49, 0x46, 0x46)
+   FileSize        (4 bytes) : Overall file size minus 8 bytes
+   FileFormatID    (4 bytes) : Format = « WAVE »  (0x57, 0x41, 0x56, 0x45)
+
+[Chunk describing the data format]
+   FormatBlocID    (4 bytes) : Identifier « fmt␣ »  (0x66, 0x6D, 0x74, 0x20)
+   BlocSize        (4 bytes) : Chunk size minus 8 bytes, which is 16 bytes here  (0x10)
+   AudioFormat     (2 bytes) : Audio format (1: PCM integer, 3: IEEE 754 float)
+   NbrChannels     (2 bytes) : Number of channels
+   Frequency       (4 bytes) : Sample rate (in hertz)
+   BytePerSec      (4 bytes) : Number of bytes to read per second (Frequency * BytePerBloc).
+   BytePerBloc     (2 bytes) : Number of bytes per block (NbrChannels * BitsPerSample / 8).
+   BitsPerSample   (2 bytes) : Number of bits per sample
+
+[Chunk containing the sampled data]
+   DataBlocID      (4 bytes) : Identifier « data »  (0x64, 0x61, 0x74, 0x61)
+   DataSize        (4 bytes) : SampledData size
+   SampledData
+
+
+== Metadata ==
+As a derivative of RIFF, WAV files can be tagged with metadata in the INFO chunk. In addition, WAV files can embed any kind of metadata, including but not limited to Extensible Metadata Platform (XMP) data or ID3 tags in extra chunks. The RIFF specification requires that applications ignore chunks they do not recognize and applications may not necessarily use this extra information.
+
+
+== Popularity ==
+Uncompressed WAV files are large, so file sharing of WAV files over the Internet is uncommon except among video, music and audio professionals. The high resolution of the format makes it suitable for retaining first generation archived files of high quality, for use on a system where disk space and network bandwidth are not constraints.
+
+
+=== Use by broadcasters ===
+
+In spite of their large size, uncompressed WAV files are used by most radio broadcasters, especially those that have adopted a tapeless system.
+
+BBC Radio in the UK requires LPCM 48 kHz 16-bit WAV audio as standard for all content made for broadcast on its stations.
+The UK Commercial radio company Global Radio uses 44.1 kHz 16-bit two-channel WAV files throughout their broadcast chain.
+The ABC "D-Cart" system, which was developed by the Australian broadcaster, uses 48 kHz 16-bit two-channel WAV files.
+The Digital Radio Mondiale consortium uses WAV files as an informal standard for transmitter simulation and receiver testing.
+
+
+== Limitations ==
+The WAV format is limited to files that are less than 4 GiB, because of its use of a 32-bit unsigned integer to record the file size in the header. Although this is equivalent to about 6.8 hours of CD-quality audio at 44.1 kHz, 16-bit stereo, it is sometimes necessary to exceed this limit, especially when greater sampling rates, bit resolutions or channel count are required. The W64 format was therefore created for use in Sound Forge. Its 64-bit file size field in the header allows for much longer recording times. The RF64 format specified by the European Broadcasting Union has also been created to solve this problem.
+
+
+== Non-audio data ==
+Since the sampling rate of a WAV file can vary from 1 Hz to 4.3 GHz, and the number of channels can be as high as 65535, WAV files have also been used for non-audio data.  LTspice, for instance, can store multiple circuit trace waveforms in separate channels, at any appropriate sampling rate, with the full-scale range representing ±1 V or A rather than a sound pressure.
+
+
+== Audio compact discs ==
+Audio compact discs (CDs) do not use the WAV file format, instead using Red Book audio. The commonality is that audio CDs are encoded as uncompressed 16-bit 44.1 kHz stereo LPCM, which is one of the formats supported by WAV.
+
+
+== Comparison of coding schemes ==
+
+Audio in WAV files can be encoded in a variety of audio coding formats, such as GSM or MP3, to reduce the file size. All WAV files, even those that use MP3 compression, use the .wav extension.
+This is a reference to compare the monophonic (not stereophonic) audio quality and compression bitrates of audio coding formats available for WAV files including LPCM, ADPCM, Microsoft GSM 06.10, CELP, SBC, Truespeech and MPEG Layer-3. These are the default ACM codecs that come with Windows.
+
+
+== See also ==
+Windows Media Audio
+
+
+== References ==
+
+
+== External links ==
+
+WAVE file format specifications - from McGill University, (Last update: 2011-01-03)
+Extensible Wave-Format Descriptors from Microsoft (Updated October 26, 2017)
+More information on WAVE_FORMAT_EXTENSIBLE Archived 2024-03-03 at the Wayback Machine - University of Bath
+WAVE File Format - technical details (1999)
+WAV & BWF Metadata Guide
+Exif tags; see, for example, page 128

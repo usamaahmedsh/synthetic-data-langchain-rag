@@ -1,0 +1,97 @@
+The Linux Unified Key Setup (LUKS) is a disk encryption specification created by Clemens Fruhwirth in 2004 and originally intended for Linux.
+LUKS implements a platform-independent standard on-disk format for use in various tools. This facilitates compatibility and interoperability among different programs and operating systems, and assures that they all implement password management in a secure and documented manner.
+
+
+== Description ==
+LUKS is used to encrypt a block device. The contents of the encrypted device are arbitrary, and therefore any filesystem can be encrypted, including swap partitions. There is an unencrypted header at the beginning of an encrypted volume, which allows up to 8 (LUKS1) or 32 (LUKS2) encryption keys to be stored along with encryption parameters such as cipher type and key size.
+The presence of this header is a major difference between LUKS and dm-crypt, since the header allows multiple different passphrases to be used, with the ability to change and remove them. If the header is lost or corrupted, the device will no longer be decryptable.
+Encryption is done with a multi-layer approach. First, the block device is encrypted using a master key. This master key is encrypted with each active user key. User keys are derived from passphrases, FIDO2 security keys, TPMs or smart cards. The multi-layer approach allows users to change their passphrase without re-encrypting the whole block device. Key slots can contain information to verify user passphrases or other types of keys.
+There are two versions of LUKS, with LUKS2 featuring resilience to header corruption, and using the Argon2 key derivation function by default, whereas LUKS1 uses PBKDF2. Conversion between both versions of LUKS is possible in certain situations, but some features may not be available with LUKS1 such as Argon2. LUKS2 uses JSON as a metadata format.
+Available cryptographic algorithms depend on individual kernel support of the host. Libgcrypt can be used as a backend for hashing, which supports all of its algorithms. It is up to the operating system vendor to choose the default algorithm. LUKS1 makes use of an anti-forensics technique called AFsplitter, allowing for secure data erasure and protection.
+
+
+=== LUKS with LVM ===
+Logical Volume Management can be used alongside LUKS.
+
+LVM on LUKS
+When LVM is used on an unlocked LUKS container, all underlying partitions (which are LVM logical volumes) can be encrypted with a single key. This is akin to splitting a LUKS container into multiple partitions. The LVM structure is not visible until the disk is decrypted.
+LUKS on LVM
+When LUKS is used to encrypt LVM logical volumes, an encrypted volume can span multiple devices. The underlying LVM volume group is visible without decrypting the encrypted volumes.
+
+
+=== Full disk encryption ===
+
+A common usage of LUKS is to provide full disk encryption, which involves encrypting the root partition of an operating system installation, which protects the operating system files from being tampered with or read by unauthorized parties.
+On a Linux system, the boot partition (/boot) may be encrypted if the bootloader itself supports LUKS (e.g. GRUB). This is undertaken to prevent tampering with the Linux kernel. However, the first stage bootloader or an EFI system partition cannot be encrypted (see Full disk encryption#The boot key problem).
+On mobile Linux systems, postmarketOS has developed osk-sdl to allow a full disk encrypted system to be unlocked using a touch screen.
+For systems running systemd, the systemd-homed component can be used to encrypt individual home directories.
+
+
+== Operating system support ==
+The reference implementation for LUKS operates on Linux and is based on an enhanced version of cryptsetup, using dm-crypt as the disk encryption backend. Under Microsoft Windows, LUKS-encrypted disks can be used via the Windows Subsystem for Linux. (Formerly, this was possible with LibreCrypt, which currently has fundamental security holes, and which succeeded FreeOTFE, formerly DoxBox.)
+DragonFly BSD supports LUKS.
+
+
+=== Installer support ===
+Several Linux distributions allow the root device to be encrypted upon OS installation. These installers include Calamares, Ubiquity, Debian-Installer, and more.
+
+
+== On-disk format ==
+LUKS headers are backward compatible; newer versions of LUKS are able to read headers of previous versions.
+
+
+=== LUKS1 ===
+
+
+=== LUKS2 ===
+The LUKS2 header has a binary area and a JSON area, a second binary and JSON area, and a keyslots area. The binary and JSON areas are repeated two times with minor variations.
+
+
+==== Binary area ====
+The size of the binary areas is always 4kiB. The size of binary plus JSON area can be a power-of-two number of bytes between 16 kiB and 4 MiB, making the size of the JSON areas between 12 kiB and 4092 kiB each.
+
+
+==== JSON area ====
+The base LUKS2 JSON metadata object has 5 keys: config, keyslots, digests, segments, and tokens.
+Config contains general settings and information of the LUKS header, and persistent mount options.
+Segments describe areas on the disk than contain data and can be decrypted. They also describe the algorithm with which a segment is encrypted.
+Digests describe what keyslots contain encrypted keys able to decrypt which segments. They contain a hash of the decrypted key of the keyslot that functions as a checksum and to verify correctness of the password.
+Keyslots contain encrypted keys. The method of encryption varies, a combination of passwords, keyfiles, hardware keys, and other methods can be uses to decrypt the contained master-keys.
+The tokens object can hold additional for external systems integrating with LUKS.
+Userdata, segments, are encrypted with a large master-key and an efficient encryption algorithm. The master key can then be encrypted with a more expensive algorithm and potentially weaker user-provided keys, these encrypted master-keys are then stored in Keyslots. This slows brute-force attempts at guessing the password, and also allows changing decryption methods and passwords without having to reencrypt the entire data section, by only needing to rewrite the same master-key encrypted differently into the keyslots.
+A typical LUKS2 JSON area, with added indentation and line-breaks:
+
+
+==== Keyslots area ====
+Keyslots take up the device region after the two binary and JSON areas. In the typical case shown above this starts at 32 kiB, and runs up to 4 MiB or 16 MiB. Here we will use 16MiB as an example.
+Usually a device is spanned by a single segment, with the offset set to 16MiB and the size to dynamic. During reencryption or in unusual configuration there might be multiple segments that in total should span the device without gaps or overlap.
+The segment(s) should each have a single associated digest, that each have one or more associated keyslots. Keyslots may also be unassociated with any digest and used for other purposes.
+Keyslots themselves are mapped into the keyslots area, in the example above to a single 252kiB area starting right after the header at 32 kiB. This area is obfuscated with anti-forensic stripes in the same manner as in LUKS1.
+The default algorithm for digests, pbkdf2, as well as the anti-forensic stripes type "luks1", are identical to LUKS1. The key derivation defaults to stronger algorithms unsupported by LUKS1, but can be set to the supported pbkdf2.
+
+
+== Examples ==
+Cryptsetup is the reference implementation of the LUKS frontend.
+To encrypt a device with the path /dev/sda1:
+
+To unlock an encrypted device, where name is the mapped device name:
+
+
+=== Re-encrypting ===
+Re-encrypting a LUKS container can be done either with the cryptsetup tool itself, or with a legacy tool called cryptsetup-reencrypt. These tools can also be used to add encryption to an existing unencrypted filesystem, or remove encryption from a block device.
+Both methods have similar syntax:
+
+
+== See also ==
+Comparison of disk encryption software
+
+
+== References ==
+
+
+== External links ==
+Official website
+Frequently Asked Questions (FAQ)
+LibreCrypt: Implementation for Windows
+LUKS1 Specification
+LUKS2 Specification

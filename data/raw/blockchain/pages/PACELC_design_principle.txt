@@ -1,0 +1,55 @@
+In database theory, the PACELC design principle is an extension to the CAP theorem. It states that in case of network partitioning (P) in a distributed computer system, one has to choose between availability (A) and consistency (C) (as per the CAP theorem), but else (E), even when the system is running normally in the absence of partitions, one has to choose between latency (L) and loss of consistency (C).
+
+
+== Overview ==
+The CAP theorem can be phrased as "PAC", the impossibility theorem that no distributed data store can be both consistent and available in executions that contains partitions. This can be proved by examining latency: if a system ensures consistency, then operation latencies grow with message delays, and hence operations cannot terminate eventually if the network is partitioned, i.e. the system cannot ensure availability.
+In the absence of partitions, both consistency and availability can be satisfied. PACELC therefore goes further and examines how the system replicates data. Specifically, in the absence of partitions, an additional trade-off (ELC) exists between latency and consistency. If the store is atomically consistent, then the sum of the read and write delay is at least the message delay. In practice, most systems rely on explicit acknowledgments rather than timed delays to ensure delivery, requiring a full network round trip and therefore message delay on both reads and writes to ensure consistency. In low latency systems, in contrast, consistency is relaxed in order to reduce latency.
+There are four configurations or tradeoffs in the PACELC space:
+
+PA/EL - prioritize availability and latency over consistency
+PA/EC - when there is a partition, choose availability; else, choose consistency
+PC/EL - when there is a partition, choose consistency; else, choose latency
+PC/EC - choose consistency at all times
+PC/EC and PA/EL provide natural cognitive models for an application developer. A PC/EC system provides a firm guarantee of atomic consistency, as in ACID, while PA/EL provides high availability and low latency with a more complex consistency model. In contrast, PA/EC and PC/EL systems only make conditional guarantees of consistency. The developer still has to write code to handle the cases where the guarantee is not upheld. PA/EC systems are rare outside of the in-memory data grid industry, where systems are localized to geographic regions and the latency vs. consistency tradeoff is not significant. PC/EL is even more tricky to understand. PC does not indicate that the system is fully consistent; rather it indicates that the system does not reduce consistency beyond the baseline consistency level when a network partition occurs—instead, it reduces availability.
+Some experts like Marc Brooker argue that the CAP theorem is particularly relevant in intermittently connected environments, such as those related to the Internet of Things (IoT) and mobile applications. In these contexts, devices may become partitioned due to challenging physical conditions, such as power outages or when entering confined spaces like elevators. For distributed systems, such as cloud applications, it is more appropriate to use PACELC, which is more comprehensive and considers trade-offs such as latency and consistency even in the absence of network partitions.
+
+
+== History ==
+The PACELC design principle was first described by Daniel Abadi from Yale University in 2010 in a blog post, which he later clarified in a paper in 2012. The purpose of PACELC is to address his thesis that "Ignoring the consistency/latency trade-off of replicated systems is a major oversight [in CAP], as it is present at all times during system operation, whereas CAP is only relevant in the arguably rare case of a network partition." PACELC was proved formally in 2018 in a SIGACT News article.
+
+
+== Database PACELC ratings ==
+Original database PACELC ratings are from. Subsequent updates contributed by wikipedia community.
+
+The default versions of Amazon's early (internal) Dynamo, Cassandra, Riak, and Cosmos DB are PA/EL systems: if a partition occurs, they give up consistency for availability, and under normal operation they give up consistency for lower latency.
+Fully ACID systems such as VoltDB/H-Store, Megastore, MySQL Cluster, and PostgreSQL are PC/EC: they refuse to give up consistency, and will pay the availability and latency costs to achieve it. Bigtable and related systems such as HBase are also PC/EC.
+Amazon DynamoDB (launched January 2012) is quite different from the early (Amazon internal) Dynamo which was considered for the PACELC paper. DynamoDB follows a strong leader model, where every write is strictly serialized (and conditional writes carry no penalty) and supports read-after-write consistency. This guarantee does not apply to "Global Tables" across regions. The DynamoDB SDKs use eventually consistent reads by default (improved availability and throughput), but when a consistent read is requested the service will return either a current view to the item or an error.
+Couchbase provides a range of consistency and availability options during a partition, and equally a range of latency and consistency options with no partition. Unlike most other databases, Couchbase doesn't have a single API set nor does it scale/replicate all data services homogeneously. For writes, Couchbase favors Consistency over Availability making it formally CP, but on read there is more user-controlled variability depending on index replication, desired consistency level and type of access (single document lookup vs range scan vs full-text search, etc.). On top of that, there is then further variability depending on cross-datacenter-replication (XDCR) which takes multiple CP clusters and connects them with asynchronous replication and Couchbase Lite which is an embedded database and creates a fully multi-master (with revision tracking) distributed topology.
+Cosmos DB supports five tunable consistency levels that allow for tradeoffs between C/A during P, and L/C during E. Cosmos DB never violates the specified consistency level, so it's formally CP.
+MongoDB can be classified as a PA/EC system. In the baseline case, the system guarantees reads and writes to be consistent.
+PNUTS is a PC/EL system.
+Hazelcast IMDG and indeed most in-memory data grids are an implementation of a PA/EC system; Hazelcast can be configured to be EL rather than EC. Concurrency primitives (Lock, AtomicReference, CountDownLatch, etc.) can be either PC/EC or PA/EC.
+FaunaDB implements Calvin, a transaction protocol created by Dr. Daniel Abadi, the author of the original PACELC paper, and offers users adjustable controls for LC tradeoff. It is PC/EC for strictly serializable transactions, and EL for serializable reads.
+
+
+== See also ==
+CAP theorem
+Consistency model
+Fallacies of distributed computing
+Lambda architecture (solution)
+Paxos (computer science)
+Project management triangle
+Raft (algorithm)
+Trilemma
+
+
+== Notes ==
+
+
+== References ==
+
+
+== External links ==
+"Consistency Tradeoffs in Modern Distributed Database System Design", by Daniel J. Abadi, Yale University Original paper that formalized PACELC
+"Problems with CAP, and Yahoo's little known NoSQL system", by Daniel J. Abadi, Yale University. Original blog post that first described PACELC
+"Proving PACELC", by Wojciech Golab, University of Waterloo Formal proof of the PACELC theorem

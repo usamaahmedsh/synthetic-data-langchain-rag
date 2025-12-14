@@ -1,0 +1,307 @@
+In cryptography, rotational cryptanalysis is a generic cryptanalytic attack against algorithms that rely on three operations: modular addition, rotation and XOR — ARX for short. Algorithms relying on these operations are popular because they are relatively cheap in both hardware and software and run in constant time, making them safe from timing attacks in common implementations.
+The basic idea of rotational cryptanalysis is that both the bit rotation and XOR operations preserve correlations between bit-rotated pairs  of inputs, and that addition of bit-rotated inputs also partially preserves bit rotation correlations. Rotational pairs of inputs can thus be used to "see through" the cryptosystems cascaded ARX operations to a greater degree than might be expected. This ability to "see" correlations through rounds of processing can then be exploited to break the cryptosystem in a way that is similar to differential cryptanalysis.
+The term "rotational cryptanalysis" was coined by Dmitry Khovratovich and Ivica Nikolić
+in 2010 paper "Rotational Cryptanalysis of ARX", which presented the best cryptanalytic attacks at that time against a reduced-round Threefish cipher — part of the Skein hash function, a SHA-3 competition candidate. A follow-up attack from the same authors and Christian Rechberger breaks collision resistance of up to 53 of 72 rounds in Skein-256, and 57 of 72 rounds in Skein-512. It also affects the Threefish cipher up to 39 for 256-bit keys, 42 rounds for 512-bit keys, and 43 rounds for 1024 bit keys with complexities 
+  
+    
+      
+        
+          2
+          
+            252.4
+          
+        
+      
+    
+    {\displaystyle 2^{252.4}}
+  
+,
+  
+    
+      
+        
+          2
+          
+            507
+          
+        
+      
+    
+    {\displaystyle 2^{507}}
+  
+, and 
+  
+    
+      
+        
+          2
+          
+            1014.4
+          
+        
+      
+    
+    {\displaystyle 2^{1014.4}}
+  
+, respectively.
+
+
+== Method ==
+Rotational cryptanalysis takes advantage of the fact that the XOR function preserves the rotations that are done to a piece of data with a probability of 1, and that while modular addition does not always preserve the rotation, the probability can be high enough (depending on the cryptosystem) that reduced-round versions, cryptosystems modified with modular addition removed, or extremely weak ARX cryptosystems that do not utilize enough additions can become easily vulnerable.
+Let any letter be a given variable in binary, and let any operations and or data in parenthesis "()" be a given statement regarding data that has been shifted an "r" amount. 
+(x
+  
+    
+      
+        ⊕
+      
+    
+    {\displaystyle \oplus }
+  
+y)=(x)
+  
+    
+      
+        ⊕
+      
+    
+    {\displaystyle \oplus }
+  
+(y), and "(x)r" is trivially equal to "(x shifted by r)" (as x and r are the only things that determine the output).
+Modular addition of 
+  
+    
+      
+        
+          2
+          
+            n
+          
+        
+      
+    
+    {\displaystyle 2^{n}}
+  
+is trickier as it can be non-linear in most cases. The probability-hood of a given string that was shifted surviving modular addition (that is, "(x+y) = (x)+(y)") equals:
+
+  
+    
+      
+        (
+        1
+        
+          /
+        
+        4
+        )
+        (
+        1
+        +
+        
+          2
+          
+            r
+            −
+            n
+          
+        
+        +
+        
+          2
+          
+            −
+            r
+          
+        
+        +
+        
+          2
+          
+            −
+            n
+          
+        
+        )
+      
+    
+    {\displaystyle (1/4)(1+2^{r-n}+2^{-r}+2^{-n})}
+  
+
+where "n" is the exponent in 
+  
+    
+      
+        
+          2
+          
+            n
+          
+        
+      
+    
+    {\displaystyle 2^{n}}
+  
+, and r is the rotation amount like before. 
+The probability of a piece of rotated binary surviving an ARX cryptosystem is 
+  
+    
+      
+        (
+        p
+        
+          r
+        
+        
+          )
+          
+            q
+          
+        
+      
+    
+    {\displaystyle (p{r})^{q}}
+  
+, where "pr" is the probability-hood of surviving a singular modular addition given the above formula, and "q" is the amount of additions within the ARX scheme. In order for the attack to be theoretically relevant, the probability of getting the key from the attack must be below the chance of discovering it randomly (that is, the average case complexity of 
+  
+    
+      
+        
+          2
+          
+            n
+          
+        
+      
+    
+    {\displaystyle 2^{n}}
+  
+of the rotational cryptanalytic attack must be below the 
+  
+    
+      
+        
+          2
+          
+            n
+          
+        
+      
+    
+    {\displaystyle 2^{n}}
+  
+of raw brute-force). The full versions of most ARX cryptosystems are not vulnerable, but their reduced rounds are as the probability of recovering the key is higher at the start of the mixing process (the rounds) than at the end.
+It is also important to note that many ARX schemes have constant terms that need to be XOR'ed and added within the regular scheme. This is not an issue in cases where the constants that are used are rotated (as already mentioned, (x
+  
+    
+      
+        ⊕
+      
+    
+    {\displaystyle \oplus }
+  
+y)=(x)
+  
+    
+      
+        ⊕
+      
+    
+    {\displaystyle \oplus }
+  
+(y), with one of the variables potentially being the constant) but constants that are not rotated decrease the probability of the rotations surviving. The authors of the original attack paper attempt to cover for this by introducing "error correction" variables that were found by the Monte-Carlo method that aim to maximize the chance of the constants being nullified throughout the round process. The error correction constant has a chance of removing the constant obfuscation for a given round of a cryptosystem by XOR'ing the output of the function with the given error constant.
+For example, in Skein, the error constant has a probability of creating the below equivalence, reversing the hash compression function to the point before constants are involved:
+
+  
+    
+      
+        S
+        k
+        e
+        i
+        n
+        (
+        (
+        X
+        )
+        ⊕
+        
+          E
+        
+        )
+        =
+        (
+        S
+        k
+        e
+        i
+        n
+        (
+        X
+        )
+        )
+      
+    
+    {\displaystyle Skein((X)\oplus {E})=(Skein(X))}
+  
+ where "e" is the error constant and "
+  
+    
+      
+        (
+        S
+        k
+        e
+        i
+        n
+        (
+        X
+        )
+        )
+      
+    
+    {\displaystyle (Skein(X))}
+  
+" is the output of the round function at the given time without the constant involved.
+Error correction constants are unique to each cryptosystem, and presumably must be found by Monte-Carlo simulations. There is currently no publicly known formula to discover the error correction variable needed on the fly.
+
+
+== Limitations ==
+Apart from the reduced-round nature of rotational cryptanalysis and the luck needed for a successful attack, a big mitigation against it is to add the amount of additions needed to fit the security level of the cipher. For an ARX cipher that requires 
+  
+    
+      
+        
+          2
+          
+            128
+          
+        
+      
+    
+    {\displaystyle 2^{128}}
+  
+security, there must approximately at most 128 modular additions as per the previous 
+  
+    
+      
+        (
+        p
+        
+          r
+        
+        
+          )
+          
+            q
+          
+        
+      
+    
+    {\displaystyle (p{r})^{q}}
+  
+ equation, not including the other limitations.
+The attack method for Threefish requires a chosen-plaintext-attack to occur, which comes with the limitations of such an attack.
+Another limitation is that there is no guarantee that successful application of the error correction variables will undo constants within rounds. The original paper claims that the chance of constants being randomly nullified in a given round become lower as the hamming weight becomes higher. Raising hamming weights of constants in key rounds and compression rounds increases the security margin.
+
+
+== References ==

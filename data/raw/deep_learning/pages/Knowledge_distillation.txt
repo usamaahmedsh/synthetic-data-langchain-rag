@@ -1,0 +1,1934 @@
+In machine learning, knowledge distillation or model distillation is the process of transferring knowledge from a large model to a smaller one. While large models (such as very deep neural networks or ensembles of many models) have more knowledge capacity than small models, this capacity might not be fully utilized.  It can be just as computationally expensive to evaluate a model even if it utilizes little of its knowledge capacity.  Knowledge distillation transfers knowledge from a large model to a smaller one without loss of validity.  As smaller models are less expensive to evaluate, they can be deployed on less powerful hardware (such as a mobile device).
+There is also a less common technique called Reverse Knowledge Distillation, where knowledge is transferred from a smaller model to a larger one.
+Model distillation is not to be confused with model compression, which describes methods to decrease the size of a large model itself, without training a new model. Model compression generally preserves the architecture and the nominal parameter count of the model, while decreasing the bits-per-parameter.
+Knowledge distillation has been successfully used in several applications of machine learning such as object detection, acoustic models, and natural language processing.
+Recently, it has also been introduced to graph neural networks applicable to non-grid data.
+
+
+== Methods ==
+Knowledge transfer from a large model to a small one somehow needs to teach the latter without loss of validity. If both models are trained on the same data, the smaller model may have insufficient capacity to learn a concise knowledge representation compared to the large model.  However, some information about a concise knowledge representation is encoded in the pseudolikelihoods assigned to its output: when a model correctly predicts a class, it assigns a large value to the output variable corresponding to such class, and smaller values to the other output variables. The distribution of values among the outputs for a record provides information on how the large model represents knowledge.  Therefore, the goal of economical deployment of a valid model can be achieved by training only the large model on the data, exploiting its better ability to learn concise knowledge representations, and then distilling such knowledge into the smaller model, by training it to learn the soft output of the large model.
+
+
+=== Mathematical formulation ===
+Given a large model as a function of the vector variable 
+  
+    
+      
+        
+          x
+        
+      
+    
+    {\displaystyle \mathbf {x} }
+  
+, trained for a specific classification task, typically the final layer of classification networks is a softmax in the form
+
+  
+    
+      
+        
+          y
+          
+            i
+          
+        
+        (
+        
+          x
+        
+        
+          |
+        
+        t
+        )
+        =
+        
+          
+            
+              e
+              
+                
+                  
+                    
+                      z
+                      
+                        i
+                      
+                    
+                    (
+                    
+                      x
+                    
+                    )
+                  
+                  t
+                
+              
+            
+            
+              
+                ∑
+                
+                  j
+                
+              
+              
+                e
+                
+                  
+                    
+                      
+                        z
+                        
+                          j
+                        
+                      
+                      (
+                      
+                        x
+                      
+                      )
+                    
+                    t
+                  
+                
+              
+            
+          
+        
+      
+    
+    {\displaystyle y_{i}(\mathbf {x} |t)={\frac {e^{\frac {z_{i}(\mathbf {x} )}{t}}}{\sum _{j}e^{\frac {z_{j}(\mathbf {x} )}{t}}}}}
+  
+
+where 
+  
+    
+      
+        t
+      
+    
+    {\displaystyle t}
+  
+ is the temperature, a parameter which is set to 1 for a standard softmax. The softmax operator converts the logit values 
+  
+    
+      
+        
+          z
+          
+            i
+          
+        
+        (
+        
+          x
+        
+        )
+      
+    
+    {\displaystyle z_{i}(\mathbf {x} )}
+  
+ to pseudo-probabilities: higher temperature values generate softer distributions of pseudo-probabilities among the output classes. Knowledge distillation consists of training a smaller network, called the distilled model, on a data set called the transfer set (which is different than the data set used to train the large model) using cross-entropy as the loss function between the output of the distilled model 
+  
+    
+      
+        
+          y
+        
+        (
+        
+          x
+        
+        
+          |
+        
+        t
+        )
+      
+    
+    {\displaystyle \mathbf {y} (\mathbf {x} |t)}
+  
+ and the output of the large model 
+  
+    
+      
+        
+          
+            
+              
+                y
+              
+              ^
+            
+          
+        
+        (
+        
+          x
+        
+        
+          |
+        
+        t
+        )
+      
+    
+    {\displaystyle {\hat {\mathbf {y} }}(\mathbf {x} |t)}
+  
+ on the same record (or the average of the individual outputs, if the large model is an ensemble), using a high value of softmax temperature 
+  
+    
+      
+        t
+      
+    
+    {\displaystyle t}
+  
+ for both models
+
+  
+    
+      
+        E
+        (
+        
+          x
+        
+        
+          |
+        
+        t
+        )
+        =
+        −
+        
+          ∑
+          
+            i
+          
+        
+        
+          
+            
+              
+                y
+                ^
+              
+            
+          
+          
+            i
+          
+        
+        (
+        
+          x
+        
+        
+          |
+        
+        t
+        )
+        log
+        ⁡
+        
+          y
+          
+            i
+          
+        
+        (
+        
+          x
+        
+        
+          |
+        
+        t
+        )
+        .
+      
+    
+    {\displaystyle E(\mathbf {x} |t)=-\sum _{i}{\hat {y}}_{i}(\mathbf {x} |t)\log y_{i}(\mathbf {x} |t).}
+  
+
+In this context, a high temperature increases the entropy of the output, therefore providing more information to learn for the distilled model compared to hard targets, and at the same time reducing the variance of the gradient between different records, thus allowing a higher learning rate.
+If ground truth is available for the transfer set, the process can be strengthened by adding to the loss the cross-entropy between the output 
+  
+    
+      
+        
+          y
+          
+            i
+          
+        
+        (
+        
+          x
+        
+        
+          |
+        
+        1
+        )
+      
+    
+    {\displaystyle y_{i}(\mathbf {x} |1)}
+  
+ of the distilled model computed with 
+  
+    
+      
+        t
+        =
+        1
+      
+    
+    {\displaystyle t=1}
+  
+, and the known label 
+  
+    
+      
+        
+          
+            
+              
+                y
+                ¯
+              
+            
+          
+          
+            i
+          
+        
+      
+    
+    {\displaystyle {\bar {y}}_{i}}
+  
+
+  
+    
+      
+        E
+        (
+        
+          x
+        
+        
+          |
+        
+        t
+        )
+        =
+        −
+        
+          t
+          
+            2
+          
+        
+        
+          ∑
+          
+            i
+          
+        
+        
+          
+            
+              
+                y
+                ^
+              
+            
+          
+          
+            i
+          
+        
+        (
+        
+          x
+        
+        
+          |
+        
+        t
+        )
+        log
+        ⁡
+        
+          y
+          
+            i
+          
+        
+        (
+        
+          x
+        
+        
+          |
+        
+        t
+        )
+        −
+        
+          ∑
+          
+            i
+          
+        
+        
+          
+            
+              
+                y
+                ¯
+              
+            
+          
+          
+            i
+          
+        
+        log
+        ⁡
+        
+          y
+          
+            i
+          
+        
+        (
+        
+          x
+        
+        
+          |
+        
+        1
+        )
+      
+    
+    {\displaystyle E(\mathbf {x} |t)=-t^{2}\sum _{i}{\hat {y}}_{i}(\mathbf {x} |t)\log y_{i}(\mathbf {x} |t)-\sum _{i}{\bar {y}}_{i}\log y_{i}(\mathbf {x} |1)}
+  
+
+where the component of the loss with respect to the large model is weighted by a factor of 
+  
+    
+      
+        
+          t
+          
+            2
+          
+        
+      
+    
+    {\displaystyle t^{2}}
+  
+ since, as the temperature increases, the gradient of the loss with respect to the model weights scales by a factor of 
+  
+    
+      
+        
+          
+            1
+            
+              t
+              
+                2
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\frac {1}{t^{2}}}}
+  
+.
+
+
+=== Relationship with model compression ===
+Under the assumption that the logits have zero mean, it is possible to show that model compression is a special case of knowledge distillation. The gradient of the knowledge distillation loss 
+  
+    
+      
+        E
+      
+    
+    {\displaystyle E}
+  
+ with respect to the logit of the distilled model 
+  
+    
+      
+        
+          z
+          
+            i
+          
+        
+      
+    
+    {\displaystyle z_{i}}
+  
+ is given by
+
+  
+    
+      
+        
+          
+            
+              
+                
+                  
+                    ∂
+                    
+                      ∂
+                      
+                        z
+                        
+                          i
+                        
+                      
+                    
+                  
+                
+                E
+              
+              
+                
+                =
+                −
+                
+                  
+                    ∂
+                    
+                      ∂
+                      
+                        z
+                        
+                          i
+                        
+                      
+                    
+                  
+                
+                
+                  ∑
+                  
+                    j
+                  
+                
+                
+                  
+                    
+                      
+                        y
+                        ^
+                      
+                    
+                  
+                  
+                    j
+                  
+                
+                log
+                ⁡
+                
+                  y
+                  
+                    j
+                  
+                
+              
+            
+            
+              
+              
+                
+                =
+                −
+                
+                  
+                    ∂
+                    
+                      ∂
+                      
+                        z
+                        
+                          i
+                        
+                      
+                    
+                  
+                
+                
+                  
+                    
+                      
+                        y
+                        ^
+                      
+                    
+                  
+                  
+                    i
+                  
+                
+                log
+                ⁡
+                
+                  y
+                  
+                    i
+                  
+                
+                +
+                
+                  (
+                  
+                    −
+                    
+                      
+                        ∂
+                        
+                          ∂
+                          
+                            z
+                            
+                              i
+                            
+                          
+                        
+                      
+                    
+                    
+                      ∑
+                      
+                        k
+                        ≠
+                        i
+                      
+                    
+                    
+                      
+                        
+                          
+                            y
+                            ^
+                          
+                        
+                      
+                      
+                        k
+                      
+                    
+                    log
+                    ⁡
+                    
+                      y
+                      
+                        k
+                      
+                    
+                  
+                  )
+                
+              
+            
+            
+              
+              
+                
+                =
+                −
+                
+                  
+                    
+                      
+                        y
+                        ^
+                      
+                    
+                  
+                  
+                    i
+                  
+                
+                
+                  
+                    1
+                    
+                      y
+                      
+                        i
+                      
+                    
+                  
+                
+                
+                  
+                    ∂
+                    
+                      ∂
+                      
+                        z
+                        
+                          i
+                        
+                      
+                    
+                  
+                
+                
+                  y
+                  
+                    i
+                  
+                
+                +
+                
+                  ∑
+                  
+                    k
+                    ≠
+                    i
+                  
+                
+                
+                  (
+                  
+                    −
+                    
+                      
+                        
+                          
+                            y
+                            ^
+                          
+                        
+                      
+                      
+                        k
+                      
+                    
+                    ⋅
+                    
+                      
+                        1
+                        
+                          y
+                          
+                            k
+                          
+                        
+                      
+                    
+                    ⋅
+                    
+                      e
+                      
+                        
+                          
+                            z
+                            
+                              k
+                            
+                          
+                          t
+                        
+                      
+                    
+                    ⋅
+                    
+                      (
+                      
+                        −
+                        
+                          
+                            1
+                            
+                              
+                                (
+                                
+                                  
+                                    ∑
+                                    
+                                      j
+                                    
+                                  
+                                  
+                                    e
+                                    
+                                      
+                                        
+                                          z
+                                          
+                                            j
+                                          
+                                        
+                                        t
+                                      
+                                    
+                                  
+                                
+                                )
+                              
+                              
+                                2
+                              
+                            
+                          
+                        
+                      
+                      )
+                    
+                    ⋅
+                    
+                      e
+                      
+                        
+                          
+                            z
+                            
+                              i
+                            
+                          
+                          t
+                        
+                      
+                    
+                    ⋅
+                    
+                      
+                        1
+                        t
+                      
+                    
+                  
+                  )
+                
+              
+            
+            
+              
+              
+                
+                =
+                −
+                
+                  
+                    
+                      
+                        y
+                        ^
+                      
+                    
+                  
+                  
+                    i
+                  
+                
+                
+                  
+                    1
+                    
+                      y
+                      
+                        i
+                      
+                    
+                  
+                
+                
+                  
+                    ∂
+                    
+                      ∂
+                      
+                        z
+                        
+                          i
+                        
+                      
+                    
+                  
+                
+                
+                  
+                    
+                      e
+                      
+                        
+                          
+                            z
+                            
+                              i
+                            
+                          
+                          t
+                        
+                      
+                    
+                    
+                      
+                        ∑
+                        
+                          j
+                        
+                      
+                      
+                        e
+                        
+                          
+                            
+                              z
+                              
+                                j
+                              
+                            
+                            t
+                          
+                        
+                      
+                    
+                  
+                
+                +
+                
+                  ∑
+                  
+                    k
+                    ≠
+                    i
+                  
+                
+                
+                  (
+                  
+                    
+                      
+                        
+                          
+                            y
+                            ^
+                          
+                        
+                      
+                      
+                        k
+                      
+                    
+                    ⋅
+                    
+                      
+                        1
+                        
+                          y
+                          
+                            k
+                          
+                        
+                      
+                    
+                    ⋅
+                    
+                      y
+                      
+                        k
+                      
+                    
+                    ⋅
+                    
+                      y
+                      
+                        i
+                      
+                    
+                    ⋅
+                    
+                      
+                        1
+                        t
+                      
+                    
+                  
+                  )
+                
+              
+            
+            
+              
+              
+                
+                =
+                −
+                
+                  
+                    
+                      
+                        y
+                        ^
+                      
+                    
+                  
+                  
+                    i
+                  
+                
+                
+                  
+                    1
+                    
+                      y
+                      
+                        i
+                      
+                    
+                  
+                
+                
+                  (
+                  
+                    
+                      
+                        
+                          
+                            1
+                            t
+                          
+                        
+                        
+                          e
+                          
+                            
+                              
+                                z
+                                
+                                  i
+                                
+                              
+                              t
+                            
+                          
+                        
+                        
+                          ∑
+                          
+                            j
+                          
+                        
+                        
+                          e
+                          
+                            
+                              
+                                z
+                                
+                                  j
+                                
+                              
+                              t
+                            
+                          
+                        
+                        −
+                        
+                          
+                            1
+                            t
+                          
+                        
+                        
+                          
+                            (
+                            
+                              e
+                              
+                                
+                                  
+                                    z
+                                    
+                                      i
+                                    
+                                  
+                                  t
+                                
+                              
+                            
+                            )
+                          
+                          
+                            2
+                          
+                        
+                      
+                      
+                        
+                          (
+                          
+                            
+                              ∑
+                              
+                                j
+                              
+                            
+                            
+                              e
+                              
+                                
+                                  
+                                    z
+                                    
+                                      j
+                                    
+                                  
+                                  t
+                                
+                              
+                            
+                          
+                          )
+                        
+                        
+                          2
+                        
+                      
+                    
+                  
+                  )
+                
+                +
+                
+                  
+                    
+                      
+                        y
+                        
+                          i
+                        
+                      
+                      
+                        ∑
+                        
+                          k
+                          ≠
+                          i
+                        
+                      
+                      
+                        
+                          
+                            
+                              y
+                              ^
+                            
+                          
+                        
+                        
+                          k
+                        
+                      
+                    
+                    t
+                  
+                
+              
+            
+            
+              
+              
+                
+                =
+                −
+                
+                  
+                    
+                      
+                        y
+                        ^
+                      
+                    
+                  
+                  
+                    i
+                  
+                
+                
+                  
+                    1
+                    
+                      y
+                      
+                        i
+                      
+                    
+                  
+                
+                
+                  (
+                  
+                    
+                      
+                        
+                          y
+                          
+                            i
+                          
+                        
+                        t
+                      
+                    
+                    −
+                    
+                      
+                        
+                          y
+                          
+                            i
+                          
+                          
+                            2
+                          
+                        
+                        t
+                      
+                    
+                  
+                  )
+                
+                +
+                
+                  
+                    
+                      
+                        y
+                        
+                          i
+                        
+                      
+                      (
+                      1
+                      −
+                      
+                        
+                          
+                            
+                              y
+                              ^
+                            
+                          
+                        
+                        
+                          i
+                        
+                      
+                      )
+                    
+                    t
+                  
+                
+              
+            
+            
+              
+              
+                
+                =
+                
+                  
+                    1
+                    t
+                  
+                
+                
+                  (
+                  
+                    
+                      y
+                      
+                        i
+                      
+                    
+                    −
+                    
+                      
+                        
+                          
+                            y
+                            ^
+                          
+                        
+                      
+                      
+                        i
+                      
+                    
+                  
+                  )
+                
+              
+            
+            
+              
+              
+                
+                =
+                
+                  
+                    1
+                    t
+                  
+                
+                
+                  (
+                  
+                    
+                      
+                        
+                          e
+                          
+                            
+                              
+                                z
+                                
+                                  i
+                                
+                              
+                              t
+                            
+                          
+                        
+                        
+                          
+                            ∑
+                            
+                              j
+                            
+                          
+                          
+                            e
+                            
+                              
+                                
+                                  z
+                                  
+                                    j
+                                  
+                                
+                                t
+                              
+                            
+                          
+                        
+                      
+                    
+                    −
+                    
+                      
+                        
+                          e
+                          
+                            
+                              
+                                
+                                  
+                                    
+                                      z
+                                      ^
+                                    
+                                  
+                                
+                                
+                                  i
+                                
+                              
+                              t
+                            
+                          
+                        
+                        
+                          
+                            ∑
+                            
+                              j
+                            
+                          
+                          
+                            e
+                            
+                              
+                                
+                                  
+                                    
+                                      
+                                        z
+                                        ^
+                                      
+                                    
+                                  
+                                  
+                                    j
+                                  
+                                
+                                t
+                              
+                            
+                          
+                        
+                      
+                    
+                  
+                  )
+                
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{aligned}{\frac {\partial }{\partial z_{i}}}E&=-{\frac {\partial }{\partial z_{i}}}\sum _{j}{\hat {y}}_{j}\log y_{j}\\&=-{\frac {\partial }{\partial z_{i}}}{\hat {y}}_{i}\log y_{i}+\left(-{\frac {\partial }{\partial z_{i}}}\sum _{k\neq i}{\hat {y}}_{k}\log y_{k}\right)\\&=-{\hat {y}}_{i}{\frac {1}{y_{i}}}{\frac {\partial }{\partial z_{i}}}y_{i}+\sum _{k\neq i}\left(-{\hat {y}}_{k}\cdot {\frac {1}{y_{k}}}\cdot e^{\frac {z_{k}}{t}}\cdot \left(-{\frac {1}{\left(\sum _{j}e^{\frac {z_{j}}{t}}\right)^{2}}}\right)\cdot e^{\frac {z_{i}}{t}}\cdot {\frac {1}{t}}\right)\\&=-{\hat {y}}_{i}{\frac {1}{y_{i}}}{\frac {\partial }{\partial z_{i}}}{\frac {e^{\frac {z_{i}}{t}}}{\sum _{j}e^{\frac {z_{j}}{t}}}}+\sum _{k\neq i}\left({\hat {y}}_{k}\cdot {\frac {1}{y_{k}}}\cdot y_{k}\cdot y_{i}\cdot {\frac {1}{t}}\right)\\&=-{\hat {y}}_{i}{\frac {1}{y_{i}}}\left({\frac {{\frac {1}{t}}e^{\frac {z_{i}}{t}}\sum _{j}e^{\frac {z_{j}}{t}}-{\frac {1}{t}}\left(e^{\frac {z_{i}}{t}}\right)^{2}}{\left(\sum _{j}e^{\frac {z_{j}}{t}}\right)^{2}}}\right)+{\frac {y_{i}\sum _{k\neq i}{\hat {y}}_{k}}{t}}\\&=-{\hat {y}}_{i}{\frac {1}{y_{i}}}\left({\frac {y_{i}}{t}}-{\frac {y_{i}^{2}}{t}}\right)+{\frac {y_{i}(1-{\hat {y}}_{i})}{t}}\\&={\frac {1}{t}}\left(y_{i}-{\hat {y}}_{i}\right)\\&={\frac {1}{t}}\left({\frac {e^{\frac {z_{i}}{t}}}{\sum _{j}e^{\frac {z_{j}}{t}}}}-{\frac {e^{\frac {{\hat {z}}_{i}}{t}}}{\sum _{j}e^{\frac {{\hat {z}}_{j}}{t}}}}\right)\\\end{aligned}}}
+  
+
+where 
+  
+    
+      
+        
+          
+            
+              
+                z
+                ^
+              
+            
+          
+          
+            i
+          
+        
+      
+    
+    {\displaystyle {\hat {z}}_{i}}
+  
+ are the logits of the large model. For large values of 
+  
+    
+      
+        t
+      
+    
+    {\displaystyle t}
+  
+ this can be approximated as
+
+  
+    
+      
+        
+          
+            1
+            t
+          
+        
+        
+          (
+          
+            
+              
+                
+                  1
+                  +
+                  
+                    
+                      
+                        z
+                        
+                          i
+                        
+                      
+                      t
+                    
+                  
+                
+                
+                  N
+                  +
+                  
+                    ∑
+                    
+                      j
+                    
+                  
+                  
+                    
+                      
+                        z
+                        
+                          j
+                        
+                      
+                      t
+                    
+                  
+                
+              
+            
+            −
+            
+              
+                
+                  1
+                  +
+                  
+                    
+                      
+                        
+                          
+                            
+                              z
+                              ^
+                            
+                          
+                        
+                        
+                          i
+                        
+                      
+                      t
+                    
+                  
+                
+                
+                  N
+                  +
+                  
+                    ∑
+                    
+                      j
+                    
+                  
+                  
+                    
+                      
+                        
+                          
+                            
+                              z
+                              ^
+                            
+                          
+                        
+                        
+                          j
+                        
+                      
+                      t
+                    
+                  
+                
+              
+            
+          
+          )
+        
+      
+    
+    {\displaystyle {\frac {1}{t}}\left({\frac {1+{\frac {z_{i}}{t}}}{N+\sum _{j}{\frac {z_{j}}{t}}}}-{\frac {1+{\frac {{\hat {z}}_{i}}{t}}}{N+\sum _{j}{\frac {{\hat {z}}_{j}}{t}}}}\right)}
+  
+
+and under the zero-mean hypothesis 
+  
+    
+      
+        
+          ∑
+          
+            j
+          
+        
+        
+          z
+          
+            j
+          
+        
+        =
+        
+          ∑
+          
+            j
+          
+        
+        
+          
+            
+              
+                z
+                ^
+              
+            
+          
+          
+            j
+          
+        
+        =
+        0
+      
+    
+    {\displaystyle \sum _{j}z_{j}=\sum _{j}{\hat {z}}_{j}=0}
+  
+ it becomes 
+  
+    
+      
+        
+          
+            
+              
+                z
+                
+                  i
+                
+              
+              −
+              
+                
+                  
+                    
+                      z
+                      ^
+                    
+                  
+                
+                
+                  i
+                
+              
+            
+            
+              N
+              
+                T
+                
+                  2
+                
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\frac {z_{i}-{\hat {z}}_{i}}{NT^{2}}}}
+  
+, which is the derivative of 
+  
+    
+      
+        
+          
+            1
+            2
+          
+        
+        
+          
+            (
+            
+              
+                z
+                
+                  i
+                
+              
+              −
+              
+                
+                  
+                    
+                      z
+                      ^
+                    
+                  
+                
+                
+                  i
+                
+              
+            
+            )
+          
+          
+            2
+          
+        
+      
+    
+    {\displaystyle {\frac {1}{2}}\left(z_{i}-{\hat {z}}_{i}\right)^{2}}
+  
+, i.e. the loss is equivalent to matching the logits of the two models, as done in model compression.
+
+
+=== "Optimal Brain Damage" algorithm ===
+The Optimal Brain Damage (OBD) algorithm is as follows:
+
+Do until a desired level of sparsity or performance is reached:
+Train the network (by methods such as backpropagation) until a reasonable solution is obtained
+Compute the saliencies for each parameter
+Delete some lowest-saliency parameters
+Deleting a parameter means fixing the parameter to zero. The "saliency" of a parameter 
+  
+    
+      
+        θ
+      
+    
+    {\displaystyle \theta }
+  
+ is defined as 
+  
+    
+      
+        
+          
+            1
+            2
+          
+        
+        (
+        
+          ∂
+          
+            θ
+          
+          
+            2
+          
+        
+        L
+        )
+        
+          θ
+          
+            2
+          
+        
+      
+    
+    {\displaystyle {\frac {1}{2}}(\partial _{\theta }^{2}L)\theta ^{2}}
+  
+, where 
+  
+    
+      
+        L
+      
+    
+    {\displaystyle L}
+  
+ is the loss function. The second-derivative 
+  
+    
+      
+        
+          ∂
+          
+            θ
+          
+          
+            2
+          
+        
+        L
+      
+    
+    {\displaystyle \partial _{\theta }^{2}L}
+  
+ can be computed by second-order backpropagation.
+The idea for optimal brain damage is to approximate the loss function in a neighborhood of optimal parameter 
+  
+    
+      
+        
+          θ
+          
+            ∗
+          
+        
+      
+    
+    {\displaystyle \theta ^{*}}
+  
+ by Taylor expansion:
+  
+    
+      
+        L
+        (
+        θ
+        )
+        ≈
+        L
+        (
+        
+          θ
+          
+            ∗
+          
+        
+        )
+        +
+        
+          
+            1
+            2
+          
+        
+        
+          ∑
+          
+            i
+          
+        
+        (
+        
+          ∂
+          
+            
+              θ
+              
+                i
+              
+            
+          
+          
+            2
+          
+        
+        L
+        (
+        
+          θ
+          
+            ∗
+          
+        
+        )
+        )
+        (
+        
+          θ
+          
+            i
+          
+        
+        −
+        
+          θ
+          
+            i
+          
+          
+            ∗
+          
+        
+        
+          )
+          
+            2
+          
+        
+      
+    
+    {\displaystyle L(\theta )\approx L(\theta ^{*})+{\frac {1}{2}}\sum _{i}(\partial _{\theta _{i}}^{2}L(\theta ^{*}))(\theta _{i}-\theta _{i}^{*})^{2}}
+  
+where 
+  
+    
+      
+        ∇
+        L
+        (
+        
+          θ
+          
+            ∗
+          
+        
+        )
+        ≈
+        0
+      
+    
+    {\displaystyle \nabla L(\theta ^{*})\approx 0}
+  
+, since 
+  
+    
+      
+        
+          θ
+          
+            ∗
+          
+        
+      
+    
+    {\displaystyle \theta ^{*}}
+  
+ is optimal, and the cross-derivatives 
+  
+    
+      
+        
+          ∂
+          
+            
+              θ
+              
+                i
+              
+            
+          
+        
+        
+          ∂
+          
+            
+              θ
+              
+                j
+              
+            
+          
+        
+        L
+      
+    
+    {\displaystyle \partial _{\theta _{i}}\partial _{\theta _{j}}L}
+  
+ are neglected to save compute. Thus, the saliency of a parameter approximates the increase in loss if that parameter is deleted.
+
+
+== History ==
+A related methodology was model compression or pruning, where a trained network is reduced in size. This was first done in 1965 by Alexey Ivakhnenko and Valentin Lapa in USSR (1965). Their deep networks were trained layer by layer through regression analysis. Superfluous hidden units were pruned using a separate validation set. Other neural network compression methods include Biased Weight Decay and Optimal Brain Damage.
+An early example of neural network distillation was published by Jürgen Schmidhuber in 1991, in the field of recurrent neural networks (RNNs). The problem was sequence prediction for long sequences, i.e., deep learning. Their approach was to use two RNNs. One of them (the automatizer) predicted the sequence, and another (the chunker) predicted the errors of the automatizer. Simultaneously, the automatizer predicted the internal states of the chunker. After the automatizer manages to predict the chunker's internal states well, it would start fixing the errors, and soon the chunker is obsoleted, leaving just one RNN in the end.
+The idea of using the output of one neural network to train another neural network was also studied as the teacher-student network configuration. In 1992, several papers studied the statistical mechanics of teacher-student  configurations with committee machines or parity machines.
+Compressing the knowledge of multiple models into a single neural network was called model compression in 2006: compression was achieved by training a smaller model on large amounts of pseudo-data labelled by a higher-performing ensemble, optimizing to match the logit of the compressed model to the logit of the ensemble. The knowledge distillation preprint of Geoffrey Hinton et al. (2015) formulated the concept and showed some results achieved in the task of image classification.
+Knowledge distillation is also related to the concept of behavioral cloning discussed by Faraz Torabi et. al.
+
+
+== References ==
+
+
+== External links ==
+Distilling the knowledge in a neural network – Google AI

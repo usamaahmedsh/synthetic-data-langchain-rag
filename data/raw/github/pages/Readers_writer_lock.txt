@@ -1,0 +1,132 @@
+In computer science, a readers–writer (single-writer lock, a multi-reader lock, a push lock, or an MRSW lock) is a synchronization primitive that solves one of the readers–writers problems. An RW lock allows concurrent access for read-only operations, whereas write operations require exclusive access. This means that multiple threads can read the data in parallel but an exclusive lock is needed for writing or modifying data. When a writer is writing the data, all other writers and readers will be blocked until the writer is finished writing. A common use might be to control access to a data structure in memory that cannot be updated atomically and is invalid (and should not be read by another thread) until the update is complete.
+Readers–writer locks are usually constructed on top of mutexes and condition variables, or on top of semaphores.
+
+
+== Upgradable RW lock ==
+Some RW locks allow the lock to be atomically upgraded from being locked in read-mode to write-mode, as well as being downgraded from write-mode to read-mode. Upgrading a lock from read-mode to write-mode is prone to deadlocks, since whenever two threads holding reader locks both attempt to upgrade to writer locks, a deadlock is created that can only be broken by one of the threads releasing its reader lock. The deadlock can be avoided by allowing only one thread to acquire the lock in "read-mode with intent to upgrade to write" while there are no threads in write mode and possibly non-zero threads in read-mode.
+
+
+== Priority policies ==
+RW locks can be designed with different priority policies for reader vs. writer access. The lock can either be designed to always give priority to readers (read-preferring), to always give priority to writers (write-preferring) or be unspecified with regard to priority. These policies lead to different tradeoffs with regard to concurrency and starvation.
+
+Read-preferring RW locks allow for maximum concurrency, but can lead to write-starvation if contention is high. This is because writer threads will not be able to acquire the lock as long as at least one reading thread holds it. Since multiple reader threads may hold the lock at once, this means that a writer thread may continue waiting for the lock while new reader threads are able to acquire the lock, even to the point where the writer may still be waiting after all of the readers which were holding the lock when it first attempted to acquire it have released the lock. Priority to readers may be weak, as just described, or strong, meaning that whenever a writer releases the lock, any blocking readers always acquire it next.
+Write-preferring RW locks avoid the problem of writer starvation by preventing any new readers from acquiring the lock if there is a writer queued and waiting for the lock; the writer will acquire the lock as soon as all readers which were already holding the lock have completed. The downside is that write-preferring locks allows for less concurrency in the presence of writer threads, compared to read-preferring RW locks. Also the lock is less performant because each operation, taking or releasing the lock for either read or write, is more complex, internally requiring taking and releasing two mutexes instead of one.  This variation is sometimes also known as "write-biased" readers–writer lock.
+Unspecified priority RW locks does not provide any guarantees as regards read vs. write access. Unspecified priority can in some situations be preferable if it allows for a more efficient implementation.
+
+
+== Implementation ==
+Several implementation strategies for readers–writer locks exist, reducing them to synchronization primitives that are assumed to pre-exist.
+
+
+=== Using two mutexes ===
+Raynal demonstrates how to implement an R/W lock using two mutexes and a single integer counter. The counter, b, tracks the number of blocking readers. One mutex, r, protects b and is only used by readers; the other, g (for "global") ensures mutual exclusion of writers. This requires that a mutex acquired by one thread can be released by another. The following is pseudocode for the operations:
+Initialize
+
+Set b to 0.
+r is unlocked.
+g is unlocked.
+
+Begin read
+
+Lock r.
+Increment b.
+If b = 1, lock g.
+Unlock r.
+
+End read
+
+Lock r.
+Decrement b.
+If b = 0, unlock g.
+Unlock r.
+
+Begin write
+
+Lock g.
+
+End write
+
+Unlock g.
+
+This implementation is read-preferring.
+
+
+=== Using a condition variable and a mutex ===
+Alternatively an RW lock can be implemented in terms of a condition variable, cond, an ordinary (mutex) lock, g, and various counters and flags describing the threads that are currently active or waiting. For a write-preferring RW lock one can use two integer counters and one Boolean flag:
+
+num_readers_active: the number of readers that have acquired the lock (integer)
+num_writers_waiting: the number of writers waiting for access (integer)
+writer_active: whether a writer has acquired the lock (Boolean).
+Initially num_readers_active and num_writers_waiting are zero and writer_active is false.
+The lock and release operations can be implemented as
+Begin read
+
+Lock g
+While num_writers_waiting > 0 or writer_active:
+  wait cond, g
+Increment num_readers_active
+Unlock g.
+
+End read
+
+Lock g
+Decrement num_readers_active
+If num_readers_active = 0:
+  Notify cond (broadcast)
+Unlock g.
+
+Begin write
+
+Lock g
+Increment num_writers_waiting
+While num_readers_active > 0 or writer_active is true:
+  wait cond, g
+Decrement num_writers_waiting
+Set writer_active to true
+Unlock g.
+
+End write
+
+Lock g
+Set writer_active to false
+Notify cond (broadcast)
+Unlock g.
+
+
+== Programming language support ==
+POSIX standard pthread_rwlock_t and associated operations
+ReadWriteLock interface and the ReentrantReadWriteLock locks in Java version 5 or above
+Microsoft System.Threading.ReaderWriterLockSlim lock for C# and other .NET languages
+std::shared_mutex read/write lock in C++17
+boost::shared_mutex and boost::upgrade_mutex locks in Boost C++ Libraries
+SRWLock, added to the Windows operating system API as of Windows Vista.
+sync.RWMutex in Go
+Phase fair reader–writer lock, which alternates between readers and writers
+std::sync::RwLock read/write lock in Rust
+Poco::RWLock in POCO C++ Libraries
+mse::recursive_shared_timed_mutex in the SaferCPlusPlus library is a version of std::shared_timed_mutex that supports the recursive ownership semantics of std::recursive_mutex.
+txrwlock.ReadersWriterDeferredLock Readers/Writer Lock for Twisted
+rw_semaphore in the Linux kernel
+
+
+=== Example in Rust ===
+
+
+== Alternatives ==
+The read-copy-update (RCU) algorithm is one solution to the readers–writers problem. RCU is wait-free for readers. The Linux kernel implements a special solution for few writers called seqlock.
+
+
+== See also ==
+Semaphore (programming)
+Mutual exclusion
+Scheduler pattern
+Balking pattern
+File locking
+Lock (computer science)
+Readers–writers problem
+
+
+== Notes ==
+
+
+== References ==

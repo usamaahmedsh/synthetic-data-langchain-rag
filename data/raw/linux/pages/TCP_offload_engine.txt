@@ -1,0 +1,110 @@
+TCP offload engine (TOE) is a technology used in some network interface cards (NIC) to offload processing of the entire TCP/IP stack to the network controller. It is primarily used with high-speed network interfaces, such as gigabit Ethernet and 10 Gigabit Ethernet, where processing overhead of the network stack becomes significant.
+TOEs are often used as a way to reduce the overhead associated with Internet Protocol (IP) storage protocols such as iSCSI and Network File System (NFS).
+
+
+== Purpose ==
+Originally TCP was designed for unreliable low speed networks (such as early dial-up modems) but with the growth of the Internet in terms of backbone transmission speeds (using Optical Carrier, Gigabit Ethernet and 10 Gigabit Ethernet links) and faster and more reliable access mechanisms (such as DSL and cable modems) it is frequently used in data centers and desktop PC environments at speeds of over 1 Gigabit per second. At these speeds, the TCP software implementations on host systems require significant computing power. In the early 2000s, full-duplex gigabit TCP communication could consume more than 80% of a 2.4 GHz Pentium 4 processor, resulting in small or no processing resources left for the applications to run on the system.
+TCP is a connection-oriented protocol which adds complexity and processing overhead. These aspects include:
+
+Connection establishment using the "3-way handshake" (SYNchronize; SYNchronize-ACKnowledge; ACKnowledge).
+Acknowledgment of packets as they are received by the far end, adding to the message flow between the endpoints and thus the protocol load.
+Checksum and sequence number calculations - again a burden on a general purpose CPU to perform.
+Sliding window calculations for packet acknowledgement and congestion control.
+Connection termination.
+Moving some or all of these functions to dedicated hardware, a TCP offload engine, frees the system's main CPU for other tasks.
+
+
+=== Freed-up CPU cycles ===
+A generally accepted rule of thumb is that 1 Hertz of CPU processing is required to send or receive 1 bit/s of TCP/IP. For example, 5 Gbit/s (625 MB/s) of network traffic requires 5 GHz of CPU processing. This implies that 2 entire cores of a 2.5 GHz multi-core processor will be required to handle the TCP/IP processing associated with 5 Gbit/s of TCP/IP traffic. Since Ethernet (10GE in this example) is bidirectional, it is possible to send and receive 10 Gbit/s (for an aggregate throughput of 20 Gbit/s). Using the 1 Hz/(bit/s) rule this equates to eight 2.5 GHz cores.
+Many of the CPU cycles used for TCP/IP processing are freed-up by TCP/IP offload and may be used by the CPU (usually a server CPU) to perform other tasks such as file system processing (in a file server) or indexing (in a backup media server). In other words, a server with TCP/IP offload can do more server work than a server without TCP/IP offload NICs.
+
+
+=== Reduction of PCI traffic ===
+In addition to the protocol overhead that TOE can address, it can also address some architectural issues that affect a large percentage of host based (server and PC) endpoints.
+Many older end point hosts are PCI bus based, which provides a standard interface for the addition of certain peripherals such as Network Interfaces to Servers and PCs.
+PCI is inefficient for transferring small bursts of data from main memory across the PCI bus to the network interface ICs, but its efficiency improves as the data burst size increases. Within the TCP protocol, a large number of small packets are created (e.g. acknowledgements) and as these are typically generated on the host CPU and transmitted across the PCI bus and out the network physical interface, this impacts the host computer's IO throughput.
+A TOE solution, located on the network interface, is located on the other side of the PCI bus from the CPU host so it can address this I/O efficiency issue, as the data to be sent across the TCP connection can be sent to the TOE from the CPU across the PCI bus using large data burst sizes with none of the smaller TCP packets having to traverse the PCI bus.
+
+
+== History ==
+One of the first patents in this technology, for UDP offload, was issued to Auspex Systems in early 1990. Auspex founder Larry Boucher and a number of Auspex engineers went on to found Alacritech in 1997 with the idea of extending the concept of network stack offload to TCP and implementing it in custom silicon. They introduced the first parallel-stack full offload network card in early 1999; the company's SLIC (Session Layer Interface Card) was the predecessor to its current TOE offerings. Alacritech holds a number of patents in the area of TCP/IP offload.
+By 2002, as the emergence of TCP-based storage such as iSCSI spurred interest, it was said that "At least a dozen newcomers, most founded toward the end of the dot-com bubble, are chasing the opportunity for merchant semiconductor accelerators for storage protocols and applications, vying with half a dozen entrenched vendors and in-house ASIC designs."
+In 2005 Microsoft licensed Alacritech's patent base and, along with Alacritech, created the partial TCP offload architecture that has become known as TCP chimney offload. TCP chimney offload centers on the Alacritech "Communication Block Passing Patent". At the same time, Broadcom also obtained a license to build TCP chimney offload chips.
+
+
+== Types ==
+Instead of replacing the TCP stack with a TOE entirely, there are alternative techniques to offload some operations in cooperation with the operating system's TCP stack. TCP checksum offload and large segment offload are supported by the majority of today's Ethernet NICs. Newer techniques like large receive offload and TCP acknowledgment offload are already implemented in some high-end Ethernet hardware, but are effective even when implemented purely in software.
+
+
+=== Parallel-stack full offload ===
+Parallel-stack full offload gets its name from the concept of two parallel TCP/IP Stacks. The first is the main host stack which is included with the host OS. The second or "parallel stack" is connected between the Application Layer and the Transport Layer (TCP) using a "vampire tap". The vampire tap intercepts TCP connection requests by applications and is responsible for TCP connection management as well as TCP data transfer. Many of the criticisms in the following section relate to this type of TCP offload.
+
+
+=== HBA full offload ===
+HBA (Host Bus Adapter) full offload is found in iSCSI host adapters which present themselves as disk controllers to the host system while connecting (via TCP/IP) to an iSCSI storage device. This type of TCP offload not only offloads TCP/IP processing but it also offloads the iSCSI initiator function. Because the HBA appears to the host as a disk controller, it can only be used with iSCSI devices and is not appropriate for general TCP/IP offload.
+
+
+=== TCP chimney partial offload ===
+TCP chimney offload addresses the major security criticism of parallel-stack full offload. In partial offload, the main system stack controls all connections to the host. After a connection has been established between the local host (usually a server) and a foreign host (usually a client) the connection and its state are passed to the TCP offload engine. The heavy lifting of data transmit and receive is handled by the offload device. Almost all TCP offload engines use some type of TCP/IP hardware implementation to perform the data transfer without host CPU intervention. When the connection is closed, the connection state is returned from the offload engine to the main system stack. Maintaining control of TCP connections allows the main system stack to implement and control connection security.
+
+
+=== TCP segmentation offload ===
+TCP segmentation offload (TSO) can offload TCP segment tasks to the network interface controller.
+
+
+==== Large receive offload ====
+Large receive offload (LRO) is a technique for increasing inbound throughput of high-bandwidth network connections by reducing central processing unit (CPU) overhead. It works by aggregating multiple incoming packets from a single stream into a larger buffer before they are passed higher up the networking stack, thus reducing the number of packets that have to be processed. Linux implementations generally use LRO in conjunction with the New API (NAPI) to also reduce the number of interrupts.
+According to benchmarks, even implementing this technique entirely in software can increase network performance significantly. As of April 2007, the Linux kernel supports LRO for TCP in software only.  FreeBSD 8 supports LRO in hardware on adapters that support it.
+
+LRO should not operate on machines acting as routers, as it breaks the end-to-end principle and can significantly impact performance.
+
+
+===== Generic receive offload =====
+Generic receive offload (GRO) implements a generalised LRO in software that isn't restricted to TCP/IPv4 or have the issues created by LRO.
+
+
+==== Large send offload ====
+In computer networking, large send offload (LSO) is a technique for increasing egress throughput of high-bandwidth network connections by reducing CPU overhead. It works by passing a multipacket buffer to the network interface card (NIC). The NIC then splits this buffer into separate packets. The technique is also called TCP segmentation offload (TSO) or generic segmentation offload (GSO) when applied to TCP.  LSO and LRO are independent and use of one does not require the use of the other. 
+When a system needs to send large chunks of data out over a computer network, the chunks first need breaking down into smaller segments that can pass through all the network elements like routers and switches between the source and destination computers.   This process is referred to as segmentation.  Often the TCP protocol in the host computer performs this segmentation.  Offloading this work to the NIC is called TCP segmentation offload (TSO).
+For example, a unit of 64 KiB (65,536 bytes) of data is usually segmented to 45 segments of 1460 bytes each before it is sent through the NIC and over the network.  With some intelligence in the NIC, the host CPU can hand over the 64 KB of data to the NIC in a single transmit-request, the NIC can break that data down into smaller segments of 1460 bytes, add the TCP, IP, and data link layer protocol headers — according to a template provided by the host's TCP/IP stack — to each segment, and send the resulting frames over the network. This significantly reduces the work done by the CPU. As of 2014 many new NICs on the market  support TSO.
+Some network cards implement TSO generically enough that it can be used for offloading fragmentation of other transport layer protocols, or for doing IP fragmentation for protocols that don't support fragmentation by themselves, such as UDP.
+
+
+=== UDP fragmentation offload ===
+UDP fragmentation offload (UFO) can offload UDP datagram tasks to the network interface controller.
+
+
+== Support in Linux ==
+Unlike other operating systems, such as FreeBSD, the Linux kernel does not include support for TOE (not to be confused with other types of network offload). While there are patches from the hardware manufacturers such as Chelsio or Qlogic that add TOE support, the Linux kernel developers are opposed to this technology for several reasons:
+
+Security – because TOE is implemented in hardware, patches must be applied to the TOE firmware, instead of just software, to address any security vulnerabilities found in a particular TOE implementation. This is further compounded by the newness and vendor-specificity of this hardware, as compared to a well tested TCP/IP stack as is found in an operating system that does not use TOE.
+Limitations of hardware – because connections are buffered and processed on the TOE chip, resource starvation can more easily occur as compared to the generous CPU and memory available to the operating system.
+Complexity – TOE breaks the assumption that kernels make about having access to all resources at all times – details such as memory used by open connections are not available with TOE. TOE also requires very large changes to a networking stack in order to be supported properly, and even when that is done, features like quality of service and packet filtering might not work.
+Proprietary – TOE is implemented differently by each hardware vendor. This means more code must be rewritten to deal with the various TOE implementations, at a cost of the aforementioned complexity and, possibly, security. Furthermore, TOE firmware cannot be easily modified since it is closed-source.
+Obsolescence – Each TOE NIC has a limited lifetime of usefulness, because system hardware rapidly catches up to TOE performance levels, and eventually exceeds TOE performance levels.
+
+
+== Suppliers ==
+Much of the current work on TOE technology is by manufacturers of 10 Gigabit Ethernet interface cards, such as Broadcom, Chelsio Communications, Emulex, Mellanox Technologies, QLogic.
+
+
+== See also ==
+Scalable Networking Pack
+I/O Acceleration Technology (I/OAT)
+Energy-Efficient Ethernet (EEE)
+Autonomous peripheral operation
+
+
+== References ==
+
+
+== External links ==
+Article: TCP Offload to the Rescue by Andy Currid at ACM Queue
+Patent Application 20040042487 
+Mogul, Jeffrey C. (2003). "TCP offload is a dumb idea whose time has come" (PDF). Proceedings of HotOS IX: The 9th Workshop on Hot Topics in Operating Systems. USENIX Association. Retrieved 23 July 2006.
+"TCP/IP offload Engine (TOE)". 10 Gigabit Ethernet Alliance. April 2002.
+Windows Network Task Offload
+GSO in Linux
+Brief Description of LSO in Linux
+Case Studies of Performance issues with LSO and Traffic Shaping (Linux)
+FreeBSD 7.0 new features, brief discussion on TSO support Archived 2016-12-21 at the Wayback Machine

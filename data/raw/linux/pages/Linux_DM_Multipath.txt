@@ -1,0 +1,67 @@
+Device Mapper Multipath Input Output (DM-MPIO) or DM-Multipathing provides input/output (I/O) fail-over and load-balancing by using multipath I/O within Linux for block devices. By utilizing device-mapper, the multipathd daemon provides the host-side logic to use multiple paths of a redundant network to provide continuous availability and higher-bandwidth connectivity between the host server and the block-level device. DM-MPIO handles the rerouting of block I/O to an alternate path in the event of a path failure.  DM-MPIO can also balance the I/O load across all of the available paths that are typically utilized in Fibre Channel (FC) and iSCSI SAN environments.
+DM-MPIO is based on the device mapper, which provides the basic framework that maps one block device onto another.
+
+
+== Considerations ==
+When utilizing Linux DM-MPIO in a datacenter that has other operating systems and multipath solutions, key components of path management must be considered.
+
+Load balancing — The workload is distributed across the available hardware components.  Goal: Reduce I/O completion time, maximize throughput, and optimize resources
+Path failover and recovery — Utilizes redundant I/O channels to redirect application reads and writes when one or more paths are no longer available.
+
+
+== History ==
+DM-MPIO started as a patch set created by Joe Thornber, and was later maintained by Alasdair G Kergon at Red Hat. It was included in mainline Linux with kernel version 2.6.12, which was released on June 17, 2005.
+
+
+== Components ==
+
+DM-MPIO in Linux consists of kernel components and user-space components.
+
+Kernel – device-mapper – block subsystem that provides layering mechanism for block devices.
+dm-multipath – kernel module implementing the multipath device-mapper target.
+User-space – multipath-tools – provides the tools to manage multipathed devices by instructing the device-mapper multipath module what to do. The tools consist of:
+Multipath: scans the system for multipathed devices, assembles them, updates the device-mapper's map.
+Multipathd: daemon that waits for maps events, and then executes multipath and monitors the paths.  Marks a path as failed when the path becomes faulty. Depending on the failback policy, it can reactivate the path.
+Devmap-name: provides a meaningful device-name to udev for devmaps.
+Kpartx: maps linear devmaps to device partitions to make multipath maps partitionable.
+Multipath.conf: configuration file for the multipath daemon. Used to overwrite the built-in configuration table of multipathd.
+
+
+=== Configuration file ===
+The configuration file /etc/multipath.conf makes many of the DM-MPIO features user-configurable. The multipath command and the kernel daemon multipathd use information found in this file.  The file is only consulted during the configuration of the multipath devices.  Changes must be made prior to running the multipath command.  Changes to the file afterward will require multipath to be executed again.
+The multipath.conf has five sections:
+
+System level defaults (defaults): User can override system level defaults.
+Blacklisted devices (blacklist): User specifies the list of devices that are not to be under the control of DM-MPIO.
+Blacklist exceptions (blacklist_exceptions): Specific devices to be treated as multipath devices even if listed in the blacklist.
+Storage controller specific settings (devices): User specified configuration settings will be applied to devices with specified "Vendor" and "Product" information.
+Device specific settings (multipaths): Fine tune the configuration settings for individual LUNs.
+
+
+== Terminology ==
+HBA: Host bus adapters provide the physical interface between the input/output (I/O) host bus of Fibre Channel devices and the underlying Fibre Channel network.
+Path: Connection from the server through the HBA to a specific LUN.
+DM Path States: The device mapper's view of the path condition.  Only two conditions are possible:
+Active: The last I/O operation sent through this path successfully completed. Analogous to ready path state.
+Failed: The last I/O operation sent through this path did not successfully complete. Analogous to faulty path state.
+Failover: When a path is determined to be in a failed state, a path that is in a ready state will be made active.
+Failback: When a failed path is determined to be active  again, multipathd may choose to failback to the path as determined by the failback policy.
+Failback Policy: Four options as set in the multipath.conf configuration file.
+Immediate: Immediately failback to the highest priority path.
+Manual: The failed path is not monitored, requires user intervention to failback.
+Followover(for clusters): Only perform automatic failback when the first path of a pathgroup becomes  active. This  keeps a node from automatically failing back when another node requested the failover.
+Number of seconds: Wait for a specified number of seconds to allow the I/O to stabilize, then failback to the highest priority path.
+Active/Active: In a system that has two storage controllers, each controller can process I/O.
+Active/Passive: In a system that has two storage controllers, only one controller at a time is able to process I/O, the other (passive) is in a standby mode.
+LUN: SCSI Logical Unit Number
+WWID: Worldwide Identifier is an identifier for the multipath device that is guaranteed to be globally unique and unchanging.
+
+
+== Further reading ==
+Michael, T., Kabir, R., Giles, J. & Hull, J. (2006.) Configuring Linux to Enable Multipath I/O.  Retrieved from http://www.dell.com/downloads/global/power/ps3q06-20060189-Michael.pdf Archived 2012-02-27 at the Wayback Machine
+Goggin, E., Kergon, A., Varoqui, C., & Olien, D. (2005) Proceedings of the Linux Symposium – Linux Multipathing. Retrieved from https://web.archive.org/web/20101227213252/http://www.linuxinsight.com/files/ols2005/goggin-reprint.pdf
+Red Hat Documentation. (n.d.) Red Hat Enterprise Linux 6, DM Multipath. Retrieved from https://access.redhat.com/site/documentation/en-US/Red_Hat_Enterprise_Linux/6/html-single/DM_Multipath/
+Varoqui, C. (2010.) The Linux multipath implementation. Retrieved from http://christophe.varoqui.free.fr/refbook.html
+
+
+== References ==

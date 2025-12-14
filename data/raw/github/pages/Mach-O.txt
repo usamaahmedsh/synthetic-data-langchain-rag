@@ -1,0 +1,273 @@
+Mach-O (Mach object) is a file format for executables, object code, shared libraries, dynamically loaded code, and core dumps. It was developed to replace the a.out format.
+Mach-O is used by some systems based on the Mach kernel. NeXTSTEP, macOS, and iOS are examples of systems that use this format for native executables, libraries and object code.
+
+
+== File layout ==
+Each Mach-O file is made up of one Mach-O header, followed by a series of load commands, followed by one or more segments, each of which contains between 0 and 255 sections. Mach-O uses the REL relocation format to handle references to symbols. When looking up symbols, Mach-O uses a two-level namespace that encodes each symbol into an 'object/symbol name' pair that is then linearly searched for, first by the object and then the symbol name.
+The basic structure—a list of variable-length "load commands" that reference pages of data elsewhere in the file—was also used in the executable file format for Accent. The Accent file format was, in turn, based on an idea from Spice Lisp.
+All multi-byte values in all data structures are written in the byte order of the host for which the code was produced.
+
+
+== Header ==
+
+For big-endian binaries (as in, the architecture uses big endian), magic number for 32-bit code is 0xfeedface while the magic number for 64-bit architectures is 0xfeedfacf. For little-endian binaries, it will be 0xcefaedfe for 32-bit and 0xcffaedfe for 64-bit. These latter two are just the former but with inverted endianness.
+The reserved value is only present in 64-bit Mach-O files. It is reserved for future use or extension of the 64-bit header.
+The CPU type indicates the instruction set architecture for the code. If the file is for the 64-bit version of the instruction set architecture, the CPU type value has the 0x01000000 bit set. If the file is for the 64-bit version of the instruction set architecture but with 32-bit pointers, the CPU type value has the 0x02000000 bit set.
+The CPU type values are as follows:
+
+Each CPU type has a set of CPU subtype values, indicating a particular model of that CPU type for which the code is intended. Newer models of a CPU type may support instructions, or other features, not supported by older CPU models, so that code compiled or written for a newer model might contain instructions that are illegal instructions on an older model, causing that code to trap or otherwise fail to operate correctly when run on an older model. Code intended for an older model will run on newer models without problems.
+If the CPU type is ARM then the subtypes are as follows:
+
+If the CPU type is x86 then the subtypes are as follows:
+
+After the subtype value is the file type value.
+
+After the file type value is the number of load commands and the total number of bytes the load commands are after the Mach-O header, then a 32-bit flag with the following possible settings.
+
+Multiple binary digits can be set to one in the flags to identify any information or settings that apply to the binary.
+Now the load commands are read as one has reached the end of the Mach-O header.
+
+
+== Multi-architecture binaries ==
+Multiple Mach-O files can be combined in a multi-architecture binary. This allows a single binary file to contain code to support multiple instruction set architectures, for example for different generations and types of Apple devices, including different processor architectures such as ARM64 and x86-64.
+All fields in the universal header are big-endian.
+The universal header is in the following form:
+
+The magic number in a multi-architecture binary is 0xcafebabe in big-endian byte order, so the first four bytes of the header will always be 0xca 0xfe 0xba 0xbe, in that order.
+The number of binaries is the number of entries that follow the header.
+The header is followed by a sequence of entries in the following form:
+
+The sequence of entries is followed by a sequence of Mach-O images. Each entry refers to a Mach-O image.
+The CPU type and subtype for an entry must be the same as the CPU type and subtype for the Mach-O image to which the entry refers.
+The file offset and size are the offset in the file of the beginning of the Mach-O image, and the size of the Mach-O image, to which the entry refers.
+The section alignment is the logarithm, base 2, of the byte alignment in the file required for the Mach-O image to which the entry refers; for example, a value of 14 means that the image must be aligned on a 214-byte boundary, i.e. a 16384-byte boundary. This is required by tools that modify the multi-architecture binary, in order for them to keep the image properly aligned.
+
+
+== Load commands ==
+The load commands are read immediately after the Mach-O header.
+The Mach-O header specifies how many load commands exist after the Mach-O header and the size in bytes to where the load commands end. The size of load commands is used as a redundancy check.
+When the last load command is read and the number of bytes for the load commands do not match, or if we go outside the number of bytes for load commands before reaching the last load command, then the file may be corrupted.
+Each load command is a sequence of entries in the following form:
+
+The load command type identifies what the parameters are in the load command. If a load command starts with 0x80000000 bit set, the load command is necessary in order to be able to load or run the binary. This allows older Mach-O loaders to skip commands not understood by the loader that are not mandatory for loading the application.
+
+
+=== Segment load command ===
+Mach-O binaries that use load command type 0x00000001 use the 32-bit version of the segment load command, while 0x00000019 is used to specify the 64-bit version of the segment load command.,
+The segment load command varies whether the Mach-O header is 32-bit or 64-bit. This is because 64-bit processor architecture uses 64-bit addresses while 32-bit architectures use 32-bit addresses.
+All virtual RAM addresses are added to a base address to keep applications spaced apart. Each section in a segment load command has a relocation list offset that specifies the offsets in the section that must be adjusted based on the application's base address. The relocations are unnecessary if the application can be placed at its defined RAM address locations such as a base address of zero.
+
+A segment name cannot be larger than 16 text characters in bytes. The unused characters are 0x00 in value.
+The segment command contains the address to write the section in virtual address space plus the application's base address. The number of bytes to write to the address location (address size).
+After the address information is the file offset the segment data is located in the Mach-O binary, and the number of bytes to read from the file.
+When the address size is larger than the number of bytes to read from the file, the rest of the bytes in RAM space are set 0x00.
+There is a segment that is called __PAGEZERO, which has a file offset of zero and a size of zero in the file. It has a defined virtual memory address and size. Its access permissions are set to zero as well, meaning it cannot be used at all (any access to this segment will cause a page fault). The purpose of this segment is to catch invalid NULL pointers (which have a value of zero). On 32-bit environments, the default size of this segment is 4 KiB, while on 64-bit environments it is 4 GiB (this catches invalid 32-bit NULL pointers which may have been truncated during a round-trip assignment through a 32-bit integer.) The size of this segment is configurable through the -pagezero_size compiler/linker flag.
+When a segment is initially placed in the virtual address space, it is given the CPU access permissions specified by the initial virtual memory protections value. The permissions on a region of the virtual address space may be changed by application or library code with calls to routines such as mprotect(); the maximum virtual memory protections limit what permissions may be granted for access to the segment.
+
+Then after the CPU address protection settings is the number of sections that are within this segment that are read after the segments flag settings.
+The segment flag settings are as follows:
+
+The number of sections in the segment is a set of entries that are read as follows:
+
+The section's segment name must match the segment's load command name. The sections entries locate to data in the segment. Each section locates to the relocation entries for adjusting addresses in the section if the application base address is added to anything other than zero.
+The section size applies to both the size of the section at its address location and size in the file at its offset location.
+The section Flag/Type value is read as follows:
+
+Any of the settings that apply to the section have a binary digit set one. The last eight binary digits is the section type value.
+
+The Mach-O loader records the symbol pointer sections and symbol stub sections. They are sequentially used by the indirect symbol table to load in method calls.
+The size of each symbol stub is stored in reserved2 value. Each pointer is 32-bit address locations in 32-bit Mach-O and 64-bit address locations in 64-bit Mach-O. Once the section end is reached, we move to the next section while reading the indirect symbol table.
+
+
+==== Segment number and section numbers ====
+The segments and sections are located by segment number and section number in the compressed and uncompressed link edit information sections.
+A segment value of 3 would mean the offset to the data of the fourth segment load command in the Mach-O file starting from zero up (0,1,2,3 = 4th segment).
+Sections are also numbered from sections 1 and up. Section value zero is used in the symbol table for symbols that are not defined in any section (undefined). Such as a method, or data that exist within another binaries symbol table section.
+A segment that has seven sections would mean the last section is 8. Then if the following segment load command has three sections they are labelled as sections 9, 10, and 11. A section number of 10 would mean the second segment, section 2.
+One would not be able to properly read the symbol table and linking information if we do not store the order the sections are read in and their address/file offset position.
+One can easily use file offset without using the RAM addresses and relocations to build a symbol reader and to read the link edit sections and even map method calls or design a disassembler.
+If building a Mach-O loader, then you want to dump the sections to the defined RAM addresses plus a base address to keep applications spaced apart so they do not write over one another.
+The segment names and section names can be renamed to anything you like and there link will be no problems locating the appropriate sections by section number, or segment number as long as you do not alter the order the segment commands go in.
+
+
+=== Link libraries ===
+Link libraries are the same as any other Mach-O binary, just that there is no command that specifies the main entry point at which the program begins.
+There are three load commands for loading a link library file.
+Load command type 0x0000000C are for the full file path to the dynamically linked shared library.
+Load command type 0x0000000D are for dynamically linked shared locations from the application's current path.
+Load command type 0x00000018 is for a dynamically linked shared library that is allowed to be missing. The symbol names exist in other link libraries and are used if the library is missing meaning all symbols are weak imported.
+The link library command is read as follows:
+
+The file path name begins at the string offset, which is always 24. The number of bytes per text character is the remaining bytes in command size. The end of the library file path is identified by a character that is 0x00. The remaining 0x00 values are used as padding, if any.
+
+
+==== Link library ordinal numbers ====
+The library is located by ordinal number in the compressed and uncompressed link edit information sections.
+Link libraries are numbered from ordinal 1 and up. The ordinal value zero is used in the symbol table to specify the symbol does not exist as an external symbol in another Mach-O binary.
+The link edit information will have no problem locating the appropriate library to read by ordinal number as long as one does not alter the order in which the link library commands go in.
+Link library command 0x00000018 should be avoided for performance reasons, as in the case the library is missing, then a search must be performed through all loaded link libraries.
+
+
+=== __LINKEDIT symbol table ===
+Mach-O application files and link libraries both have a symbol table command.
+The command is read as follows:
+
+The symbol file offset is the offset relative to the start of the Mach-O header to where the symbol entries begins in the file. The number of symbol entries marks the end of the symbol table.
+A symbol has a name offset that should never exceed the string table size. Each symbol name offset is added to the string table file offset which in turn is relative to the start of the Mach-O header. Each symbol name ends with a 0x00 byte value.
+The symbol address uses a 32-bit address for 32-bit Mach-O files and a 64-bit address for 64-bit Mach-O files.
+Each symbol entry is read as follows:
+
+The symbol name offset is added to the string table offset. The last text character byte is read as 0x00.
+The symbol type value has multiple adjustable sections in binary. The symbol type is read as follows:
+
+The digits marked ? are used for the specified purpose; the digits marked x are used for other purposes.
+The three first binary digits are symbols that locate to function names relative to compiled machine code instructions and line numbers by address location. This information allows us to generate line numbers to the location your code crashed. Local debugging symbols are only useful when designing the application, but are not needed to run the application.
+
+The following flag settings:
+
+External symbols are symbols that have a defined address in the link library and can be copied to an undefined symbol in a Mach-O application. The address location is added to the  link library base address.
+A private symbol is skipped even if it matches the name of an undefined symbol. A private and external symbol can only be set to an undefined symbol if it is in the same file.
+After the symbol type is the section number the symbol exists in. The section number is a byte value (0 to 255). You can add more sections than 255 using segment load commands, but the section numbers are then outside the byte value range used in the symbol entries.
+A section number of zero means the symbol is not in any section of the application, the address location of the symbol is zero, and is set as Undefined. A matching External symbol name has to be found in a link library that has the symbol address.
+The data info field contains the link library ordinal number that the external symbol can be found in with the matching symbol name. The data info bit field breaks down as follows:
+
+The library ordinal number is set zero if the symbol is an external symbol, or exists in the current file. Only undefined symbols use the data info section to specify a library ordinal number and linker options.
+The dynamic loader flag options are as follows:
+
+Any of the four options that apply can be set.
+The address type option values are as follows:
+
+Only one address type value can be set by value. A pointer is a value that is read by the program machine code to call a method from another binary file. Private means other programs are not intended to be able to read or call the function/methods other than the binary itself. Lazy means the pointer locates to the dyld_stub_binder which looks for the symbol then calls the method, then replaces the dyld_stub_binder location with the location to the symbol. Any more calls done from machine code in the binary will now locate to the address of the symbol and will not call the dyld_stub_binder.
+
+
+==== Symbol table organization ====
+The symbol table entries are all stored in order by type. The first symbols that are read are local debug symbols if any, then private symbols, then external symbols, and finally the undefined symbols that link to another binary symbol table containing the external symbol address in another Mach-O binary.
+The symbol table information load command 0x0000000B always exists if there is a symbol table section in the Mach-O binary. The command tells the linker how many local symbols there are, how many private, how many external, and how many undefined. It also identifies the symbol number they start at. The symbol table information is used before reading the symbol entries by the dynamic linker as it tells the dynamic linker where to start reading the symbols to load in undefined symbols and where to start reading to look for matching external symbols without having to read all the symbol entries.
+The order the symbols go in the symbol section should never be altered as each symbol is numbered from zero up. The symbol table information command uses the symbol numbers for the order to load the undefined symbols into the stubs and pointer sections. Altering the order would cause the wrong method to be called during machine code execution.
+
+
+=== __LINKEDIT Symbol table information ===
+The symbol table information command is used by the dynamic linker to know where to read the symbol table entries under symbol table command 0x00000002, for fast lookup of undefined symbols and external symbols while linking.
+The command is read as follows:
+
+The symbol index is multiplied by 12 for Mach-O 32-bit, or 16 for Mach-O 64-bit plus the symbol table entries offset to find the offset to read the symbol entries by symbol number index.
+The local symbol index is zero as it is at the start of the symbol entries. The local symbols are used for debugging information.
+Number of local symbols is how many exist after the symbol index.
+The same two properties are repeated for external symbols and undefined symbols for fast reading of the symbol table entries.
+There is a small index/size gap between local symbols and external symbols if there are private symbols.
+Any file offsets that are zero are unused.
+
+
+==== Indirect table ====
+The Mach-O loader records the symbol pointer sections and symbol stub sections during the segment load commands. They are sequentially used by the indirect symbol table to load in method calls. Once the section end is reached, we move to the next.
+The Indirect symbol table offset locates to a set of 32-bit (4-byte) values that are used as a symbol number index.
+The order the symbol index numbers go is the order we write each symbol address one after another in the pointer and stub sections.
+The symbol stub section contains machine code instructions with JUMP instructions to the indirect symbol address to call a method/function from another Mach-O binary. The size of each JUMP instruction is based on processor type and is stored in the reserved2 value under the section32/64 of a segment load command.
+The pointer sections are 32-bit (4-byte) address values for 32-bit Mach-O binaries and 64-bit (8-byte) address values for 64-bit Mach-O binaries. Pointers are read by machine code and the read value is used as the location to call the method/function rather than containing machine code instructions.
+A symbol index number 0x40000000 bit set are absolute methods meaning the pointer locates to the exact address of a method.
+A symbol index number 0x80000000 bit set are local methods meaning the pointer itself located to the method and that there is no method name (Local method).
+If you are designing a disassembler you can easily map just the symbol name to the offset address of each stub and pointer to show the method or function call taking place without looking for the undefined symbol address location in other Mach-O files.
+
+
+=== __LINKEDIT Compressed table ===
+If the compressed link edit table command exists, then the undefined/external symbols in the symbol table are no longer needed. The indirect symbol table and location of the stubs and pointer sections are no longer required.
+The indirect symbol table still exists in the case of building backwards compatible Mach-O files that load on newer and older OS versions.
+
+Any file offsets that are zero are sections that are unused.
+
+
+==== Binding information ====
+The bind, weak bind, and lazy bind sections are read using the same operation code format.
+Originally the symbol table would define the address type in the data info field in the symbol table as lazy, weak, or non-lazy.
+Weak binding means that if the set library to look in by library ordinal number, and the set symbol name does not exist but exists under a different previously loaded Mach-O file then the symbol location is used from the other Mach-O file.
+Lazy means the address that is written located to the dyld_stub_binder, which looks for the symbol then calls the method, then replaces the dyld_stub_binder location with the location to the symbol. Any more calls done from machine code in the binary will now locate to the address of the symbol and will not call the dyld_stub_binder.
+The plain old bind section does not do any fancy loading or address tricks. The symbol must exist in the set library ordinal.
+A byte value that is 0x1X sets the link library ordinal number. The hex digit that is X is a 0 to 15 library ordinal number.
+A byte value that is 0x20 to 0x2F sets the link library ordinal number to the value that is read after the operation code.
+The byte sequence 0x20 0x84 0x01 set ordinal number 132.
+The number value after the operation code is encoded as a LEB128 number. The last 7 binary digits are added together to form a larger number as long as the last binary digit is set one in value. This allows us to encode variable length number values.
+A byte value that is 0x4X sets the symbol name. The hex digit marked X sets the flag setting.
+Flag setting 8 means the method is weak imported. Flag setting 1 means the method is non weak imported.
+The byte sequence 0x48 0x45 0x78 0x61 0x6D 0x70 0x6C 0x65 0x00 sets the symbol name Example. The last text character byte is 0x00. It is also weak imported, meaning it can be replaced if another exportable symbol is found with the same name.
+A byte value 0x7X sets the current location. The hex digit marked X is the selected segment 0 to 15. After the operation code is the added offset as a LEB128 number to the segment offset.
+The byte sequence 0x72 0x8C 0x01 sets the location to the third segment load command address and adds 140 to the address.
+Operation code 0x90 to 0x9F binds the current set location to the set symbol name and library ordinal. Increments the current set location by the size 4 bytes for a 32-bit Mach-O binary or increments the set address by 8 for a 64-bit Mach-O binary.
+The byte sequence 0x11 0x72 0x8C 0x01 0x48 0x45 0x78 0x61 0x6D 0x70 0x6C 0x65 0x00 0x90 0x48 0x45 0x78 0x61 0x6D 0x70 0x6C 0x65 0x32 0x00 0x90
+Sets link library ordinal 1. Set location to segment number 2, and adds 140 to the current location. Looks for a symbol named Example in the selected library ordinal number. Operation code 0x90 writes the symbol address and increments the current set address. The operation code after that sets the next symbol name to look for a symbol named Example2. Operation code 0x90 writes the symbol address and increments the current set address.
+The new format removes the repeated fields in the symbol table and makes the indirect symbol table obsolete.
+
+
+=== Application main entry point ===
+A load command starting with type 0x00000028 is used to specify the address location the application begins at.
+
+If the segments/sections of the program do not have to be relocated to run, then the main entry point is the exact address location. This is only if the application segment addresses are added to an application base address of zero and the sections did not need any relocations.
+The main entry point in a Mach-O loader is the program's base address plus the Address location. This is the address at which the CPU is set to begin running machine code instructions.
+This replaced the old load command 0x00000005 which varied by CPU type as it stored the state that all the registers should be at before the program starts.
+
+
+=== Application UUID number ===
+A load command starting with type 0x0000001B is used to specify the universally unique identifier (UUID) of the application.
+
+The UUID contains a 128-bit unique random number when the application is compiled that can be used to identify the application file on the internet or in app stores.
+
+
+=== Minimum OS version ===
+A load command starting with type 0x00000032 is used to specify the minimum OS version information.
+
+The Platform type the binary is intended to run on are as follows:
+
+The 32-bit version value is read as a 16-bit value and two 8-bit values. A 32-bit version value of 0x000D0200 breaks down as 0x000D which is 13 in value, then the next 8-bits is 0x02 which is 2 in value, then the last 8-bits is 0x00 which is zero in value giving a version number of 13.2.0v. The SDK version value is read the same way.
+The number of tools to create the binary is a set of entries that are read as follows:
+
+The tool type values are as follows:
+
+The version number is read the same as OS version and SDK version.
+With the introduction of Mac OS X 10.6 platform the Mach-O file underwent a significant modification that causes binaries compiled on a computer running 10.6 or later to be (by default) executable only on computers running Mac OS X 10.6 or later. The difference stems from load commands that the dynamic linker, in previous Mac OS X versions, does not understand. Another significant change to the Mach-O format is the change in how the Link Edit tables (found in the __LINKEDIT section) function. In 10.6 these new Link Edit tables are compressed by removing unused and unneeded bits of information; however, Mac OS X 10.5 and earlier cannot read this new Link Edit table format. To make backwards-compatible executables, the linker flag "-mmacosx-version-min=" can be used.
+
+
+== Other implementations ==
+
+
+=== Mach-O parsers and editors ===
+It is not uncommon for security researchers and others to work with Mach-O files from places other than a Mac computer. Programs that allow parsing or even editing the data structure of Mach-O (as a file format) are commonplace.
+For the Ruby programming language, the ruby-macho library provides an implementation of a Mach-O binary parser and editor.
+
+
+=== Mach-O runners ===
+In theory, a program in Mach-O format could be run, by code that can load Mach-O images into memory, on operating systems other than the one for which the program was built, as long as a Mach-O binary image exists that matches the CPU type in the computer being used. Most desktop and laptop computers have x86 processors, meaning that a Mach-O with an x86 binary will be able to run the sections are loaded into memory. If the Mach-O has only ARM binaries, such as programs for iPhones or iPads, then it could only be run on a computer with a compatible ARM core (not necessarily an Apple silicon core); otherwise, an emulation tool such as QEMU would have to be used you would have to change ARM instructions to equivalent x86 instructions using CPU emulation tools such as QEMU.
+A practical problem with loading and directly executing a Mach-O is "undefined symbols": binaries generally do not exist in a vacuum and they call functions/methods (symbols) from Mach-O binaries (libraries) to work; a failure to find a symbol manifests in this error. Mach-O files for iPhone (iOS), macOS, watchOS, and tvOS each assume a different collection of libraries, causing incompatibility from this issue. These libraries need to either be present on the machine trying to execute the program, or be replaced by the Mach-O loader using either its own adapter functions or existing functions of the host operating systems. The library routines being called either would also have to provide the same application binary interface as the routines from the OS for which the binary was intended, or an adapter routine would have to be provided.
+
+Some versions of NetBSD have had Mach-O support added as part of an implementation of binary compatibility, which allowed some Mac OS 10.3 binaries to be executed.
+For Linux, a Mach-O loader was written by Shinichiro Hamaji that can load 10.6 binaries. As a more extensive solution based on this loader, the Darling Project aims at providing a complete environment allowing macOS applications to run on Linux.
+ravynOS (formerly airyxOS) is an effort to bring a macOS-like userland to FreeBSD. The goal is to first provide source code compatibility, then binary compatibility.
+See also Darwin operating system#Derived projects, which includes a few other efforts to achieve macOS/iOS binary compatibility. Even the efforts directly based on the same Darwin kernel required additional code to replace libraries and other components not open-sourced by Apple.
+
+
+== See also ==
+Fat binary
+Universal binary
+Dynamic linker
+Mac transition to Intel processors
+Mac transition to Apple silicon
+Xcode
+PE
+ELF
+Comparison of executable file formats
+
+
+== References ==
+
+
+=== Bibliography ===
+Levin, Jonathan (September 25, 2019). *OS Internals, Volume 1: User Mode (v1.3.3.7 ed.). North Castle, NY: Technologeeks. ISBN 978-0-9910555-6-2.
+Singh, Amit (June 19, 2006). Mac OS X Internals: A Systems Approach. Addison-Wesley Professional. ISBN 978-0-13-270226-3.
+
+
+== External links ==
+OS X ABI Mach-O File Format Reference at the Wayback Machine (archived September 4, 2014) (Apple Inc.)
+Mach-O(5) – Darwin and macOS File Formats Manual
+Mach Object Files (NEXTSTEP documentation)
+Mach-O Dynamic Library Reference
+Mach-O linking and loading tricks
+MachOView
+JDasm (Cross-platform disassembler, for macOS, iOS, windows PE, ELF, and file format analysis tool)

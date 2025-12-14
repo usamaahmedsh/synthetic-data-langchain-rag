@@ -1,0 +1,595 @@
+In number theory, the general number field sieve (GNFS) is the most efficient classical algorithm known for factoring integers larger than 10100. Heuristically, its complexity for factoring an integer n (consisting of ⌊log2 n⌋ + 1 bits) is of the form
+
+  
+    
+      
+        
+          
+            
+              
+              
+                exp
+                ⁡
+                
+                  (
+                  
+                    
+                      (
+                      
+                        (
+                        64
+                        
+                          /
+                        
+                        9
+                        
+                          )
+                          
+                            1
+                            
+                              /
+                            
+                            3
+                          
+                        
+                        +
+                        o
+                        (
+                        1
+                        )
+                      
+                      )
+                    
+                    
+                      
+                        (
+                        
+                          log
+                          ⁡
+                          n
+                        
+                        )
+                      
+                      
+                        1
+                        
+                          /
+                        
+                        3
+                      
+                    
+                    
+                      
+                        (
+                        
+                          log
+                          ⁡
+                          log
+                          ⁡
+                          n
+                        
+                        )
+                      
+                      
+                        2
+                        
+                          /
+                        
+                        3
+                      
+                    
+                  
+                  )
+                
+              
+            
+            
+              
+                =
+                
+
+                
+              
+              
+                
+                  L
+                  
+                    n
+                  
+                
+                
+                  [
+                  
+                    1
+                    
+                      /
+                    
+                    3
+                    ,
+                    (
+                    64
+                    
+                      /
+                    
+                    9
+                    
+                      )
+                      
+                        1
+                        
+                          /
+                        
+                        3
+                      
+                    
+                  
+                  ]
+                
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{aligned}&\exp \left(\left((64/9)^{1/3}+o(1)\right)\left(\log n\right)^{1/3}\left(\log \log n\right)^{2/3}\right)\\[5pt]={}&L_{n}\left[1/3,(64/9)^{1/3}\right]\end{aligned}}}
+  
+
+in O and L-notations. It is a generalization of the special number field sieve: while the latter can only factor numbers of a certain special form, the general number field sieve can factor any number apart from prime powers (which are trivial to factor by taking roots). 
+The principle of the number field sieve (both special and general) can be understood as an improvement to the simpler rational sieve or quadratic sieve. When using such algorithms to factor a large number n, it is necessary to search for smooth numbers (i.e. numbers with small prime factors) of order n1/2. The size of these values is exponential in the size of n (see below). The general number field sieve, on the other hand, manages to search for smooth numbers that are subexponential in the size of n. Since these numbers are smaller, they are more likely to be smooth than the numbers inspected in previous algorithms. This is the key to the efficiency of the number field sieve. In order to achieve this speed-up, the number field sieve has to perform computations and factorizations in number fields. This results in many rather complicated aspects of the algorithm, as compared to the simpler rational sieve.
+The size of the input to the algorithm is log2 n or the number of bits in the binary representation of n. Any element of the order nc for a constant c is exponential in log n.  The running time of the number field sieve is super-polynomial but sub-exponential in the size of the input.
+
+
+== Number fields ==
+
+Suppose f is a k-degree polynomial over 
+  
+    
+      
+        
+          Q
+        
+      
+    
+    {\textstyle \mathbb {Q} }
+  
+ (the rational numbers), and r is a complex root of f. Then, f(r) = 0, which can be rearranged to express rk as a linear combination of powers of r less than k. This equation can be used to reduce away any powers of r with exponent  e ≥ k. For example, if f(x) = x2 + 1 and r is the imaginary unit i, then i2 + 1 = 0, or i2 = −1. This allows us to define the complex product:
+
+  
+    
+      
+        
+          
+            
+              
+                (
+                a
+                +
+                b
+                i
+                )
+                (
+                c
+                +
+                d
+                i
+                )
+              
+              
+                
+                =
+                a
+                c
+                +
+                (
+                a
+                d
+                +
+                b
+                c
+                )
+                i
+                +
+                (
+                b
+                d
+                )
+                
+                  i
+                  
+                    2
+                  
+                
+              
+            
+            
+              
+              
+                
+                =
+                (
+                a
+                c
+                −
+                b
+                d
+                )
+                +
+                (
+                a
+                d
+                +
+                b
+                c
+                )
+                i
+                .
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{aligned}(a+bi)(c+di)&=ac+(ad+bc)i+(bd)i^{2}\\[4pt]&=(ac-bd)+(ad+bc)i.\end{aligned}}}
+  
+
+In general, this leads directly to the algebraic number field 
+  
+    
+      
+        
+          Q
+        
+        [
+        r
+        ]
+      
+    
+    {\textstyle \mathbb {Q} [r]}
+  
+, which can be defined as the set of complex numbers given by:
+
+  
+    
+      
+        
+          a
+          
+            k
+            −
+            1
+          
+        
+        
+          r
+          
+            k
+            −
+            1
+          
+        
+        +
+        ⋯
+        +
+        
+          a
+          
+            1
+          
+        
+        
+          r
+          
+            1
+          
+        
+        +
+        
+          a
+          
+            0
+          
+        
+        
+          r
+          
+            0
+          
+        
+        ,
+        
+           where 
+        
+        
+          a
+          
+            0
+          
+        
+        ,
+        …
+        ,
+        
+          a
+          
+            k
+            −
+            1
+          
+        
+        ∈
+        
+          Q
+        
+        .
+      
+    
+    {\displaystyle a_{k-1}r^{k-1}+\cdots +a_{1}r^{1}+a_{0}r^{0},{\text{ where }}a_{0},\ldots ,a_{k-1}\in \mathbb {Q} .}
+  
+
+The product of any two such values can be computed by taking the product as polynomials, then reducing any powers of r with exponent  e ≥ k as described above, yielding a value in the same form. To ensure that this field is actually k-dimensional and does not collapse to an even smaller field, it is sufficient that f is an irreducible polynomial over the rationals. Similarly, one may define the ring of integers 
+  
+    
+      
+        
+          
+            O
+          
+          
+            
+              Q
+            
+            [
+            r
+            ]
+          
+        
+      
+    
+    {\textstyle \mathbb {O} _{\mathbb {Q} [r]}}
+  
+ as the subset of 
+  
+    
+      
+        
+          Q
+        
+        [
+        r
+        ]
+      
+    
+    {\textstyle \mathbb {Q} [r]}
+  
+ which are roots of monic polynomials with integer coefficients. In some cases, this ring of integers is equivalent to the ring 
+  
+    
+      
+        
+          Z
+        
+        [
+        r
+        ]
+      
+    
+    {\textstyle \mathbb {Z} [r]}
+  
+. However, there are many exceptions.
+
+
+== Method ==
+
+
+=== Polynomial choice ===
+Two polynomials f(x) and g(x) of small degrees d and e are chosen, which have integer coefficients, which are irreducible over the rationals, and which, when interpreted mod n, have a common integer root m. An optimal strategy for choosing these polynomials is not known; one simple method is to obtain f from the base-m expansion of n for an appropriate choice of m. More precisely: for any choice of m, 
+writing n in base m is, by definition, finding digits 
+  
+    
+      
+        
+          a
+          
+            0
+          
+        
+        ,
+        
+          a
+          
+            1
+          
+        
+        ,
+        …
+        ,
+        
+          a
+          
+            d
+          
+        
+      
+    
+    {\textstyle a_{0},a_{1},\ldots ,a_{d}}
+  
+ where 
+  
+    
+      
+        0
+        ≤
+        
+          a
+          
+            i
+          
+        
+        <
+        m
+      
+    
+    {\textstyle 0\leq a_{i}<m}
+  
+ for each i, such that 
+
+  
+    
+      
+        n
+        =
+        
+          a
+          
+            d
+          
+        
+        
+          m
+          
+            d
+          
+        
+        +
+        ⋯
+        +
+        
+          a
+          
+            1
+          
+        
+        m
+        +
+        
+          a
+          
+            0
+          
+        
+      
+    
+    {\displaystyle n=a_{d}m^{d}+\cdots +a_{1}m+a_{0}}
+  
+,
+which in turn means that m is a root of the polynomial 
+  
+    
+      
+        f
+        (
+        x
+        )
+        =
+        
+          a
+          
+            d
+          
+        
+        
+          x
+          
+            d
+          
+        
+        +
+        ⋯
+        +
+        
+          a
+          
+            1
+          
+        
+        x
+        +
+        
+          a
+          
+            0
+          
+        
+      
+    
+    {\textstyle f(x)=a_{d}x^{d}+\cdots +a_{1}x+a_{0}}
+  
+ modulo n. For the purposes of the general number field sieve, we first fix an appropriate degree d and then perform the above expansion for a number of values m of order n1/d, after which we choose the polynomial f to be the one whose coefficients are overall the smallest among the candidates obtained in this way. We then simply set 
+  
+    
+      
+        g
+        (
+        x
+        )
+        =
+        x
+        −
+        m
+      
+    
+    {\textstyle g(x)=x-m}
+  
+.
+
+
+==== Improving polynomial choice ====
+The choice of polynomial can dramatically affect the time to complete the remainder of the algorithm. The method of choosing polynomials based on the expansion of n in base m shown above is suboptimal in many practical situations, leading to the development of better methods.
+One such method was suggested by Murphy and Brent; they introduce a two-part score for polynomials, based on the presence of roots modulo small primes and on the average value that the polynomial takes over the sieving area.
+The best reported results were achieved by the method of Thorsten Kleinjung, which allows g(x) = ax + b, and searches over a composed of small prime factors congruent to 1 modulo 2d and over leading coefficients of f which are divisible by 60.
+
+
+=== Generation of relation pairs (sieving) ===
+Consider the number field rings Z[r1] and Z[r2], where r1 and r2 are roots of the polynomials f and g. Since f is of degree d with integer coefficients, if a and b are integers, then so will be bd·f(a/b), which we call r. Similarly, s = be·g(a/b) is an integer. The goal is to find integer values of a and b that simultaneously make r and s smooth relative to the chosen basis of primes. If a and b are small, then r and s will be small too, about the size of m, and we have a better chance for them to be smooth at the same time.  The current best-known approach for this search is lattice sieving; to get acceptable yields, it is necessary to use a large factor base. These pairs are also called "relations".
+
+
+=== Postprocessing ===
+Having enough such pairs, using Gaussian elimination, one can get products of certain r and of the corresponding s to be squares at the same time. A slightly stronger condition is needed—that they are norms of squares in our number fields, but that condition can be achieved by this method too.  Each r is a norm of a − r1b and hence that the product of the corresponding factors a − r1b is a square in Z[r1], with a "square root" which can be determined (as a product of known factors in Z[r1])—it will typically be represented as an irrational algebraic number.  Similarly, the product of the factors a − r2b is a square in Z[r2], with a "square root" which also can be computed.  It should be remarked that the use of Gaussian elimination does not give the optimal run time of the algorithm.  Instead, sparse matrix solving algorithms such as Block Lanczos or Block Wiedemann are used. 
+Since m is a root of both f and g mod n, there are homomorphisms from the rings Z[r1] and Z[r2] to the ring Z/nZ (the integers modulo n), which map r1 and r2 to m, and these homomorphisms will map each "square root" (typically not represented as a rational number) into its integer representative. Now the product of the factors a − mb mod n can be obtained as a square in two ways—one for each homomorphism. Thus, one can find two numbers x and y, with x2 − y2 divisible by n and again with probability at least one half we get a factor of n by finding the greatest common divisor of n and x − y.
+The post-processing step involves large amounts of data generated from the two proceeding steps. It is practically done by breaking it down into three phases:
+
+Filtering, which looks through the relations to find a collection that is sufficient for constructing a matrix. It is possible for this step to fail if not enough relations are given and it is hard to estimate how many relations are required beforehand. Using more relations than needed tends to make the later steps easier by producing a smaller matrix.
+Linear algebra, which looks for a group of vectors that lie in the nullspace of the very large matrix produced in the preceding step.
+Square root, which can be done over any solution from the last step.
+
+
+=== Distributed computing ===
+GNFS involves large amounts of computing and requires some form of distributed computing to complete in practical timelines given large numbers such as RSA-768. The following steps can be done in parallel:
+
+Sieving, which could produce duplicate relations and requires massive amounts of computation
+Deduplication of relations, removal of singleton relations
+Linear algebra, which requires massive amounts of computation
+The quadratic character test can be applied to the results of matrix solving to identify true solutions. In the case of RSA-768, 460 out of 512 were true. Eight of them were selected for the square step, producing 5 identical factorizations at the final step after a comparatively small amount of computation.
+A more in-depth description of a distributed effort can be found for RSA-240, DLP-240, and RSA-250, using CADO-NFS software. Full reproduction files are provided in a repository linked from the paper's appendix.
+
+
+== Implementations ==
+Some implementations focus on a certain smaller class of numbers. These are known as special number field sieve (SNFS) techniques, such as used in the Cunningham project.
+Until 2007, the gold-standard implementation was a suite of software developed and distributed by CWI in the Netherlands, which was available only under a relatively restrictive license. In 2007, Jason Papadopoulos developed a faster implementation of final processing as part of msieve, which is in the public domain.  Both implementations feature the ability to be distributed among several nodes in a cluster with a sufficiently fast interconnect.
+
+GGNFS (GNU GPL) by Chris Monico, last updated 2005. Can perform all steps. Handles about 160 digits for SNFS and 135 digits for GNFS. Includes these parts also under GNU GPL:
+pol5: Polynomial selection by Kleinjung 2005
+lasieve4: Lattice sieving by Franke and Kleinjung 2001–2004
+factor by gnfs, C++ code by Chris DiBona and Chris Card, last updated 2024. GNU GPL.
+CADO-NFS, C/C++ implementation of all steps by a large team at INRIA. Last updated 2025 (as of 2025). GNU LGPL.
+msieve. Contains final-processing code, a polynomial selection optimized for smaller numbers, and an implementation of the line sieve. Public domain.
+kmGNFS. Basic implementation of all steps by Christos Bakogiannis and Nikolaos Karapanos, last updated 2009.
+YAFU. Implementation of all steps by Ben Buhrow. Last updated 2025 (as of 2025). Public domain.
+
+
+=== Volunteer computing ===
+A project called NFSNET ran from 2002 through at least 2007. It used volunteer distributed computing on the Internet.
+Paul Leyland of the United Kingdom and Richard Wackerbarth of Texas were involved.
+A newer attempt called NFS@Home is still running as of September 2025. It has historically used modified versions of msieve. It generally uses special number field sieves.
+
+
+== See also ==
+Special number field sieve
+
+
+== Notes ==
+
+
+== References ==
+
+Matthew E. Briggs: An Introduction to the General Number Field Sieve, 1998

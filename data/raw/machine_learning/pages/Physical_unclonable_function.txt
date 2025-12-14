@@ -1,0 +1,770 @@
+A physical unclonable function, or PUF, is a physical object whose operation cannot be reproduced ("cloned") in physical way (by making another system using the same technology), that for a given input and conditions (challenge), provides a physically defined "digital fingerprint" output (response) that serves as a unique identifier, most often for a semiconductor device such as a microprocessor or a material producing an optical signal. PUFs are often based on unique physical variations occurring naturally during semiconductor manufacturing. A PUF is a physical entity embodied in a physical structure. PUFs can be implemented in integrated circuits, including FPGAs, and can be used in applications with high-security requirements, more specifically cryptography, Internet of Things (IOT) devices and privacy protection. PUFs can also be physical materials which provide uniqueness of distribution that can be used for authentication. The term is also commonly expanded as a physically unclonable function in the academic literature.
+
+
+== History ==
+Early references about systems that exploit the physical properties of disordered systems for authentication purposes date back to Bauder in 1983 and Simmons in 1984. Naccache and Frémanteau provided an authentication scheme in 1992 for memory cards.  PUFs were first formally proposed in a general fashion by Pappu in 2001, under the name Physical One-Way Function (POWF), with the term PUF being coined in 2002, whilst describing the first integrated PUF where, unlike PUFs based on optics, the measurement circuitry and the PUF are integrated onto the same electrical circuit (and fabricated on silicon).
+Starting in 2010, PUF gained attention in the smartcard market as a promising way to provide "silicon fingerprints", creating cryptographic keys that are unique to individual smartcards.
+PUFs are now established as a secure alternative to battery-backed storage of secret keys in commercial FPGAs, such as the Xilinx Zynq Ultrascale+, and Altera Stratix 10.
+
+
+== Concept ==
+PUFs depend on the uniqueness of their physical microstructure. This microstructure depends on random physical factors introduced during manufacturing. These factors are unpredictable and uncontrollable, which makes it virtually impossible to duplicate or clone the structure.
+Rather than embodying a single cryptographic key, PUFs implement challenge–response authentication to evaluate this microstructure. When a physical stimulus is applied to the structure, it reacts in an unpredictable (but repeatable) way due to the complex interaction of the stimulus with the physical microstructure of the device. This exact microstructure depends on physical factors introduced during manufacture, which are unpredictable  (like a fair coin). The applied stimulus is called the challenge, and the reaction of the PUF is called the response. A specific challenge and its corresponding response together form a challenge-response pair or CRP. The device's identity is established by the properties of the microstructure itself.  As this structure is not directly revealed by the challenge-response mechanism, such a device is resistant to spoofing attacks.
+Using a fuzzy extractor or the fuzzy commitment scheme that are provably suboptimal in terms of storage and privacy leakage amount or using nested polar codes that can be made asymptotically optimal, one can extract a unique strong cryptographic key from the physical microstructure. The same unique key is reconstructed every time the PUF is evaluated.
+The challenge-response mechanism is then implemented using cryptography. 
+PUFs can be implemented with a very small hardware investment compared to other cryptographic primitives that provide unpredictable input/output behavior, such as pseudo-random functions. In some cases, PUFs can even be built from existing hardware with the right properties.
+Unclonability means that each PUF device has a unique and unpredictable way of mapping challenges to responses, even if it was manufactured with the same process as a similar device, and it is infeasible to construct a PUF with the same challenge-response behavior as another given PUF because exact control over the manufacturing process is infeasible. Mathematical unclonability means that it should be very hard to compute an unknown response given the other CRPs or some of the properties of the random components from a PUF. This is because a response is created by a complex interaction of the challenge with many or all of the random components. In other words, given the design of the PUF system, without knowing all of the physical properties of the random components, the CRPs are highly unpredictable. The combination of physical and mathematical unclonability renders a PUF truly unclonable.
+Note that a PUF is "unclonable" using the same physical implementation, but once a PUF key is extracted, there's generally no problem with cloning the key – the output of the PUF – using other means. For "strong PUFs", defined later, in some cases one can train a neural network on observed challenge-response pairs and use it to predict unobserved responses - however this can have a limited effect depending on the strength and unpredictability of the PUF.
+Because of these properties, PUFs can be used as a unique and untamperable device identifier. PUFs can also be used for secure key generation and storage and for a source of randomness.
+
+
+== Classification ==
+
+
+=== Strong/Weak ===
+Weak PUFs can be considered a kind of memory that is randomly initialized during PUF manufacture. A challenge can be considered an address within the memory, and response can be considered the random value stored by that address. This way count of unique challenge-response pairs (CRPs) scales lineary with count of random elements of the PUF. The advantage of such PUFs is that they are actual random oracles, so are immune to machine-learning attacks. The weakness is that count of CRPs is small and can be exhausted either by an adversary, that can probe the PUF directly, or during authentication protocols over insecure channels, in which case verifier has to keep track of challenges already known to adversary. That's why the main application of weak PUFs is the source of randomness for deriving crypto keys.
+Strong PUFs are systems doing computation based on their internal structure. Their count of unique CRPs scales faster than linearily with increase in count of random elements because of interactions between the elements. The advantage is that this way space of CRPs can be made large enough to make its exhaustion practically impossible and collisions of 2 randomly chosen elements of the space improbable enough, allowing the verifying party not to keep track of used elements but just to choose them randomly from the space. Another advantage is that the randomness can be stored not only within the elements but also within their interactions, which sometimes can not be read directly. The weakness is that the same elements and their interactions are reused for different challenges, which opens the possibility to derive some information about the elements and their connections and use it to predict the reaction of the system to the unobserved challenges.
+
+
+=== Implicit/explicit ===
+All implementations of a certain PUF within certain device are created uniformly using scalable processes. For example when a cryptoprocessor based on a silicon chip is produced, a lot of processors are created on the same silicon wafer. Foundry equipment applies the same operations to all the chips on a wafer and tries to do it as much reproducible as possible in order to have predictable and high performance and reliability characteristics within all the chips. Despite this there should be generated randomness to make PUF in each chip unique.
+
+Explicit PUF randomness is created explicitly in a separate technological operation. It is a disadvantage because a separate operation imposes additional costs and because manufacturer can intentionally replace that separate operation with something else, which can reduce randomness and compromise security characteristics.
+Implicit PUF uses technology imperfections as a source of randomness by designing a PUF as a device which operation is strongly affected by technology imperfections instead of being unaffected, as it is done for usual circuitry, and fabricating it simultaneously with the rest of the device. Since foundries themselves cannot defeat the imperfections of the technology despite having strong economic incentive in being capable to fabricate more performant and more reliable chips, it gives some protection from foundry backdooring such PUFs this way. Backdooring PUFs by tampering with lithographic masks can be detected by reverse engineering the resulting devices. Fabricating the PUF as the part of the rest of the device makes it cheaper than explicit PUFs.
+
+
+=== Intrinsic/extrinsic ===
+Extrinsic PUFs rely on sensors to measure a system containing the randomness. Such sensors are a weak point since they can be replaced with fakes sending the needed measurements.
+Intrinsic PUF's operation is affected by randomness contained within the system itself.
+
+
+== Types ==
+
+Over 40 types of PUF have been suggested. These range from PUFs that evaluate an intrinsic element of a pre-existing integrated electronic system to concepts that involve explicitly introducing random particle distributions to the surface of physical objects for authentication. All PUFs are subject to environmental variations such as temperature, supply voltage and electromagnetic interference, which can affect their performance. Therefore, rather than just being random, the real power of a PUF is its ability to be different between devices but simultaneously to be the same under different environmental conditions on the same device.
+
+
+== Error correction ==
+In many applications, it is important that the output is stable. If the PUF is used for a key in cryptographic algorithms, it is necessary that error correction be done to correct any errors caused by the underlying physical processes and reconstruct exactly the same key each time under all operating conditions. In principle there are two basic concepts: Pre-Processing and Post-Processing Error Correction Code (ECC).
+
+On-chip ECC units increase size, power, and data processing time overheads; they also expose vulnerabilities to power analysis attacks that attempt to model the PUF mathematically. Alternatively, some PUF designs like the EC-PUF do not require an on-chip ECC unit.
+Strategies have been developed which lead SRAM PUF to become more reliable over time without degrading the other PUF quality measures such as security and efficiency.
+Research at Carnegie Mellon University into various PUF implementations found that some error reduction techniques reduced errors in PUF response in a range of ~70 percent to ~100 percent.
+Research at the University of Massachusetts Amherst to improve the reliability of SRAM PUF-generated keys posited an error correction technique to reduce the error rate.
+Joint reliability–secrecy coding methods based on transform coding are used to obtain significantly higher reliabilities for each bit generated from a PUF such that low-complexity error-correcting codes such as BCH codes suffice to satisfy a block error probability constraint of 1 bit errors out of 1 billion bits.
+Nested polar codes are used for vector quantization and error correction jointly. Their performance is asymptotically optimal in terms of, for a given blocklength, the maximum number of secret bits generated, the minimum amount of private information leaked about the PUF outputs, and minimum storage required. The fuzzy commitment scheme and fuzzy extractors are shown to be suboptimal in terms of the minimum storage.
+
+
+== Availability ==
+PUF technology can be licensed from several companies including eMemory, or its subsidiary, PUFsecurity, Enthentica, ICTK, Intrinsic ID, Invia, QuantumTrace, Granite Mountain Technologies, Secure-IC and Verayo.
+PUF technology has been implemented in several hardware platforms including Microsemi SmartFusion2, NXP SmartMX2, Coherent Logix HyperX, InsideSecure MicroXsafe, Altera Stratix 10, Redpine Signals WyzBee and Xilinx Zynq Ultrascale+.
+
+
+== Vulnerabilities ==
+In 2011, university research showed that delay-based PUF implementations are vulnerable to side-channel attacks and recommends that countermeasures be employed in the design to prevent this type of attack. Also, improper implementation of PUF could introduce "backdoors" to an otherwise secure system. In June 2012, Dominik Merli, a scientist at Fraunhofer Research Institution for Applied and Integrated Security (AISEC) further claimed that PUF introduces more entry points for hacking into a cryptographic system and that further investigation into the vulnerabilities of PUFs is required before PUFs can be used in practical security-related applications.
+The presented attacks are all on PUFs implemented in insecure systems, such as FPGA or Static RAM (SRAM). It is also important to ensure that the environment is suitable for the needed security level, as otherwise attacks taking advantage of temperature and other variations may be possible.
+In 2015, some studies claimed it is possible to attack certain kinds of PUFs with low-cost equipment in a matter of milliseconds. A team at Ruhr Universität of Bochum, Germany, demonstrated a method to create a model of XOR Arbiter PUFs and thus be able to predict their response to any kind of challenge. Their method requires only 4 CRPs, which even on resource-constrained devices should not take more than about 200ms to produce. Using this method and a $25 device or an NFC-enabled smartphone, the team was able to successfully clone PUF-based RFID cards stored in the wallet of users while it was in their back pocket.
+
+
+=== Provable machine learning attacks ===
+The attacks mentioned above range from invasive, e.g., to non-invasive attacks. One of the most celebrated types of non-invasive attacks is machine learning (ML) attacks. From the beginning of the era of PUFs, it has been doubted if these primitives are subject to this type of attacks. In the lack of thorough analysis and mathematical proofs of the security of PUFs, ad hoc attacks against PUFs have been introduced in the literature. Consequently, countermeasures presented to cope with these attacks are less effective. In line with these efforts, it has been conjectured if PUFs can be considered as circuits, being provably hard to break. In response, a mathematical framework has been suggested, where provable ML algorithms against several known families of PUFs have been introduced.
+Along with this provable ML framework, to assess the security of PUFs against ML attacks, property testing algorithms have been reintroduced in the hardware security community and made publicly accessible. These algorithms trace their roots back to well-established fields of research, namely property testing, machine learning theory, and Boolean analysis.
+ML attacks can also apply to PUFs because most of the pre and post-processing methods applied until now ignore the effect of correlations between PUF-circuit outputs. For instance, obtaining one bit by comparing two ring oscillator outputs is a method to decrease the correlation. However, this method does not remove all correlations. Therefore, the classic transforms from the signal-processing literature are applied to raw PUF-circuit outputs to decorrelate them before quantizing the outputs in the transform domain to generate bit sequences. Such decorrelation methods can help to overcome the correlation-based information leakages about the PUF outputs even if the ambient temperature and supply voltage change.
+
+
+== Optical PUFs ==
+Optical Physically Unclonable Functions (OPUFs or O-PUFs) rely on a random optical multiple-scattering medium, which serves as a token. Optical PUFs offer a promising approach to developing entity authentication schemes that are robust against many of the aforementioned attacks. However, their security against emulation attacks can be ensured only in the case of quantum readout (see below), or when the database of challenge-response pairs is somehow encrypted.
+Optical PUFs can be made very easily: a varnish containing glitter, a metallic paint, or a frosted finish obtained by sandblasting a surface, for example, are practically impossible to clone. Their appearance changes depending on the point of view and the lighting. Authentication of an optical PUF requires a photographic acquisition. This could be to measure the luminosity of several of its parts. Acquisitions are then compared to a database ID which is produced in the 'registration' stage. This acquisition can be supplemented by an additional acquisition either from another point of view, or under different lighting to verify that this results in a modification of the appearance of the PUF.
+Recent research has investigated methods to improve the robustness and longevity of optical PUFs under varying environmental conditions. One such approach involves the binarisation of optically acquired inputs to reduce the impact of noise and glare, thereby increasing the consistency of authentication results over time.
+A variety of figures of merit—such as uniqueness, reliability, and randomness—can be used to evaluate optical PUFs; however, because most electronic PUFs (E-PUFs) are independent and identically distributed (IID), their metrics tend to rely on mean-based assumptions. Optical PUFs often violate these assumptions, so care must be taken when interpreting metrics like reliability. A Python-based toolkit, pyopticalpuf, has been developed to facilitate more standardised and reproducible evaluation of optically imaged PUFs, and is publicly available on GitHub.
+This can be done with a smartphone, without additional equipment, using optical means to determine the position in which the smartphone is in relation to the PUF.
+Theoretical investigations suggest that optical PUFs with nonlinear multiple-scattering media, may be more robust  than their linear counterparts against the potential cloning of the medium.
+
+
+== O-PUF History ==
+The development of optical physical unclonable functions (O-PUFs) began with the doctoral thesis of Ravi Pappu at MIT in 2001, followed by the seminal 2002 Science publication that introduced volumetric scattering from a laser as a basis for optical unclonable responses. As the field emerged, Blaise Gassend's 2002 MIT master's thesis described silicon-based physical random functions, establishing an immediate break-away of the field into the first of many different kinds of PUF. This initial work laid the groundwork for the field and established key concepts like the Challenge-Response Pair.
+Building on the O-PUF work, researchers at Philips Research Laboratories in the Netherlands contributed important theoretical advances: Tuyls et al (2004) presented a security analysis of PUFs, Ignatenko et al. (2006) developed methods for estimating security rates, and Kursawe et al. (2009) introduced the idea of reconfigurable PUFs for tamper-proof storage.
+Later, Rührmair et al at the University of Munich reinvigorated the field with works such as Optical PUFs Reloaded (2013) and the comprehensive review PUFs at a Glance (2014) which worked on the key definitions for the field. A second wave of optical implementations followed: Cao et al. (2017) demonstrated identification using imperfections in two-dimensional materials, Mesaritakis et al. (2018) proposed a multimode optical waveguide PUF, Kim et al. (2022) revisited silk-based substrates for lens-free O-PUFs, Nocentini et al. (2024) reported all-optical multilevel PUF architectures and many other papers helped diversify the field.
+Together, these milestones trace the progression of O-PUFs from early scattering-based prototypes to a diverse family of optical identification technologies. While the field started with laser-based security generation, the more recent work signals a diversification to O-PUFs based on a wide range of material properties from polarisation to nano materials. Additionally the improvement of smartphone technology has provided a new area for expansion in the field, with lots of work on the consumer accessible O-PUFs for authentication.
+
+
+== O-PUF Evaluation metrics ==
+Several figures of merit are commonly used to assess the quality of a physical unclonable function (PUF). These metrics are typically statistical in nature and are used to compare responses across devices, across challenges, and over time. They include measures of uniqueness, reliability, uniformity, effective number of independent bits (ENIB), etc.
+
+
+=== Fractional Hamming distance (fHD) ===
+The fractional Hamming distance (fHD) is a commonly used metric to quantify the difference between two binary responses. It is defined as:
+
+  
+    
+      
+        f
+        H
+        D
+        (
+        A
+        ,
+        B
+        )
+        =
+        
+          
+            1
+            
+              a
+              b
+            
+          
+        
+        
+          ∑
+          
+            I
+            =
+            1
+          
+          
+            a
+          
+        
+        
+          ∑
+          
+            J
+            =
+            1
+          
+          
+            b
+          
+        
+        (
+        A
+        ⊕
+        B
+        
+          )
+          
+            I
+            J
+          
+        
+      
+    
+    {\displaystyle fHD(A,B)={\frac {1}{ab}}\sum _{I=1}^{a}\sum _{J=1}^{b}(A\oplus B)_{IJ}}
+  
+
+where A and B are binary arrays representing two responses, a and b are the dimensions of these arrays, and ⊕ denotes the bitwise XOR operation. The summation is carried out over all pixel positions I (1, 2, ..., a) and J (1, 2, ..., b) in the arrays. The result gives a normalized measure of similarity between the two arrays, ranging from 0 (identical) to 1 (completely different).
+In practice, the fHD is often applied to sets of responses. For example, in intra-PUF reliability analysis, the fHD is calculated across repeated measurements (the 'C' set), and the mean value of the fHD is reported as the reliability value.
+
+
+=== Uniqueness ===
+Uniqueness is a measure of how distinguishable the responses of different PUF instances are. It is typically quantified by the mean of the inter-device fractional Hamming distances (inter-fHD). Uniqueness is commonly used in the literature. This is given by:
+
+  
+    
+      
+        
+          μ
+          
+            2
+          
+        
+        =
+        
+          
+            1
+            
+              
+                (
+              
+              
+                N
+                2
+              
+              
+                )
+              
+            
+          
+        
+        
+          ∑
+          
+            x
+            =
+            1
+          
+          
+            N
+            −
+            1
+          
+        
+        
+          ∑
+          
+            y
+            =
+            x
+            +
+            1
+          
+          
+            N
+          
+        
+        f
+        H
+        D
+        (
+        
+          D
+          
+            x
+          
+        
+        ,
+        
+          D
+          
+            y
+          
+        
+        )
+      
+    
+    {\displaystyle \mu _{2}={\frac {1}{\binom {N}{2}}}\sum _{x=1}^{N-1}\sum _{y=x+1}^{N}fHD(D_{x},D_{y})}
+  
+
+where μ2 is the inter-fHD mean, N is the number of inter-device responses, and Dx and Dy are arrays from the inter-device set {D}. Thus, N is also the total number of arrays in the set {D}.
+The parameter commonly reported as "uniqueness" is then expressed as:
+
+  
+    
+      
+        U
+        n
+        i
+        q
+        u
+        e
+        n
+        e
+        s
+        s
+        =
+        
+          μ
+          
+            2
+          
+        
+        ×
+        100
+        %
+      
+    
+    {\displaystyle Uniqueness=\mu _{2}\times 100\%}
+  
+
+The ideal value for μ2 is 0.5. This indicates that, on average, different PUF instances produce responses that differ in 50% of their bits, demonstrating both randomness and uniqueness.
+
+
+=== Reliability ===
+Reliability, commonly reported alongside uniformity, is a measure of the consistency of a PUF's responses when the same challenge is applied multiple times. It is quantified by the mean intra-device fractional Hamming distance (intra-fHD), expressed as:
+
+  
+    
+      
+        
+          μ
+          
+            1
+          
+        
+        =
+        
+          
+            1
+            
+              
+                (
+              
+              
+                N
+                2
+              
+              
+                )
+              
+            
+          
+        
+        
+          ∑
+          
+            x
+            =
+            1
+          
+          
+            N
+            −
+            1
+          
+        
+        
+          ∑
+          
+            y
+            =
+            x
+            +
+            1
+          
+          
+            N
+          
+        
+        f
+        H
+        D
+        (
+        
+          C
+          
+            x
+          
+        
+        ,
+        
+          C
+          
+            y
+          
+        
+        )
+      
+    
+    {\displaystyle \mu _{1}={\frac {1}{\binom {N}{2}}}\sum _{x=1}^{N-1}\sum _{y=x+1}^{N}fHD(C_{x},C_{y})}
+  
+
+where μ1 is the intra-fHD mean, N is the number of repeated measurements, and Cx and Cy are arrays from the intra-device set {C}.
+Reliability is then defined as:
+
+  
+    
+      
+        R
+        e
+        l
+        i
+        a
+        b
+        i
+        l
+        i
+        t
+        y
+        =
+        (
+        1
+        −
+        
+          μ
+          
+            1
+          
+        
+        )
+        ×
+        100
+        %
+      
+    
+    {\displaystyle Reliability=(1-\mu _{1})\times 100\%}
+  
+
+Ideally, μ1 would be 0, indicating that repeated measurements of the same PUF instance produce identical responses. In practice, however, achieving an intra-fHD mean of 0 is difficult for reasonably sized identifiers due to factors such as noise, alignment errors, and other environmental influences, which increase the observed intra-fHD.
+
+
+=== Uniformity ===
+Uniformity quantifies the proportion of 0s and 1s in the binary output of a PUF, also referred to as the "Hamming weight" or "bias." A value of 0.5 (50%) indicates maximum entropy, with each output bit equally likely to be 0 or 1.
+Mathematically, for a binary array D_n with a rows and b columns, where D_{n,I,J} denotes the value of the pixel at coordinates (I,J), the uniformity of a single PUF response is defined as:
+
+  
+    
+      
+        
+          U
+          
+            n
+          
+        
+        =
+        
+          
+            1
+            
+              a
+              ⋅
+              b
+            
+          
+        
+        
+          ∑
+          
+            I
+            =
+            1
+          
+          
+            a
+          
+        
+        
+          ∑
+          
+            J
+            =
+            1
+          
+          
+            b
+          
+        
+        
+          D
+          
+            n
+            ,
+            I
+            ,
+            J
+          
+        
+      
+    
+    {\displaystyle U_{n}={\frac {1}{a\cdot b}}\sum _{I=1}^{a}\sum _{J=1}^{b}D_{n,I,J}}
+  
+
+The overall uniformity for a set of N PUF responses is then:
+
+  
+    
+      
+        U
+        =
+        
+          
+            1
+            N
+          
+        
+        
+          ∑
+          
+            n
+            =
+            1
+          
+          
+            N
+          
+        
+        
+          U
+          
+            n
+          
+        
+      
+    
+    {\displaystyle U={\frac {1}{N}}\sum _{n=1}^{N}U_{n}}
+  
+
+Here, 
+  
+    
+      
+        
+          U
+          
+            n
+          
+        
+      
+    
+    {\displaystyle U_{n}}
+  
+ is a number between 0 and 1 representing the average pixel value of the array. For the categorisation of O-PUFs, the set 
+  
+    
+      
+        {
+        D
+        }
+      
+    
+    {\displaystyle \{D\}}
+  
+ is often used to analyze uniformity across multiple devices.
+
+
+=== Effective Number of Independent Bits ===
+The effective number of independent bits (ENIB) quantifies the amount of unique, uncorrelated information in a PUF response. High ENIB values indicate low redundancy and high entropy across the output.
+It is defined mathematically as:
+
+  
+    
+      
+        N
+        =
+        
+          
+            
+              
+                μ
+                
+                  2
+                
+              
+              (
+              1
+              −
+              
+                μ
+                
+                  2
+                
+              
+              )
+            
+            
+              σ
+              
+                2
+              
+              
+                2
+              
+            
+          
+        
+      
+    
+    {\displaystyle N={\frac {\mu _{2}(1-\mu _{2})}{\sigma _{2}^{2}}}}
+  
+
+where 
+  
+    
+      
+        N
+      
+    
+    {\displaystyle N}
+  
+ is the ENIB, 
+  
+    
+      
+        
+          μ
+          
+            2
+          
+        
+      
+    
+    {\displaystyle \mu _{2}}
+  
+ is the mean of the inter-Fractional Hamming Distance (inter-fHD) distribution, and 
+  
+    
+      
+        
+          σ
+          
+            2
+          
+        
+      
+    
+    {\displaystyle \sigma _{2}}
+  
+ is its standard deviation (with 
+  
+    
+      
+        
+          σ
+          
+            2
+          
+          
+            2
+          
+        
+      
+    
+    {\displaystyle \sigma _{2}^{2}}
+  
+ representing the variance).
+In some literature, this metric is also referred to as the "Degrees of Freedom" (DoF) of the PUF response.
+
+
+=== Decidability ===
+Decidability measures how well a PUF can distinguish between different devices. Higher values indicate that the PUF responses are more reliably separable, while a value of zero means no distinguishable features exist, rendering the PUF ineffective.
+It is defined mathematically as:
+
+  
+    
+      
+        
+          d
+          ′
+        
+        =
+        
+          
+            
+              
+                |
+              
+              
+                μ
+                
+                  1
+                
+              
+              −
+              
+                μ
+                
+                  2
+                
+              
+              
+                |
+              
+            
+            
+              
+                
+                  
+                    σ
+                    
+                      1
+                    
+                    
+                      2
+                    
+                  
+                  +
+                  
+                    σ
+                    
+                      2
+                    
+                    
+                      2
+                    
+                  
+                
+                2
+              
+            
+          
+        
+      
+    
+    {\displaystyle d'={\frac {|\mu _{1}-\mu _{2}|}{\sqrt {\frac {\sigma _{1}^{2}+\sigma _{2}^{2}}{2}}}}}
+  
+
+where 
+  
+    
+      
+        
+          d
+          ′
+        
+      
+    
+    {\displaystyle d'}
+  
+ represents decidability, 
+  
+    
+      
+        
+          μ
+          
+            1
+          
+        
+      
+    
+    {\displaystyle \mu _{1}}
+  
+ is the mean of the intra-Fractional Hamming Distance (intra-fHD) distribution, 
+  
+    
+      
+        
+          μ
+          
+            2
+          
+        
+      
+    
+    {\displaystyle \mu _{2}}
+  
+ is the mean of the inter-fHD distribution, 
+  
+    
+      
+        
+          σ
+          
+            1
+          
+        
+      
+    
+    {\displaystyle \sigma _{1}}
+  
+ is the standard deviation of the intra-fHDs, and 
+  
+    
+      
+        
+          σ
+          
+            2
+          
+        
+      
+    
+    {\displaystyle \sigma _{2}}
+  
+ is the standard deviation of the inter-fHDs.
+
+
+== See also ==
+Hardware Trojan
+Quantum Readout of PUFs
+Random number generation
+Defense strategy (computing)
+
+
+== References ==
+
+
+== External links ==
+"Physical Unclonable Functions and Applications", by Srini Devadas and others, MIT
+Ultra-low-cost true randomness AND physical fingerprinting
+"Mixed-signal physically unclonable function with CMOS capacitive cells", by Kamal Kamal and Radu Muresan

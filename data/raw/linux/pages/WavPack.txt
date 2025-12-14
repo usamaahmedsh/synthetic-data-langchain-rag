@@ -1,0 +1,99 @@
+WavPack is a free and open-source lossless audio compression format and application implementing the format. It is unique in the way that it supports hybrid audio compression alongside normal compression which is similar to how FLAC works. It also supports compressing a wide variety of lossless formats, including various variants of PCM and also DSD as used in SACDs, together with its support for surround audio.
+
+
+== Features ==
+WavPack compression can compress (and losslessly restore) 8, 16, 24, and 32-bit fixed-point, and 32-bit floating-point PCM audio files in the .WAV file format. It can also handle DSD input in DSDIFF or DSF format. It also supports surround sound streams and high sampling rates. Like other lossless compression schemes, the data reduction rate varies with the source, but it is generally between 30% and 70% for typical popular music and somewhat better than that for classical music and other sources with greater dynamic range.
+
+
+=== Hybrid mode ===
+WavPack also incorporates a "hybrid" mode, which still provides the features of lossless compression, but creates two files: a relatively small, high-quality, lossy file (.wv) that can be used by itself; and a "correction" file (.wvc) that, when combined with the lossy file, provides full lossless restoration. This allows the use of lossy and lossless codecs together. The lossy algorithm is similar to ADPCM.
+Hybrid mode can handle floating-point data, but only when "exception" values like infinities or NaNs are not present. It cannot handle DSD because there is no lossy algorithm for DSD.
+A similar "hybrid" feature is also offered by OptimFROG DualStream, MPEG-4 SLS and DTS-HD Master Audio.
+
+
+=== Summary ===
+Open-source, released under a BSD-like license
+Multiplatform
+Error robustness
+Fast encoding
+Higher compression ratios than other widely used (FLAC/ALAC) open-source lossless audio codecs
+Streaming support
+Supports multichannel audio and high resolutions
+Native support in WavPack 5.x for compressing Direct Stream Digital without converting the source file to PCM.
+Hybrid/lossy mode
+Hardware support (provided by Rockbox firmware)
+Metadata support (ID3, APE tags; APE tag is the preferred format)
+Supports RIFF chunks
+Compatible with ReplayGain
+Ability to create self-extracting files for the Win32 platform
+Supports 32-bit floating-point streams
+Supports embedded CUE sheets
+Includes MD5 hashes for quick integrity checking
+Can encode in both symmetrical and asymmetrical (slower encoding to speed up decoding) modes
+
+
+== History ==
+David Bryant started development on WavPack in mid-1998 with the release of version 1.0 (1998-08-15). This first version compressed and decompressed audio losslessly, and it already featured one of the best efficiency vs. speed ratios among lossless encoders.
+Very soon after the release of version 1.0, v. 2.0 (2 September 1998) was released, featuring lossy encoding (using only quantization of prediction residue for data reduction –  no psychoacoustic masking model was applied to the stream).
+In 1999, version 3.0 (12 September 1999) was released, with a new "fast mode" (albeit with reduced compression ratio), compression of raw (headerless) PCM audio files, and error detection using a 32-bit cyclic redundancy check.
+A feature added in late 3.x versions is the "hybrid" mode where the encoder generates a lossy file and a correction file such that both can be decompressed back to a PCM stream that has same quality as the original.
+In WavPack 4, a new file format structure is introduced. A "roadmap" is also published by the author with 4.40, containing possible hints on future development. WavPack 5 introduced support for compressing DSD.
+
+
+== Support ==
+
+
+=== Software ===
+Some software supports the format natively (like DeaDBeeF, foobar2000, and Jack! The Knife), while others require plugins. The official WavPack website offers plugins for Winamp, Nero Burning ROM, MediaChest 2.1, and several other applications, as well as a DirectShow filter. dBpoweramp CD-Ripper, by the author of foobar2000, as well as foobar2000 itself, and Asunder allow ripping Audio CDs directly into Wavpack files.
+Linux support is available with a native port.
+FFmpeg has a native WavPack encoder, which may be combined with software like GNU parallel to use multiple CPU cores to quickly transcode other lossless formats into WavPack, and from WavPack to any format that FFmpeg supports, without the need for additional software. However, FFMpeg's encoder is somewhat limited. 
+As of 2023, FFmpeg's WavPack encoder has some considerable limitations. It can only produce version 4 bitstreams, which do not support fast verification for file integrity checks, or more than 16 channels. It will also discard RIFF chunks and may not behave predictably with 24-bit input. It also defaults to less than optimal compression to achieve faster encoding. Due to lack of support for Hybrid mode, FFmpeg-based playback software will fail to consider the .wvc correction file if there is one present, and will play or transcode only the lossy section. (However, this is not the usual mode of operation for WavPack.) As native Wavpack support for Direct Stream Digital was added in version 5 of the reference encoder, FFmpeg WavPack also is limited to encoding PCM input.
+
+
+=== Hardware ===
+Native support:
+
+Cowon A3 PMP supports WavPack out of the box.
+Non-native support:
+
+Apple iPod range of music players do not support WavPack out of the box, but can through open-source Rockbox firmware.
+iRiver H100 series, through open-source Rockbox firmware.
+iRiver H300 series, through open-source Rockbox firmware.
+Android smartphones and tablets with the installation of third-party media-player software.
+ChromeOS devices using media-player software installed in the Linux subsystem or the Android Play Store.
+The WavPack website also includes a plugin that allows support for the format on the Roku PhotoBridge HD Archived 2005-07-08 at the Wayback Machine.
+
+
+== Technology ==
+To ensure high-speed operation, WavPack uses a predictor that is implemented entirely in integer math. In its "fast" mode the prediction is simply the arithmetic extrapolation of the previous two samples. For example, if the previous two samples were −10 and 20, then the prediction would be 50. For the default mode a simple adaptive factor is added to weigh the influence of the earlier sample on the prediction. In the example above the resulting prediction could then vary between 20 for no influence to 50 for full influence. This weight factor is constantly updated based on the audio data's changing spectral characteristics.
+The prediction generated is then subtracted from the actual sample to be encoded to generate the error value. In mono mode this value is sent directly to the coder. However, stereo signals tend to have some correlation between the two channels that can be further exploited. Therefore, two error values are calculated that represent the difference and average of the left and right error values. In the "fast" mode of operation these two new values are simply sent to the coder instead of the left and right values. In the default mode, the difference value is always sent to the coder along with one of the other three values (average, left, or right). An adaptive algorithm continuously determines the most efficient of the three to send based on the changing balance of the channels.
+Instead of Rice coding, a special data encoder for WavPack is used. Rice coding is the optimal bit coding for this type of data, and WavPack's encoder is less efficient, but only by about 0.15 bits per sample (or less than 1% for 16-bit data). However, there are some advantages in exchange. The first one is that WavPack's encoder does not require the data to be buffered ahead of encoding; instead it converts each sample directly to bitcodes. This is more computationally efficient and is better in some applications where coding delay is critical. The second advantage is that it is easily adaptable to lossy encoding, since all significant bits (except the implied "one" MSB) are transmitted directly. In this way it is possible to only transmit, for example, the 3 most significant bits (with sign) of each sample. In fact, it is possible to transmit only the sign and implied MSB for each sample with an average of only 3.65 bits per sample.
+This coding scheme is used to implement the "lossy" mode of WavPack. In the "fast" mode the output of the non-adaptive decorrelator is simply rounded to the nearest codable value for the specified number of bits. In the default mode the adaptive decorrelator is used (which reduces the average noise about 1 dB), and both the current and the next sample are considered in choosing the better of the two available codes (which reduces noise another 1 dB).
+No floating-point arithmetic is used in WavPack's data path because, according to the author, integer operations are less susceptible to subtle chip-to-chip variations that could corrupt the lossless nature of the compression (the Pentium floating-point bug being an example). It is possible that a lossless compressor that used floating-point math could generate different output when running on that faulty Pentium. Even disregarding actual bugs, floating-point math is complicated enough that there could be subtle differences between "correct" implementations that could cause trouble for this type of application. A 32-bit error detection code to the generated streams is included to maintain user confidence in the integrity of WavPack's compression.
+WavPack source code is portable and has been compiled on several Unix and Unix-like operating systems (Linux, Mac OS X, Solaris, FreeBSD, OpenBSD, NetBSD, Compaq Tru64, HP-UX...) as well as Windows, DOS, Palm OS, and OpenVMS. It works on many architectures, including x86, ARM, PowerPC, AMD64, IA-64, SPARC, Alpha, PA-RISC, MIPS and Motorola 68k.
+A cut-down version of WavPack was developed for the Texas Instruments TMS320 series Digital Signal Processor. This was aimed predominantly at encouraging manufacturers to incorporate WavPack compression (and de-compression) into portable memory audio recorders. This version supported features that were applicable only to embedded applications (stream compression in real-time, selectable compression rate) and dropped off features that only applied to full computer systems (self extraction, high compression modes, 32-bit floats). The TMS320 series DSPs are native integer devices, and support WavPack well. Some "special" features of the full WavPack software were included (ability to generate a correction "file" (stream), for example), and others were excluded. The port was based on version 4.
+WavPack support was added to WinZip starting with version 11.0 beta, released in October 2006. This extension to the ZIP file format was included by PKWARE, the maintainers of the format, in the official APPNOTE.TXT description file starting with version 6.3.2, released on 28 September 2007.
+
+
+== See also ==
+
+Comparison of audio formats
+MPEG-4 SLS
+FLAC
+TTA
+Monkey's Audio
+ALAC
+Meridian Lossless Packing
+
+
+== References ==
+
+
+== External links ==
+Official website
+WavPack forum at Hydrogenaudio Forums
+Historical versions at ReallyRareWares
+A comparison of several Lossless Audio encoders at Hydrogenaudio Wiki.
+WavPack on MultimediaWiki
+WavPack frontend
+Flash WavPack player

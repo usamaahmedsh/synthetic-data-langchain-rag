@@ -1,0 +1,37 @@
+Py is a stream cipher submitted to eSTREAM by Eli Biham and Jennifer Seberry.  It is one of the fastest eSTREAM candidates at around 2.6 cycles per byte on some platforms.  It has a structure a little like RC4, but adds an array of 260 32-bit words which are indexed using a permutation of bytes, and produces 64 bits in each round.
+The authors assert that the name be pronounced "Roo", a reference to the cipher's Australian origin, by reading the letters "Py" as Cyrillic (Ру) rather than Latin characters.  This somewhat perverse pronunciation is understood to be their answer, in jest, to the difficult-to-pronounce name Rijndael for the cipher which was adopted as the Advanced Encryption Standard.
+
+The original April 2005 proposal included the cipher Py, and a simplified version Py6.  The latter reduces the size of some internal tables, providing greatly reduced key scheduling cost, at the expense of a shorter maximum output length.
+In June 2006, the authors described Pypy (even more confusingly, half-Cyrillic Pyру and thus pronounced "Pyroo") as an optional stronger variant.  This omits one of the output words from each iteration of Py, and thus operates at about 0.6 times the speed of Py.
+In January 2007, the key schedule algorithm was changed, producing "tweaked" variants TPy, TPypy and TPy6.  To be precise, the first (key-dependent) phase is unmodified, but the second (IV setup) phase has an error corrected.  The round functions used to produce output are identical.
+At Indocrypt 2007, Gautham Sekar, Souradyuti Paul and Bart Preneel proposed two new ciphers RCR-32 and RCR-64 based on the design principles of Pypy and Py, respectively.  These replace a variable rotate in Py with a fixed rotate, eliminating an attack and speeding up the cipher slightly.  The TPy key schedule is used unmodified.
+
+
+== Attacks on the Py-family ==
+As of 2006, the best cryptanalytic attack on Py (by Hongjun Wu and Bart Preneel) can under some circumstances (e.g. where the IV is much longer than the key) recover the key given partial keystreams for 224 chosen IVs [1].
+In a more difficult scenario from the point of view of attacker, given only known plaintext (rather than chosen plaintext), there is also a distinguishing attack on the keystream (by Paul Crowley) which requires around 272 bytes of output and comparable time.  This is an improvement on an attack presented by Gautham Sekar, Souradyuti Paul and Bart Preneel which requires 288 bytes.  There is a still a debate whether these attacks constitute an academic break of Py. When the attackers claim that the above attacks can be built with workload less than the exhaustive search under the design specifications of Py and therefore, it is clearly a theoretical break of the cipher, the designers rule out the attacks because Py's security bounds limit any attacker to a total of 264 bytes of output across all keystreams everywhere. A recent revision of the Paul, Preneel, and Sekar paper includes a detailed discussion of this issue in section 9.  There are no doubts about the legitimacy of the Wu and Preneel attack.
+Py was selected as Phase 2 Focus Candidate for Profile 1 (software) by the eSTREAM project [2] but did not advance to Phase 3 due to the Wu and Preneel chosen IV attack. [3].
+In January 2007, three new ciphers namely TPy, TPypy and TPy6 have been proposed by the designers of Py to eliminate the above attacks. The TPy is still vulnerable against the above distinguishing attacks by Paul et al. (complexity 288) and Crowley (complexity 272), which do not depend on the key schedule.  The best attack so far on the TPypy, which is conjectured to be the strongest of the Py-family of ciphers, is by Sekar et al. which is a distinguishing attack with data complexity 2281. This attack is only meaningful if the key-size of TPypy is longer than 281 bits.
+To remove attacks on TPy and TPypy, Sekar, Paul and Preneel at Indocrypt 2007 gave proposals for two new ciphers RCR-32 and RCR-64. So far there are no attacks against the RCR-32 and RCR-64.
+
+
+== Round functions ==
+Py is based on the idea of "sliding arrays": arrays are indexed relative to a start pointer, which is advanced by one word each round.  Where modulo indexing is available (hardware, and many digital signal processors), these can be implemented as circular buffers.  In software, these are most easily implemented as large arrays.  When the end of the array is reached, the working portions are copied back to the beginning and operations continue.
+The 256-byte P array contains a 256-entry permutation (each byte appears exactly once), while the Y array contains 260 32-bit words.
+
+When byte output is required, Py specifies that the output words are converted little-endian.
+Line 17 is omitted from Pypy, Tpypy, and RCR-32.
+RCR-32 and RCR-64 are identical to the above, except that line 15 is changed to a fixed left-rotate of 19 bits.
+Py6 has the same structure, but the P and Y arrays are shortened to 64 bytes and 68 words, respectively.  P entries are only 6 bits long, a savings that could be exploited in dedicated hardware.  The various offsets into P[] and Y[] are, of course, modified, making the inner loop:
+
+
+== External links ==
+Eli Biham, Jennifer Seberry, Py specification (PostScript)
+Eli Biham, Jennifer Seberry, Tweaking the IV Setup of the Py Family of Stream Ciphers -- The Ciphers TPy, TPypy, and TPy6
+eStream page on Py
+Paul Crowley, Cryptanalysis of Py
+Souradyuti Paul, Bart Preneel, Gautham Sekar, Distinguishing attacks on the stream cipher Py, FSE 2006.
+Gautham Sekar, Souradyuti Paul, Bart Preneel, Weaknesses in the Pseudorandom Bit Generation Algorithms of the Stream Ciphers TPypy and TPy, IACR-ePrint report.
+Souradyuti Paul, Bart Preneel, On the (In)security of Stream Ciphers Based on Arrays and Modular Addition (Full Version) , Asicrypt 2006.
+Gautham Sekar, Souradyuti Paul, Bart Preneel, Related-key Attacks on the Py-family of Ciphers and an Approach to Repair the Weaknesses, Indocrypt 2007.
+The Rijndael page - the "Rijndael FAQ" is gently parodied in Appendix B of the Py specification.

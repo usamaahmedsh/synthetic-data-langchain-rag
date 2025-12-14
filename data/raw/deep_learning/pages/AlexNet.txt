@@ -1,0 +1,64 @@
+AlexNet is a convolutional neural network architecture developed for image classification tasks, notably achieving prominence through its performance in the ImageNet Large Scale Visual Recognition Challenge (ILSVRC). It classifies images into 1,000 distinct object categories and is regarded as the first widely recognized application of deep convolutional networks in large-scale visual recognition.
+Developed in 2012 by Alex Krizhevsky in collaboration with Ilya Sutskever and his Ph.D. advisor Geoffrey Hinton at the University of Toronto, the model contains 60 million parameters and 650,000 neurons. The original paper's primary result was that the depth of the model was essential for its high performance, which was computationally expensive, but made feasible due to the utilization of graphics processing units (GPUs) during training.
+The three formed team SuperVision and submitted AlexNet in the ImageNet Large Scale Visual Recognition Challenge on September 30, 2012. The network achieved a top-5 error rate of 15.3% to win the contest, more than 10.8% above the runner-up.
+The architecture influenced a large number of subsequent work in deep learning, especially in applying neural networks to computer vision.
+
+
+== Architecture ==
+AlexNet contains eight layers: the first five are convolutional layers, some of them followed by max-pooling layers, and the last three are fully connected layers. The network, except the last layer, is split into two copies, each run on one GPU, because the network did not fit the VRAM of a single Nvidia GTX 580 3GB GPU. The entire structure can be written as(CONV → RN → MP)2 → (CONV3 → MP) → (FC → DO)2 → Linear → softmaxwhere
+CONV = convolutional layer (with ReLU activation)
+RN = local response normalization
+MP = max-pooling
+FC = fully connected layer (with ReLU activation)
+Linear = fully connected layer (without activation)
+DO = dropout
+Notably, the convolutional layers 3, 4, 5 were connected to one another without any pooling or normalization. It used the non-saturating ReLU activation function, which trained better than tanh and sigmoid.
+
+
+== Training ==
+The ImageNet training set contained 1.2 million images. The model was trained for 90 epochs over a period of five to six days using two Nvidia GTX 580 GPUs (3GB each). These GPUs have a theoretical performance of 1.581 TFLOPS in float32 and were priced at US$500 upon release. Each forward pass of AlexNet required approximately 1.43 GFLOPs. Based on these values, the two GPUs together were theoretically capable of performing over 2,200 forward passes per second under ideal conditions.
+The dataset images were stored in JPEG format. They took up 27GB of disk. The neural network took up 2GB of RAM on each GPU, and around 5GB of system RAM during training. The GPUs were responsible for training, while the CPUs were responsible for loading images from disk, and data-augmenting the images.
+AlexNet was trained with momentum gradient descent with a batch size of 128 examples, momentum of 0.9, and weight decay of 0.0005. Learning rate started at 10−2 and was manually decreased 10-fold whenever validation error appeared to stop decreasing. It was reduced three times during training, ending at 10−5.
+It used two forms of data augmentation, both computed on the fly on the CPU, thus "computationally free":
+
+Each image from ImageNet was first scaled, so that its shorter side was of length 256. Then the central 256×256 patch was cropped out and normalized (dividing the pixel values so that they fall between 0 and 1, then subtracting by [0.485, 0.456, 0.406], then dividing by [0.229, 0.224, 0.225]. These are the mean and standard deviations for ImageNet, so this whitens the input data).
+Extracting random 224×224 patches (and their horizontal reflections) from the 256×256 crop. This increases the size of the training set 2048-fold.
+Randomly shifting the RGB value of each image along the three principal directions of the RGB values of its pixels.
+The resolution 224×224 was picked, because 256 - 16 - 16 = 224, meaning that given a 256×256 image, framing out a width of 16 on its 4 sides results in a 224×224 image.
+It used local response normalization, and dropout regularization with drop probability 0.5.
+All weights were initialized as gaussians with 0 mean and 0.01 standard deviation. Biases in convolutional layers 2, 4, 5, and all fully-connected layers, were initialized to constant 1 to avoid the dying ReLU problem.
+At test time, to use a trained AlexNet for predicting the class of an image, that image is first scaled, so that its shorter side was of length 256. Then the central 256×256 patch was cropped out. Then, the five 224 × 224 patches (the four corner patches and the center patch) as well as their horizontal reflections are computed, 10 patches in all. The network's predicted probabilities on all 10 patches are averaged, and that is the final predicted probability.
+
+
+=== ImageNet competition ===
+The version they used to enter the 2012 ImageNet competition was an ensemble of 7 AlexNets. 
+Specifically, they trained 5 AlexNets of the previously described architecture (with 5 CONV layers) on the ILSVRC-2012 training set (1.2 million images). They also trained 2 variant AlexNets, obtained by adding one extra CONV layer over the last pooling layer. These were trained by first training on the entire ImageNet Fall 2011 release (15 million images in 22K categories), and then finetuning it on the ILSVRC-2012 training set. The final system of 7 AlexNets was used by averaging their predicted probabilities.
+
+
+== History ==
+
+
+=== Previous work ===
+
+In 1980, Kunihiko Fukushima proposed an early CNN named neocognitron. It was trained by an unsupervised learning algorithm. The LeNet-5 (Yann LeCun et al., 1989) was trained by supervised learning with backpropagation algorithm, with an architecture that is essentially the same as AlexNet on a small scale.
+Max pooling was used in 1990 for speech processing (essentially a 1-dimensional CNN), and for image processing, was first used in the Cresceptron of 1992.
+During the 2000s, as GPU hardware improved, some researchers adapted these for general-purpose computing, including neural network training. (K. Chellapilla et al., 2006) trained a CNN on GPU that was 4 times faster than an equivalent CPU implementation. (Raina et al 2009) trained a deep belief network with 100 million parameters on an Nvidia GeForce GTX 280 at up to 70 times speedup over CPUs. A deep CNN of (Dan Cireșan et al., 2011) at IDSIA was 60 times faster than an equivalent CPU implementation. Between May 15, 2011, and September 10, 2012, their CNN won four image competitions and achieved state of the art for multiple image databases. According to the AlexNet paper, Cireșan's earlier net is "somewhat similar". Both were written with CUDA to run on GPU.
+
+
+=== Computer vision ===
+During the 1990–2010 period, neural networks were not better than other machine learning methods like kernel regression, support vector machines, AdaBoost, structured estimation, among others. For computer vision in particular, much progress came from manual feature engineering, such as SIFT features, SURF features, HoG features, bags of visual words, etc. It was a minority position in computer vision that features can be learned directly from data, a position which became dominant after AlexNet.
+In 2011, Geoffrey Hinton started reaching out to colleagues about "What do I have to do to convince you that neural networks are the future?", and Jitendra Malik, a sceptic of neural networks, recommended the PASCAL Visual Object Classes challenge. Hinton said its dataset was too small, so Malik recommended to him the ImageNet challenge.
+The ImageNet dataset, which became central to AlexNet's success, was created by Fei-Fei Li and her collaborators beginning in 2007. Aiming to advance visual recognition through large-scale data, Li built a dataset far larger than earlier efforts, ultimately containing over 14 million labeled images across 22,000 categories. The images were labeled using Amazon Mechanical Turk and organized via the WordNet hierarchy. Initially met with skepticism, ImageNet later became the foundation of the ImageNet Large Scale Visual Recognition Challenge (ILSVRC) and a key resource in the rise of deep learning.
+Sutskever and Krizhevsky were both graduate students. Before 2011, Krizhevsky had already written cuda-convnet to train small CNNs on CIFAR-10 with a single GPU. Sutskever convinced Krizhevsky, who could do GPGPU well, to train a CNN on ImageNet, with Hinton serving as principal investigator. So Krizhevsky extended cuda-convnet for multi-GPU training. AlexNet was trained on 2 Nvidia GTX 580 in Krizhevsky's bedroom at his parents' house. During 2012, Krizhevsky performed hyperparameter optimization on the network until it won the ImageNet competition later the same year. Hinton commented that, "Ilya thought we should do it, Alex made it work, and I got the Nobel Prize". At the 2012 European Conference on Computer Vision, following AlexNet's win, researcher Yann LeCun described the model as "an unequivocal turning point in the history of computer vision".
+AlexNet's success in 2012 was enabled by the convergence of three developments that had matured over the previous decade: large-scale labeled datasets, general-purpose GPU computing, and improved training methods for deep neural networks. The availability of ImageNet provided the data necessary for training deep models on a broad range of object categories. Advances in GPU programming through Nvidia's CUDA platform enabled practical training of large models. Together with algorithmic improvements, these factors enabled AlexNet to achieve high performance on large-scale visual recognition benchmarks. Reflecting on its significance over a decade later, Fei-Fei Li stated in a 2024 interview: "That moment was pretty symbolic to the world of AI because three fundamental elements of modern AI converged for the first time".
+While AlexNet and LeNet share essentially the same design and algorithm, AlexNet is much larger than LeNet and was trained on a much larger dataset on much faster hardware. Over the period of 20 years, both data and compute became cheaply available.
+
+
+=== Subsequent work ===
+AlexNet is highly influential, resulting in much subsequent work in using CNNs for computer vision and using GPUs to accelerate deep learning. As of early 2025, the AlexNet paper has been cited over 184,000 times according to Google Scholar.
+At the time of publication, there was no framework available for GPU-based neural network training and inference. The codebase for AlexNet was released under a BSD license, and had been commonly used in neural network research for several subsequent years.
+In one direction, subsequent works aimed to train increasingly deep CNNs that achieve increasingly higher performance on ImageNet. In this line of research are GoogLeNet (2014), VGGNet (2014), Highway network (2015), and ResNet (2015). Another direction aimed to reproduce the performance of AlexNet at a lower cost. In this line of research are SqueezeNet (2016), MobileNet (2017), EfficientNet (2019).
+Geoffrey Hinton, Ilya Sutskever, and Alex Krizhevsky formed DNNResearch soon afterwards and sold the company, and the AlexNet source code along with it, to Google. There had been improvements and reimplementations for the AlexNet, but the original version as of 2012, at the time of its winning of ImageNet, had been released under BSD-2 license via Computer History Museum.
+
+
+== References ==

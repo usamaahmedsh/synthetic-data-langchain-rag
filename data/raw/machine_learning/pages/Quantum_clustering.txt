@@ -1,0 +1,99 @@
+Quantum Clustering (QC) is a class of data-clustering algorithms that use conceptual and mathematical tools from quantum mechanics.  QC belongs to the family of density-based clustering algorithms, where clusters are defined by regions of higher density of data points.
+QC was first developed by David Horn and Assaf Gottlieb in 2001.
+
+
+== Original Quantum Clustering Algorithm ==
+Given a set of points in an n-dimensional data space, QC represents each point with a multidimensional Gaussian distribution, with width (standard deviation) sigma, centered at each point's location in the space.  These Gaussians are then added together to create a single distribution for the entire data set.  (This step is a particular example of kernel density estimation, often referred to as a Parzen-Rosenblatt window estimator.)  This distribution is considered to be the quantum-mechanical wave function for the data set.  Loosely speaking, the wave function is a generalized description of where there are likely to be data points in the space.
+QC next introduces the idea of a quantum potential; using the time-independent Schrödinger equation, a potential surface is constructed which has the data set's wave function as a stable solution.  Details in the potential surface are more robust to changes in sigma (the width of the Gaussians) than the corresponding details in the wave function; this advantage is one of the initial motivations for the development of QC.
+The potential surface is considered to be the 'landscape' of the data set, where 'low' points in the landscape correspond to regions of high data density.  QC then uses gradient descent to move each data point 'downhill' in the landscape, causing points to gather together in nearby minima, thus revealing clusters within the data set.
+QC has a single main hyperparameter, which is the width sigma of the Gaussian distribution around each data point.  For sufficiently small sigma, every data point will define its own depression in the landscape, and no points will move, thus creating no clusters.  For sufficiently large sigma, the landscape becomes a single smooth bowl, and every data point will cluster together at the single global minimum in the landscape.  Exploring the range of sigma values between these extremes yields information about the inherent structure of the data set, including hierarchy of structure; smaller sigma values reveal more fine-grained local structure, and larger sigma values reveal overall global structure.  The QC algorithm does not specify a preferred or 'correct' value of sigma.
+
+
+== Dynamic Quantum Clustering ==
+Developed by Marvin Weinstein and David Horn in 2009, Dynamic Quantum Clustering (DQC) extends the basic QC algorithm in several ways.
+
+
+=== Quantum evolution, non-local gradient descent, and tunneling ===
+DQC uses the same potential landscape as QC, but it replaces classical gradient descent with quantum evolution.  To do this, each data point is again represented by its individual wave function (a multidimensional Gaussian distribution with width sigma).  The time-dependent Schrödinger equation is then used to compute each wave function's evolution over time in the given quantum potential.  More precisely, a small time-step value is introduced, and the evolution of the wave function is calculated repeatedly at each time step, with a new expected location for the data point calculated after each step.  This process builds a trajectory through the data space for each point; the evolution continues until all points have stopped moving.
+Importantly, the Ehrenfest theorem from quantum mechanics states that this quantum evolution does, in fact, equate to the point moving downhill in the potential landscape, in expectation.  The "in expectation" part is important because, unlike in classical physics, the point's motion is not influenced only by the gradient of the potential at the point's location; instead, the point's wave function extends over the entire landscape (with the Gaussian centered at the point's location), and a complex interaction between the wave function and the potential determines the point's motion.  As a loose analogy: regions of the landscape that are below the point's current location 'attract' the point—the more so the lower the region is, but the less so the farther away from the point it is.  In the same way, higher regions of the landscape 'repel' the point.
+Thus, quantum evolution for each point acts as a form of non-local gradient descent in the potential.  This non-locality creates the possibility of tunneling, where a point will seem to ignore or pass through a potential barrier on its way toward some lower minimum.  The biggest problem in non-convex gradient descent is often the existence of many small and uninteresting local minima where points can get stuck as they descend.  (This problem tends to get worse as the number of dimensions increases, which is part of the curse of dimensionality.)  DQC's use of non-local gradient descent and tunneling presents a solution to this problem.
+DQC introduces two new hyperparameters: the time step, and the mass of each data point (which controls the degree of tunneling behavior).  Whereas tuning of sigma is integral to understanding any new data set, both time step and mass can usually be left at reasonable default values and still produce useful results.
+An important downside of the quantum-evolution approach is that the time complexity of the evolution is now 
+  
+    
+      
+        O
+        (
+        
+          n
+          
+            3
+          
+        
+        )
+      
+    
+    {\displaystyle O(n^{3})}
+  
+ in the number of data points, since interacting with the entire potential landscape is 
+  
+    
+      
+        O
+        (
+        
+          n
+          
+            2
+          
+        
+        )
+      
+    
+    {\displaystyle O(n^{2})}
+  
+ for each point.  For large data sets, the computation time would quickly become intractable.  When needed, DQC addresses this problem by selecting a limited number of points from the data set to act as a basis (see next section).
+
+
+=== Use of a limited basis ===
+For a data set of n points, DQC creates a set of n quantum eigenstates for use in its underlying calculations; the eigenstates are orthonormal, and each one is a linear combination of the Gaussian distributions representing each data point.
+For large n, the use of n eigenstates becomes computationally intractable, since the creation of the potential and the evolution of individual points are both 
+  
+    
+      
+        O
+        (
+        
+          n
+          
+            3
+          
+        
+        )
+      
+    
+    {\displaystyle O(n^{3})}
+  
+.  To solve this problem, DQC allows for the selection of a more limited basis, as follows.  To act as the basis, b data points (b < n) are chosen such that the basis points span the space occupied by the data set.  (This can be done in multiple ways; the essential goal is to choose the basis points to be as far away from each other as possible.)  DQC then constructs b eigenstates using these b basis points.  These eigenstates represent the basis points perfectly; they are also used to represent all non-basis points, but those representations will be imperfect.  The loss of information is relative to sigma; for a given basis, sigma must be chosen large enough that the basis can be used to represent the non-basis points to some reasonable degree of accuracy.  In a sense, the size of the chosen basis can be thought of as the 'resolution' that is used to 'view' the structure of the data.
+The largest reasonable basis size depends on available computing resources, and on how long one is willing to wait for results.  As of 2020, without access to enterprise-level computing resources, the largest tractable basis size is typically in the range of 1,500–2,000 points.
+
+
+=== Use of dynamic visualization ===
+DQC calculates a trajectory for each data point, which allows for the creation of an animated ('dynamic') visualization in which all data points move along their trajectories simultaneously.  These animations present information not just in the final destination of each point, but in each entire trajectory along the way.  Notably, animations can reveal the existence of channels leading to a given cluster.  (In the landscape metaphor, these structures can be thought of as riverbeds and lakes.)  Although a given visualization is limited to at most 3 spatial dimensions, the appearance of channels and other structures creates the ability to 'see' what is happening in more than 3 dimensions.
+Use of a PCA coordinate system is helpful for these visualizations; viewing the trajectories in the first 3 PCA dimensions packs as much information as possible into a single visualization.
+A given 3D visualization of these trajectories is not an embedding of the trajectories in 3 dimensions.  The trajectories have the same dimensionality as the data space, which is often much larger than 3; the visualization is simply a 3D view into a higher-dimensional motion.
+The channels ('riverbeds') can have meaning in two different ways.  First, they can be treated as subclusters, where different subclusters join the main cluster from different directions.  Second, they can be treated as regressions: position along the channel at a given time (or, equivalently, order of arrival at the cluster center) may be correlated with some metadata of interest.
+
+
+== Applications ==
+Variants of QC have been applied to real-world data in many fields, including biology, geology, physics, finance, engineering, and economics. With these applications, a comprehensive mathematical analysis to find all the roots of the quantum potential has also been worked out.
+
+
+== References ==
+
+
+== External links ==
+Video (YouTube.com): "Exploring Complex, High-Dimensional Data For Hidden Structure", Marvin Weinstein (SETI Talks)
+Video (YouTube.com): "Finding Amazing Structures Hidden in Big, Complex, Dense, Raw Data", Marvin Weinstein (SETI Talks)
+Video (YouTube.com): "Quantum Clustering - Physics Inspired Clustering Algorithm", Sigalit Bechler
+Video (YouTube.com): "Quantum Insights from Complex Datasets", Marvin Weinstein (Talks at Google)

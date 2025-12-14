@@ -1,0 +1,562 @@
+SHA-3 (Secure Hash Algorithm 3) is the latest member of the Secure Hash Algorithm family of standards, released by NIST on August 5, 2015. Although part of the same series of standards, SHA-3 is internally different from the MD5-like structure of SHA-1 and SHA-2.
+SHA-3 is a subset of the broader cryptographic primitive family Keccak ( or ), designed by Guido Bertoni, Joan Daemen, Michaël Peeters, and Gilles Van Assche, building upon RadioGatún. Keccak's authors have proposed additional uses for the function, not (yet) standardized by NIST, including a stream cipher, an authenticated encryption system, a "tree" hashing scheme for faster hashing on certain architectures, and AEAD ciphers Keyak and Ketje.
+Keccak is based on a novel approach called sponge construction. Sponge construction is based on a wide random function or random permutation, and allows inputting ("absorbing" in sponge terminology) any amount of data, and outputting ("squeezing") any amount of data, while acting as a pseudorandom function with regard to all previous inputs. This leads to great flexibility.
+As of 2022, NIST does not plan to withdraw SHA-2 or remove it from the revised Secure Hash Standard. The purpose of SHA-3 is that it can be directly substituted for SHA-2 in current applications if necessary, and to significantly improve the robustness of NIST's overall hash algorithm toolkit.
+For small message sizes, the creators of the Keccak algorithms and the SHA-3 functions suggest using the faster function KangarooTwelve with adjusted parameters and a new tree hashing mode without extra overhead.
+
+
+== History ==
+The Keccak algorithm is the work of Guido Bertoni, Joan Daemen (who also co-designed the Rijndael cipher with Vincent Rijmen), Michaël Peeters, and Gilles Van Assche. It is based on earlier hash function designs PANAMA and RadioGatún. PANAMA was designed by Daemen and Craig Clapp in 1998. RadioGatún, a successor of PANAMA, was designed by Daemen, Peeters, and Van Assche, and was presented at the NIST Hash Workshop in 2006. The reference implementation source code was dedicated to public domain via CC0 waiver.
+In 2006, NIST started to organize the NIST hash function competition to create a new hash standard, SHA-3. SHA-3 is not meant to replace SHA-2, as no significant attack on SHA-2 has been publicly demonstrated . Because of the successful attacks on MD5, SHA-0 and SHA-1,
+NIST perceived a need for an alternative, dissimilar cryptographic hash, which became SHA-3.
+After a setup period, admissions were to be submitted by the end of 2008. Keccak was accepted as one of the 51 candidates. In July 2009, 14 algorithms were selected for the second round. Keccak advanced to the last round in December 2010.
+During the competition, entrants were permitted to "tweak" their algorithms to address issues that were discovered. Changes that have been made to Keccak are:
+
+The number of rounds was increased from 12 + ℓ to 12 + 2ℓ to be more conservative about security.
+The message padding was changed from a more complex scheme to the simple 10*1 pattern described below.
+The rate r was increased to the security limit, rather than rounding down to the nearest power of 2.
+On October 2, 2012, Keccak was selected as the winner of the competition.
+In 2014, the NIST published a draft FIPS 202 "SHA-3 Standard: Permutation-Based Hash and Extendable-Output Functions". FIPS 202 was approved on August 5, 2015.
+On August 5, 2015, NIST announced that SHA-3 had become a hashing standard.
+
+
+=== Weakening controversy ===
+In early 2013 NIST announced they would select different values for the "capacity", the overall strength vs. speed parameter, for the SHA-3 standard, compared to the submission. The changes caused some turmoil.
+The hash function competition called for hash functions at least as secure as the SHA-2 instances. It means that a d-bit output should have d/2-bit resistance to collision attacks and d-bit resistance to preimage attacks, the maximum achievable for d bits of output. Keccak's security proof allows an adjustable level of security based on a "capacity" c, providing c/2-bit resistance to both collision and preimage attacks. To meet the original competition rules, Keccak's authors proposed c = 2d. The announced change was to accept the same d/2-bit security for all forms of attack and standardize c = d. This would have sped up Keccak by allowing an additional d bits of input to be hashed each iteration. However, the hash functions would not have been drop-in replacements with the same preimage resistance as SHA-2 any more; it would have been cut in half, making it vulnerable to advances in quantum computing, which effectively would cut it in half once more.
+In September 2013, Daniel J. Bernstein suggested on the NIST hash-forum mailing list to strengthen the security to the 576-bit capacity that was originally proposed as the default Keccak, in addition to and not included in the SHA-3 specifications. This would have provided at least a SHA3-224 and SHA3-256 with the same preimage resistance as their SHA-2 predecessors, but SHA3-384 and SHA3-512 would have had significantly less preimage resistance than their SHA-2 predecessors. In late September, the Keccak team responded by stating that they had proposed 128-bit security by setting c = 256 as an option already in their SHA-3 proposal. Although the reduced capacity was justifiable in their opinion, in the light of the negative response, they proposed raising the capacity to c = 512 bits for all instances. This would be as much as any previous standard up to the 256-bit security level, while providing reasonable efficiency, but not the 384-/512-bit preimage resistance offered by SHA2-384 and SHA2-512. The authors stated that "claiming or relying on security strength levels above 256 bits is meaningless".
+In early October 2013, Bruce Schneier criticized NIST's decision on the basis of its possible detrimental effects on the acceptance of the algorithm, saying:
+
+There is too much mistrust in the air. NIST risks publishing an algorithm that no one will trust and no one (except those forced) will use. He later retracted his earlier statement, saying:
+I misspoke when I wrote that NIST made "internal changes" to the algorithm. That was sloppy of me. The Keccak permutation remains unchanged. What NIST proposed was reducing the hash function's capacity in the name of performance. One of Keccak's nice features is that it's highly tunable.
+Paul Crowley, a cryptographer and senior developer at an independent software development company, expressed his support of the decision, saying that Keccak is supposed to be tunable and there is no reason for different security levels within one primitive. He also added:
+
+Yes, it's a bit of a shame for the competition that they demanded a certain security level for entrants, then went to publish a standard with a different one. But there's nothing that can be done to fix that now, except re-opening the competition. Demanding that they stick to their mistake doesn't improve things for anyone.
+There was some confusion that internal changes may have been made to Keccak, which were cleared up by the original team, stating that NIST's proposal for SHA-3 is a subset of the Keccak family, for which one can generate test vectors using their reference code submitted to the contest, and that this proposal was the result of a series of discussions between them and the NIST hash team.
+In response to the controversy, in November 2013 John Kelsey of NIST proposed to go back to the original c = 2d proposal for all SHA-2 drop-in replacement instances. The reversion was confirmed in subsequent drafts and in the final release.
+
+
+== Design ==
+
+SHA-3 uses the sponge construction, in which data is "absorbed" into the sponge, then the result is "squeezed" out. In the absorbing phase, message blocks are XORed into a subset of the state, which is then transformed as a whole using a permutation function (or transformation) 
+  
+    
+      
+        f
+      
+    
+    {\displaystyle f}
+  
+. In the "squeeze" phase, output blocks are read from the same subset of the state, alternated with the state transformation function 
+  
+    
+      
+        f
+      
+    
+    {\displaystyle f}
+  
+. The size of the part of the state that is written and read is called the "rate" (denoted 
+  
+    
+      
+        r
+      
+    
+    {\displaystyle r}
+  
+), and the size of the part that is untouched by input/output is called the "capacity" (denoted 
+  
+    
+      
+        c
+      
+    
+    {\displaystyle c}
+  
+). The capacity determines the security of the scheme. The maximum security level is half the capacity.
+Given an input bit string 
+  
+    
+      
+        N
+      
+    
+    {\displaystyle N}
+  
+, a padding function 
+  
+    
+      
+        p
+        a
+        d
+      
+    
+    {\displaystyle pad}
+  
+, a permutation function 
+  
+    
+      
+        f
+      
+    
+    {\displaystyle f}
+  
+ that operates on bit blocks of width 
+  
+    
+      
+        b
+      
+    
+    {\displaystyle b}
+  
+, a rate 
+  
+    
+      
+        r
+      
+    
+    {\displaystyle r}
+  
+ and an output length 
+  
+    
+      
+        d
+      
+    
+    {\displaystyle d}
+  
+, we have capacity 
+  
+    
+      
+        c
+        =
+        b
+        −
+        r
+      
+    
+    {\displaystyle c=b-r}
+  
+ and the sponge construction 
+  
+    
+      
+        Z
+        =
+        
+          sponge
+        
+        [
+        f
+        ,
+        p
+        a
+        d
+        ,
+        r
+        ]
+        (
+        N
+        ,
+        d
+        )
+      
+    
+    {\displaystyle Z={\text{sponge}}[f,pad,r](N,d)}
+  
+. This yields a bit string 
+  
+    
+      
+        Z
+      
+    
+    {\displaystyle Z}
+  
+ of length 
+  
+    
+      
+        d
+      
+    
+    {\displaystyle d}
+  
+ as follows:
+
+pad the input N using the pad function, yielding a padded bit string P with a length divisible by 
+  
+    
+      
+        r
+      
+    
+    {\displaystyle r}
+  
+ (such that 
+  
+    
+      
+        n
+        =
+        
+          len
+        
+        (
+        P
+        )
+        
+          /
+        
+        r
+      
+    
+    {\displaystyle n={\text{len}}(P)/r}
+  
+ is an integer)
+break P into n consecutive r-bit pieces P0, ..., Pn−1
+initialize the state S to a string of b zero bits
+absorb the input into the state: for each block Pi:
+extend Pi at the end by a string of c zero bits, yielding one of length b
+XOR that with S
+apply the block permutation f to the result, yielding a new state S
+initialize Z to be the empty string
+while the length of Z is less than d:
+append the first r bits of S to Z
+if Z is still less than d bits long, apply f to S, yielding a new state S
+truncate Z to d bits
+The fact that the internal state S contains c additional bits of information in addition to what is output to Z prevents the length extension attacks that SHA-2, SHA-1, MD5 and other hashes based on the Merkle–Damgård construction are susceptible to.
+In SHA-3, the state S consists of a 5 × 5 array of w-bit words (with w = 64), b = 5 × 5 × w = 5 × 5 × 64 = 1600 bits total. Keccak is also defined for smaller power-of-2 word sizes w down to 1 bit (total state of 25 bits). Small state sizes can be used to test cryptanalytic attacks, and intermediate state sizes (from w = 8, 200 bits, to w = 32, 800 bits) can be used in practical, lightweight applications.
+For SHA3-224, SHA3-256, SHA3-384, and SHA3-512 instances, r is greater than d, so there is no need for additional block permutations in the squeezing phase; the leading d bits of the state are the desired hash. However, SHAKE128 and SHAKE256 allow an arbitrary output length, which is useful in applications such as optimal asymmetric encryption padding.
+
+
+== Padding ==
+To ensure the message can be evenly divided into r-bit blocks, padding is required. SHA-3 uses the pattern 10...01 in its padding function: a 1 bit, followed by zero or more 0 bits (maximum r − 1) and a final 1 bit.
+The maximum of r − 1 zero bits occurs when the last message block is r − 1 bits long. Then another block is added after the initial 1 bit, containing r − 1 zero bits before the final 1 bit.
+The two 1 bits will be added even if the length of the message is already divisible by r. In this case, another block is added to the message, containing a 1 bit, followed by a block of r − 2 zero bits and another 1 bit. This is necessary so that a message with length divisible by r ending in something that looks like padding does not produce the same hash as the message with those bits removed.
+The initial 1 bit is required so messages differing only in a few additional 0 bits at the end do not produce the same hash.
+The position of the final 1 bit indicates which rate r was used (multi-rate padding), which is required for the security proof to work for different hash variants. Without it, different hash variants of the same short message would be the same up to truncation.
+
+
+== The block permutation ==
+The block transformation f, which is Keccak-f[1600] for SHA-3, is a permutation that uses XOR, AND and NOT operations, and is designed for easy implementation in both software and hardware.
+It is defined for any power-of-two word size, w = 2ℓ bits. The main SHA-3 submission uses 64-bit words, ℓ = 6.
+The state can be considered to be a 5 × 5 × w array of bits. Let a[i][ j][k] be bit (5i + j) × w + k of the input, using a little-endian bit numbering convention and row-major indexing. I.e. i selects the row, j the column, and k the bit.
+Index arithmetic is performed modulo 5 for the first two dimensions and modulo w for the third.
+The basic block permutation function consists of 12 + 2ℓ rounds of five steps:
+
+θ (theta)
+Compute the parity of each of the 5w (320, when w = 64) 5-bit columns, and exclusive-or that into two nearby columns in a regular pattern. To be precise, a[i][ j][k] ← a[i][ j][k] ⊕ parity(a[0...4][j-1][k]) ⊕ parity(a[0...4][j+1][k−1])
+ρ (rho)
+Bitwise rotate each of the 25 words by a different triangular number 0, 1, 3, 6, 10, 15, .... To be precise, a[0][0] is not rotated, and for all 0 ≤ t < 24, a[i][ j][k] ← a[i][ j][k−(t+1)(t+2)/2], where 
+  
+    
+      
+        
+          
+            (
+            
+              
+                
+                  i
+                
+              
+              
+                
+                  j
+                
+              
+            
+            )
+          
+        
+        =
+        
+          
+            
+              (
+              
+                
+                  
+                    3
+                  
+                  
+                    2
+                  
+                
+                
+                  
+                    1
+                  
+                  
+                    0
+                  
+                
+              
+              )
+            
+          
+          
+            t
+          
+        
+        
+          
+            (
+            
+              
+                
+                  0
+                
+              
+              
+                
+                  1
+                
+              
+            
+            )
+          
+        
+      
+    
+    {\displaystyle {\begin{pmatrix}i\\j\end{pmatrix}}={\begin{pmatrix}3&2\\1&0\end{pmatrix}}^{t}{\begin{pmatrix}0\\1\end{pmatrix}}}
+  
+.
+π (pi)
+Permute the 25 words in a fixed pattern. a[3i+2j][i] ← a[ i][j].
+χ (chi)
+Bitwise combine along rows, using x ← x ⊕ (¬y & z). To be precise, a[i][ j][k] ← a[i][ j][k] ⊕ (¬a[i][ j+1][k] & a[i][ j+2][k]). This is the only non-linear operation in SHA-3.
+ι (iota)
+Exclusive-or a round constant into one word of the state. To be precise, in round n, for 0 ≤ m ≤ ℓ, a[0][0][2m−1] is XORed with bit m + 7n of a degree-8 LFSR sequence. This breaks the symmetry that is preserved by the other steps.
+
+
+== Speed ==
+The speed of SHA-3 hashing of long messages is dominated by the computation of f = Keccak-f[1600] and XORing S with the extended Pi, an operation on b = 1600 bits. However, since the last c bits of the extended Pi are 0 anyway, and XOR with 0 is a NOP, it is sufficient to perform XOR operations only for r bits (r = 1600 − 2 × 224 = 1152 bits for SHA3-224, 1088 bits for SHA3-256, 832 bits for SHA3-384 and 576 bits for SHA3-512). The lower r is (and, conversely, the higher c = b − r = 1600 − r), the less efficient but more secure the hashing becomes since fewer bits of the message can be XORed into the state (a quick operation) before each application of the computationally expensive f.
+The authors report the following speeds for software implementations of Keccak-f[1600] plus XORing 1024 bits, which roughly corresponds to SHA3-256:
+
+57.4 cpb on IA-32, Intel Pentium 3
+41 cpb on IA-32+MMX, Intel Pentium 3
+20 cpb on IA-32+SSE, Intel Core 2 Duo or AMD Athlon 64
+12.6 cpb on a typical x86-64-based machine
+6–7 cpb on IA-64
+For the exact SHA3-256 on x86-64, Bernstein measures 11.7–12.25 cpb depending on the CPU. SHA-3 has been criticized for being slow on instruction set architectures (CPUs) which do not have instructions meant specially for computing Keccak functions faster – SHA2-512 is more than twice as fast as SHA3-512, and SHA-1 is more than three times as fast on an Intel Skylake processor clocked at 3.2 GHz. The authors have reacted to this criticism by suggesting to use SHAKE128 and SHAKE256 instead of SHA3-256 and SHA3-512, at the expense of cutting the preimage resistance in half (but while keeping the collision resistance). With this, performance is on par with SHA2-256 and SHA2-512.
+However, in hardware implementations, SHA-3 is notably faster than all other finalists, and also faster than SHA-2 and SHA-1.
+As of 2018, ARM's ARMv8 architecture includes special instructions which enable Keccak algorithms to execute faster and IBM's z/Architecture includes a complete implementation of SHA-3 and SHAKE in a single instruction. There have also been extension proposals for RISC-V to add Keccak-specific instructions.
+
+
+== Instances ==
+The NIST standard defines the following instances, for message M and output length d:
+
+With the following definitions
+
+Keccak[c](N, d) = sponge[Keccak-f[1600], pad10*1, r](N, d)
+Keccak-f[1600] = Keccak-p[1600, 24]
+c is the capacity
+r is the rate = 1600 − c
+N is the input bit string
+SHA-3 instances are drop-in replacements for SHA-2, intended to have identical security properties.
+SHAKE will generate as many bits from its sponge as requested, thus being extendable-output functions (XOFs). For example, SHAKE128(M, 256) can be used as a hash function with a 256 character bitstream with 128-bit security strength. Arbitrarily large lengths can be used as pseudo-random number generators. Alternately, SHAKE256(M, 128) can be used as a hash function with a 128-bit length and 128-bit resistance.
+All instances append some bits to the message, the rightmost of which represent the domain separation suffix. The purpose of this is to ensure that it is not possible to construct messages that produce the same hash output for different applications of the Keccak hash function. The following domain separation suffixes exist:
+
+
+== Additional instances ==
+In December 2016 NIST published a new document, NIST SP.800-185, describing additional SHA-3-derived functions:
+
+• X is the main input bit string. It may be of any length, including zero.
+• L is an integer representing the requested output length in bits.
+• N is a function-name bit string, used by NIST to define functions based on cSHAKE. When no function other than cSHAKE is desired, N is set to the empty string.
+• S is a customization bit string. The user selects this string to define a variant of the function. When no customization is desired, S is set to the empty string.
+• K is a key bit string of any length, including zero.
+• B is the block size in bytes for parallel hashing. It may be any integer such that 0 < B < 22040.
+
+
+== Later developments ==
+
+
+=== KangarooTwelve ===
+
+In 2016 the same team that made the SHA-3 functions and the Keccak algorithm introduced faster reduced-rounds (reduced to 12 and 14 rounds, from the 24 in SHA-3) alternatives which can exploit the availability of parallel execution by using tree hashing: KangarooTwelve and MarsupilamiFourteen.
+These functions differ from ParallelHash, the FIPS standardized Keccak-based parallelizable hash function, with regard to the parallelism, in that they are faster than ParallelHash for small message sizes.
+The reduced number of rounds is justified by the huge cryptanalytic effort focused on Keccak which did not produce practical attacks on anything close to twelve-round Keccak. These higher-speed algorithms are not part of SHA-3 (as they are a later development), and thus are not FIPS compliant; but because they use the same Keccak permutation they are secure for as long as there are no attacks on SHA-3 reduced to 12 rounds.
+KangarooTwelve is a higher-performance reduced-round (from 24 to 12 rounds) version of Keccak which claims to have 128 bits of security while having performance as high as 0.55 cycles per byte on a Skylake CPU. This algorithm is specified in IETF RFC 9861.
+MarsupilamiFourteen, a slight variation on KangarooTwelve, uses 14 rounds of the Keccak permutation and claims 256 bits of security. Note that 256-bit security is not more useful in practice than 128-bit security, but may be required by some standards. 128 bits are already sufficient to defeat brute-force attacks on current hardware, so having 256-bit security does not add practical value, unless the user is worried about significant advancements in the speed of classical computers. For resistance against quantum computers, see below.
+KangarooTwelve and MarsupilamiFourteen are Extendable-Output Functions, similar to SHAKE, therefore they generate closely related output for a common message with different output length (the longer output is an extension of the shorter output). Such property is not exhibited by hash functions such as SHA-3 or ParallelHash (except of XOF variants).
+
+
+=== The Farfalle construction ===
+In 2016, the Keccak team released a different construction called Farfalle construction, and Kravatte, an instance of Farfalle using the Keccak-p permutation, as well as two authenticated encryption algorithms Kravatte-SANE and Kravatte-SANSE
+
+
+=== Sakura tree hashing ===
+RawSHAKE is the basis for the Sakura coding for tree hashing, which has not been standardized yet. Sakura uses a suffix of 1111 for single nodes, equivalent to SHAKE, and other generated suffixes depending on the shape of the tree.
+
+
+== Security against quantum attacks ==
+There is a general result (Grover's algorithm) that quantum computers can perform a structured preimage attack in 
+  
+    
+      
+        
+          
+            
+              2
+              
+                d
+              
+            
+          
+        
+        =
+        
+          2
+          
+            d
+            
+              /
+            
+            2
+          
+        
+      
+    
+    {\displaystyle {\sqrt {2^{d}}}=2^{d/2}}
+  
+, while a classical brute-force attack needs 2d. A structured preimage attack implies a second preimage attack and thus a collision attack. A quantum computer can also perform a birthday attack, thus break collision resistance, in 
+  
+    
+      
+        
+          
+            
+              2
+              
+                d
+              
+            
+            
+              3
+            
+          
+        
+        =
+        
+          2
+          
+            d
+            
+              /
+            
+            3
+          
+        
+      
+    
+    {\displaystyle {\sqrt[{3}]{2^{d}}}=2^{d/3}}
+  
+ (although that is disputed). Noting that the maximum strength can be 
+  
+    
+      
+        c
+        
+          /
+        
+        2
+      
+    
+    {\displaystyle c/2}
+  
+, this gives the following upper bounds on the quantum security of SHA-3:
+
+It has been shown that the Merkle–Damgård construction, as used by SHA-2, is collapsing and, by consequence, quantum collision-resistant, but for the sponge construction used by SHA-3, the authors provide proofs only for the case when the block function f is not efficiently invertible; Keccak-f[1600], however, is efficiently invertible, and so their proof does not apply.
+
+
+== Examples of SHA-3 variants ==
+The following hash values are from NIST.gov:
+
+SHA3-224("")
+6b4e03423667dbb73b6e15454f0eb1abd4597f9a1b078e3f5b5a6bc7
+SHA3-256("")
+a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a
+SHA3-384("")
+0c63a75b845e4f7d01107d852e4c2485c51a50aaaa94fc61995e71bbee983a2ac3713831264adb47fb6bd1e058d5f004
+SHA3-512("")
+a69f73cca23a9ac5c8b567dc185a756e97c982164fe25859e0d1dcc1475c80a615b2123af1f5f94c11e3e9402c3ac558f500199d95b6d3e301758586281dcd26
+SHAKE128("", 256)
+7f9c2ba4e88f827d616045507605853ed73b8093f6efbc88eb1a6eacfa66ef26
+SHAKE256("", 512)
+46b9dd2b0ba88d13233b3feb743eeb243fcd52ea62b81b82b50c27646ed5762fd75dc4ddd8c0f200cb05019d67b592f6fc821c49479ab48640292eacb3b7c4be
+
+Changing a single bit causes each bit in the output to change with 50% probability, demonstrating an avalanche effect:
+
+SHAKE128("The quick brown fox jumps over the lazy dog", 256)
+f4202e3c5852f9182a0430fd8144f0a74b95e7417ecae17db0f8cfeed0e3e66e
+SHAKE128("The quick brown fox jumps over the lazy dof", 256)
+853f4538be0db9621a6cea659a06c1107b1f83f02b13d18297bd39d7411cf10c
+
+
+== Comparison of SHA functions ==
+In the table below, internal state means the number of bits that are carried over to the next block.
+
+Optimized implementation using AVX-512VL (i.e. from OpenSSL, running on Skylake-X CPUs) of SHA3-256 do achieve about 6.4 cycles per byte for large messages, and about 7.8 cycles per byte when using AVX2 on Skylake CPUs. Performance on other x86, Power and ARM CPUs depending on instructions used, and exact CPU model varies from about 8 to 15 cycles per byte, with some older x86 CPUs up to 25–40 cycles per byte.
+
+
+== Implementations ==
+Below is a list of cryptography libraries that support SHA-3:
+
+Rust's sha3
+Botan
+Bouncy Castle
+Crypto++
+Libgcrypt
+Nettle
+OpenSSL
+wolfSSL
+MIRACL Cryptographic SDK
+Golang's x/crypto/sha3
+libkeccak
+Perl's Digest::SHA3
+Zig's std.crypto.sha3
+
+
+== Hardware acceleration ==
+Apple A13 ARMv8 six-core SoC CPU cores have support for accelerating SHA-3 (and SHA-512) using specialized instructions from ARMv8.2-SHA crypto extension set. These instructions do not implement the full SHA3 procedure; instead, they implement smaller operations: EOR3 (three-way XOR), RAX (rotate and XOR), XAR (XOR and rotate), BCAX (Bit-clear and XOR).
+OpenSSL includes various assembly-language implementations of SHA-3 (or rather, the Keccak-f[1600] sponge function). Most improvement comes from optimization of scalar code and not much is gained from SIMD.
+
+On 32-bit x86, only a MMX implementation is provided as "non-MMX-capable processors is an extinct breed". Comments note that it runs at about twice the speed as the scalar x86 code generated by gcc-5.x.
+On 64-bit x86, there are generic, AVX2, AVX-512, and AVX-512VL implementations. The plain version is about 15% faster than code generated by gcc-5.x, the AVX2 version another 15% faster than the generic version on Intel processors (while being much slower on Ryzen). The AVX-512 versions show about 50% improvement over generic on Skylake-X.
+On ARMv4 and above, the handwritten scalar code provides a doubling to tripling of performance over compiler output. The Thumb-2 scalar code provides about 10% benefit. The NEON code provides another doubling of performance, though even in the best case (Snapdragon S4) it takes 24 cycles for each byte processed. On ARMv8, using NEON instructions do not provide any benefit, except in the case of ARMv8.2-SHA where vector registers are lightly used for the hardware-assisted instructions.
+On PowerPC, the scalar assembly version is about twice as fast as gcc-4.x code (newer compilers do much better). POWER8 has a 2x64-bit vector rotate which is helpful, but in POWER9 the faster scalar issue capacity makes the scalar version once again faster.
+The IBM z/Architecture supports SHA-3 since 2017 as part of the Message-Security-Assist Extension 6. The processors support a complete implementation of the entire SHA-3 and SHAKE algorithms via the KIMD and KLMD instructions using a hardware assist engine built into each core.
+
+
+=== Parallel variants ===
+It is easier to accelerate parallel variants of SHA-3 such as ParallelHash128. One such implementation for SSSE3 is found in Crypto++.
+
+
+== Usage in protocols ==
+Ethereum uses the Keccak-256 hash function (as per version 3 of the winning entry to the SHA-3 contest by Bertoni et al., which is different from the final SHA-3 specification).
+
+
+== See also ==
+Ethash – another Keccak-based hash
+
+
+== References ==
+
+
+== Sources ==
+Solomon, M.G. (2019). Ethereum For Dummies. Wiley. ISBN 978-1-119-47411-1. Retrieved November 20, 2024.
+
+
+== External links ==
+The Keccak web site
+SHA-3 Standard
+SHA-3 in Excel - Example implementation and demonstration in Excel (without macros) by Tim Wambach.

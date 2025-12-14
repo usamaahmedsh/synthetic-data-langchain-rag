@@ -1,0 +1,346 @@
+Unified Extensible Firmware Interface (UEFI,  as an initial) is a specification for the firmware architecture of a computing platform. When a computer is powered on, the UEFI implementation is typically the first that runs, before starting the operating system. Examples include AMI Aptio, Phoenix SecureCore, TianoCore EDK II, and InsydeH2O.
+UEFI replaces the BIOS that was present in the boot ROM of all personal computers that are IBM PC compatible, although it can provide backwards compatibility with the BIOS using CSM booting. Unlike its predecessor, BIOS, which is a de facto standard originally created by IBM as proprietary software, UEFI is an open standard maintained by an industry consortium. Like BIOS, most UEFI implementations are proprietary.
+Intel developed the original Extensible Firmware Interface (EFI) specification. The last Intel version of EFI was 1.10 released in 2005. Subsequent versions have been developed as UEFI by the UEFI Forum.
+UEFI is independent of platform and programming language, but C is used for the reference implementation TianoCore EDKII.
+
+
+== History ==
+The original motivation for EFI came during early development of the first Intel–HP Itanium systems in the mid-1990s. BIOS limitations had become too restrictive for the larger server platforms Itanium was targeting. The effort to address these concerns began in 1998 and was initially called Intel Boot Initiative. It was later renamed to Extensible Firmware Interface (EFI).
+The first open-source UEFI implementation, Tiano, was released by Intel in 2004. Tiano has since then been superseded by EDK and EDK II and is now maintained by the TianoCore community.
+In July 2005, Intel ceased its development of the EFI specification at version 1.10 and contributed it to the Unified EFI Forum, which has developed the specification as the Unified Extensible Firmware Interface (UEFI). The original EFI specification remains owned by Intel, which exclusively provides licenses for EFI-based products, but the UEFI specification is owned by the UEFI Forum.
+Version 2.0 of the UEFI specification was released on 31 January 2006. It added cryptography and security.
+Version 2.1 of the UEFI specification was released on 7 January 2007. It added network authentication and the user interface architecture ("Human Interface Infrastructure" in UEFI).
+Version 2.3.1 of the UEFI specification was released on 6 April 2011. It added Secure Boot, as well as ARM architecture support.
+In October 2018, Arm announced Arm ServerReady, a compliance certification program for landing the generic off-the-shelf operating systems and hypervisors on Arm-based servers. The program requires the system firmware to comply with Server Base Boot Requirements (SBBR). SBBR requires UEFI, ACPI and SMBIOS compliance. In October 2020, Arm announced the extension of the program to the edge and IoT market. The new program name is Arm SystemReady. Arm SystemReady defined the Base Boot Requirements (BBR) specification that currently provides three recipes, two of which are related to UEFI: 1) SBBR: which requires UEFI, ACPI and SMBIOS compliance suitable for enterprise-level operating environments such as Windows, Red Hat Enterprise Linux, and VMware ESXi; and 2) EBBR: which requires compliance to a set of UEFI interfaces as defined in the Embedded Base Boot Requirements (EBBR) suitable for embedded environments such as Yocto. Many Linux and BSD distributions can support both recipes.
+In December 2018, Microsoft announced Project Mu, a fork of TianoCore EDK II used in Microsoft Surface and Hyper-V products. The project promotes the idea of firmware as a service.
+The latest UEFI specification, version 2.11, was published in December 2024.
+
+
+== Compatibility ==
+
+
+=== Processor compatibility ===
+UEFI supports processor architectures that are 32-bit or higher. However, only processors with a little-endian mode are supported. The UEFI specification, version 2.11, has official documentation for the following processor architectures:
+
+x86 (IA-32, x86-64)
+Itanium (IA-64)
+ARM (AArch32, AArch64)
+RISC-V (32-bit, 64-bit, 128-bit)
+LoongArch (32-bit, 64-bit)
+Unofficial UEFI support is under development for POWERPC64 by implementing TianoCore on top of OPAL, the OpenPOWER abstraction layer, running in little-endian mode. For MIPS, there also exists an unofficial project
+UEFI only allows executing UEFI applications that match the firmware's bit-width, even if the processor supports smaller or larger bit-widths. For example, a 64-bit UEFI firmware may only execute 64-bit UEFI applications, even if the processor has a 32-bit processor mode. Some low-end computers have been shipped with 32-bit UEFI firmware running on 64-bit CPUs. Once a UEFI application ends the boot services and gets granted full control over the system, it becomes possible to change the processor execution mode. However, calling runtime services requires shortly changing back to the original processor mode, as runtime services may only be called from the same processor mode as the firmware implementation.
+The Linux kernel added support for booting 64-bit kernels on 32-bit UEFI firmware implementations with x86-64 CPUs since version 3.15, requiring the UEFI boot loader to support the EFI handover protocol. The EFI handover protocol allows UEFI boot loaders to defer the UEFI initialization to the kernel's EFI boot stub, so that only the kernel does the UEFI initialization.
+
+
+=== Disk device compatibility ===
+
+In addition to the standard PC disk partition scheme that uses a master boot record (MBR), UEFI also works with the GUID Partition Table (GPT) partitioning scheme, which is free from many of the limitations of MBR. In particular, the MBR limits on the number and size of disk partitions (up to four primary partitions per disk, and up to 2 TB (2 × 240 bytes) per disk) are relaxed. More specifically, GPT allows for a maximum disk and partition size of 8 ZiB (8 × 270 bytes) with 512 byte sectors. The UEFI specification only supports FAT12/16/32 partitions that are on GPT or MBR disks as well as El Torito-formatted optical discs. Although GPT is a part of the UEFI standard, it may also  be usable by BIOS PCs to boot an operating system off of.
+
+
+==== Linux ====
+
+Support for GPT in Linux is enabled by turning on the option CONFIG_EFI_PARTITION (EFI GUID Partition Support) during kernel configuration. This option allows Linux to recognize and use GPT disks after the system firmware passes control over the system to Linux.
+For reverse compatibility, Linux can use GPT disks in BIOS-based systems for both data storage and booting, as both GRUB 2 and Linux are GPT-aware. Such a setup is usually referred to as BIOS-GPT. As GPT incorporates the protective MBR, a BIOS-based computer can boot from a GPT disk using a GPT-aware boot loader stored in the protective MBR's bootstrap code area. In the case of GRUB, such a configuration requires a BIOS boot partition for GRUB to embed its second-stage code due to absence of the post-MBR gap in GPT partitioned disks (which is taken over by the GPT's Primary Header and Primary Partition Table). Commonly 1 MB in size, this partition's Globally Unique Identifier (GUID) in GPT scheme is 21686148-6449-6E6F-744E-656564454649 and is used by GRUB only in BIOS-GPT setups. From GRUB's perspective, no such partition type exists in case of MBR partitioning. This partition is not required if the system is UEFI-based because no embedding of the second-stage code is needed in that case.
+UEFI systems can access GPT disks and boot directly from them, which allows Linux to use UEFI boot methods. Booting Linux from GPT disks on UEFI systems involves creation of an EFI system partition (ESP), which contains UEFI applications such as bootloaders, operating system kernels, and utility software. Such a setup is usually referred to as UEFI-GPT, while ESP is recommended to be at least 512 MB in size and formatted with a FAT32 filesystem for maximum compatibility.
+For backward compatibility, some UEFI implementations also support booting from MBR-partitioned disks through the Compatibility Support Module (CSM) that provides legacy BIOS compatibility. In that case, booting Linux on UEFI systems is the same as on legacy BIOS-based systems.
+
+
+==== Microsoft Windows ====
+Some of the EFI's practices and data formats mirror those of Microsoft Windows.
+Windows 11, 64-bit versions of Windows Vista SP1/SP2 and 7, and both 32-bit and 64-bit versions of Windows 8, 8.1, and 10 can boot from a GPT disk that is larger than 2 TB.
+
+
+== Features ==
+
+
+=== Services ===
+EFI defines two types of services: boot services and runtime services. Boot services are available only while the firmware owns the platform (i.e., before the ExitBootServices() call), and they include text and graphical consoles on various devices, and bus, block and file services. Runtime services are still accessible while the operating system is running; they include services such as date, time and NVRAM access.
+
+Graphics Output Protocol (GOP) services
+The Graphics Output Protocol (GOP) provides runtime services; see also Graphics features section below. The operating system is permitted to directly write to the framebuffer and bit blit provided by GOP during runtime mode.
+UEFI memory map services
+SMM services
+ACPI services
+SMBIOS services
+Devicetree services (for RISC processors)
+Variable services
+UEFI variables provide a way to store data, in particular non-volatile data. Some UEFI variables are shared between platform firmware and operating systems. Variable namespaces are identified by GUIDs, and variables are key/value pairs. For example, UEFI variables can be used to keep crash messages in NVRAM after a crash for the operating system to retrieve after a reboot.
+Time services
+UEFI provides time services. Time services include support for time zone and daylight saving fields, which allow the hardware real-time clock to be set to local time or UTC. On machines using a PC-AT real-time clock, by default the hardware clock still has to be set to local time for compatibility with BIOS-based Windows, unless using recent versions and an entry in the Windows registry is set to indicate the use of UTC.
+
+
+=== Applications ===
+
+Beyond loading an OS, UEFI can run UEFI applications, which reside as files on the EFI system partition. They can be executed from the UEFI Shell, by the firmware's boot manager, or by other UEFI applications. UEFI applications can be developed and installed independently of the original equipment manufacturers (OEMs).
+A type of UEFI application is an OS boot loader such as GRUB, rEFInd, systemd-boot, and Windows Boot Manager, which loads some OS files into memory and executes them. Also, an OS boot loader can provide a user interface to allow the selection of another UEFI application to run. Utilities like the UEFI Shell are also UEFI applications.
+
+
+=== Protocols ===
+EFI defines protocols as a set of software interfaces used for communication between two binary modules. All EFI drivers must provide services to others via protocols. The EFI Protocols are similar to the BIOS interrupt calls.
+
+
+=== Device drivers ===
+In addition to standard instruction set architecture-specific device drivers, EFI provides for a ISA-independent device driver stored in non-volatile memory as EFI byte code or EBC. System firmware has an interpreter for EBC images. In that sense, EBC is analogous to Open Firmware, the ISA-independent firmware used in PowerPC-based Apple Macintosh and Sun Microsystems SPARC computers, among others.
+Some architecture-specific (non-EFI Byte Code) EFI drivers for some device types can have interfaces for use by the OS. This allows the OS to rely on EFI for drivers to perform basic graphics and network functions before, and if, operating-system-specific drivers are loaded.
+In other cases, the EFI driver can be filesystem drivers that allow for booting from other types of disk volumes. Examples include efifs for 37 file systems (based on GRUB2 code), used by Rufus for chain-loading NTFS ESPs.
+
+
+=== Graphics features ===
+The EFI 1.0 specification defined a UGA (Universal Graphic Adapter) protocol as a way to support graphics features. UEFI did not include UGA and replaced it with GOP (Graphics Output Protocol).
+UEFI 2.1 defined a "Human Interface Infrastructure" (HII) to manage user input, localized strings, fonts, and forms (in the HTML sense). These enable original equipment manufacturers (OEMs) or independent BIOS vendors (IBVs) to design graphical interfaces for pre-boot configuration. UEFI uses UTF-16 to encode strings by default.
+Most early UEFI firmware implementations were console-based. Today many UEFI firmware implementations are GUI-based.
+
+
+=== EFI system partition ===
+
+An EFI system partition, often abbreviated to ESP, is a data storage device partition that is used in computers adhering to the UEFI specification. Accessed by the UEFI firmware when a computer is powered up, it stores UEFI applications and the files these applications need to run, including operating system boot loaders. Supported partition table schemes include MBR and GPT, as well as El Torito volumes on optical discs. For use on ESPs, UEFI defines a specific version of the FAT file system, which is maintained as part of the UEFI specification and independently from the original FAT specification, encompassing the FAT32, FAT16 and FAT12 file systems. The ESP also provides space for a boot sector as part of the backward BIOS compatibility.
+
+
+=== Booting ===
+
+
+==== UEFI booting ====
+Unlike the legacy PC BIOS, UEFI does not rely on boot sectors, defining instead a boot manager as part of the UEFI specification. When a computer is powered on, the boot manager checks the boot configuration and, based on its settings, then executes the specified OS boot loader or operating system kernel (usually boot loader). The boot configuration is defined by variables stored in NVRAM, including variables that indicate the file system paths to OS loaders or OS kernels.
+OS boot loaders can be automatically detected by UEFI, which enables easy booting from removable devices such as USB flash drives. This automated detection relies on standardized file paths to the OS boot loader, with the path varying depending on the computer architecture. The format of the file path is defined as <EFI_SYSTEM_PARTITION>\EFI\BOOT\BOOT<MACHINE_TYPE_SHORT_NAME>.EFI; for example, the file path to the OS loader on an x86-64 system is \efi\boot\bootx64.efi, and \efi\boot\bootaa64.efi on ARM64 architecture.
+
+Booting UEFI systems from GPT-partitioned disks is commonly called UEFI-GPT booting. Despite the fact that the UEFI specification requires MBR partition tables to be fully supported. Some UEFI firmware implementations immediately switch to BIOS-based CSM booting depending on the type of boot disk's partition table, effectively preventing UEFI booting to be performed from EFI System Partition on MBR-partitioned disks. Such a boot scheme is commonly called UEFI-MBR.
+It is also common for a boot manager to have a textual user interface so the user can select the desired OS (or setup utility) from a list of available boot options.
+On PC platforms, the BIOS firmware that supports UEFI boot can be called UEFI BIOS, although it may not support CSM boot method, as modern x86 PCs deprecated use of CSM.
+
+
+==== CSM booting ====
+To ensure backward compatibility, UEFI firmware implementations on PC-class machines could support booting in legacy BIOS mode from MBR-partitioned disks through the Compatibility Support Module (CSM) that provides legacy BIOS compatibility. In this scenario, booting is performed in the same way as on legacy BIOS-based systems, by ignoring the partition table and relying on the content of a boot sector.
+BIOS-style booting from MBR-partitioned disks is commonly called BIOS-MBR, regardless of it being performed on UEFI or legacy BIOS-based systems. Furthermore, booting legacy BIOS-based systems from GPT disks is also possible, and such a boot scheme is commonly called BIOS-GPT.
+The Compatibility Support Module allows legacy operating systems and some legacy option ROMs that do not support UEFI to still be used. It also provides required legacy System Management Mode (SMM) functionality, called CompatibilitySmm, as an addition to features provided by the UEFI SMM. An example of such a legacy SMM functionality is providing USB legacy support for keyboard and mouse, by emulating their classic PS/2 counterparts.
+In November 2017, Intel announced that it planned to phase out support CSM for client platforms by 2020.
+In July, of 2022, Kaspersky Labs published information regarding a Rootkit designed to chain boot malicious code on machines using Intel's H81 chipset and the Compatibility Support module of affected motherboards.
+In August 2023, Intel announced that it planned to phase out support CSM for server platforms by 2024.
+Currently  most computers based on Intel platforms do not support CSM.
+
+
+==== Network booting ====
+The UEFI specification includes support for booting over network via the Preboot eXecution Environment (PXE). PXE booting network protocols include Internet Protocol (IPv4 and IPv6), User Datagram Protocol (UDP), Dynamic Host Configuration Protocol (DHCP), Trivial File Transfer Protocol (TFTP) and iSCSI.
+OS images can be remotely stored on storage area networks (SANs), with Internet Small Computer System Interface (iSCSI) and Fibre Channel over Ethernet (FCoE) as supported protocols for accessing the SANs.
+Version 2.5 of the UEFI specification adds support for accessing boot images over HTTP.
+
+
+==== Secure Boot ====
+
+The UEFI specification defines a protocol known as Secure Boot, which can secure the boot process by preventing the loading of UEFI drivers or OS boot loaders that are not signed with an acceptable digital signature. When Secure Boot is enabled, it is initially placed in "setup" mode, which allows a public key known as the "platform key" (PK) to be written to the firmware. Once the key is written, Secure Boot enters "User" mode, where only UEFI drivers and OS boot loaders signed with the platform key can be loaded by the firmware. Additional "key exchange keys" (KEK) can be added to a database stored in memory to allow other certificates to be used, but they must still have a connection to the private portion of the platform key. Secure Boot can also be placed in "Custom" mode, where additional public keys can be added to the system that do not match the private key.
+Secure Boot is supported by Windows 8 and 8.1, Windows Server 2012 and 2012 R2, Windows 10, Windows Server 2016, 2019, and 2022, and Windows 11, VMware vSphere 6.5 and a number of Linux distributions including Fedora (since version 18), openSUSE (since version 12.3), RHEL (since version 7), CentOS (since version 7), Debian (since version 10), Ubuntu (since version 12.04.2), Linux Mint (since version 21.3)., and AlmaLinux OS (since version 8.4). As of January 2025, FreeBSD support is in a planning stage.
+
+
+=== UEFI shell ===
+
+UEFI provides a shell environment, which can be used to execute other UEFI applications, including UEFI boot loaders. Apart from that, commands available in the UEFI shell can be used for obtaining various other information about the system or the firmware, including getting the memory map (memmap), modifying boot manager variables (bcfg), running partitioning programs (diskpart), loading UEFI drivers, and editing text files (edit).
+Source code for a UEFI shell can be downloaded from the Intel's TianoCore UDK/EDK2 project. A pre-built ShellBinPkg is also available. Shell v2 works best in UEFI 2.3+ systems and is recommended over Shell v1 in those systems. Shell v1 should work in all UEFI systems.
+Methods used for launching UEFI shell depend on the manufacturer and model of the system motherboard. Some of them already provide a direct option in firmware setup for launching, e.g. compiled x86-64 version of the shell needs to be made available as <EFI_SYSTEM_PARTITION>/SHELLX64.EFI. Some other systems have an already embedded UEFI shell which can be launched by appropriate key press combinations. For other systems, the solution is either creating an appropriate USB flash drive or adding manually (bcfg) a boot option associated with the compiled version of shell.
+
+
+==== Commands ====
+The following is a list of commands supported by the EFI shell.
+
+
+=== Extensions ===
+Extensions to UEFI can be loaded from virtually any non-volatile storage device attached to the computer. For example, an original equipment manufacturer (OEM) can distribute systems with an EFI system partition on the hard drive, which would add additional functions to the standard UEFI firmware stored on the motherboard's ROM.
+
+
+=== UEFI Capsule ===
+UEFI Capsule defines a Firmware-to-OS firmware update interface, marketed as modern and secure. Windows 8, Windows 8.1, Windows 10, and Fwupd for Linux each support the UEFI Capsule.
+
+
+=== Hardware ===
+Like BIOS, UEFI initializes and tests system hardware components, and then loads the boot loader from a mass storage device or through a network connection. In x86 systems, the UEFI firmware is usually stored in the NOR flash chip of the motherboard, and the boot process is more complex, for example PCI Express devices detection and initialization. In some ARM-based Android and Windows Phone devices, the UEFI boot loader is stored in the eMMC or eUFS flash memory.
+
+
+== Classes ==
+UEFI machines can have one of the following classes, which were used to help ease the transition to UEFI:
+
+Class 0: Legacy BIOS
+Class 1: UEFI with a CSM interface and no external UEFI interface. The only UEFI interfaces are internal to the firmware.
+Class 2: UEFI with CSM and external UEFI interfaces, eg. UEFI Boot.
+Class 3: UEFI without a CSM interface and with an external UEFI interface.
+Class 3+: UEFI class 3 that has Secure Boot enabled.
+Starting from the 10th Gen Intel Core, Intel no longer provides Legacy Video BIOS for the iGPU (Intel Graphics Technology). Legacy boot with those CPUs requires a Legacy Video BIOS, which can still be provided by a video card.
+
+
+== Boot stages ==
+
+
+=== SEC – Security Phase ===
+This is the first stage of the UEFI boot but may have platform specific binary code that precedes it. (e.g., Intel ME, AMD PSP, CPU microcode). It consists of minimal code written in assembly language for the specific architecture. It initializes a temporary memory (often CPU cache-as-RAM (CAR), or SoC on-chip boot processor) and serves as the system's software root of trust with the option of verifying PEI before hand-off.
+
+
+==== Responsibilities ====
+Initialization of temporary memory for next stage, PEI.
+Root of trust, by the means of verifying the integrity of PEI.
+Passing handoff information to the PEI foundation. The information includes the location and size of temporary memory, location and size of stack and state of the platform.
+
+
+=== PEI – Pre-EFI Initialization ===
+The second stage of UEFI boot consists of a dependency-aware dispatcher that loads and runs PEI modules (PEIMs) to handle early hardware initialization tasks such as main memory initialization (initialize memory controller and DRAM) and firmware recovery operations. Additionally, it is responsible for discovery of the current boot mode and handling many ACPI S3 operations. In the case of ACPI S3 resume, it is responsible for restoring many hardware registers to a pre-sleep state. PEI also uses CAR. Initialization at this stage involves creating data structures in memory and establishing default values within these structures.
+This stage has several components including PEI foundation, PEIMs and PPI. Due less resources available in this stage, this stage must be minimal and do minimal preparations for the next stage, DXE, Which is more richer.
+
+
+==== PEI Foundation ====
+After SEC phase hand off, platform responsibility is taken by PEI Foundation. Its responsibilities are:
+
+Successful dispatching of PEIMs (pre-EFI initialization modules).
+Initializing permanent memory (RAM).
+Handing over to the next stage, DXE.
+Facilitating the communication of PEIMs called PPI.
+
+
+==== PEI Dispatcher ====
+This component is responsible for invoking PEIMs and managing their dependencies.
+
+
+==== Pre-EFI Initialization Modules ====
+These are minimal PEI drivers that are responsible for initialization of hardware components, such as permanent memory, CPU, chipset and motherboard. Each of the PEIMs have single responsibilities and focus on single initialization. These drivers come from different vendors.
+
+
+==== PEIMs-to-PEIMs Interfaces ====
+This is a data structure that composed of GUID pairs of pointers. PPIs are discovered by PEIMs through PEI services.
+After minimal initialization of the system for DXE, PEI foundation locates and passes control to DXE. The PEI foundation dispatches DXE foundation through special PPI called IPL(Initial Program Load).
+
+
+=== DXE – Driver Execution Environment ===
+This stage consists of C modules and a dependency-aware dispatcher. With main memory now available, CPU, chipset, mainboard and other I/O devices are initialized in DXE and BDS. Initialization at this stage involves assigning EFI device paths to the hardware connected to the motherboard, and transferring configuration data to the hardware.
+
+
+=== BDS – Boot Device Select (Boot Manager) ===
+BDS is a part of the DXE. In this stage, boot devices are initialized, UEFI drivers or Option ROMs of PCI devices are executed according to architecturally defined variables called NVRAM.
+
+
+=== TSL – Transient System Load ===
+This is the stage between boot device selection and hand-off to the OS. At this point one may enter a UEFI shell, or execute a UEFI application such as the OS boot loader.
+
+
+=== RT – Runtime ===
+The UEFI hands off to the operating system (OS) after ExitBootServices() is executed. A UEFI compatible OS is now responsible for exiting boot services triggering the firmware to unload all no longer needed code and data, leaving only runtime services code/data, e.g. SMM and ACPI. A typical modern OS will prefer to use its own programs (such as kernel drivers) to control hardware devices.
+When a legacy OS is used, CSM will handle this call ensuring the system is compatible with legacy BIOS expectations.
+
+
+== Usage ==
+
+
+=== Implementations ===
+
+Intel's implementation of EFI is the Intel Platform Innovation Framework, codenamed Tiano. Tiano runs on Intel's XScale, Itanium, IA-32 and x86-64 processors, and is proprietary software, although a portion of the code has been released under the BSD license or Eclipse Public License (EPL) as TianoCore EDK II. TianoCore can be used as a payload for coreboot.
+Phoenix Technologies' implementation of UEFI is branded as SecureCore Technology (SCT). American Megatrends offers its own UEFI firmware implementation known as Aptio, while Insyde Software offers InsydeH2O, and Byosoft offers ByoCore.
+In December 2018, Microsoft released an open source version of its TianoCore EDK2-based UEFI implementation from the Surface line, Project Mu.
+An implementation of the UEFI API was introduced into the Universal Boot Loader (Das U-Boot) in 2017. On the ARMv8 architecture Linux distributions use the U-Boot UEFI implementation in conjunction with GNU GRUB for booting (e.g. SUSE Linux), the same holds true for OpenBSD. For booting from iSCSI iPXE can be used as a UEFI application loaded by U-Boot.
+
+
+=== Platforms ===
+
+Intel's first Itanium workstations and servers, released in 2000, implemented EFI 1.02.
+Hewlett-Packard's first Itanium 2 systems, released in 2002, implemented EFI 1.10. These systems were able to boot Windows, Linux, FreeBSD and HP-UX. OpenVMS added UEFI capability in June 2003.
+In January 2006, Apple Inc. shipped its first Intel-based Macintosh computers. These systems used EFI instead of Open Firmware, which had been used on its previous PowerPC-based systems. On 5 April 2006, Apple first released Boot Camp, which produces a Windows drivers disk and a non-destructive partitioning tool to allow the installation of Windows XP or Vista without requiring a reinstallation of Mac OS X (now macOS). A firmware update was also released that added BIOS compatibility to its EFI implementation. Subsequent Macintosh models shipped with the newer firmware.
+During 2005, more than one million Intel systems shipped with Intel's implementation of UEFI. New mobile, desktop and server products, using Intel's implementation of UEFI, started shipping in 2006. For instance, boards that use the Intel 945 chipset series use Intel's UEFI firmware implementation.
+Since 2005, EFI has also been implemented on non-PC architectures, such as embedded systems based on XScale cores.
+The EDK (EFI Developer Kit) includes an NT32 target, which allows EFI firmware and EFI applications to run within a Windows application. However, no direct hardware access is allowed by EDK NT32. This means only a subset of EFI application and drivers can be executed by the EDK NT32 target.
+In 2008, more x86-64 systems adopted UEFI. While many of these systems still allow booting only the BIOS-based OSes via the Compatibility Support Module (CSM) (thus not appearing to the user to be UEFI-based), other systems started to allow booting UEFI-based OSes. For example, IBM x3450 server, MSI motherboards with ClickBIOS and HP EliteBook Notebook PCs.
+In 2009, IBM shipped System x machines (x3550 M2, x3650 M2, iDataPlex dx360 M2) and BladeCenter HS22 with UEFI capability. Dell shipped PowerEdge T610, R610, R710, M610 and M710 servers with UEFI capability. More commercially available systems are mentioned in a UEFI whitepaper.
+In 2011, major vendors (such as ASRock, Asus, Gigabyte, and MSI) launched several consumer-oriented motherboards using the Intel 6-series LGA 1155 chipset and AMD 9 Series AM3+ chipsets with UEFI.
+With the release of Windows 8 in October 2012, Microsoft's certification requirements now require that computers include firmware that implements the UEFI specification. Furthermore, if the computer supports the "Connected Standby" feature of Windows 8 (which allows devices to have power management comparable to smartphones, with an almost instantaneous return from standby mode), then the firmware is not permitted to contain a Compatibility Support Module (CSM). As such, systems that support Connected Standby are incapable of booting Legacy BIOS operating systems.
+In October 2017, Intel announced that it would remove legacy PC BIOS support from all its products by 2020, in favor of UEFI Class 3. By 2019, all computers based on Intel platforms no longer have legacy PC BIOS support.
+
+
+=== Operating systems ===
+A operating system that can be booted from (U)EFI is called a (U)EFI-aware operating system, defined by (U)EFI specification. Here the term booted from a (U)EFI means directly booting the system using a (U)EFI operating system loader stored on any storage device. The default location for the operating system loader is <EFI_SYSTEM_PARTITION>/BOOT/BOOT<MACHINE_TYPE_SHORT_NAME>.EFI, where short name of the machine type can be IA32, X64, IA64, ARM or AA64. Some operating systems vendors may have their own boot loaders. They may also change the default boot location.
+
+The Linux kernel has been able to use EFI at boot time since early 2000s, using the elilo EFI boot loader or, more recently, EFI versions of GRUB. Grub+Linux also supports booting from a GUID partition table without UEFI. The distribution Ubuntu added support for UEFI Secure Boot as of version 12.10. Furthermore, the Linux kernel can be compiled with the option to run as an EFI bootloader on its own through the EFI boot stub feature.
+HP-UX has used (U)EFI as its boot mechanism on IA-64 systems since 2002.
+OpenVMS has used EFI on IA-64 since its initial evaluation release in December 2003, and for production releases since January 2005. OpenVMS on x86-64 also uses UEFI to boot the operating system.
+Apple uses EFI for its line of Intel-based Macs. Mac OS X v10.4 Tiger and Mac OS X v10.5 Leopard implements EFI v1.10 in 32-bit mode even on 64-bit CPUs, but full support arrived with OS X v10.8 Mountain Lion.
+The Itanium versions of Windows 2000 (Advanced Server Limited Edition and Datacenter Server Limited Edition; based on the pre-release Windows Server 2003 codebase) implemented EFI 1.10 in 2002. Windows XP 64-bit Edition, Windows 2000 Advanced Server Limited Edition (pre-release Windows Server 2003) and Windows Server 2003 for IA-64, all of which are for the Intel Itanium family of processors, implement EFI, a requirement of the platform through the DIG64 specification.
+Microsoft introduced UEFI for x64 Windows operating systems with Windows Vista SP1 and Windows Server 2008 however only UGA (Universal Graphic Adapter) 1.1 or Legacy BIOS INT 10h is supported; Graphics Output Protocol (GOP) is not supported. Therefore, PCs running 64-bit versions of Windows Vista SP1, Windows Vista SP2, Windows 7, Windows Server 2008 and Windows Server 2008 R2 are compatible with UEFI Class 2. 32-bit UEFI was originally not supported since vendors did not have any interest in producing native 32-bit UEFI firmware because of the mainstream status of 64-bit computing. Windows 8 finally introduced further optimizations for UEFI systems, including Graphics Output Protocol (GOP) support, a faster startup, 32-bit UEFI support, and Secure Boot support. Since Windows 8, the UEFI firmware with ACPI protocol is a mandatory requirement for ARM-based Microsoft Windows operating systems. Microsoft began requiring UEFI to run Windows with Windows 11, with IoT Enterprise editions of Windows 11 since version 24H2 exempt from the requirement.
+On 5 March 2013, the FreeBSD Foundation awarded a grant to a developer seeking to add UEFI support to the FreeBSD kernel and bootloader. The changes were initially stored in a discrete branch of the FreeBSD source code, but were merged into the mainline source on 4 April 2014 (revision 264095); the changes include support in the installer as well. UEFI boot support for amd64 first appeared in FreeBSD 10.1 and for arm64 in FreeBSD 11.0.
+Oracle Solaris 11.1 and later support UEFI boot for x86 systems with UEFI firmware version 2.1 or later. GRUB 2 is used as the boot loader on x86.
+OpenBSD 5.9 introduced UEFI boot support for 64-bit x86 systems using its own custom loader, OpenBSD 6.0 extended that support to include ARMv7.
+illumos added basic UEFI support in October 2017.
+ArcaOS supports UEFI booting since the 5.1 release. ArcaOS' UEFI support emulates specific BIOS functionality which the operating system depends on (particularly interrupts INT 10H and INT 13H).
+
+
+=== With virtualization ===
+HP Integrity Virtual Machines provides UEFI boot on HP Integrity Servers. It also provides a virtualized UEFI environment for the guest UEFI-aware OSes.
+Intel hosts an Open Virtual Machine Firmware project on SourceForge.
+VMware Fusion 3 software for Mac OS X can boot Mac OS X Server virtual machines using UEFI.
+VMware Workstation prior to version 11 unofficially supports UEFI, but is manually enabled by editing the .vmx file. VMware Workstation version 11 and above supports UEFI, independently of whether the physical host system is UEFI-based. VMware Workstation 14 (and accordingly, Fusion 10) adds support for the Secure Boot feature of UEFI.
+The VMware ESXi 5.0 hypervisor officially supports UEFI. Version 6.5 adds support for Secure Boot.
+VirtualBox has implemented UEFI since 3.1, but is limited to Unix/Linux operating systems and Windows 8 and later (does not work with Windows Vista x64 and Windows 7 x64).
+QEMU/KVM can be used with the Open Virtual Machine Firmware (OVMF) provided by TianoCore.
+The second generation of the Microsoft Hyper-V virtual machine supports virtualized UEFI.
+Google Cloud Platform Shielded VMs support virtualized UEFI to enable Secure Boot.
+
+
+== Applications development ==
+EDK2 Application Development Kit (EADK) makes it possible to use standard C library functions in UEFI applications. EADK can be freely downloaded from the Intel's TianoCore UDK / EDK2 SourceForge project. As an example, a port of the Python interpreter is made available as a UEFI application by using the EADK. The development has moved to GitHub since .UDK2015.
+
+
+== Criticism ==
+Numerous digital rights activists have protested UEFI.
+Ronald G. Minnich, a co-author of coreboot, and Cory Doctorow, a digital rights activist, have criticized UEFI as an attempt to remove the ability of the user to truly control the computer. It does not solve the BIOS's long-standing problems of requiring two different drivers—one for the firmware and one for the operating system—for most hardware.
+Open-source project TianoCore also provides UEFIs. TianoCore lacks the specialized firmware drivers and modules that initialize chipset functions, but TianoCore is one of many payload options of coreboot. The development of coreboot requires cooperation from chipset manufacturers to provide the specifications needed to develop initialization drivers.
+
+
+=== Secure Boot ===
+
+In 2011, Microsoft announced that computers certified to run its Windows 8 operating system had to ship with Microsoft's public key enrolled and Secure Boot enabled, which implies that using UEFI is a requirement for these devices. Following the announcement, the company was accused by critics and free-software/open-source advocates (including the Free Software Foundation) of trying to use the Secure Boot functionality of UEFI to hinder or outright prevent the installation of alternative operating systems such as Linux. Microsoft denied that the Secure Boot requirement was intended to serve as a form of lock-in and clarified its requirements by stating that x86-based systems certified for Windows 8 must allow Secure Boot to enter custom mode or be disabled, but not on systems using the ARM architecture. Windows 10 allows OEMs to decide whether or not Secure Boot can be managed by users of their x86 systems.
+Other developers raised concerns about the legal and practical issues of implementing support for Secure Boot on Linux systems in general. Former Red Hat developer Matthew Garrett noted that conditions in the GNU General Public License version 3 may prevent the use of the GNU GRand Unified Bootloader without a distribution's developer disclosing the private key (however, the Free Software Foundation has since clarified its position, assuring that the responsibility to make keys available was held by the hardware manufacturer), and that it would also be difficult for advanced users to build custom kernels that could function with Secure Boot enabled without self-signing them. Other developers suggested that signed builds of Linux with another key could be provided, but noted that it would be difficult to persuade OEMs to ship their computers with the required key alongside the Microsoft key.
+Several major Linux distributions have developed different implementations for Secure Boot. Garrett himself developed a minimal bootloader known as a shim, which is a precompiled, signed bootloader that allows the user to individually trust keys provided by Linux distributions. Ubuntu 12.10 uses an older version of shim pre-configured for use with Canonical's own key that verifies only the bootloader and allows unsigned kernels to be loaded; developers believed that the practice of signing only the bootloader is more feasible, since a trusted kernel is effective at securing only the user space, and not the pre-boot state for which Secure Boot is designed to add protection. That also allows users to build their own kernels and use custom kernel modules as well, without the need to reconfigure the system. Canonical also maintains its own private key to sign installations of Ubuntu pre-loaded on certified OEM computers that run the operating system, and also plans to enforce a Secure Boot requirement as well—requiring both a Canonical key and a Microsoft key (for compatibility reasons) to be included in their firmware. Fedora also uses shim, but requires that both the kernel and its modules be signed as well. shim has Machine Owner Key (MOK) that can be used to sign locally compiled kernels and other software not signed by distribution maintainer.
+It has been disputed whether the operating-system kernel and its modules must be signed as well; while the UEFI specifications do not require it, Microsoft has asserted that their contractual requirements do, and that it reserves the right to revoke any certificates used to sign code that can be used to compromise the security of the system. In Windows, if Secure Boot is enabled, all kernel drivers must be digitally signed; non-WHQL drivers may be refused to load. In February 2013, another Red Hat developer attempted to submit a patch to the Linux kernel that would allow it to parse Microsoft's authenticode signing using a master X.509 key embedded in PE files signed by Microsoft. However, the proposal was criticized by Linux creator Linus Torvalds, who attacked Red Hat for supporting Microsoft's control over the Secure Boot infrastructure.
+On 26 March 2013, the Spanish free-software development group Hispalinux filed a formal complaint with the European Commission, contending that Microsoft's Secure Boot requirements on OEM systems were "obstructive" and anti-competitive.
+At the Black Hat conference in August 2013, a group of security researchers presented a series of exploits in specific vendor implementations of UEFI that could be used to exploit Secure Boot.
+In August 2016 it was reported that two security researchers had found the "golden key" security key Microsoft uses in signing operating systems. Technically, no key was exposed, however, an exploitable binary signed by the key was. This allows any software to run as though it was genuinely signed by Microsoft and exposes the possibility of rootkit and bootkit attacks. This also makes patching the fault impossible, since any patch can be replaced (downgraded) by the (signed) exploitable binary. Microsoft responded in a statement that the vulnerability only exists in ARM architecture and Windows RT devices, and has released two patches; however, the patches do not (and cannot) remove the vulnerability, which would require key replacements in end-user firmware to fix.
+On 1 March 2023, researchers from ESET Cybersecurity Firm reported "The first in-the-wild UEFI bootkit bypassing UEFI Secure Boot" named "BlackLotus" in their public analyses findings describing the theory behind its mechanics exploiting the patches that "do not (and cannot) remove the vulnerability".
+In August 2024, the Windows 11 and Windows 10 security updates applied the Secure Boot Advanced Targeting (SBAT) settings to device's UEFI NVRAM, which caused some Linux distributions to fail to load. SBAT is a protocol that supported in new versions of Windows Boot Manager and shim, which refuse buggy or vulnerable intermediate bootloaders (usually older versions of Windows Boot Manager and GRUB) to load in the boot process. The change was reverted the next month.
+In June 2025, LWN.net reported that the Microsoft UEFI CA 2011 certificate will be expired in June 2026, which may refuse some Linux to load if Secure Boot is enabled. However, in TianoCore EDK II as well as many commercial UEFI implementations (such as AMI Aptio), time/date check for Secure Boot certificate is usually disabled by default.
+Many Linux distributions support UEFI Secure Boot as of January 2025, such as RHEL (RHEL 7 and later), CentOS (CentOS 7 and later), Ubuntu, Fedora, Debian (Debian 10 and later), OpenSUSE, and SUSE Linux Enterprise.
+
+
+=== Firmware problems ===
+The increased prominence of UEFI firmware in devices has also led to a number of technical problems blamed on their respective implementations.
+Following the release of Windows 8 in late 2012, it was discovered that certain Lenovo computer models with Secure Boot had firmware that was hardcoded to allow only executables named "Windows Boot Manager" or "Red Hat Enterprise Linux" to load, regardless of any other setting. Other problems were encountered by several Toshiba laptop models with Secure Boot that were missing certain certificates required for its proper operation.
+In January 2013, a bug surrounding the UEFI implementation on some Samsung laptops was publicized, which caused them to be bricked after installing a Linux distribution in UEFI mode. While potential conflicts with a kernel module designed to access system features on Samsung laptops were initially blamed (also prompting kernel maintainers to disable the module on UEFI systems as a safety measure), Matthew Garrett discovered that the bug was actually triggered by storing too many UEFI variables to memory, and that the bug could also be triggered under Windows under certain conditions. In conclusion, he determined that the offending kernel module had caused kernel message dumps to be written to the firmware, thus triggering the bug.
+
+
+== See also ==
+Bootloader
+OpenBIOS
+UEFI Platform Initialization (UEFI PI)
+ACPI (Advanced Configuration and Power Interface)
+System Management BIOS (SMBIOS)
+Trusted Platform Module (TPM)
+UEFITool
+MoonBounce
+UBIOS
+
+
+== Notes ==
+
+
+== References ==
+
+
+== Further reading ==
+Zimmer, Vincent; Rothman, Michael; Hale, Robert (10 May 2007). "EFI Architecture". Dr. Dobb's Journal. UBM. Retrieved 12 October 2012.
+de Boyne Pollard, Jonathan (11 July 2011). "The EFI boot process". Frequently Given Answers. Retrieved 12 October 2012.
+de Boyne Pollard, Jonathan (8 December 2011). "The Windows NT 6 boot process". Frequently Given Answers. Retrieved 12 October 2012.
+Smith, Roderick W. (2011). "A BIOS to UEFI Transformation". Roderick W. Smith's Web Page. Retrieved 12 October 2012.
+Kothari, Rajiv (21 September 2011). "UEFI – Just How Important It Really Is". Hardware Secrets. Archived from the original on 25 October 2012. Retrieved 12 October 2012.
+Fisher, Doug (2011). "UEFI Today: Bootstrapping the Continuum". Intel Technology Journal. 15 (1). Intel. ISBN 9781934053430. Archived from the original on 27 September 2013. Retrieved 24 September 2013.
+
+
+== External links ==
+
+Official website
+UEFI Specifications
+Intel-sponsored open-source EFI Framework initiative
+Intel EFI/UEFI portal
+Microsoft UEFI Support and Requirements for Windows Operating Systems
+How Windows 8 Hybrid Shutdown / Fast Boot feature works
+Securing the Windows 10 Boot Process
+LoJax: First UEFI rootkit found in the wild, courtesy of the Sednit group
+Python Interpreter for UEFI Shell

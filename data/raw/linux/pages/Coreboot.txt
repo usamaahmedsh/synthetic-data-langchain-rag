@@ -1,0 +1,108 @@
+coreboot (formerly LinuxBIOS) is an open‑source project that provides lightweight firmware to initialize hardware and then load an operating system. It is designed to replace proprietary firmware (traditional BIOS or UEFI implementations) by performing the minimal tasks required to start a modern 32-bit or 64-bit operating system.
+Because coreboot performs low‑level hardware initialization, it must be ported to each supported chipset and motherboard model; consequently, availability is limited to platforms for which support has been implemented.
+One of the well‑known variants of coreboot is Libreboot, a software distribution that focuses on removing proprietary binary blobs from the firmware stack.
+
+
+== History ==
+The coreboot project began with the goal of creating a BIOS that boots quickly and handles errors intelligently. It is distributed under the terms of the GNU General Public License version 2 (GPLv2). 
+Main contributors include LANL, SiS, AMD, Coresystems and Linux Networx, Inc, as well as motherboard vendors MSI, Gigabyte and Tyan, which offer coreboot alongside their standard BIOS or provide specifications of the hardware interfaces for some of their motherboards. Google partly sponsors the coreboot project. CME Group, a financial public company, began supporting the coreboot project in 2009.
+Other than the first three models, all Chromebooks run coreboot. 
+Code from Das U-Boot has been assimilated to enable support for processors based on the ARM instruction set.
+In June 2019, coreboot began to use the NSA software Ghidra for its reverse engineering efforts on firmware-specific problems following the release of the suite as free and open source software.
+
+
+== Supported platforms ==
+coreboot supports multiple CPU architectures, including IA-32, x86-64, ARM, ARM64, MIPS and RISC-V. Support covers a variety of system-on-a-chip (SoC) platforms as well; early development focused on AMD Geode processors (notably those used in the OLPC project). 
+Artec Group added Geode LX support for its ThinCan model DBE61; that code was adopted by AMD and further improved for the OLPC after it was upgraded to the Geode LX platform, and is further developed by the coreboot community to support other Geode variants. coreboot can be flashed onto a Geode platform using Flashrom.
+From that initial development on AMD Geode based platforms, coreboot support has been extended onto many AMD processors and chipsets. The processor list includes Family 0Fh and 10h (K8 core), and recently Family 14h (Bobcat core, Fusion APU). coreboot support also extends to AMD chipsets: RS690, RS7xx, SB600, and SB8xx.
+In AMD Generic Encapsulated Software Architecture (AGESA)‍—‌a bootstrap protocol by which system devices on AMD64 mainboards are initialized‍—‌was open sourced in early 2011, aiming to provide required functionality for coreboot system initialization on AMD64 hardware. However, as of 2014 such releases never became the basis for future development by AMD, and were subsequently halted.
+Devices that could be preloaded with coreboot or one of its derivatives include:  
+
+Lenovo/IBM
+The Libreboot T400 and X200 (rebranded ThinkPad T400 and X200, respectively, available from Minifree, previously known as Gluglug).
+Artec Group
+ThinCan models DBE61, DBE62 and DBE63, and fanless server/router hardware manufactured by PC Engines.
+Purism
+Librem laptops come with coreboot.
+Others
+Some System76 PCs use coreboot TianoCore firmware, including open source Embedded Controller firmware.
+Dasharo offers an alternative coreboot-based firmware distribution for computers from MSI, NovaCustom and Nitrokey, among others.
+StarLabs Systems use coreboot firmware, as an alternative.
+Some Tesla Model 3 cars have adopted Ryzen Embedded or Intel Atom processor on the car computer, and adopted coreboot as the bootloader.
+
+
+== Design ==
+Coreboot typically loads a Linux kernel, but it can load any other stand-alone ELF executable, such as iPXE, gPXE or Etherboot that can boot a Linux kernel over a network, or SeaBIOS that can load a Linux kernel, Windows 2000 and later, and BSDs; Windows 2000/XP and OpenBSD support was previously provided by ADLO. coreboot can also load a kernel from any supported device, such as Myrinet, Quadrics, or SCI cluster interconnects. Booting other kernels directly is also possible, such as a Plan 9 kernel. Instead of loading a kernel directly, coreboot can pass control to a dedicated boot loader, such as a coreboot-capable version of GNU GRUB 2.
+Coreboot is primarily implemented in C, with a small amount of assembly code. Choosing C as the primary programming language facilitates code audits when compared to contemporary PC BIOS that was generally written in assembly, which results in improved security. There is build and runtime support to write parts of coreboot in Ada to further raise the security bar, but it is currently only sporadically used. The source code is released under the GNU GPL version 2 license.
+Coreboot performs the absolute minimal amount of hardware initialization and then passes control to the operating system. As a result, there is no coreboot code running once the operating system has taken control. A feature of coreboot is that the x86 version runs in 32-bit mode after executing only ten instructions (almost all other x86 BIOSes run exclusively in 16-bit mode). This is similar to the modern UEFI firmware, which is used on newer PC hardware.
+
+
+=== Initializing DRAM ===
+The most difficult hardware that coreboot initializes is the DRAM controllers and DRAM. In some cases, technical documentation on this subject is NDA restricted or unavailable. RAM initialization is particularly difficult because before the RAM is initialized it cannot be used. Therefore, to initialize DRAM controllers and DRAM, the initialization code may have only the CPU's general purpose registers or Cache-as-RAM as temporary storage.
+romcc, a C compiler that uses registers instead of RAM, eases the task. Using romcc, it is relatively easy to make SMBus accesses to the SPD ROMs of the DRAM DIMMs, that allows the RAM to be used.
+With newer x86 processors, the processor cache can be used as RAM until DRAM is initialized. The processor cache has to be initialized into Cache-as-RAM mode as well, but this needs fewer instructions than initializing DRAM. Also, the Cache-as-RAM mode initialization is specific to CPU architectures, thus more generic than DRAM initialization, which is specific to each chipset and mainboard.
+For most modern x86 platforms, closed source binary-only components provided by the vendor are used for DRAM setup.  For Intel systems, FSP-M is required, while AMD has no current support. Binary AGESA is currently used for proprietary UEFI firmware on AMD systems, and this model is expected to carry over to any future AMD-related coreboot support.
+
+
+== Developing and debugging coreboot ==
+
+Developers use a variety of hardware and software debugging tools when working on coreboot. These include in‑circuit emulators, JTAG probes (for example the Sage SmartProbe), and BIOS/firmware emulators. Code may be tested on emulators or downloaded to target hardware rather than being immediately flashed to a BIOS device. being an example. Code can be built on, or downloaded to, BIOS emulators rather than flashing the BIOS device.
+
+
+== Payloads ==
+
+coreboot loads a payload after hardware initialization. Payloads may be written with the libpayload helper library or be independent projects. Notable payloads include the following:
+
+SeaBIOS provides a "legacy BIOS" interface
+TianoCore EDK II, the de-facto standard generic UEFI services implementation
+GRUB 2, most commonly used as an on-disk bootloader, can also be compiled as a coreboot payload
+A Linux kernel can also be used as payload, typically in the form of LinuxBoot
+Depthcharge is used by Google for ChromeOS
+A branch of Das U-Boot was used by Google for ChromiumOS in the past
+
+
+== European Coreboot Conference ==
+One physical meeting is the European Coreboot Conference which was organized in October 2017 and lasted for three days.
+
+
+=== Conference history ===
+
+
+== Variants ==
+coreboot has a number of variants from its original code base each with slightly different objectives:.
+
+Libreboot - A variant with a primary focus to remove some binary blobs.
+osboot - A variant similar to Libreboot that scrapped its only some blobs policy to increase hardware support and stability. Merged with libreboot as of November 2022.
+MrChromebox has developed a modified version of coreboot for ChromeOS based devices.
+GNU Boot - A variant with a primary focus to remove all binary blobs.
+Canoeboot
+Dasharo - A distribution based on coreboot developed by 3mdeb, intended to simplify manufacturers shipping coreboot on products. They aim to make it easy for manufacturers to ship products with coreboot.
+Skulls - A variant aimed at ease of installation.
+Heads - A variant aimed at physical security and usage of free software, recommended for use with QubesOS.
+oreboot - a fork rewritten in Rust
+
+
+== See also ==
+
+Beowulf cluster
+LinuxBoot
+Open-source hardware
+Rapid Boot
+
+
+== References ==
+
+
+== Further reading ==
+Inside the Linux boot process, by M. Jones, IBM
+Open BIOSes for Linux, by Peter Seebach (archive only)
+LinuxBIOS ready to go mainstream, by Bruce Byfield
+First desktop motherboard supported by LinuxBIOS: GIGABYTE M57SLI-S4, by Brandon Howard
+Video recording of Ron Minnich's LinuxBIOS talk from FOSDEM 2007
+Coreboot Your Service, Linux Journal, October 2009
+media.ccc.de - Search for "Peter Stuge"
+
+
+== External links ==
+ Media related to Coreboot at Wikimedia Commons
+Official website

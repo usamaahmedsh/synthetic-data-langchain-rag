@@ -1,0 +1,833 @@
+The Temporary Contact Numbers Protocol, or TCN Protocol, is an open source, decentralized, anonymous exposure alert protocol developed by Covid Watch in response to the COVID-19 pandemic. The Covid Watch team, started as an independent research collaboration between Stanford University and the University of Waterloo was the first in the world to publish a white paper, develop, and open source fully anonymous Bluetooth exposure alert technology in collaboration with CoEpi after writing a blog post on the topic in early March.
+Covid Watch's TCN Protocol received significant news coverage and was followed by similar decentralized protocols in early April 2020 like DP-3T, PACT, and Google/Apple Exposure Notification framework. Covid Watch then helped other groups like the TCN Coalition and MIT SafePaths implement the TCN Protocol within their open source projects to further the development of decentralized technology and foster global interoperability of contact tracing and exposure alerting apps, a key aspect of achieving widespread adoption. Covid Watch volunteers and nonprofit staff also built a fully open source mobile app for sending anonymous exposure alerts first using the TCN Protocol and later using the very similar Google/Apple Exposure Notification Framework (ENF).
+The protocol, like BlueTrace and the Google / Apple contact tracing project, use Bluetooth Low Energy to track and log encounters with other users. The major distinction between TCN and protocols like BlueTrace is the fact the central reporting server never has access to contact logs nor is it responsible for processing and informing clients of contact. Because contact logs are never transmitted to third parties, it has major privacy benefits over approaches like the one used in BlueTrace. This approach however, by its very nature, does not allow for human-in-the-loop reporting, potentially leading to false positives if the reports are not verified by public health agencies.
+The TCN protocol received notoriety as one of the first widely released digital contact tracing protocols alongside BlueTrace, the Exposure Notification framework, and the Pan-European Privacy-Preserving Proximity Tracing (PEPP-PT) project. It also stood out for its incorporation of blockchain technology, and its influence over the Google/Apple project.
+
+
+== Overview ==
+The TCN protocol works off the basis of Temporary Contact Numbers (TCN), semi-random identifiers derived from a seed. When two clients encounter each other, a unique TCN is generated, exchanged, and then locally stored in a contact log. Then, once a user tests positive for infection, a report is sent to a central server. Each client on the network then collects the reports from the server and independently checks their local contact logs for a TCN contained in the report. If a matching TCN is found, then the user has come in close contact with an infected patient, and is warned by the client. Since each device locally verifies contact logs, and thus contact logs are never transmitted to third parties, the central reporting server cannot by itself ascertain the identity or contact log of any client in the network. This is in contrast to competing protocols like BlueTrace, where the central reporting server receives and processes client contact logs.
+
+
+== Temporary contact numbers ==
+The entire protocol is based on the principle of temporary contact numbers (TCN), a unique and anonymous 128-bit identifier generated deterministically from a seed value on a client device. TCNs are used to identify people with which a user has come in contact, and the seed is used to compactly report infection to a central reporting server. TCN reports are authenticated to be genuine by a secret held only by the client.
+
+
+=== Generation ===
+To generate a TCN, first a report authorization key (RAK) and report verification key (RVK) are created as the signing and verification keys of a signature scheme (RAK-RVK pair). In the reference implementation this pair is created using the Ed25519 signature scheme. Then, using the RAK an initial temporary contact key (TCK) is generated using the algorithm 
+  
+    
+      
+        t
+        c
+        
+          k
+          
+            0
+          
+        
+        =
+        H
+        _
+        t
+        c
+        k
+        (
+        r
+        a
+        k
+        )
+      
+    
+    {\displaystyle tck_{0}=H\_tck(rak)}
+  
+, where 
+  
+    
+      
+        H
+        _
+        t
+        c
+        k
+        (
+        )
+      
+    
+    {\displaystyle H\_tck()}
+  
+ is the SHA-256 hash function as 
+  
+    
+      
+        H
+        _
+        t
+        c
+        k
+        (
+        s
+        )
+        =
+        S
+        H
+        A
+        256
+        (
+        
+          b'H
+        
+        _
+        
+          TCK'
+        
+        
+          |
+        
+        
+          |
+        
+        s
+        )
+      
+    
+    {\displaystyle H\_tck(s)=SHA256({\text{b'H}}\_{\text{TCK'}}||s)}
+  
+. This TCK is not used to generate any TCNs, but is used in the next TCK; where all future TCKs are calculated using the algorithm 
+  
+    
+      
+        t
+        c
+        
+          k
+          
+            i
+          
+        
+        =
+        H
+        _
+        t
+        c
+        k
+        (
+        r
+        v
+        k
+        
+          |
+        
+        
+          |
+        
+        t
+        c
+        
+          k
+          
+            i
+            −
+            1
+          
+        
+        )
+      
+    
+    {\displaystyle tck_{i}=H\_tck(rvk||tck_{i-1})}
+  
+. A 128 bit TCN is then generated from a given TCK using the algorithm 
+  
+    
+      
+        t
+        c
+        
+          n
+          
+            i
+            >
+            0
+          
+        
+        =
+        H
+        _
+        t
+        c
+        n
+        (
+        l
+        e
+        _
+        u
+        16
+        (
+        i
+        )
+        
+          |
+        
+        
+          |
+        
+        t
+        c
+        
+          k
+          
+            i
+          
+        
+        )
+      
+    
+    {\displaystyle tcn_{i>0}=H\_tcn(le\_u16(i)||tck_{i})}
+  
+, where  
+  
+    
+      
+        l
+        e
+        _
+        u
+        16
+        (
+        )
+      
+    
+    {\displaystyle le\_u16()}
+  
+ formats a supplied number as a little endian unsigned 2 byte integer, and 
+  
+    
+      
+        H
+        _
+        t
+        c
+        n
+        (
+        )
+      
+    
+    {\displaystyle H\_tcn()}
+  
+ is the SHA-256 hash function as 
+  
+    
+      
+        H
+        _
+        t
+        c
+        n
+        (
+        s
+        )
+        =
+        S
+        H
+        A
+        256
+        (
+        
+          b'H
+        
+        _
+        
+          TCN'
+        
+        
+          |
+        
+        
+          |
+        
+        s
+        )
+        [
+        0
+        :
+        128
+        ]
+      
+    
+    {\displaystyle H\_tcn(s)=SHA256({\text{b'H}}\_{\text{TCN'}}||s)[0:128]}
+  
+. The following diagram demonstrates the key derivation process:TCNs are unique to each device encounter, and RAK-RVK pairs are cycled at regular intervals to allow a client to report only specific periods of contact.
+
+
+=== Reporting ===
+When a client wishes to submit a report for the TCN indices 
+  
+    
+      
+        s
+        >
+        0
+      
+    
+    {\displaystyle s>0}
+  
+ to 
+  
+    
+      
+        e
+      
+    
+    {\displaystyle e}
+  
+, it structures the report as 
+  
+    
+      
+        r
+        e
+        p
+        o
+        r
+        t
+        =
+        r
+        v
+        k
+        
+          |
+        
+        
+          |
+        
+        t
+        c
+        
+          k
+          
+            s
+            −
+            1
+          
+        
+        
+          |
+        
+        
+          |
+        
+        l
+        e
+        _
+        u
+        16
+        (
+        s
+        )
+        
+          |
+        
+        
+          |
+        
+        l
+        e
+        _
+        u
+        16
+        (
+        e
+        )
+        
+          |
+        
+        
+          |
+        
+        m
+        e
+        m
+        o
+      
+    
+    {\displaystyle report=rvk||tck_{s-1}||le\_u16(s)||le\_u16(e)||memo}
+  
+. A signature is then calculated using the RAK, and it is transmitted to the server as 
+  
+    
+      
+        s
+        _
+        r
+        e
+        p
+        o
+        r
+        t
+        =
+        r
+        e
+        p
+        o
+        r
+        t
+        
+          |
+        
+        
+          |
+        
+        s
+        i
+        g
+      
+    
+    {\displaystyle s\_report=report||sig}
+  
+.
+Because any given TCK can only be used to derive an equal or higher indexed TCNs, by submitting 
+  
+    
+      
+        t
+        c
+        
+          k
+          
+            s
+            −
+            1
+          
+        
+      
+    
+    {\displaystyle tck_{s-1}}
+  
+ no encounters prior to 
+  
+    
+      
+        t
+        c
+        
+          n
+          
+            s
+            −
+            1
+          
+        
+      
+    
+    {\displaystyle tcn_{s-1}}
+  
+ can be calculated. However, there is no upper limit to encounters calculated using the same RAK-RVK pair, which is why they are cycled often. To prevent clients calculating unused TCNs, 
+  
+    
+      
+        e
+      
+    
+    {\displaystyle e}
+  
+ indicates the last TCN index generated with the given RVK. Additionally, since the RVK is used to calculate a TCK, and 
+  
+    
+      
+        t
+        c
+        
+          k
+          
+            s
+            −
+            1
+          
+        
+      
+    
+    {\displaystyle tck_{s-1}}
+  
+ is provided, no valid TCNs in the reporting period can be derived from an illegitimate report. The only correct TCN calculable from a mismatched RVK and 
+  
+    
+      
+        t
+        c
+        
+          k
+          
+            s
+            −
+            1
+          
+        
+      
+    
+    {\displaystyle tck_{s-1}}
+  
+ is 
+  
+    
+      
+        t
+        c
+        
+          n
+          
+            s
+            −
+            1
+          
+        
+      
+    
+    {\displaystyle tcn_{s-1}}
+  
+, the TCN before the start of the reporting period.
+Once a report is received, clients individually recalculate TCKs and TCNs for a given period using the original algorithms:
+  
+    
+      
+        
+          
+            
+              
+                t
+                c
+                
+                  k
+                  
+                    s
+                  
+                
+                =
+                H
+                _
+                t
+                c
+                k
+                (
+                r
+                v
+                k
+                
+                  |
+                
+                
+                  |
+                
+                t
+                c
+                
+                  k
+                  
+                    s
+                    −
+                    1
+                  
+                
+                )
+              
+            
+            
+              
+                t
+                c
+                
+                  n
+                  
+                    s
+                  
+                
+                =
+                H
+                _
+                t
+                c
+                n
+                (
+                l
+                e
+                _
+                u
+                16
+                (
+                s
+                )
+                
+                  |
+                
+                
+                  |
+                
+                t
+                c
+                
+                  k
+                  
+                    s
+                  
+                
+                )
+              
+            
+            
+              
+                t
+                c
+                
+                  k
+                  
+                    s
+                    +
+                    1
+                  
+                
+                =
+                H
+                _
+                t
+                c
+                k
+                (
+                r
+                v
+                k
+                
+                  |
+                
+                
+                  |
+                
+                t
+                c
+                
+                  k
+                  
+                    s
+                  
+                
+                )
+              
+            
+            
+              
+                t
+                c
+                
+                  n
+                  
+                    s
+                    +
+                    1
+                  
+                
+                =
+                H
+                _
+                t
+                c
+                n
+                (
+                l
+                e
+                _
+                u
+                16
+                (
+                s
+                +
+                1
+                )
+                
+                  |
+                
+                
+                  |
+                
+                t
+                c
+                
+                  k
+                  
+                    s
+                    +
+                    1
+                  
+                
+                )
+              
+            
+            
+              
+                .
+                .
+                .
+              
+            
+            
+              
+                t
+                c
+                
+                  k
+                  
+                    e
+                  
+                
+                =
+                H
+                _
+                t
+                c
+                k
+                (
+                r
+                v
+                k
+                
+                  |
+                
+                
+                  |
+                
+                t
+                c
+                
+                  k
+                  
+                    e
+                    −
+                    1
+                  
+                
+                )
+              
+            
+            
+              
+                t
+                c
+                
+                  n
+                  
+                    e
+                  
+                
+                =
+                H
+                _
+                t
+                c
+                n
+                (
+                l
+                e
+                _
+                u
+                16
+                (
+                e
+                )
+                
+                  |
+                
+                
+                  |
+                
+                t
+                c
+                
+                  k
+                  
+                    e
+                  
+                
+                )
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{array}{lcr}tck_{s}=H\_tck(rvk||tck_{s-1})\\tcn_{s}=H\_tcn(le\_u16(s)||tck_{s})\\tck_{s+1}=H\_tck(rvk||tck_{s})\\tcn_{s+1}=H\_tcn(le\_u16(s+1)||tck_{s+1})\\...\\tck_{e}=H\_tck(rvk||tck_{e-1})\\tcn_{e}=H\_tcn(le\_u16(e)||tck_{e})\end{array}}}
+  
+This is used by client devices to check their local contact logs for potential encounters with the infected patient, but has the dual benefit of verifying reports since false reports will never produce matching TCNs.
+
+
+=== Memo ===
+In the report structure, the memo is a space for freeform messages that differ between TCN implementations. The section is between 2 and 257 bytes, and made up of a tag identifying the specific implementation, as well as a data and data length pair. It is formatted as  
+  
+    
+      
+        m
+        e
+        m
+        o
+        =
+        t
+        a
+        g
+        
+          |
+        
+        
+          |
+        
+        l
+        e
+        n
+        (
+        d
+        a
+        t
+        a
+        )
+        
+          |
+        
+        
+          |
+        
+        d
+        a
+        t
+        a
+      
+    
+    {\displaystyle memo=tag||len(data)||data}
+  
+. The data is standardized for different tags, and can be as follows:
+
+
+== Technical specification ==
+The protocol can be divided into two responsibilities: an encounter between two devices running TCN apps, and the notification of potential infection to users that came in contact with a patient. For the purposes of this specification, these areas are named the encounter handshake, and infection reporting. The encounter handshake runs on Bluetooth LE and defines how two devices acknowledge each other's presence. The infection reporting is built on HTTPS and defines how infection notices are distributed among clients.
+
+
+=== Encounter handshake ===
+When two devices come within range of each other, they exchange a handshake containing TCNs. In order to achieve this the encounter handshake operates in two modes (both with two sub-modes), broadcast oriented and connection oriented. Broadcast oriented operates using the modes broadcaster and observer, while connection oriented operates using peripheral and central. The two modes are used to circumvent certain device limitations, particularly in regard to iOS restrictions in place before version 13.4. In both modes the protocol is identified with the 16 bit UUID 0xC019.
+In broadcast mode, a broadcaster advertises a 16-byte TCN using the service data field of the advertisement data. The observer reads the TCN from this field. In connection-oriented mode, the peripheral advertises using the UUID. The service exposes a read and writeable packet for sharing TCNs. After sharing a TCN, the central disconnects from the peripheral.
+
+
+=== Infection reporting ===
+When a user tests positive for infection, they upload a signed report, allowing the past 14 days of encounters to be calculated, to a central server. On a regular basis, client devices download reports from the server and check their local contact logs using the verification algorithm. If there is a matching record, the app notifies the user to potential infection.
+
+
+== TCN Coalition ==
+On 5 April 2020, the global TCN Coalition was founded by Covid Watch and other groups that had coalesced around what was essentially the same approach and largely overlapping protocols, with the goal to reduce fragmentation, and enable global interoperability of tracing and alerting apps, a key aspect of achieving widespread adoption. The TCN Coalition also helped establish the Data Rights for Digital Contact Tracing and Alerting framework, which functions as a bill of rights for users of such apps.
+Currently the protocol is used by TCN Coalition members CoEpi and Covid Watch, and was likely a source of inspiration for the similar Google / Apple contact tracing project.
+
+
+== See also ==
+BlueTrace
+Google / Apple contact tracing project
+Pan-European Privacy-Preserving Proximity Tracing
+
+
+== References ==
+
+
+== External links ==
+Covid Watch Archived 2020-04-17 at the Wayback Machine
+TCN Coalition Archived 2021-07-04 at the Wayback Machine
+Specification and reference implementation

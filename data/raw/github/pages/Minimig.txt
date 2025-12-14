@@ -1,0 +1,121 @@
+Minimig (a portmanteau of Mini Amiga) is an open-source re-implementation of an Amiga 500 using a field-programmable gate array (FPGA).
+The Minimig project started around January 2005 as a proof of concept by Dutch electrical engineer Dennis van Weeren. He intended Minimig as the answer to the ongoing discussions within the Amiga community on implementing the Amiga custom chipset using an FPGA. The project's source code and schematics were released under version 3 of the GNU General Public Licence on 25 July 2007.
+
+
+== Original prototype ==
+The original Minimig prototype is based on the Xilinx Spartan-3 Starter Kit, the Amiga Original Chip Set is synthesized in the FPGA. Two printed circuit boards are attached via the FPGA kit expansion ports. The first one holds a Motorola 68000-type CPU. The second has a MultiMediaCard slot with a small PIC microcontroller acting as a disc controller that supports the FAT16 filesystem and does on-the-fly Amiga Disk File (ADF) decoding.
+
+     VGA-+-PS2 (joystick etc.)
+         |
+CPU <-> FPGA <-> Microcontroller <-> Flashmemory
+         |
+        RAM
+
+The prototype was shown at an Amiga meet and loaded most Amiga programs, with some bugs. This prototype used verilog instead of VHDL on a PC using Xilinx Webpack software for code development.
+
+
+== Hardware ==
+
+
+=== Platform ===
+As of the Minimig rev 1.0 board:
+
+Xilinx Spartan-3 400k gate (XC3S400-4PQ208C) FPGA using 82% capacity.
+Freescale MC68SEC000, 3.3V, at 7.09379 MHz. However, there's no 'E' clock, MOVE sr,<EA> is privileged and there is no real replacement instruction.
+Amiga Chip RAM bus and slow RAM are merged into a single synchronous bus running at 7.09379 MHz.
+2 MB 70 ns asynchronous SRAM organised as 2 × 524,288 × 16-bit banks.
+PIC 18LF252-I/SP (An alternative is Atmel AVR) implements a FAT16 disk layout and handles loading of FPGA configuration and Kickstart. This simulates a floppy disk to the Amiga by encoding on the fly from ADF files.
+MultiMediaCard to load FPGA configuration, kickstart and software for the implemented computer.
+3 LEDs to display disk activity, main power, and Amiga power-up status. Amiga power-up status LED will also change intensity to show audio filter status.
+Video DAC consists of 4 resistors for each color red, green, blue (4 bits/color), and output via VGA connector.
+Audio from an 8-bit sigma-delta converter with dither and 2nd-order analogue filter.
++5 VDC main power (~200 mA).
+
+
+=== Ports ===
+Spare 3x generic I/O from the FPGA (GPIO)
+JTAG for programming chips (TMS, TDI, TDO, TCK).
+RS232 serial port
+2x Joystick of Atari 2600 DE9M type
+DE15F VGA video (which can output PAL-compatible signals to connect to SCART)
+MMC Flash memory card slot
+PS/2 connector Keyboard + Mouse
+3.5 mm audio jack
++5V DC 2.1 mm cylindrical DC plug power supply inlet
+
+
+=== Implementation ===
+Motorola 68000 type CPU
+Hardware OCS and  ECS, PAL and NTSC video switchable via OSD.
+512 KB SRAM for Kickstart used as ROM.
+0 .. 1536 KB Slow RAM expansion (originally 512 KB)
+512 .. 2048 KB Chip RAM (originally 1024 KB)
+On-screen display offers selection of ADF disk images from the SD/MMC card using the keyboard or a joystick.
+
+
+== Development timeline ==
+
+
+== Issues ==
+It lacks a binary copy of the AmigaOS kickstart ROM from a real Amiga 500 or free re-implementation, like AROS-68k, which is not yet fully compatible.
+The current firmware for loading ROM and floppy images is limited to a single root directory and 8.3 filenames.
+
+
+== Development tools used ==
+Computer: Shuttle barebone, Prescott Pentium 4 (L2-cache 1024 KB, 533 to 800 MT/s) 3 GHz, 1 GB RAM.
+Software: Xilinx Webpack version 6.3.03i (2007-07-22 9.1). Time from HDL source to loadable configuration file (.bit) = 2 minutes. CPU cache and memory speed is vital for the Synthesis + Place & Route Silicon compiler in FPGA-generation software.
+
+
+== Future ==
+Possible future developments include:
+
+A faster CPU, ECS chipset, AGA graphics (new FPGA board is required), hard disk, ethernet, small RISC-Core for enhanced AROS functions, etc.
+Use of a free kickstart replacement (e.g. AROS).
+A networked version would eliminate the need for swapping flash memories.
+
+
+== Upgrades ==
+
+
+=== Read/write support ===
+On 3 September 2008, a new FPGA core enables read/write support, as well as some chipset improvements.
+
+
+=== ARM controller board upgrade ===
+On 22 December 2008, a replacement board that fits into the PIC (MCU) controller socket was announced. It makes hard drive, 4x floppy disk, and write support possible. The FPGA core is the same for the new ARM and PIC firmware but only the ARM has enough resources to support four drives. The PIC only supports two. The upgrade also allows an increase of the CPU speed from 7.09 to 49.63 MHz with a 4 KB zero wait state CPU cache. However, it requires an FPGA core to actually carry it out (which works with the 16 MHz 68SEC000 chips).
+The hard drive support is available by a virtual A600/A1200 style GAYLE parallel ATA interface. Up to 551 kbit/s is possible with a minor hardware modification. Otherwise only ~300 kbit/s is possible.
+
+
+=== USB peripherals and MIDI ===
+The Minimig port for the MiST board supports USB peripherals including USB keyboard and USB mouse as well as a physical MIDI interface.
+
+
+=== Additional 2 MB RAM ===
+On 22 December 2008, a modification of the original PCB, by piggybacking another set of SRAM chips, enables up to 4 MiB of RAM in total.
+
+
+=== AGA support ===
+The Minimig port for the MIST board was updated to support major AGA features allowing it to run many AGA games. A binary release, as well as the full source code, is available under GPL.
+An unreleased Minimig core has been upgraded with AGA support and extended to support at least 50 MiB of chip memory on the prototype Replay board designed by Mike Johnson at FPGA Arcade.
+
+
+== Similar projects ==
+Jeri Ellsworth, who designed the C64 Direct-to-TV Commodore 64 on a chip (ASIC), had a working Amiga on a chip prototype in 2003. Except for the 68000 processor and disk interface, everything was emulated inside a FPGA. However, the project was never finished or turned into an ASIC.
+Illuwatar, a small private hardware designer in Sweden, implemented a Mini-ITX form-factor version of the Minimig under an open source design license. This hardware version fits in standard Mini-ITX cases and has dimensions of 17 cm x 17 cm. Connecting ports in this version were moved to the back of the mainboard to comply with Mini-ITX requirements.
+On 9 Feb 2008, ACube Systems announced the availability of finished Minimig v1.1 boards.
+On 11 October 2006, Jens Schönfeld, at Individual Computers, revealed that they had been working on a commercial Amiga-in-FPGA for the past year, called "Clone-A", that is similar to Minimig. In contrast to Minimig, Individual Computers's Clone-A was developed by a three-person development team employing a powerful logic analyzer. The system will use clone chips to replace CIAs, and the CPU will be the original from Motorola. Final chips will also include AGA and a working parallel port to enable 4-player games. Still unreleased as of 2015.
+Wolfgang Förster has completed the Suska project, which is an Atari ST-on-FPGA.
+Inspired by Minimig, Till Harbaum invented MIST, an open FPGA based implementation of Atari ST and Amiga intended to have a low price and be easily built at home. Different than Minimig, the 68000 CPU is not present as physical device but implemented inside the FPGA.
+Inspired by MIST, Alexey Melnikov invented MiSTer, an FPGA-based implementation of Atari ST and Amiga, based on a commercial board by Terasic: DE10-nano. There are at least five so-called "daughter boards" that enhance the capabilities of MiSTer.
+Vampire V4 Standalone, released by Apollo Team in 2019, provides ECS/AGA chipset re-implementation, plus 68080 CPU and SAGA core, also using a field-programmable gate array (FPGA).
+
+
+== References ==
+
+
+== External links ==
+
+Source code at Google Code
+Project home page (Offline)
+Project home page (Mirror)
+Official Discussion Forum

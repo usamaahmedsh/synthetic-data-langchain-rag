@@ -1,0 +1,1367 @@
+Elliptic-curve Diffie–Hellman (ECDH) is a key agreement protocol that allows two parties, each having an elliptic-curve public–private key pair, to establish a shared secret over an insecure channel. This shared secret may be directly used as a key, or to derive another key.  The key, or the derived key, can then be used to encrypt subsequent communications using a symmetric-key cipher. It is a variant of the Diffie–Hellman protocol using elliptic-curve cryptography.
+
+
+== Key establishment protocol ==
+The following example illustrates how a shared key is established. Suppose Alice wants to establish a shared key with Bob, but the only channel available for them may be eavesdropped by a third party. Initially, the domain parameters (that is, 
+  
+    
+      
+        (
+        p
+        ,
+        a
+        ,
+        b
+        ,
+        G
+        ,
+        n
+        ,
+        h
+        )
+      
+    
+    {\displaystyle (p,a,b,G,n,h)}
+  
+ in the prime case or 
+  
+    
+      
+        (
+        m
+        ,
+        f
+        (
+        x
+        )
+        ,
+        a
+        ,
+        b
+        ,
+        G
+        ,
+        n
+        ,
+        h
+        )
+      
+    
+    {\displaystyle (m,f(x),a,b,G,n,h)}
+  
+ in the binary case) must be agreed upon. Also, each party must have a key pair suitable for elliptic curve cryptography, consisting of a private key 
+  
+    
+      
+        d
+      
+    
+    {\displaystyle d}
+  
+ (a randomly selected integer in the interval 
+  
+    
+      
+        [
+        1
+        ,
+        n
+        −
+        1
+        ]
+      
+    
+    {\displaystyle [1,n-1]}
+  
+) and a public key represented by a point 
+  
+    
+      
+        Q
+      
+    
+    {\displaystyle Q}
+  
+ (where 
+  
+    
+      
+        Q
+        =
+        d
+        ⋅
+        G
+      
+    
+    {\displaystyle Q=d\cdot G}
+  
+, that is, the result of adding 
+  
+    
+      
+        G
+      
+    
+    {\displaystyle G}
+  
+ to itself 
+  
+    
+      
+        d
+      
+    
+    {\displaystyle d}
+  
+ times). Let Alice's key pair be 
+  
+    
+      
+        (
+        
+          d
+          
+            A
+          
+        
+        ,
+        
+          Q
+          
+            A
+          
+        
+        )
+      
+    
+    {\displaystyle (d_{\text{A}},Q_{\text{A}})}
+  
+ and Bob's key pair be 
+  
+    
+      
+        (
+        
+          d
+          
+            B
+          
+        
+        ,
+        
+          Q
+          
+            B
+          
+        
+        )
+      
+    
+    {\displaystyle (d_{\text{B}},Q_{\text{B}})}
+  
+. Each party must know the other party's public key prior to execution of the protocol.
+Alice computes point 
+  
+    
+      
+        (
+        
+          x
+          
+            k
+          
+        
+        ,
+        
+          y
+          
+            k
+          
+        
+        )
+        =
+        
+          d
+          
+            A
+          
+        
+        ⋅
+        
+          Q
+          
+            B
+          
+        
+      
+    
+    {\displaystyle (x_{k},y_{k})=d_{\text{A}}\cdot Q_{\text{B}}}
+  
+. Bob computes point 
+  
+    
+      
+        (
+        
+          x
+          
+            k
+          
+        
+        ,
+        
+          y
+          
+            k
+          
+        
+        )
+        =
+        
+          d
+          
+            B
+          
+        
+        ⋅
+        
+          Q
+          
+            A
+          
+        
+      
+    
+    {\displaystyle (x_{k},y_{k})=d_{\text{B}}\cdot Q_{\text{A}}}
+  
+.  The shared secret is 
+  
+    
+      
+        
+          x
+          
+            k
+          
+        
+      
+    
+    {\displaystyle x_{k}}
+  
+ (the x coordinate of the point).  Most standardized protocols based on ECDH derive a symmetric key from 
+  
+    
+      
+        
+          x
+          
+            k
+          
+        
+      
+    
+    {\displaystyle x_{k}}
+  
+ using some hash-based key derivation function.
+The shared secret calculated by both parties is equal, because 
+  
+    
+      
+        
+          d
+          
+            A
+          
+        
+        ⋅
+        
+          Q
+          
+            B
+          
+        
+        =
+        
+          d
+          
+            A
+          
+        
+        ⋅
+        
+          d
+          
+            B
+          
+        
+        ⋅
+        G
+        =
+        
+          d
+          
+            B
+          
+        
+        ⋅
+        
+          d
+          
+            A
+          
+        
+        ⋅
+        G
+        =
+        
+          d
+          
+            B
+          
+        
+        ⋅
+        
+          Q
+          
+            A
+          
+        
+      
+    
+    {\displaystyle d_{\text{A}}\cdot Q_{\text{B}}=d_{\text{A}}\cdot d_{\text{B}}\cdot G=d_{\text{B}}\cdot d_{\text{A}}\cdot G=d_{\text{B}}\cdot Q_{\text{A}}}
+  
+.
+The only information about her key that Alice initially exposes is her public key.  So, no party except Alice can determine Alice's private key (Alice of course knows it by having selected it), unless that party can solve the elliptic curve discrete logarithm problem.  Bob's private key is similarly secure.  No party other than Alice or Bob can compute the shared secret, unless that party can solve the elliptic curve Diffie–Hellman problem.
+The public keys are either static (and trusted, say via a certificate) or ephemeral (also known as ECDHE, where final 'E' stands for "ephemeral").  Ephemeral keys are temporary and not necessarily authenticated, so if authentication is desired, authenticity assurances must be obtained by other means.  Authentication is necessary to avoid man-in-the-middle attacks.  If one of either Alice's or Bob's public keys is static, then man-in-the-middle attacks are thwarted.  Static public keys provide neither forward secrecy nor key-compromise impersonation resilience, among other advanced security properties.  Holders of static private keys should validate the other public key, and should apply a secure key derivation function to the raw Diffie–Hellman shared secret to avoid leaking information about the static private key.  For schemes with other security properties, see MQV.
+If Alice maliciously chooses invalid curve points for her key and Bob does not validate that Alice's points are part of the selected group, she can collect enough residues of Bob's key to derive his private key. Several TLS libraries were found to be vulnerable to this attack.
+The shared secret is uniformly distributed on a subset of 
+  
+    
+      
+        [
+        0
+        ,
+        p
+        )
+      
+    
+    {\displaystyle [0,p)}
+  
+ of size 
+  
+    
+      
+        (
+        n
+        +
+        1
+        )
+        
+          /
+        
+        2
+      
+    
+    {\displaystyle (n+1)/2}
+  
+. For this reason, the secret should not be used directly as a symmetric key, but it can be used as entropy for a key derivation function.
+
+
+=== Diffie-Hellman Key Agreement on Montgomery Curves ===
+Let 
+  
+    
+      
+        A
+        ,
+        B
+        ∈
+        
+          F
+          
+            p
+          
+        
+      
+    
+    {\displaystyle A,B\in F_{p}}
+  
+ such that 
+  
+    
+      
+        B
+        (
+        
+          A
+          
+            2
+          
+        
+        −
+        4
+        )
+        ≠
+        0
+      
+    
+    {\displaystyle B(A^{2}-4)\neq 0}
+  
+. The Montgomery form elliptic curve 
+  
+    
+      
+        
+          E
+          
+            M
+            ,
+            A
+            ,
+            B
+          
+        
+      
+    
+    {\displaystyle E_{M,A,B}}
+  
+ is the set of all 
+  
+    
+      
+        (
+        x
+        ,
+        y
+        )
+        ∈
+        
+          F
+          
+            p
+          
+        
+        ×
+        
+          F
+          
+            p
+          
+        
+      
+    
+    {\displaystyle (x,y)\in F_{p}\times F_{p}}
+  
+ satisfying the equation 
+  
+    
+      
+        B
+        
+          y
+          
+            2
+          
+        
+        =
+        x
+        (
+        
+          x
+          
+            2
+          
+        
+        +
+        A
+        x
+        +
+        1
+        )
+      
+    
+    {\displaystyle By^{2}=x(x^{2}+Ax+1)}
+  
+ along with the point at infinity denoted as 
+  
+    
+      
+        ∞
+      
+    
+    {\displaystyle \infty }
+  
+. This is called the affine form of the curve. The set of all 
+  
+    
+      
+        
+          F
+          
+            p
+          
+        
+      
+    
+    {\displaystyle F_{p}}
+  
+-rational points of 
+  
+    
+      
+        
+          E
+          
+            M
+            ,
+            A
+            ,
+            B
+          
+        
+      
+    
+    {\displaystyle E_{M,A,B}}
+  
+, denoted as 
+  
+    
+      
+        
+          E
+          
+            M
+            ,
+            A
+            ,
+            B
+          
+        
+        (
+        
+          F
+          
+            p
+          
+        
+        )
+      
+    
+    {\displaystyle E_{M,A,B}(F_{p})}
+  
+ is the set of all 
+  
+    
+      
+        (
+        x
+        ,
+        y
+        )
+        ∈
+        
+          F
+          
+            p
+          
+        
+        ×
+        
+          F
+          
+            p
+          
+        
+      
+    
+    {\displaystyle (x,y)\in F_{p}\times F_{p}}
+  
+ satisfying 
+  
+    
+      
+        B
+        
+          y
+          
+            2
+          
+        
+        =
+        x
+        (
+        
+          x
+          
+            2
+          
+        
+        +
+        A
+        x
+        +
+        1
+        )
+      
+    
+    {\displaystyle By^{2}=x(x^{2}+Ax+1)}
+  
+ 
+along with 
+  
+    
+      
+        ∞
+      
+    
+    {\displaystyle \infty }
+  
+. Under a suitably defined addition operation, 
+  
+    
+      
+        
+          E
+          
+            M
+            ,
+            A
+            ,
+            B
+          
+        
+        (
+        
+          F
+          
+            p
+          
+        
+        )
+      
+    
+    {\displaystyle E_{M,A,B}(F_{p})}
+  
+ is a group with 
+  
+    
+      
+        ∞
+      
+    
+    {\displaystyle \infty }
+  
+ as the identity element. It is known that the order of this group is a multiple of 4. In fact, it is usually possible to obtain 
+  
+    
+      
+        A
+      
+    
+    {\displaystyle A}
+  
+ and 
+  
+    
+      
+        B
+      
+    
+    {\displaystyle B}
+  
+ such that the order of 
+  
+    
+      
+        
+          E
+          
+            M
+            ,
+            A
+            ,
+            B
+          
+        
+      
+    
+    {\displaystyle E_{M,A,B}}
+  
+ is 
+  
+    
+      
+        4
+        q
+      
+    
+    {\displaystyle 4q}
+  
+ for a prime 
+  
+    
+      
+        q
+      
+    
+    {\displaystyle q}
+  
+. For more extensive discussions of Montgomery curves and their arithmetic one may follow.
+For computational efficiency, it is preferable to work with projective coordinates. The projective form of the Montgomery curve 
+  
+    
+      
+        
+          E
+          
+            M
+            ,
+            A
+            ,
+            B
+          
+        
+      
+    
+    {\displaystyle E_{M,A,B}}
+  
+ is 
+  
+    
+      
+        B
+        
+          Y
+          
+            2
+          
+        
+        Z
+        =
+        X
+        (
+        
+          X
+          
+            2
+          
+        
+        +
+        A
+        X
+        Z
+        +
+        
+          Z
+          
+            2
+          
+        
+        )
+      
+    
+    {\displaystyle BY^{2}Z=X(X^{2}+AXZ+Z^{2})}
+  
+. For a point 
+  
+    
+      
+        P
+        =
+        [
+        X
+        :
+        Y
+        :
+        Z
+        ]
+      
+    
+    {\displaystyle P=[X:Y:Z]}
+  
+ on 
+  
+    
+      
+        
+          E
+          
+            M
+            ,
+            A
+            ,
+            B
+          
+        
+      
+    
+    {\displaystyle E_{M,A,B}}
+  
+, the 
+  
+    
+      
+        x
+      
+    
+    {\displaystyle x}
+  
+-coordinate map 
+  
+    
+      
+        x
+      
+    
+    {\displaystyle x}
+  
+ is the following: 
+  
+    
+      
+        x
+        (
+        P
+        )
+        =
+        [
+        X
+        :
+        Z
+        ]
+      
+    
+    {\displaystyle x(P)=[X:Z]}
+  
+ if 
+  
+    
+      
+        Z
+        ≠
+        0
+      
+    
+    {\displaystyle Z\neq 0}
+  
+ and 
+  
+    
+      
+        x
+        (
+        P
+        )
+        =
+        [
+        1
+        :
+        0
+        ]
+      
+    
+    {\displaystyle x(P)=[1:0]}
+  
+ if 
+  
+    
+      
+        P
+        =
+        [
+        0
+        :
+        1
+        :
+        0
+        ]
+      
+    
+    {\displaystyle P=[0:1:0]}
+  
+ . Bernstein introduced the map 
+  
+    
+      
+        
+          x
+          
+            0
+          
+        
+      
+    
+    {\displaystyle x_{0}}
+  
+ as follows: 
+  
+    
+      
+        
+          x
+          
+            0
+          
+        
+        (
+        X
+        :
+        Z
+        )
+        =
+        X
+        
+          Z
+          
+            p
+            −
+            2
+          
+        
+      
+    
+    {\displaystyle x_{0}(X:Z)=XZ^{p-2}}
+  
+ which is defined for all values of 
+  
+    
+      
+        X
+      
+    
+    {\displaystyle X}
+  
+ and 
+  
+    
+      
+        Z
+      
+    
+    {\displaystyle Z}
+  
+ in 
+  
+    
+      
+        
+          F
+          
+            p
+          
+        
+      
+    
+    {\displaystyle F_{p}}
+  
+. Following Miller, Montgomery and Bernstein, the Diffie-Hellman key agreement can be carried out on a Montgomery curve as follows. Let 
+  
+    
+      
+        Q
+      
+    
+    {\displaystyle Q}
+  
+ be a generator of a prime order subgroup of 
+
+  
+    
+      
+        
+          E
+          
+            M
+            ,
+            A
+            ,
+            B
+          
+        
+        (
+        
+          F
+          
+            p
+          
+        
+        )
+      
+    
+    {\displaystyle E_{M,A,B}(F_{p})}
+  
+. Alice chooses a secret key 
+  
+    
+      
+        s
+      
+    
+    {\displaystyle s}
+  
+ and has public key 
+  
+    
+      
+        
+          x
+          
+            0
+          
+        
+        (
+        s
+        Q
+        )
+      
+    
+    {\displaystyle x_{0}(sQ)}
+  
+; 
+Bob chooses a secret key 
+  
+    
+      
+        t
+      
+    
+    {\displaystyle t}
+  
+ and has public key 
+  
+    
+      
+        
+          x
+          
+            0
+          
+        
+        (
+        t
+        Q
+        )
+      
+    
+    {\displaystyle x_{0}(tQ)}
+  
+. The shared secret key of Alice and Bob is 
+  
+    
+      
+        
+          x
+          
+            0
+          
+        
+        (
+        s
+        t
+        Q
+        )
+      
+    
+    {\displaystyle x_{0}(stQ)}
+  
+. Using classical computers, the best known method of obtaining 
+  
+    
+      
+        
+          x
+          
+            0
+          
+        
+        (
+        s
+        t
+        Q
+        )
+      
+    
+    {\displaystyle x_{0}(stQ)}
+  
+ from 
+  
+    
+      
+        Q
+        ,
+        
+          x
+          
+            0
+          
+        
+        (
+        s
+        Q
+        )
+      
+    
+    {\displaystyle Q,x_{0}(sQ)}
+  
+ and 
+  
+    
+      
+        
+          x
+          
+            0
+          
+        
+        (
+        t
+        Q
+        )
+      
+    
+    {\displaystyle x_{0}(tQ)}
+  
+ requires about 
+  
+    
+      
+        O
+        (
+        
+          p
+          
+            1
+            
+              /
+            
+            2
+          
+        
+        )
+      
+    
+    {\displaystyle O(p^{1/2})}
+  
+ time using the Pollards rho algorithm.
+The most famous example of Montgomery curve is Curve25519 which was introduced by Bernstein. For Curve25519, 
+  
+    
+      
+        p
+        =
+        
+          2
+          
+            255
+          
+        
+        −
+        19
+        ,
+        A
+        =
+        486662
+      
+    
+    {\displaystyle p=2^{255}-19,A=486662}
+  
+ and 
+  
+    
+      
+        B
+        =
+        1
+      
+    
+    {\displaystyle B=1}
+  
+.
+The other Montgomery curve which is part of TLS 1.3 is Curve448 which was introduced
+by Hamburg. For Curve448, 
+  
+    
+      
+        p
+        =
+        
+          2
+          
+            448
+          
+        
+        −
+        
+          2
+          
+            224
+          
+        
+        −
+        1
+        ,
+        A
+        =
+        156326
+      
+    
+    {\displaystyle p=2^{448}-2^{224}-1,A=156326}
+  
+ and 
+  
+    
+      
+        B
+        =
+        1
+      
+    
+    {\displaystyle B=1}
+  
+. Couple of Montgomery curves named M[4698] and M[4058] competitive to Curve25519 and Curve448 respectively have been proposed in. For M[4698], 
+  
+    
+      
+        p
+        =
+        
+          2
+          
+            251
+          
+        
+        −
+        9
+        ,
+        A
+        =
+        4698
+        ,
+        B
+        =
+        1
+      
+    
+    {\displaystyle p=2^{251}-9,A=4698,B=1}
+  
+ and for M[4058], 
+  
+    
+      
+        p
+        =
+        
+          2
+          
+            444
+          
+        
+        −
+        17
+        ,
+        A
+        =
+        4058
+        ,
+        B
+        =
+        1
+      
+    
+    {\displaystyle p=2^{444}-17,A=4058,B=1}
+  
+. At 256-bit security level, three Montgomery curves named M[996558], M[952902] and M[1504058] have been proposed in. For M[996558], 
+  
+    
+      
+        p
+        =
+        
+          2
+          
+            506
+          
+        
+        −
+        45
+        ,
+        A
+        =
+        996558
+        ,
+        B
+        =
+        1
+      
+    
+    {\displaystyle p=2^{506}-45,A=996558,B=1}
+  
+, for M[952902], 
+  
+    
+      
+        p
+        =
+        
+          2
+          
+            510
+          
+        
+        −
+        75
+        ,
+        A
+        =
+        952902
+        ,
+        B
+        =
+        1
+      
+    
+    {\displaystyle p=2^{510}-75,A=952902,B=1}
+  
+ and for M[1504058], 
+  
+    
+      
+        p
+        =
+        
+          2
+          
+            521
+          
+        
+        −
+        1
+        ,
+        A
+        =
+        1504058
+        ,
+        B
+        =
+        1
+      
+    
+    {\displaystyle p=2^{521}-1,A=1504058,B=1}
+  
+ respectively. Apart from these two, other proposals of Montgomery curves can be found at.
+
+
+== Software ==
+Curve25519 is a popular set of elliptic curve parameters and reference implementation by Daniel J. Bernstein in C. Bindings and alternative implementations are also available.
+Curve448, an elliptic curve potentially offering 224 bits of security, developed by Mike Hamburg of Rambus Cryptography Research.
+LINE messenger app has used the ECDH protocol for its "Letter Sealing" end-to-end encryption of all messages sent through said app since October 2015.
+Signal Protocol uses ECDH to obtain post-compromise security. Implementations of this protocol are found in Signal, WhatsApp, Facebook Messenger and Skype.
+
+
+== See also ==
+Elliptic-curve cryptography
+Diffie–Hellman key exchange
+Forward secrecy
+
+
+== References ==

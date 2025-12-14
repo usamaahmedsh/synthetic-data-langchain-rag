@@ -1,0 +1,160 @@
+C# Open Source Managed Operating System (Cosmos) is a toolkit for building GUI and command-line based operating systems, written mostly in the programming language C# and small amounts of a high-level assembly language named X#. Cosmos is a backronym, in that the acronym was chosen before the meaning. It is open-source software released under a BSD license.
+As of 2022, Cosmos encompasses an ahead-of-time (AOT) compiler named IL2CPU to translate Common Intermediate Language (CIL) into native instructions. Cosmos compiles user-made programs and associated libraries using IL2CPU to create a bootable native executable that can run independently. The resulting output can be booted from a USB flash drive, CD-ROM, over a network via Preboot Execution Environment (PXE), or inside a virtual machine. Recent releases also allow deploying to certain x86 embedded devices over Universal Serial Bus (USB). While C# is the primary language used by developers (both on the backend and by end users of Cosmos), many CLI languages can be used, provided they compile to pure CIL without the use of Platform Invocation Services (P/Invokes). Cosmos is mainly intended for use with .NET.
+Cosmos does not aim to become a full operating system, but rather a toolkit to allow other developers to simply and easily build their own operating systems using .NET. It also functions as an abstraction layer, hiding much of the inner workings of the hardware from the eventual developer.
+Older versions of Cosmos were released in Milestones, with the last being Milestone 5 (released August 2010). More recently, the project switched to simply naming new releases after the latest commit number.
+Releases of Cosmos are divided into two types: the Userkit, and the Devkit. The Userkit is a pre-packaged release that is updated irregularly, as new and improved features are added. Userkits are generally considered stable, but do not include recent changes and may lack features. The Devkits, which refers to the source code of Cosmos, are usually stable but may have some bugs. They can be acquired on GitHub and must be built manually. Git is used for source control management.
+Most work on Cosmos is currently aimed at improving debugger functionality and Microsoft Visual Studio integration. Kernel work is focused on implementing file systems, memory management, and developing a reliable network interface. Limine serves as the project's bootloader; in older versions of the toolkit, GRUB was used instead.
+
+
+== Origin ==
+The idea for Cosmos was created by Chad Hower and was initially co-developed by Hower and Matthijs ter Woord. Over time, Cosmos has been maintained and improved by many other individuals.
+
+
+== Developing with Cosmos ==
+Cosmos has many facilities to improve the experience of developing operating systems, and is designed to make the process as fast and painless as possible. Knowledge of assembly language is not required to use Cosmos.
+
+
+=== Visual Studio integration ===
+A key feature of Cosmos, which separates it from other operating systems of its type, is its tight integration with Microsoft Visual Studio. Code can be written, compiled, debugged, and run entirely through Visual Studio, with only a few keypresses. Cosmos no longer supports Visual Studio 2015, Visual Studio 2017, or Visual Studio 2019, only supporting Visual Studio 2022.
+
+
+=== Debugging ===
+Cosmos can be seamlessly debugged through Visual Studio when running over PXE or in a virtual machine. Many standard debugging features are present, such as breakpoints, tracing, and logging. Also, debugging can be done via serial cables, if running on physical hardware. When running in VMWare, Cosmos supports stepping and breakpoints, even while an operating system is running.
+
+
+=== Running ===
+Cosmos uses virtualisation to help speed development by allowing developers to test their operating systems without having to restart their computers as often. By default, VMware Player is used, due to its ease of use in terms of integration with the project. Other virtualisation environments are supported as well, such as Bochs and Hyper-V. An ISO disk image may also be generated that can be burned to a USB flash drive, CD-ROM, or similar media.
+PXE booting is also supported, allowing for remote machines to run Cosmos over a network connection.
+
+
+=== IDE support ===
+Cosmos does not strictly require Visual Studio. Projects can be created by running the command below, given you have the template installed:Code can be written in other editors and IDEs, such as JetBrains Rider, Visual Studio Code, Neovim and GNU Nano. One downside of this is that debugging may be difficult without the Visual Studio debugger. COSMOS will also not automatically launch your virtualisation software on build. If you would like to use QEMU, for instance, you can run this command after build:
+
+
+== Compile process ==
+
+
+=== IL2CPU ===
+To compile .NET CIL into assembly language, Cosmos developers created an ahead-of-time compiler named IL2CPU, designed to parse CIL and output x86 opcodes. (IL To CPU) is an AOT compiler that is written using a Common Intermediate Language compliant language (C#). It translates Common Intermediate Language to machine code.
+
+
+=== X# ===
+X# is a low-level programming language designed for the x86 processor architecture as part of Cosmos operating system. It aims to simplify operating system development by incorporating C-like language syntax to assembly language. Initially, X# was used for debugging services in Cosmos. The X# compiler is an open source command-line interface (console) program that parses code lines into tokens, compares them with patterns, and translates matched patterns to intel syntax x86 assembly, typically for the YASM assembler. Early versions of X# operated mostly 1:1 with assembly code, but this is no longer the case.
+
+
+==== Syntax ====
+The syntax of X# is straightforward but stricter compared to C.
+
+
+==== Comments ====
+X# supports only single-line comments in the C++ style, starting with - //.
+
+
+==== Constants ====
+X# allows the definition of named constants declared outside functions. Numeric constants are defined similarly to C++; for example: . Referencing them elsewhere requires a # before the name; for example: - "#i".
+String constant use single quotes (''). To include a single quote in a string constant, use a backslash (e.g.,'I\'m so happy'). X# strings are null terminated.
+Hexadecimal constants are prefixed with a dollar sign ($), followed by the constant. ($B8000).
+Decimal constants are not prefixed but cannot start with 0.
+Binary and octal constants aren't supported yet.
+
+
+==== Labels ====
+Labels in X# function similarly to labels in other assembly languages. The goto mnemonic is used to jump to a label instead of the conventional jump or jmp mnemonic.
+
+
+==== Namespaces ====
+X# program files must start with a namespace directive. X# lacks a namespace hierarchy, so the current namespace changes with each directive until the file ends. Variables or constants in different namespaces can have the same name, as the namespace is prefixed to the member's name in the assembly output. Namespaces cannot reference each other except through low-level operations.
+
+
+==== Functions ====
+All X# executive code should be placed in functions defined by the 'function' keyword. Unlike C, X# does not support any formal parameter declaration in the header of the functions, so the conventional parentheses after the function name are omitted. Because line-fixed patterns are specified in syntax implemented in code parser, the opening curly bracket can't be placed on the next line, unlike in many other C-style languages.
+
+Because X# is a low-level language, there are no stack frames inserted, so by default, the return EIP address should be on the top of the stack. X# function calls do contain arguments enclosed in parentheses, unlike in function headers. Arguments passed to functions can be registers, addresses, or constants. These arguments are pushed onto the stack in reverse order. Note that the stack on x86 platforms cannot push or pop one-byte registers.
+
+The return keyword returns execution to the return EIP address saved in the stack.
+
+
+==== Arithmetic and bitwise operations ====
+X# can work with three low-level data structures: the registers, the stack and the memory, on different ports. The registers are the base of all normal operations for X#. A register can be copied to another by writing DST = SRC as opposed to mov or load/store instructions. Registers can be incremented or decremented just as easily. Arithmetic operations (add, subtract, multiply, divide) are written as dest op src where src is a constant, variable, or register, and dest is both an operand and the location where the result is stored.
+Examples of assignment and arithmetic operations are shown below.
+
+Register shifting and rolling is similar to C.
+
+Other bitwise operations are similar to arithmetic operations.
+
+
+==== Stack ====
+Stack manipulation in X# is performed using + and - prefixes, where + pushes a register, value, constant or all registers onto the stack and - pops a value to some register. All constants are pushed on stack as double words, unless stated otherwise (pushing single bytes is not supported).
+
+
+==== Variables ====
+Variables are defined within namespaces using the var keyword. Arrays are defined by specifying the type and size. Variables and arrays are zeroed by default. To reference a variable's value, use a dot ('.'), and to reference its address, use @.
+
+X# can access an address with a specified offset using square brackets:
+
+
+==== Comparison ====
+There are two ways to compare values in X#: pure comparison and if-comparison.
+
+Pure comparison leaves the result in FLAGS, which can be used in native assembly or with the if keyword without specifying comparison members.
+If comparison directly compares two members after an if keyword.
+Here are two ways of writing a (slow) X# string length (strlen)function:
+
+There are six available comparison operators: < > = <= >= !=. These operators can be used in both comparisons and loops. Note that there's also a bitwise AND operator which tests bits:
+
+
+== Writing Cosmos code ==
+An operating system built with Cosmos is developed in a similar fashion to any .NET C# console program. Additional references are made in the start of the program which give access to the Cosmos libraries.
+
+
+=== User Kit and Visual Studio ===
+The Cosmos User Kit is a part of Cosmos designed to make Cosmos easier to use for developers using Microsoft Visual Studio. When installed, the user kit adds a new project type to Visual Studio, called a Cosmos Project. This is a modified version of a console application, with the Cosmos compiler and bootup stub code already added.
+
+
+== Compiling a project ==
+Once the code is complete, it may be compiled using Roslyn, the .NET compiler, either via Microsoft Visual Studio or the .NET command-line tools (dotnet).
+This converts the application from the original source code (C# or otherwise) into Common Intermediate Language (CIL), the native intermediate language of .NET.
+The build process then invokes the IL2CPU compiler which systematically scans through all of the application's CIL code (excluding the Cosmos compiler code), converting it into assembly language for the selected processor architecture. As of 2022, only the x86 architecture is supported. Next, Cosmos invokes the selected assembler to convert this assembly language code into native central processing unit (CPU) opcode. Finally, the desired output option is activated, be it starting a virtual machine, starting a PXE engine, or producing an ISO disk image file.
+
+
+=== Debug options ===
+Cosmos offers several options as to how to deploy the resulting OS and how to debug the output.
+
+
+==== Virtualization ====
+
+Cosmos allows users to boot the operating system in an emulated environment using a virtual machine. This lets developers test the system on their own computer without having to reboot, giving the advantages of not requiring extra hardware or that developers exit their integrated development environment (IDE). VMware is the primary virtualisation method, however others are supported such as QEMU and Hyper-V.
+
+
+==== Disk images ====
+This option writes the operating system to a disk image (ISO image) file, which can be loaded into some emulators (such as Bochs, QEMU or more commonly VMware) or written to a USB flash drive and booted on physical hardware.
+
+
+==== PXE network boot ====
+This option allows the operating system to boot on physical hardware. The data is sent via a local area network (LAN) to the client machine. This requires two computers: one as the client machine (on which the OS is booted) and one as the server (usually the development machine). It also requires a network connecting the two computers, a client machine with a network card, and a Basic Input/Output System (BIOS) that can boot with PXE. As of 2022, debugging over a network is no longer supported.
+
+
+== See also ==
+
+IL2CPU
+.NET
+SharpOS
+Singularity (operating system)
+Phantom OS
+
+
+== References ==
+
+
+== External links ==
+
+Official website
+CosmosOS on GitHub
+Cosmos Overview article at CodeProject
+Cosmos Dev Yahoo Group Archived 2011-01-08 at the Wayback Machine
+Cosmos Fan Page on Facebook
+
+
+=== News coverage ===
+Mary Jo Foley on ZDNet - Cosmos: An open-source .Net-based microkernel OS is born
+Scott Hanselman: Tiny Managed Operating System Edition

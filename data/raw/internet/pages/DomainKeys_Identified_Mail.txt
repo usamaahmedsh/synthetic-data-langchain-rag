@@ -1,0 +1,175 @@
+DomainKeys Identified Mail (DKIM) is an email authentication method that permits a person, role, or organization that owns the signing domain to claim some responsibility for a message by associating the domain with the message.
+The receiver can check that an email that claimed to have come from a specific domain was indeed authorized by the owner of that domain. It achieves this by affixing a digital signature, linked to a domain name, to each outgoing email message. The recipient system can verify this by looking up the sender's public key published in the DNS. A valid signature also guarantees that some parts of the email (possibly including attachments) have not been modified since the signature was affixed. Usually, DKIM signatures are not visible to end-users, and are affixed or verified by the infrastructure rather than the message's authors and recipients.
+DKIM is an Internet Standard. It is defined in RFC 6376, dated September 2011, with updates in RFC 8301, RFC 8463, RFC 8553, and RFC 8616.
+
+
+== Overview ==
+The need for email validated identification arises because forged addresses and content are otherwise easily created—and widely used in spam, phishing and other email-based fraud. For example, a fraudster may send a message claiming to be from sender@example.com, with the goal of convincing the recipient to accept and to read the email—and it is difficult for recipients to establish whether to trust this message. System administrators also have to deal with complaints about malicious emails that appear to have originated from their systems, but did not.
+DKIM provides the ability to sign a message, and allows the signer (author organization) to communicate which email it considers legitimate. It does not directly prevent or disclose abusive behavior.
+DKIM also provides a process for verifying a signed message. Verifying modules typically act on behalf of the receiver organization, possibly at each hop.
+All of this is independent of Simple Mail Transfer Protocol (SMTP) routing aspects, in that it operates on the RFC 5322 message—the transported mail's header and body—not the SMTP "envelope" defined in RFC 5321. Hence, DKIM signatures survive basic relaying across multiple message transfer agents.
+
+
+=== Technical details ===
+
+
+==== Signing ====
+The signing organization can be a direct handler of the message, such as the author, mail submission agent, site, or further intermediary along the transit path, or an indirect handler such as an independent service that is providing assistance to a direct handler.
+Signing modules insert one or more DKIM-Signature: header fields, possibly on behalf of the author organization or the originating service provider. The specification allows signers to choose which header fields they sign, but the From: field must always be signed. The resulting header field consists of a list of tag=value parts as in the example below:
+
+where the tags used are:
+
+The most relevant ones are b for the actual digital signature of the contents (headers and body) of the mail message, bh for the body hash (optionally limited to the first l octets of the body), d for the signing domain, and s for the selector.
+An Agent or User Identifier (AUID) can optionally be included. The format is an email address with an optional local-part. The domain must be equal to, or a subdomain of, the signing domain. The semantics of the AUID are intentionally left undefined, and may be used by the signing domain to establish a more fine-grained sphere of responsibility.
+Both header and body contribute to the signature. First, the message body is hashed, always from the beginning, possibly truncated to a given length l (which may be zero). Second, selected header fields are hashed, in the order given by h. Repeated field names are matched from the bottom of the header upward, which is the order in which Received: fields are inserted in the header. A non-existing field matches the empty string, so that adding a field with that name will break the signature. The DKIM-Signature: field of the signature being created, with bh equal to the computed body hash and b equal to the empty string, is implicitly added to the second hash, albeit its name must not appear in h — if it does, it refers to another, preexisting signature. For both hashes, text is canonicalized according to the relevant c algorithms. The result, after encryption with the signer's private key and encoding using Base64, is b.
+In addition to the list of header fields listed in h, a list of header fields (including both field name and value) present at the time of signing may be provided in z. This list need not match the list of headers in h.
+Algorithms, fields, and body length are meant to be chosen so as to assure unambiguous message identification while still allowing signatures to survive the unavoidable changes which are going to occur in transit. No end-to-end data integrity is implied.
+
+
+==== Verification ====
+A receiving SMTP server wanting to verify uses the domain name and the selector to perform a DNS lookup. For example, given the example signature above: the d tag gives the author domain to be verified against, example.net ; the s tag the selector, brisbane. The string _domainkey is a fixed part of the specification. This gives the TXT resource record to be looked up as:
+brisbane._domainkey.example.net
+Note that the selector and the domain name can be UTF-8 in internationalized email. In that case the label must be encoded according to IDNA before lookup. The data returned from the query of this record is also a list of tag-value pairs. It includes the domain's public key, along with other key usage tokens and flags (e.g. from a command line: nslookup -q=TXT  brisbane._domainkey.example.net) as in this example:
+
+"k=rsa; t=s; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDDmzRmJRQxLEuyYiyMg4suA2Sy
+MwR5MGHpP9diNT1hRiwUd/mZp1ro7kIDTKS8ttkI6z6eTRW9e9dDOxzSxNuXmume60Cjbu08gOyhPG3
+GfWdg7QkdN6kR4V75MFlw624VY35DaXBvnlTJTgRg/EW72O1DiYVThkyCgpSYS8nmEQIDAQAB"
+
+The available tags are:
+
+A CNAME record can also be used to point at a different TXT record, for example when one organization sends email on behalf of another.
+The receiver can use the public key (value of the p tag) to then validate the signature on the hash value in the header field, and check it against the hash value for the mail message (headers and body) that was received. If the two values match, this cryptographically proves that the mail was signed by the indicated domain and has not been tampered with in transit.
+Signature verification failure does not force rejection of the message. Instead, the precise reasons why the authenticity of the message could not be proven should be made available to downstream and upstream processes. Methods for doing so may include sending back an FBL message, or adding an Authentication-Results: header field to the message as described in RFC 7001.
+
+
+=== Patent ===
+DomainKeys was covered by U.S. patent 6,986,049, now expired.  Yahoo! licensed its patent claims under a dual license scheme: the DomainKeys Patent License Agreement v1.2, or GNU General Public License v2.0 (and no other version).
+
+
+=== Relationship to SPF and DMARC ===
+In essence, both DKIM and SPF provide different measures of email authenticity. DMARC provides the ability for an organisation to publish a policy that specifies which mechanism (DKIM, SPF, or both) is employed when sending email from that domain; how to check the From: field presented to end users; how the receiver should deal with failures—and a reporting mechanism for actions performed under those policies.
+
+
+== Advantages ==
+The primary advantage of this system for e-mail recipients is in allowing the signing domain to reliably identify a stream of legitimate email, thereby allowing domain-based blacklists and whitelists to be more effective. This is also likely to make certain kinds of phishing attacks easier to detect.
+There are some incentives for mail senders to sign outgoing e-mail:
+
+It allows a great reduction in abuse desk work for DKIM-enabled domains if e-mail receivers use the DKIM system to identify forged e-mail messages claiming to be from that domain.
+The domain owner can then focus its abuse team energies on its own users who actually are making inappropriate use of that domain.
+
+
+=== Use with spam filtering ===
+DKIM is a method of labeling a message, and it does not itself filter or identify spam.
+However, widespread use of DKIM can prevent spammers from forging the source address of their messages, a technique they commonly employ today.
+If spammers are forced to show a correct source domain, other filtering techniques can work more effectively.
+In particular, the source domain can feed into a reputation system to better identify spam.
+Conversely, DKIM can make it easier to identify mail that is known not to be spam and need not be filtered.
+If a receiving system has a whitelist of known good sending domains, either locally maintained or from third party certifiers, it can skip the filtering on signed mail from those domains, and perhaps filter the remaining mail more aggressively.
+
+
+=== Anti-phishing ===
+DKIM can be useful as an anti-phishing technology. Mailers in heavily phished domains can sign their mail to show that it is
+genuine. Recipients can take the absence of a valid signature on mail from those domains to be an indication that the mail is probably forged. The best way to determine the set of domains that merit this degree of scrutiny remains an open question. DKIM used to have an optional feature called ADSP that lets authors that sign all their mail self-identify, but it was demoted to historic status in November 2013. Instead, DMARC can be used for the same purpose and allows domains to self-publish which techniques (including SPF and DKIM) they employ, which makes it easier for the receiver to make an informed decision whether a certain mail is spam or not. For example, using DMARC, eBay and PayPal both publish policies that all of their mail is authenticated, and requesting that any receiving system, such as Gmail, should reject any that is not.
+
+
+=== Compatibility ===
+Because it is implemented using DNS records and an added RFC 5322 header field, DKIM is compatible with the existing e-mail infrastructure. In particular, it is transparent to existing e-mail systems that lack DKIM support.
+This design approach also is compatible with other, related services, such as the S/MIME and OpenPGP content-protection standards.
+DKIM is compatible with the DNSSEC standard and with SPF.
+
+
+=== Computation overhead ===
+DKIM requires cryptographic checksums to be generated for each message sent through a mail server, which results in computational overhead not otherwise required for e-mail delivery. This additional computational overhead is a hallmark of digital postmarks, making sending bulk spam more (computationally) expensive.
+This facet of DKIM may look similar to hashcash, except that the receiver side verification is a negligible amount of work, while a typical hashcash algorithm would require far more work.
+
+
+=== Non-repudiability ===
+DKIM's non-repudiation feature prevents senders (such as spammers) from credibly denying having sent an email. It has proven useful to news media sources such as WikiLeaks, which has been able to leverage DKIM body signatures to prove that leaked emails were genuine and not tampered with.
+Matthew D. Green considers non-repudiation a non-wanted feature of DKIM, forced by behaviors such as those just described. Indeed, DKIM protocol provides for expiration. There is an optional x tag on each signature, which establishes a formal expiration time; however, verifiers can ignore it. In addition, domain owners can revoke a public key by removing its cryptographic data from the record, thereby preventing signature verification unless someone saved the public key data beforehand. DKIM key rotation is often recommended just to minimize the impact of compromised keys. However, in order to definitely disable non-repudiation, expired secret keys can be published, thereby allowing everyone to produce fake signatures, thus voiding the significance of original ones.
+
+
+== Weaknesses ==
+The RFC itself identifies a number of potential attack vectors.
+DKIM signatures do not encompass the message envelope, which holds the return-path and message recipients. Since DKIM does not attempt to protect against mis-addressing, this does not affect its utility.
+A number of concerns were raised and refuted in 2013 at the time of the standardization.
+A concern for any cryptographic solution would be message replay
+abuse, which bypasses techniques that currently limit the level of abuse from larger domains. Replay can be inferred by using per-message public keys, tracking the DNS queries for those keys and filtering out the high number of queries due to e-mail being sent to large mailing lists or malicious queries by bad actors.
+For a comparison of different methods also addressing this problem see e-mail authentication.
+
+
+=== Arbitrary forwarding ===
+As mentioned above, authentication is not the same as abuse prevention. A malicious email user of a reputable domain can compose a bad message and have it DKIM-signed and sent from that domain to any mailbox from where they can retrieve it as a file, so as to obtain a signed copy of the message. Use of the l tag in signatures makes doctoring such messages even easier. The signed copy can then be forwarded to a million recipients, for example through a botnet, without control. The email provider who signed the message can block the offending user, but cannot stop the diffusion of already-signed messages. The validity of signatures in such messages can be limited by always including an expiration time tag in signatures, or by revoking a public key periodically or upon a notification of an incident. Effectiveness of the scenario can hardly be limited by filtering outgoing mail, as that implies the ability to detect if a message might potentially be useful to spammers.
+
+
+=== Content modification ===
+DKIM currently features two canonicalization algorithms, simple and relaxed, neither of which is MIME-aware.  Mail servers can legitimately convert to a different character set, and often document this with X-MIME-Autoconverted: header fields. In addition, servers in certain circumstances have to rewrite the MIME structure, thereby altering the preamble, the epilogue, and entity boundaries, any of which breaks DKIM signatures. Only plain text messages written in us-ascii, provided that MIME header fields are not signed, enjoy the robustness that end-to-end integrity requires.
+The OpenDKIM Project organized a data collection involving 21 mail servers and millions of messages. 92.3% of observed signatures were successfully verified, a success rate that drops slightly (90.5%) when only mailing list traffic is considered.
+
+
+==== Annotations by mailing lists ====
+The problems might be exacerbated when filtering or relaying software makes changes to a message. Without specific precaution implemented by the sender, the footer addition operated by most mailing lists and many central antivirus solutions will break the DKIM signature. A possible mitigation is to sign only designated number of bytes of the message body. It is indicated by l tag in DKIM-Signature header. Anything added beyond the specified length of the message body is not taken into account while calculating DKIM signature.  This won't work for MIME messages.
+Another workaround is to whitelist known forwarders; e.g., by SPF. For yet another workaround, it was proposed that forwarders verify the signature, modify the email, and then re-sign the message with a Sender: header.  However, this solution has its risk with forwarded third party signed messages received at SMTP receivers supporting the RFC 5617 ADSP protocol. Thus, in practice, the receiving server still has to whitelist known message streams.
+The Authenticated Received Chain (ARC) is an email authentication system designed to allow an intermediate mail server like a mailing list or forwarding service to sign an email's original authentication results. This allows a receiving service to validate an email when the email's SPF and DKIM records are rendered invalid by an intermediate server's processing. ARC is defined in RFC 8617, published in July 2019, as "Experimental".
+
+
+=== Short key vulnerability ===
+In October 2012, Wired reported that mathematician Zach Harris detected and demonstrated an email source spoofing vulnerability with short DKIM keys for the google.com corporate domain, as well as several other high-profile domains. He stated that authentication with 384-bit keys can be factored in as little as 24 hours "on my laptop," and 512-bit keys, in about 72 hours with cloud computing resources. Harris found that many organizations sign email with such short keys; he factored them all and notified the organizations of the vulnerability. He states that 768-bit keys could be factored with access to very large amounts of computing power, so he suggests that DKIM signing should use key lengths greater than 1,024.
+Wired stated that Harris reported, and Google confirmed, that they began using new longer keys soon after his disclosure. According to RFC 6376 the receiving party must be able to validate signatures with keys ranging from 512 bits to 2048 bits, thus usage of keys shorter than 512 bits might be incompatible and shall be avoided. RFC 6376 also states that signers must use keys of at least 1024 bits for long-lived keys, though long-livingness is not specified there.
+
+
+== History ==
+DKIM resulted in 2004 from merging two similar efforts, "enhanced DomainKeys" from Yahoo and "Identified Internet Mail" from Cisco. This merged specification has been the basis for a  series of IETF  standards-track specifications and support documents which eventually resulted in STD 76, currently RFC 6376.
+"Identified Internet Mail" was proposed by Cisco as a signature-based mail authentication standard,
+while DomainKeys was designed by Yahoo to verify the DNS domain of an e-mail sender and the message integrity.
+Aspects of DomainKeys, along with parts of Identified Internet Mail, were combined to create DomainKeys Identified Mail (DKIM).
+Trendsetting providers implementing DKIM include Yahoo, Gmail, AOL and FastMail. Any mail from these organizations should carry a DKIM signature.
+Discussions about DKIM signatures passing through indirect mail flows, formally in the DMARC working group, took place right after the first adoptions of the new protocol wreaked havoc on regular mailing list use. However, none of the proposed DKIM changes passed. Instead, mailing list software was changed.
+In 2017, another working group was launched, DKIM Crypto Update (dcrup), with the specific restriction to review signing techniques. RFC 8301 was issued in January 2018. It bans SHA-1 and updates key sizes (from 512–2048 to 1024–4096).  RFC 8463 was issued in September 2018. It adds an elliptic curve algorithm to the existing RSA. The added key type, k=ed25519 is adequately strong while featuring short public keys, more easily publishable in DNS.
+
+
+=== Development ===
+The original DomainKeys was designed by Mark Delany of Yahoo! and enhanced through comments from many others since 2004. It is specified in Historic RFC 4870, superseded by Standards Track RFC 4871, DomainKeys Identified Mail (DKIM) Signatures; both published in May 2007. A number of clarifications and conceptualizations were collected thereafter and specified in RFC 5672, August 2009, in the form of corrections to the existing specification. In September 2011, RFC 6376 merged and updated the latter two documents, while preserving the substance of the DKIM protocol. Public key compatibility with the earlier DomainKeys is also possible.
+DKIM was initially produced by an informal industry consortium and was then submitted for enhancement and standardization by the IETF DKIM Working Group, chaired by Barry Leiba and Stephen Farrell, with
+Eric Allman of sendmail,
+Jon Callas of PGP Corporation, Mark Delany and Miles Libbey of Yahoo!, and Jim Fenton and Michael Thomas of Cisco Systems attributed as primary authors.
+Source code development of one common library is led by The OpenDKIM Project, following the most recent protocol additions, and licensing under the New BSD License.
+
+
+== Enforcement ==
+Email providers are increasingly requiring senders to implement email authentication in order to successfully deliver mail to their users' mailboxes.
+In February 2024, Google started requiring bulk senders to authenticate their emails with DKIM to successfully deliver emails to Google-hosted mailboxes.
+Similarly in February 2024, Yahoo started requiring bulk senders to implement SPF and DKIM to successfully deliver emails to Yahoo users.
+
+
+== See also ==
+Authenticated Received Chain (ARC)
+Author Domain Signing Practices
+Bounce message
+Context filtering
+DMARC (Domain-based Message Authentication, Reporting and Conformance)
+DomainKeys
+Email authentication
+OpenPGP
+S/MIME
+Sender Policy Framework (SPF)
+Vouch by Reference
+
+
+== References ==
+
+
+== Further reading ==
+RFC 4686 Analysis of Threats Motivating DomainKeys Identified Mail (DKIM)
+RFC 4871 DomainKeys Identified Mail (DKIM) Signatures Proposed Standard
+RFC 5617 DomainKeys Identified Mail (DKIM) Author Domain Signing Practices (ADSP)
+RFC 5585 DomainKeys Identified Mail (DKIM) Service Overview
+RFC 5672 RFC 4871 DomainKeys Identified Mail (DKIM) Signatures—Update
+RFC 5863 DKIM Development, Deployment, and Operations
+RFC 6376 DomainKeys Identified Mail (DKIM) Signatures Draft Standard
+RFC 6377 DomainKeys Identified Mail (DKIM) and Mailing Lists
+RFC 8301 Cryptographic Algorithm and Key Usage Update to DomainKeys Identified Mail (DKIM)
+RFC 8463 A New Cryptographic Signature Method for DomainKeys Identified Mail (DKIM)
+
+
+== External links ==
+DomainKeys Identified Mail (DKIM)

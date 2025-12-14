@@ -1,0 +1,39 @@
+The NOVA (non-volatile memory accelerated) file system is an open-source, log-structured file system for byte-addressable persistent memory (for example non-volatile dual in-line memory module (NVDIMM) and 3D XPoint DIMMs) for Linux.
+NOVA is designed specifically for byte-addressable persistent memories and aims to provide high-performance, atomic file and metadata operations, and fault tolerance. To meet these goals NOVA combines several techniques found in other file systems. NOVA uses log structure, copy-on-write (COW), journaling, and log-structured metadata updates to provide strong atomicity guarantees, and it uses a combination replication, metadata checksums, and RAID 4 parity to protect data and metadata from media errors and software bugs. It also supports checkpoints to facilitate backups.
+
+
+== Filesystem ==
+NOVA was developed at the University of California, San Diego, in the Non-Volatile Systems Laboratory of the Computer Science and Engineering Department. Patches were initially made available for version 4.12 of the Linux kernel. As of 2017 it is limited to x86-64 Linux, and not ready for merging with the upstream kernel.
+
+
+=== Log structure ===
+
+NOVA is primarily a log-structured file system, but it differs from other log-structured file systems in several respects. First, rather than using a single log for the entire file system, each inode has its own, dedicated log that records the updates to the inode. This allows for increased concurrency in file operations, since different threads can operate on inodes in parallel. Second, the logs do not contain file data, but only metadata updates, resulting in smaller logs. Third, the logs are not stored in physically contiguous memory. Instead, NOVA stores the logs in a linked list of 4 KB memory pages.
+NOVA uses the logs to provide atomicity for operations that affect a single file (e.g., writing to a file or modifying its metadata). To do this, NOVA writes a log entry to empty space past the end of the log and then atomically updates the inode's pointer to the log tail.
+
+
+=== Copy-on-write ===
+NOVA uses copy-on-write (COW) to update file data. When a program writes data to a file, NOVA allocates some unused memory pages to hold the data and writes the data into them. Then, it appends a log entry to the inode's log that points to the new pages and describes their logical location in the file. Since appending the log entry is atomic, the write is also atomic.
+
+
+=== Journaling ===
+Some file operations (e.g., moving a file from one directory to another) require modifying multiple inodes. To make these operations atomic, NOVA uses a simple journaling mechanisms. First, it writes the new log entries to ends of the inodes that the operation will affect, then it uses the journal to record the necessary updates to the inodes' log tail pointers. Next, it marks the journal as committed and applies the updates to the tail pointers.
+
+
+=== Metadata protection ===
+NOVA uses replication and checksums to provide protection against metadata corruption due to media errors and software bugs. Every metadata structure (e.g., inodes, superblocks, and log entries) contains a CRC-32 checksum that allows NOVA to detect if structures contents have changed with its knowledge. NOVA also stores two copies of each data structure – the "primary" and the "replica" – and stores them far from one another in memory.
+Whenever NOVA accesses a metadata structure, it first recomputes the checksum on both the primary and the replica. If either check results in a mismatch, NOVA repairs the damage using the other copy. If neither checksum matches, then the structure is lost and NOVA returns an error.
+
+
+=== Data protection ===
+NOVA uses RAID 4 to protect file data. It divides each 4 KB page into 512-byte strips and stores a parity strip in a dedicated region of persistent memory. It also computes (and stores a replica of) a CRC-32 checksum for the eight data strips and the parity strip.
+When NOVA reads a page, it confirms the checksum on each strip. If one of the strips is corrupt, it tries to recover the strip using the parity bits. If no other strips have experienced data corruption, recovery will succeed. Otherwise, recovery fails, the contents of the page are lost, and NOVA returns an error.
+
+
+== References ==
+
+
+== External links ==
+NOVA: A Log-structured File System for Hybrid Volatile/Non-volatile Main Memories
+Hardening the NOVA File System UCSD-CSE Techreport CS2017-1018
+NOVA: The Fastest File System for NVDIMMs

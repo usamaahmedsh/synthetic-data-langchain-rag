@@ -1,0 +1,420 @@
+You Only Look Once (YOLO) is a series of real-time object detection systems based on convolutional neural networks. First introduced by Joseph Redmon et al. in 2015, YOLO has undergone several iterations and improvements, becoming one of the most popular object detection frameworks.
+The name "You Only Look Once" refers to the fact that the algorithm requires only one forward propagation pass through the neural network to make predictions, unlike previous region proposal-based techniques like R-CNN that require thousands for a single image.
+
+
+== Overview ==
+Compared to previous methods like R-CNN and OverFeat, instead of applying the model to an image at multiple locations and scales, YOLO applies a single neural network to the full image. This network divides the image into regions and predicts bounding boxes and probabilities for each region. These bounding boxes are weighted by the predicted probabilities.
+
+
+=== OverFeat ===
+OverFeat was an early influential model for simultaneous object classification and localization. Its architecture is as follows:
+
+Train a neural network for image classification only ("classification-trained network"). This could be one like the AlexNet.
+The last layer of the trained network is removed, and for every possible object class, initialize a network module at the last layer ("regression network"). The base network has its parameters frozen. The regression network is trained to predict the 
+  
+    
+      
+        (
+        x
+        ,
+        y
+        )
+      
+    
+    {\displaystyle (x,y)}
+  
+ coordinates of two corners of the object's bounding box.
+During inference time, the classification-trained network is run over the same image over many different zoom levels and croppings. For each, it outputs a class label and a probability for that class label. Each output is then processed by the regression network of the corresponding class. This results in thousands of bounding boxes with class labels and probability. These boxes are merged until only one single box with a single class label remains.
+
+
+== Versions ==
+There are two parts to the YOLO series. The original part contained YOLOv1, v2, and v3, all released on a website maintained by Joseph Redmon.
+
+
+=== YOLOv1 ===
+The original YOLO algorithm, introduced in 2015, divides the image into an 
+  
+    
+      
+        S
+        ×
+        S
+      
+    
+    {\displaystyle S\times S}
+  
+ grid of cells. If the center of an object's bounding box falls into a grid cell, that cell is said to "contain" that object. Each grid cell predicts B bounding boxes and confidence scores for those boxes. These confidence scores reflect how confident the model is that the box contains an object and how accurate it thinks the box is that it predicts.
+In more detail, the network performs the same convolutional operation over each of the 
+  
+    
+      
+        
+          S
+          
+            2
+          
+        
+      
+    
+    {\displaystyle S^{2}}
+  
+patches. The output of the network on each patch is a tuple as follows:
+  
+    
+      
+        (
+        
+          p
+          
+            1
+          
+        
+        ,
+        …
+        ,
+        
+          p
+          
+            C
+          
+        
+        ,
+        
+          c
+          
+            1
+          
+        
+        ,
+        
+          x
+          
+            1
+          
+        
+        ,
+        
+          y
+          
+            1
+          
+        
+        ,
+        
+          w
+          
+            1
+          
+        
+        ,
+        
+          h
+          
+            1
+          
+        
+        ,
+        …
+        ,
+        
+          c
+          
+            B
+          
+        
+        ,
+        
+          x
+          
+            B
+          
+        
+        ,
+        
+          y
+          
+            B
+          
+        
+        ,
+        
+          w
+          
+            B
+          
+        
+        ,
+        
+          h
+          
+            B
+          
+        
+        )
+      
+    
+    {\displaystyle (p_{1},\dots ,p_{C},c_{1},x_{1},y_{1},w_{1},h_{1},\dots ,c_{B},x_{B},y_{B},w_{B},h_{B})}
+  
+where 
+
+  
+    
+      
+        
+          p
+          
+            i
+          
+        
+      
+    
+    {\displaystyle p_{i}}
+  
+ is the conditional probability that the cell contains an object of class 
+  
+    
+      
+        i
+      
+    
+    {\displaystyle i}
+  
+, conditional on the cell containing at least one object.
+
+  
+    
+      
+        
+          x
+          
+            j
+          
+        
+        ,
+        
+          y
+          
+            j
+          
+        
+        ,
+        
+          w
+          
+            j
+          
+        
+        ,
+        
+          h
+          
+            j
+          
+        
+      
+    
+    {\displaystyle x_{j},y_{j},w_{j},h_{j}}
+  
+ are the center coordinates, width, and height of the 
+  
+    
+      
+        j
+      
+    
+    {\displaystyle j}
+  
+-th predicted bounding box that is centered in the cell. Multiple bounding boxes are predicted to allow each prediction to specialize in one kind of bounding box. For example, slender objects might be predicted by 
+  
+    
+      
+        j
+        =
+        2
+      
+    
+    {\displaystyle j=2}
+  
+ while stout objects might be predicted by 
+  
+    
+      
+        j
+        =
+        1
+      
+    
+    {\displaystyle j=1}
+  
+.
+
+  
+    
+      
+        
+          c
+          
+            j
+          
+        
+      
+    
+    {\displaystyle c_{j}}
+  
+ is the predicted intersection over union (IoU) of each bounding box with its corresponding ground truth.
+The network architecture has 24 convolutional layers followed by 2 fully connected layers.
+During training, for each cell, if it contains a ground truth bounding box, then only the predicted bounding boxes with the highest IoU with the ground truth bounding boxes is used for gradient descent. Concretely, let 
+  
+    
+      
+        j
+      
+    
+    {\displaystyle j}
+  
+ be that predicted bounding box, and let 
+  
+    
+      
+        i
+      
+    
+    {\displaystyle i}
+  
+ be the ground truth class label, then 
+  
+    
+      
+        
+          x
+          
+            j
+          
+        
+        ,
+        
+          y
+          
+            j
+          
+        
+        ,
+        
+          w
+          
+            j
+          
+        
+        ,
+        
+          h
+          
+            j
+          
+        
+      
+    
+    {\displaystyle x_{j},y_{j},w_{j},h_{j}}
+  
+ are trained by gradient descent to approach the ground truth, 
+  
+    
+      
+        
+          p
+          
+            i
+          
+        
+      
+    
+    {\displaystyle p_{i}}
+  
+ is trained towards 
+  
+    
+      
+        1
+      
+    
+    {\displaystyle 1}
+  
+, other 
+  
+    
+      
+        
+          p
+          
+            
+              i
+              ′
+            
+          
+        
+      
+    
+    {\displaystyle p_{i'}}
+  
+ are trained towards zero.
+If a cell contains no ground truth, then only 
+  
+    
+      
+        
+          c
+          
+            1
+          
+        
+        ,
+        
+          c
+          
+            2
+          
+        
+        ,
+        …
+        ,
+        
+          c
+          
+            B
+          
+        
+      
+    
+    {\displaystyle c_{1},c_{2},\dots ,c_{B}}
+  
+ are trained by gradient descent to approach zero.
+
+
+=== YOLOv2 ===
+Released in 2016, YOLOv2 (also known as YOLO9000) improved upon the original model by incorporating batch normalization, a higher resolution classifier, and using anchor boxes to predict bounding boxes. It could detect over 9000 object categories. It was also released on GitHub under the Apache 2.0 license.
+
+
+=== YOLOv3 ===
+YOLOv3, introduced in 2018, contained only "incremental" improvements, including the use of a more complex backbone network, multiple scales for detection, and a more sophisticated loss function.
+
+
+=== YOLOv4 and beyond ===
+Subsequent versions of YOLO (v4, v5, etc.) have been developed by different researchers, further improving performance and introducing new features. These versions are not officially associated with the original YOLO authors but build upon their work. As of 2025, there are versions up to YOLOv12.
+
+
+== See also ==
+Computer vision
+Object detection
+Convolutional neural network
+R-CNN
+SqueezeNet
+MobileNet
+EfficientNet
+
+
+== References ==
+
+
+== External links ==
+Official YOLO website
+YOLO implementation in Darknet

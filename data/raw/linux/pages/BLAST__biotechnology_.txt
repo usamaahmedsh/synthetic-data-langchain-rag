@@ -1,0 +1,462 @@
+In bioinformatics, BLAST (basic local alignment search tool) is an algorithm and program for comparing primary biological sequence information, such as the amino-acid sequences of proteins , nucleotides of DNA and/or RNA sequences. A BLAST search enables a researcher to compare a subject protein or nucleotide sequence (called a query) with a library or database of sequences, and identify database sequences that resemble the query sequence above a certain threshold. For example, following the discovery of a previously unknown gene in the mouse, a scientist will typically perform a BLAST search of the human genome to see if humans carry a similar gene; BLAST will identify sequences in the human genome that resemble the mouse gene based on similarity of sequence.
+
+
+== Background ==
+BLAST is a widely used bioinformatics programs for sequence searching. It addresses a fundamental problem in bioinformatics research. The heuristic algorithm it uses is faster for large-scale searches compared to methods like Smith-Waterman. This emphasis on speed is vital to making the algorithm practical on the huge genome databases currently available, although subsequent algorithms can be even faster.
+
+
+=== Development and History ===
+The BLAST program was designed by Eugene Myers, Stephen Altschul, Warren Gish, David J. Lipman and Webb Miller at the NIH and was published in J. Mol. Biol. in 1990. BLAST builds upon  FASTA, a previously developed program for protein and DNA sequence similarity searches. It incorporates  a novel stochastic model developed by Samuel Karlin and Stephen Altschul. They proposed "a method for estimating similarities between the known DNA sequence of one organism with that of another", and their work has been described as "the statistical foundation for BLAST." Subsequently, Altschul, Gish, Miller, Myers, and Lipman designed and implemented the BLAST program, which was published in the Journal of Molecular Biology in 1990 and has been cited over 100,000 times since.
+
+
+=== Algorithm ===
+While BLAST is faster than any Smith-Waterman implementation for most cases, it cannot "guarantee the optimal alignments of the query and database sequences" as Smith-Waterman algorithm does. The Smith-Waterman algorithm was an extension of a previous optimal method, the Needleman–Wunsch algorithm, which was the first sequence alignment algorithm that was guaranteed to find the best possible alignment. However, the time and space requirements of these optimal algorithms far exceed the requirements of BLAST.
+BLAST is more time-efficient than FASTA by searching only for the more significant patterns in the sequences, yet with comparative sensitivity. This could be further realized by understanding the algorithm of BLAST introduced below.
+Examples of other questions that researchers use BLAST to answer are:
+
+Which bacterial species have a protein that is related in lineage to a certain protein with known amino-acid sequence
+What other genes encode proteins that exhibit structures or motifs such as ones that have just been determined
+BLAST is also often used as part of other algorithms that require approximate sequence matching.
+BLAST is available on the web on the NCBI website. Different types of BLASTs are available according to the query sequences and the target databases. Alternative implementations include AB-BLAST (formerly known as WU-BLAST), FSA-BLAST (last updated in 2006), and ScalaBLAST.
+The original paper by Altschul, et al. was the most highly cited paper published in the 1990s.
+
+
+=== Input ===
+Input sequences (in FASTA or Genbank format), database to search and other optional parameters such as scoring matrix.
+
+
+=== Output ===
+BLAST output can be delivered in a variety of formats. These formats include HTML, plain text, and XML formatting. For NCBI's webpage, the default format for output is HTML. When performing a BLAST on NCBI, the results are given in a graphical format showing the hits found, a table showing sequence identifiers for the hits with scoring related data, as well as alignments for the sequence of interest and the hits received with corresponding BLAST scores for these. The easiest to read and most informative of these is probably the table.
+If one is attempting to search for a proprietary sequence or simply one that is unavailable in databases available to the general public through sources such as NCBI, there is a BLAST program available for download to any computer, at no cost. This can be found at BLAST+ executables. There are also commercial programs available for purchase. Databases can be found on the NCBI site, as well as on the Index of BLAST databases (FTP).
+
+
+== Process ==
+Using a heuristic method, BLAST finds similar sequences,  by locating short matches between the two sequences. This process of finding similar sequences is called seeding. It is after this first match that BLAST begins to make local alignments. While attempting to find similarity in sequences, sets of common letters, known as words, are very important. For example, suppose that the sequence contains the following stretch of letters, GLKFA. If a BLAST was being conducted under normal conditions, the word size would be 3 letters. In this case, using the given stretch of letters, the searched words would be GLK, LKF, and KFA. The heuristic algorithm of BLAST locates all common three-letter words between the sequence of interest and the hit sequence or sequences from the database. This result will then be used to build an alignment. After making words for the sequence of interest, the rest of the words are also assembled. These words must satisfy a requirement of having a score of at least the threshold T, when compared by using a scoring matrix.
+One commonly used scoring matrix for BLAST searches is BLOSUM62, although the optimal scoring matrix depends on sequence similarity. Once both words and neighborhood words are assembled and compiled, they are compared to the sequences in the database in order to find matches. The threshold score T determines whether or not a particular word will be included in the alignment. Once seeding has been conducted, the alignment which is only 3 residues long, is extended in both directions by the algorithm used by BLAST. Each extension impacts the score of the alignment by either increasing or decreasing it. If this score is higher than a pre-determined T, the alignment will be included in the results given by BLAST. However, if this score is lower than this pre-determined T, the alignment will cease to extend, preventing the areas of poor alignment from being included in the BLAST results. Note that increasing the T score limits the amount of space available to search, decreasing the number of neighborhood words, while at the same time speeding up the process of BLAST
+
+
+== Algorithm ==
+To run the software, BLAST requires a query sequence to search for, and a sequence to search against (also called the target sequence) or a sequence database containing multiple such sequences. BLAST will find sub-sequences in the database which are similar to subsequences in the query. In typical usage, the query sequence is much smaller than the database, e.g., the query may be one thousand nucleotides while the database is several billion nucleotides.
+The main idea of BLAST is that there are often High-scoring Segment Pairs (HSP) contained in a statistically significant alignment. BLAST searches for high scoring sequence alignments between the query sequence and the existing sequences in the database using a heuristic approach that approximates the Smith-Waterman algorithm. However, the exhaustive Smith-Waterman approach is too slow for searching large genomic databases such as GenBank. Therefore, the BLAST algorithm uses a heuristic approach that is less accurate than the Smith-Waterman algorithm but over 50 times faster. The speed and relatively good accuracy of BLAST are among the  technical innovations of the BLAST programs. Key steps of the algorithm include filtering low-complexity regions, identifying high-scoring word matches, and statistically evaluating alignments.
+An overview of the BLAST algorithm (a protein to protein search) is as follows:
+
+Remove low-complexity region or sequence repeats in the query sequence.
+"Low-complexity region" means a region of a sequence composed of few kinds of elements. These regions might give high scores that confuse the program to find the actual significant sequences in the database, so they should be filtered out. The regions will be marked with an X (protein sequences) or N (nucleic acid sequences) and then be ignored by the BLAST program. To filter out the low-complexity regions, the SEG program is used for protein sequences and the program DUST is used for DNA sequences. On the other hand, the program XNU is used to mask off the tandem repeats in protein sequences.
+Make a k-letter word list of the query sequence.
+Take k=3 for example, we list the words of length 3 in the query protein sequence (k is usually 11 for a DNA sequence) "sequentially", until the last letter of the query sequence is included. The method is illustrated in figure 1.
+List the possible matching words.
+This step is one of the main differences between BLAST and FASTA. FASTA cares about all of the common words in the database and query sequences that are listed in step 2; however, BLAST only cares about the high-scoring words. The scores are created by comparing the word in the list in step 2 with all the 3-letter words. By using the scoring matrix (substitution matrix) to score the comparison of each residue pair, there are 20^3 possible match scores for a 3-letter word. For example, the score obtained by comparing PQG with PEG and PQA is respectively 15 and 12 with the BLOSUM62 weighting scheme. For DNA words, a match is scored as +5 and a mismatch as -4, or as +2 and -3. After that, a neighborhood word score threshold T is used to reduce the number of possible matching words. The words whose scores are greater than the threshold T will remain in the possible matching words list, while those with lower scores will be discarded. For example, PEG is kept, but PQA is abandoned when T is 13.
+Organize the remaining high-scoring words into an efficient search tree.
+This allows the program to rapidly compare the high-scoring words to the database sequences.
+Repeat step 3 to 4 for each k-letter word in the query sequence.
+Scan the database sequences for exact matches with the remaining high-scoring words.
+The BLAST program scans the database sequences for the remaining high-scoring word, such as PEG, of each position. If an exact match is found, this match is used to seed a possible un-gapped alignment between the query and database sequences.
+Extend the exact matches to high-scoring segment pair (HSP).
+The original version of BLAST stretches a longer alignment between the query and the database sequence in the left and right directions, from the position where the exact match occurred. The extension does not stop until the accumulated total score of the HSP begins to decrease. A simplified example is presented in figure 2. 
+To save more time, a newer version of BLAST, called BLAST2 or gapped BLAST, has been developed. BLAST2 adopts a lower neighborhood word score threshold to maintain the same level of sensitivity for detecting sequence similarity. Therefore, the list of possible matching words list in step 3 becomes longer. Next, the exact matched regions, within distance A from each other on the same diagonal in figure 3, will be joined as a longer new region. Finally, the new regions are then extended by the same method as in the original version of BLAST, and the HSPs' (High-scoring segment pair) scores of the extended regions are then created by using a substitution matrix as before.
+List all of the HSPs in the database whose score is high enough to be considered.
+We list the HSPs whose scores are greater than the empirically determined cutoff score S. By examining the distribution of the alignment scores modeled by comparing random sequences, a cutoff score S can be determined such that its value is large enough to guarantee the significance of the remaining HSPs.
+Evaluate the significance of the HSP score.
+BLAST next assesses the statistical significance of each HSP score by exploiting the Gumbel extreme value distribution (EVD). (It is proved that the distribution of Smith-Waterman local alignment scores between two random sequences follows the Gumbel EVD. For local alignments containing gaps it is not proved.). In accordance with the Gumbel EVD, the probability p of observing a score S equal to or greater than x is given by the equation
+
+  
+    
+      
+        p
+        
+          (
+          
+            S
+            ≥
+            x
+          
+          )
+        
+        =
+        1
+        −
+        exp
+        ⁡
+        
+          (
+          
+            −
+            
+              e
+              
+                −
+                λ
+                
+                  (
+                  
+                    x
+                    −
+                    μ
+                  
+                  )
+                
+              
+            
+          
+          )
+        
+      
+    
+    {\displaystyle p\left(S\geq x\right)=1-\exp \left(-e^{-\lambda \left(x-\mu \right)}\right)}
+  
+
+where
+
+  
+    
+      
+        μ
+        =
+        
+          
+            
+              log
+              ⁡
+              
+                (
+                
+                  K
+                  
+                    m
+                    ′
+                  
+                  
+                    n
+                    ′
+                  
+                
+                )
+              
+            
+            λ
+          
+        
+        
+      
+    
+    {\displaystyle \mu ={\frac {\log \left(Km'n'\right)}{\lambda }}\;}
+  
+
+The statistical parameters 
+  
+    
+      
+        λ
+      
+    
+    {\displaystyle \lambda }
+  
+ and 
+  
+    
+      
+        
+          K
+        
+      
+    
+    {\displaystyle \mathrm {K} }
+  
+ are estimated by fitting the distribution of the un-gapped local alignment scores, of the query sequence and a lot of shuffled versions (Global or local shuffling) of a database sequence, to the Gumbel extreme value distribution. Note that 
+  
+    
+      
+        λ
+      
+    
+    {\displaystyle \lambda }
+  
+ and 
+  
+    
+      
+        
+          K
+        
+      
+    
+    {\displaystyle \mathrm {K} }
+  
+ depend upon the substitution matrix, gap penalties, and sequence composition (the letter frequencies). 
+  
+    
+      
+        
+          m
+          ′
+        
+      
+    
+    {\displaystyle m'}
+  
+ and 
+  
+    
+      
+        
+          n
+          ′
+        
+      
+    
+    {\displaystyle n'}
+  
+ are the effective lengths of the query and database sequences, respectively. The original sequence length is shortened to the effective length to compensate for the edge effect (an alignment start near the end of one of the query or database sequence is likely not to have enough sequence to build an optimal alignment). They can be calculated as
+
+  
+    
+      
+        
+          m
+          ′
+        
+        ≈
+        m
+        −
+        
+          
+            
+              ln
+              ⁡
+              K
+              m
+              n
+            
+            H
+          
+        
+        
+      
+    
+    {\displaystyle m'\approx m-{\frac {\ln Kmn}{H}}\;}
+  
+
+  
+    
+      
+        
+          n
+          ′
+        
+        ≈
+        n
+        −
+        
+          
+            
+              ln
+              ⁡
+              K
+              m
+              n
+            
+            H
+          
+        
+        
+      
+    
+    {\displaystyle n'\approx n-{\frac {\ln Kmn}{H}}\;}
+  
+
+where 
+  
+    
+      
+        
+          H
+        
+      
+    
+    {\displaystyle \mathrm {H} }
+  
+ is the average expected score per aligned pair of residues in an alignment of two random sequences. Altschul and Gish gave the typical values, 
+  
+    
+      
+        λ
+        =
+        0.318
+      
+    
+    {\displaystyle \lambda =0.318}
+  
+, 
+  
+    
+      
+        
+          K
+        
+        =
+        0.13
+      
+    
+    {\displaystyle \mathrm {K} =0.13}
+  
+, and 
+  
+    
+      
+        
+          H
+        
+        =
+        0.40
+      
+    
+    {\displaystyle \mathrm {H} =0.40}
+  
+, for un-gapped local alignment using BLOSUM62 as the substitution matrix. Using the typical values for assessing the significance is called the lookup table method; it is not accurate. The expect score E of a database match is the number of times that an unrelated database sequence would obtain a score S higher than x by chance. The expectation E obtained in a search for a database of D sequences is given by
+
+  
+    
+      
+        E
+        ≈
+        1
+        −
+        
+          e
+          
+            −
+            p
+            
+              (
+              
+                s
+                >
+                x
+              
+              )
+            
+            D
+          
+        
+      
+    
+    {\displaystyle E\approx 1-e^{-p\left(s>x\right)D}}
+  
+
+Furthermore, when 
+  
+    
+      
+        p
+        <
+        0.1
+      
+    
+    {\displaystyle p<0.1}
+  
+, E could be approximated by the Poisson distribution as
+
+  
+    
+      
+        E
+        ≈
+        p
+        D
+      
+    
+    {\displaystyle E\approx pD}
+  
+
+This expectation or expect value "E" (often called an E score or E-value or e-value) assessing the significance of the HSP score for un-gapped local alignment is reported in the BLAST results. The calculation shown here is modified if individual HSPs are combined, such as when producing gapped alignments (described below), due to the variation of the statistical parameters.
+Make two or more HSP regions into a longer alignment.
+Sometimes, we find two or more HSP regions in one database sequence that can be made into a longer alignment. This provides additional evidence of the relation between the query and database sequence. There are two methods, the Poisson method and the sum-of-scores method, to compare the significance of the newly combined HSP regions. Suppose that there are two combined HSP regions with the pairs of scores (65, 40) and (52, 45), respectively. The Poisson method gives more significance to the set with the maximal lower score (45>40). However, the sum-of-scores method prefers the first set, because 65+40 (105) is greater than 52+45(97). The original BLAST uses the Poisson method; gapped BLAST and the WU-BLAST uses the sum-of scores method.
+Show the gapped Smith-Waterman local alignments of the query and each of the matched database sequences.
+The original BLAST only generates un-gapped alignments including the initially found HSPs individually, even when there is more than one HSP found in one database sequence.
+BLAST2 produces a single alignment with gaps that can include all of the initially found HSP regions. Note that the computation of the score and its corresponding E-value involves use of adequate gap penalties.
+Report every match whose expect score is lower than a threshold parameter E.
+
+
+=== Types of BLAST ===
+BLASTn (Nucleotide BLAST)
+
+BLASTn offers nucleotide to nucelotide searches. This is useful when trying to identify evolutionary relationships between organisms.
+
+tBLASTn
+
+tBLASTn used to carry out  protein to translated DNA  searches. This is useful when looking for similar protein-coding regions in DNA sequences that haven't been fully annotated, like ESTs (short, single-read cDNA sequences) and HTGs (draft genome sequences). Since these sequences don't have known protein translations, we can only search for them using tBLASTn.
+
+BLASTx
+
+BLASTx compares a nucleotide query sequence  (can be translated into six different protein sequences) against a protein database. This tool is useful when the reading frame of the DNA sequence is uncertain or contains errors that might cause mistakes in protein-coding. BLASTx provides combined statistics for hits across all frames, making it helpful for the initial analysis of new DNA sequences.
+
+BLASTp
+
+BLASTp, or Protein BLAST, is used to compare protein sequences. You can input one or more protein sequences that you want to compare against a single protein sequence or a database of protein sequences. This is useful when you're trying to identify a protein by finding similar sequences in existing protein databases.
+
+
+=== Parallel BLAST ===
+Parallel BLAST versions of split databases are implemented using MPI and Pthreads, and have been ported to various platforms including Windows, Linux, Solaris, Mac OS X, and AIX. Popular approaches to parallelize BLAST include query distribution, hash table segmentation, computation parallelization, and database segmentation (partition). Databases are split into equal sized pieces and stored locally on each node. Each query is run on all nodes in parallel and the resultant BLAST output files from all nodes merged to yield the final output. Specific implementations include MPIblast, ScalaBLAST, DCBLAST and so on.
+MPIblast makes use of a database segmentation technique to parallelize the computation process. This allows for significant performance improvements when conducting BLAST searches across a set of nodes in a cluster. In some scenarios a superlinear speedup is achievable. This makes MPIblast suitable for the extensive genomic datasets that are typically used in bioinformatics.
+BLAST generally runs at a speed of O(n), where n is the size of the database. The time to complete the search increases linearly as the size of the database increases. MPIblast utilizes parallel processing to speed up the search. The ideal speed for any parallel computation is a complexity of O(n/p), with n being the size of the database and p being the number of processors. This would indicate that the job is evenly distributed among the p number of processors. This is visualized in the included graph. The superlinear speedup that can sometimes occur with MPIblast can have a complexity better than O(n/p). This occurs because the cache memory can be used to decrease the run time.
+
+
+== Alternatives to BLAST ==
+The predecessor to BLAST, FASTA, can also be used for protein and DNA similarity searching.  FASTA provides a similar set of programs for comparing proteins to protein and DNA databases, DNA to DNA and protein databases, and includes additional programs for working with unordered short peptides and DNA sequences.  In addition, the FASTA package provides SSEARCH, a vectorized implementation of the rigorous Smith-Waterman algorithm.  FASTA is slower than BLAST, but provides a much wider range of scoring matrices, making it easier to tailor a search to a specific evolutionary distance.
+An extremely fast but considerably less sensitive alternative to BLAST is BLAT (Blast Like Alignment Tool). While BLAST does a linear search, BLAT relies on k-mer indexing the database, and can thus often find seeds faster. Another software alternative similar to BLAT is PatternHunter.
+Advances in sequencing technology in the late 2000s has made searching for very similar nucleotide matches an important problem. New alignment programs tailored for this use typically use BWT-indexing of the target database (typically a genome). Input sequences can then be mapped very quickly, and output is typically in the form of a BAM file. Example alignment programs are BWA, SOAP, and Bowtie.
+For protein identification, searching for known domains (for instance from Pfam) by matching with Hidden Markov Models is a popular alternative, such as HMMER.
+An alternative to BLAST for comparing two banks of sequences is PLAST. PLAST provides a high-performance general purpose bank to bank sequence similarity search tool relying on the PLAST and ORIS algorithms. Results of PLAST are very similar to BLAST, but PLAST is significantly faster and capable of comparing large sets of sequences with a small memory (i.e. RAM) footprint.
+For applications in metagenomics, where the task is to compare billions of short DNA reads against tens of millions of protein references, DIAMOND runs at up to 20,000 times as fast as BLASTX, while maintaining a high level of sensitivity.
+The open-source software MMseqs is an alternative to BLAST/PSI-BLAST, which improves on current search tools over the full range of speed-sensitivity trade-off, achieving sensitivities better than PSI-BLAST at more than 400 times its speed.
+Optical computing approaches have been suggested as promising alternatives to the current electrical implementations. OptCAM is an example of such approaches and is shown to be faster than BLAST.
+
+
+=== Comparing BLAST and the Smith-Waterman Process ===
+
+While both Smith-Waterman and BLAST are used to find homologous sequences by searching and comparing a query sequence with those in the databases, they do have their differences.
+Due to the fact that BLAST is based on a heuristic algorithm, the results received through BLAST will not include all the possible hits within the database. BLAST misses hard to find matches.
+An alternative in order to find all the possible hits would be to use the Smith-Waterman algorithm. This method varies from the BLAST method in two areas, accuracy and speed. The Smith-Waterman option provides better accuracy, in that it finds matches that BLAST cannot, because it does not exclude any information. Therefore, it is necessary for remote homology. However, when compared to BLAST, it is more time consuming and requires large amounts of computing power and memory. However, advances have been made to speed up the Smith-Waterman search process dramatically. These advances include FPGA chips and SIMD technology.
+For more complete results from BLAST, the settings can be changed from their default settings. The optimal settings for a given sequence, however, may vary. The settings one can change are E-Value, gap costs, filters, word size, and substitution matrix. 
+Note, the algorithm used for BLAST was developed from the algorithm used for Smith-Waterman. BLAST employs an alignment which finds "local alignments between sequences by finding short matches and from these initial matches (local) alignments are created".
+
+
+== BLAST output visualization ==
+To help users interpreting BLAST results, different software is available. According to installation and use, analysis features and technology, here are some available tools:
+
+NCBI BLAST service
+general BLAST output interpreters, GUI-based: JAMBLAST, Blast Viewer, BLASTGrabber
+integrated BLAST environments: PLAN, BlastStation-Free, SequenceServer
+BLAST output parsers: MuSeqBox, Zerg, BioParser, BLAST-Explorer, SequenceServer
+specialized BLAST-related tools: MEGAN, BLAST2GENE, BOV, Circoletto
+Example visualizations of BLAST results are shown in Figure 4 and 5.  
+
+
+== Uses of BLAST ==
+BLAST can be used for several purposes. These include identifying species, locating domains, establishing phylogeny, DNA mapping, and comparison.
+
+Identifying species
+With the use of BLAST, you can possibly correctly identify a species or find homologous species. This can be useful, for example, when you are working with a DNA sequence from an unknown species.
+Locating domains
+When working with a protein sequence you can input it into BLAST, to locate known domains within the sequence of interest.
+Establishing phylogeny
+Using the results received through BLAST you can create a phylogenetic tree using the BLAST web-page. Phylogenies based on BLAST alone are less reliable than other purpose-built computational phylogenetic methods, so should only be relied upon for "first pass" phylogenetic analyses.
+DNA mapping
+When working with a known species, and looking to sequence a gene at an unknown location, BLAST can compare the chromosomal position of the sequence of interest, to relevant sequences in the database(s). NCBI has a "Magic-BLAST" tool built around BLAST for this purpose.
+Comparison
+When working with genes, BLAST can locate common genes in two related species, and can be used to map annotations from one organism to another.
+Classifying taxonomy
+BLAST can use genetic sequences to compare multiple taxa against known taxonomical data. By doing this, it can provide a picture of the evolutionary relationships between various species (Fig.6). This is a useful way to identify orphan genes, since if the gene shows up in an organism outside of the ancestral lineage, then it wouldn't be classified as an orphan gene.
+Although this method is helpful, some more accurate options to find homologs would be through pairwise sequence alignment and multiple sequence alignment.
+
+
+== See also ==
+
+
+== References ==
+
+
+== External links ==
+
+Official website
+BLAST+ executables — free source downloads

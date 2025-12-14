@@ -1,0 +1,225 @@
+The token bucket is an algorithm used in packet-switched and telecommunications networks. It can be used to check that data transmissions, in the form of packets, conform to defined limits on bandwidth and burstiness (a measure of the unevenness or variations in the traffic flow). It can also be used as a scheduling algorithm to determine the timing of transmissions that will comply with the limits set for the bandwidth and burstiness: see network scheduler.
+
+
+== Overview ==
+The token bucket algorithm is based on an analogy of a fixed capacity bucket into which tokens, normally representing a unit of bytes or a single packet of predetermined size, are added at a fixed rate. When a packet is to be checked for conformance to the defined limits, the bucket is inspected to see if it contains sufficient tokens at that time. If so, the appropriate number of tokens, e.g. equivalent to the length of the packet in bytes, are removed ("cashed in"), and the packet is passed, e.g., for transmission. The packet does not conform if there are insufficient tokens in the bucket, and the contents of the bucket are not changed. Non-conformant packets can be treated in various ways:
+
+They may be dropped.
+They may be enqueued for subsequent transmission when sufficient tokens have accumulated in the bucket.
+They may be transmitted, but marked as being non-conformant, possibly to be dropped subsequently if the network is overloaded.
+A conforming flow can thus contain traffic with an average rate up to the rate at which tokens are added to the bucket, and have a burstiness determined by the depth of the bucket. This burstiness may be expressed in terms of either a jitter tolerance, i.e. how much sooner a packet might conform (e.g. arrive or be transmitted) than would be expected from the limit on the average rate, or a burst tolerance or maximum burst size, i.e. how much more than the average level of traffic might conform in some finite period.
+
+
+== Algorithm ==
+The token bucket algorithm can be conceptually understood as follows:
+
+A token is added to the bucket every 
+  
+    
+      
+        1
+        
+          /
+        
+        r
+      
+    
+    {\displaystyle 1/r}
+  
+ seconds.
+The bucket can hold at the most 
+  
+    
+      
+        b
+      
+    
+    {\displaystyle b}
+  
+ tokens. If a token arrives when the bucket is full, it is discarded.
+When a packet (network layer PDU) of n bytes arrives,
+if at least n tokens are in the bucket, n tokens are removed from the bucket, and the packet is sent to the network.
+if fewer than n tokens are available, no tokens are removed from the bucket, and the packet is considered to be non-conformant.
+
+
+=== Variations ===
+Implementers of this algorithm on platforms lacking the clock resolution necessary to add a single token to the bucket every 
+  
+    
+      
+        1
+        
+          /
+        
+        r
+      
+    
+    {\displaystyle 1/r}
+  
+ seconds may want to consider an alternative formulation.  Given the ability to update the token bucket every S milliseconds, the number of tokens to add every S milliseconds = 
+  
+    
+      
+        (
+        r
+        ∗
+        S
+        )
+        
+          /
+        
+        1000
+      
+    
+    {\displaystyle (r*S)/1000}
+  
+.
+
+
+=== Properties ===
+
+
+==== Average rate ====
+Over the long run the output of conformant packets is limited by the token rate, 
+  
+    
+      
+        r
+      
+    
+    {\displaystyle r}
+  
+.
+
+
+==== Burst size ====
+Let 
+  
+    
+      
+        M
+      
+    
+    {\displaystyle M}
+  
+ be the maximum possible transmission rate in bytes/second.
+Then 
+  
+    
+      
+        
+          T
+          
+            max
+          
+        
+        =
+        
+          
+            {
+            
+              
+                
+                  b
+                  
+                    /
+                  
+                  (
+                  M
+                  −
+                  r
+                  )
+                
+                
+                  
+                     if 
+                  
+                  r
+                  <
+                  M
+                
+              
+              
+                
+                  ∞
+                
+                
+                  
+                     otherwise 
+                  
+                
+              
+            
+            
+          
+        
+      
+    
+    {\displaystyle T_{\text{max}}={\begin{cases}b/(M-r)&{\text{ if }}r<M\\\infty &{\text{ otherwise }}\end{cases}}}
+  
+ is the maximum burst time, that is the time for which the rate 
+  
+    
+      
+        M
+      
+    
+    {\displaystyle M}
+  
+ is fully utilized.
+The maximum burst size is thus 
+  
+    
+      
+        
+          B
+          
+            max
+          
+        
+        =
+        
+          T
+          
+            max
+          
+        
+        ∗
+        M
+      
+    
+    {\displaystyle B_{\text{max}}=T_{\text{max}}*M}
+  
+
+
+=== Uses ===
+The token bucket can be used in either traffic shaping or traffic policing. In traffic policing, nonconforming packets may be discarded (dropped) or may be reduced in priority (for downstream traffic management functions to drop if there is congestion). In traffic shaping, packets are delayed until they conform. Traffic policing and traffic shaping are commonly used to protect the network against excess or excessively bursty traffic, see bandwidth management and congestion avoidance. Traffic shaping is commonly used in the network interfaces in hosts to prevent transmissions being discarded by traffic management functions in the network.
+The token bucket algorithm is also used in controlling database IO flow. In it, limitation applies to neither IOPS nor the bandwidth but rather to a linear combination of both. By defining tokens to be the normalized sum of IO request weight and its length, the algorithm makes sure that the time derivative of the aforementioned function stays below the needed threshold.
+
+
+== Comparison to leaky bucket ==
+The token bucket algorithm is directly comparable to one of the two versions of the leaky bucket algorithm described in the literature. This comparable version of the leaky bucket is described on the relevant Wikipedia page as the leaky bucket algorithm as a meter. This is a mirror image of the token bucket, in that conforming packets add fluid, equivalent to the tokens removed by a conforming packet in the token bucket algorithm, to a finite capacity bucket, from which this fluid then drains away at a constant rate, equivalent to the process in which tokens are added at a fixed rate.
+There is, however, another version of the leaky bucket algorithm, described on the relevant Wikipedia page as the leaky bucket algorithm as a queue. This is a special case of the leaky bucket as a meter, which can be described by the conforming packets passing through the bucket. The leaky bucket as a queue is therefore applicable only to traffic shaping, and does not, in general, allow the output packet stream to be bursty, i.e. it is jitter free. It is therefore significantly different from the token bucket algorithm.
+These two versions of the leaky bucket algorithm have both been described in the literature under the same name. This has led to considerable confusion over the properties of that algorithm and its comparison with the token bucket algorithm. However, fundamentally, the two algorithms are the same, and will, if implemented correctly and given the same parameters, see exactly the same packets as conforming and nonconforming.
+
+
+== Hierarchical token bucket ==
+The hierarchical token bucket (HTB) is a faster replacement for the class-based queueing (CBQ) queuing discipline in Linux. It is useful for limiting each client's download/upload rate so that the limited client cannot saturate the total bandwidth.
+
+Conceptually, HTB is an arbitrary number of token buckets arranged in a hierarchy. The primary egress queuing discipline (qdisc) on any device is known as the root qdisc. The root qdisc will contain one class. This single HTB class will be set with two parameters, a rate and a ceil. These values should be the same for the top-level class, and will represent the total available bandwidth on the link.
+In HTB, rate means the guaranteed bandwidth available for a given class and ceil (short for ceiling) indicates the maximum bandwidth that class is allowed to consume. When a class requests a bandwidth more than guaranteed, it may borrow bandwidth from its parent as long as both ceils are not reached. Hierarchical Token Bucket implements a classful queuing mechanism for the Linux traffic control system, and provides rate and ceil to allow the user to control the absolute bandwidth to particular classes of traffic as well as indicate the ratio of distribution of bandwidth when extra bandwidth become available (up to ceil).
+When choosing the bandwidth for a top-level class, traffic shaping only helps at the bottleneck between the LAN and the Internet.  Typically, this is the case in home and office network environments, where an entire LAN is serviced by a DSL or T1 connection.
+
+
+== See also ==
+Rate limiting
+Traffic shaping
+Counting semaphores
+
+
+== References ==
+
+
+== Further reading ==
+John Evans, Clarence Filsfils (2007). Deploying IP and MPLS QoS for Multiservice Networks: Theory and Practice. Morgan Kaufmann. ISBN 978-0-12-370549-5.
+Ferguson P., Huston G. (1998). Quality of Service: Delivering QoS on the Internet and in Corporate Networks. John Wiley & Sons, Inc. ISBN 0-471-24358-2.

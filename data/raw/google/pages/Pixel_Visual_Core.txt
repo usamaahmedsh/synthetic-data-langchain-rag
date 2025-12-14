@@ -1,0 +1,57 @@
+The Pixel Visual Core (PVC) is a series of ARM-based system in package (SiP) image processors designed by Google. The PVC is a fully programmable image, vision and AI multi-core domain-specific architecture (DSA) for mobile devices and in future for IoT.
+It first appeared in the Google Pixel 2 and 2 XL which were introduced on October 19, 2017. It has also appeared in the Google Pixel 3 and 3 XL. Starting with the Pixel 4, this chip was replaced with the Pixel Neural Core.
+
+
+== History ==
+Google previously used Qualcomm Snapdragon's CPU, GPU, IPU, and DSP to handle its image processing for their Google Nexus and Google Pixel devices. With the increasing importance of computational photography techniques, Google developed the Pixel Visual Core (PVC). Google claims the PVC uses less power than using CPU and GPU while still being fully programmable, unlike their tensor processing unit (TPU) application-specific integrated circuit (ASIC).
+Indeed, classical mobile devices equip an image signal processor (ISP) that is a fixed functionality image processing pipeline. In contrast to this, the PVC has a flexible programmable functionality, not limited only to image processing.
+The PVC in the Google Pixel 2 and 2 XL is labeled SR3HX X726C502.
+The PVC in the Google Pixel 3 and 3 XL is labeled SR3HX X739F030.
+Thanks to the PVC, the Pixel 2 and Pixel 3 obtained a mobile DxOMark of 98 and 101.
+The latter one was the top-ranked single-lens mobile DxOMark score, tied with the iPhone XR.
+
+
+== Software ==
+
+A typical image-processing program of the PVC is written in Halide. Currently, it supports just a subset of Halide programming language without floating point operations and with limited memory access patterns.
+Halide is a domain-specific language that lets the user decouple the algorithm and the scheduling of its execution.
+In this way, the developer can write a program that is optimized for the target hardware architecture.
+
+
+== ISA ==
+The PVC has two types of instruction set architecture (ISA), a virtual and a physical one. First, a high-level language program is compiled into a virtual ISA (vISA), inspired by RISC-V ISA, which abstracts completely from the target hardware generation. Then, the vISA program is compiled into the so-called physical ISA (pISA), that is a VLIW ISA. This compilation step takes into account the target hardware parameters (e.g. array of PEs size, STP size, etc...) and specify explicitly memory movements. The decoupling of vISA and pISA lets the first one to be cross-architecture and generation-independent, while pISA can be compiled offline or through JIT compilation.
+
+
+== Architecture ==
+
+The Pixel Visual Core is designed to be a scalable multi-core energy-efficient architecture, ranging from even numbers between 2 and 16 core designs. The core of a PVC is the image processing unit (IPU) a programmable unit tailored for image processing. The Pixel Visual Core architecture was also designed either to be its own chip, like the SR3HX, or as an IP block for System on a chip (SOC).
+
+
+=== Image Processing Unit (IPU) ===
+The IPU core has a stencil processor (STP), a line buffer pool (LBP) and a NoC.
+The STP mainly provides a 2-D SIMD array of processing elements (PEs) able to perform stencil computations, a small neighborhood of pixels. Though it seems similar to systolic array and wavefront computations, the STP has an explicit software controlled data movement. Each PEs features 2x 16-bit arithmetic logic units (ALUs), 1x 16-bit Multiplier–accumulator unit (MAC), 10x 16-bit registers, and 10x 1-bit predicate registers.
+
+
+==== Line Buffer Pool (LBP) ====
+Considering that one of the most energy costly operation is DRAM access, each STP has temporary buffers to increase data locality, namely LBP. The used LBP is a 2-D FIFO that accommodates different sizes of reading and writing. The LBP uses single-producer multi-consumer behavioral model.  Each LBP can have eight logical LB memories and one for DMA input-output operations.
+Due to the real high complexity of the memory system, the PVC designers state the LBP controller as one of the most challenging components.
+The NoC used is a ring network on chip used to communicate with only neighbor cores for energy savings and pipelined computational pattern preservation.
+
+
+==== Stencil Processor (STP) ====
+
+The STP has a 2-D array of PEs: for example, a 16x16 array of full PEs and four lanes of simplified PEs called "halo".
+The STP has a scalar processor, called scalar lane (SCL), that adds control instructions with a small instruction memory.
+The last component of an STP is a load store unit called sheet generator (SHG), where the sheet is the PVC memory access unit.
+
+
+== SR3HX design summary ==
+The SR3HX PVC features a 64-bit ARMv8a ARM Cortex-A53 CPU, 8x image processing unit (IPU) cores, 512 MB LPDDR4, MIPI, PCIe.
+The IPU cores each have 512 arithmetic logic units (ALUs) consisting of 256 processing elements (PEs) arranged as a 16 x 16 2-dimensional array. Those cores execute a custom VLIW ISA.
+There are two 16-bit ALUs per processing element and they can operate in three distinct ways: independent, joined, and fused. 
+The SR3HX PVC is manufactured as a SiP by TSMC using their 28HPM HKMG process. 
+It was designed over 4 years in partnership with Intel. (Codename: Monette Hill) Google claims the SR3HX PVC is 7-16x more energy-efficient than the Snapdragon 835. And that the SR3HX PVC can perform 3 trillion operations per second, HDR+ can run 5x faster and at less than one-tenth the energy than the Snapdragon 835. 
+It supports Halide for image processing and TensorFlow for machine learning. The current chip runs at 426 MHz and the single IPU is able to perform more than 1 TeraOPS.
+
+
+== References ==

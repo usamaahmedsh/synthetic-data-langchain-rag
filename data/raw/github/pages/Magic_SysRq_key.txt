@@ -1,0 +1,59 @@
+The magic SysRq key is a key combination understood by the Linux kernel, which allows the user to perform various low-level commands regardless of the system's state. It is often used to recover from freezes, or to reboot a computer without corrupting the file system.
+This key combination provides access to features for disaster recovery.  In this sense, it can be considered a form of escape sequence.  Principal among the offered commands are means to forcibly unmount file systems, kill processes, recover keyboard state, and write unwritten data to disk.
+The magic SysRq key cannot work under certain conditions, such as a kernel panic or a hardware failure preventing the kernel from running properly.
+
+
+== Implementation ==
+The Linux kernel contains sysrq.c, which implements magic SysRq functionality. Magic SysRq functionality is called by serial devices at a low level in the driver code.
+
+
+== Commands ==
+The key combination consists of Alt+SysRq and another key, which controls the command issued.  SysRq may be released before pressing the command key, as long as Alt remains held down.
+The combinations always assume the QWERTY keyboard layout. For example, on the Dvorak keyboard layout, the combination to shut down the system uses the R key instead of O. Furthermore, some keyboards may not provide a separate SysRq key. In this case, a separate PrtScn key should be present.
+On some devices, notably laptops, the Fn key may need to be pressed to use the magic SysRq key, e.g. on Thinkpad Carbon X1 the SysRq is activated by pressing Alt+Fn+S simultaneously, then releasing Fn and S while still holding Alt.
+SysRq functionalities can also be accessed without a keyboard. See § Other ways to invoke Magic SysRq below. Note that some commands may be disabled out of the box as specified in the bitmask value in /proc/sys/kernel/sysrq.
+
+Example output of the SysRq+h command:
+
+
+== Configuration ==
+The feature is controlled both by a compile-time option in the kernel configuration, CONFIG_MAGIC_SYSRQ, and a sysctl kernel parameter, kernel.sysrq.
+On newer kernels (since 2.6.12), it is possible to have more fine-grained control over how the magic SysRq key can be used. On these machines, the number written to /proc/sys/kernel/sysrq can be 0, 1, or a number greater than 1 which is a bitmask indicating which features to allow. On Ubuntu this is set at boot time to the value defined in /etc/sysctl.d/10-magic-sysrq.conf .
+
+
+== Uses ==
+Before the advent of journaled filesystems a common use of the magic SysRq key was to perform a safe reboot of a locked-up Linux computer (using the sequence of key presses indicated by the mnemonic REISUB), which lessened the risk of filesystem corruption. With modern filesystems, syncing and unmounting is still useful to force unflushed data to disk, but is no longer necessary to prevent filesystem corruption (and may increase the risk of corruption in case the lock-up is caused by the kernel being in a bad state). The default value of kernel.sysrq in distributions such as Ubuntu and Debian remains 176 (allowing the sync, unmount, and reboot functions) and 438 (allowing the same functions plus loglevel, unraw, and nice-all-RT-tasks) respectively.
+Another past use was to kill a frozen graphical program, as the X Window System used to have complete control over the graphical mode and input devices.
+On distributions that do not include a textmode command, the key sequence Ctrl+Alt+F1 may be able to force a switch to a text console. Some systems may require use of F2 or F3 instead of F1.
+
+
+== Other ways to invoke Magic SysRq ==
+While the magic SysRq key was originally implemented as part of the kernel's keyboard handler for debugging, the functionality has been also exposed via the proc filesystem and is commonly used to provide extended management capabilities to headless and remote systems. From user space programs (such as a command line shell), SysRq may be accessed by writing to /proc/sysrq-trigger (e.g., echo s > /proc/sysrq-trigger).
+Many embedded systems have no attached keyboard, but instead use a serial console for text input/output to the running system. It is possible to invoke a Magic SysRq feature over a serial console by sending a serial break signal, followed by the desired key.  The method of sending a break is dependent on the terminal program or hardware used to connect to the serial console. A sysctl option needs to be set to enable this function.
+The Linux daemons sysrqd and tcpconsole provide a method of accessing SysRq features over a TCP connection after authenticating with a plain-text password. The hangwatch daemon will invoke pre-configured SysRq triggers when system load average exceeds a certain threshold.
+The Xen hypervisor has functionality to send magic commands to hosted domains via its xm sysrq command. Additionally, a SysRq command can be invoked from a Xen paravirtual console by sending a break sequence Ctrl+O followed by the desired key.
+The Kernel-based Virtual Machine (KVM) hypervisor has functionality to send magic commands to hosted domains via its virsh send-key command. 
+eg:
+
+Chromebooks have a keyboard but no dedicated SysRq key. They use Alt+VolumeUp (Alt+F10) instead, however some keys have a different function.
+IBM Power Systems servers can invoke the Magic SysRq feature using Ctrl+O followed by the desired key from the Hardware Management Console.
+IBM mainframe partitions can invoke the Magic SysRq feature using ^+- followed by the desired key on 3270 or HMC.
+
+
+== See also ==
+Stop-A, key sequence used to access Sun Microsystems's Open Firmware (OpenBoot)
+Console server
+KVM switch
+System console
+
+
+== References ==
+
+
+== External links ==
+
+"Documentation/sysrq.txt". Linux (kernel source tree). kernel.org. Retrieved 2017-01-31.
+"Linux Magic System Request Key Hacks". Linux (linux kernel documentation). kernel.org. Retrieved 2020-06-01.
+Morton, Andrew (2013-03-13). "Kernel patch to the -mm tree that added the /proc/sysrq-trigger feature: This makes sysrq facilities available to remote users". Retrieved 2015-04-09.
+Lawrence, Tony (2005-04-13). "Magic Sysrq Key on Linux". AP Lawrence. Retrieved 2015-04-09.
+Gall, Tom (2000-04-01). "Magic sys request". Developer works. IBM. Archived from the original on 2007-05-27. Retrieved 2013-09-03.

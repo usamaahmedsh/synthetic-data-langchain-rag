@@ -1,0 +1,54 @@
+In cryptography, an initialization vector (IV) or starting variable is an input to a cryptographic primitive being used to provide the initial state. The IV is typically required to be random or pseudorandom, but sometimes an IV only needs to be unpredictable or unique. Randomization is crucial for some encryption schemes to achieve semantic security, a property whereby repeated usage of the scheme under the same key does not allow an attacker to infer relationships between (potentially similar) segments of the encrypted message. For block ciphers, the use of an IV is described by the modes of operation.
+Some cryptographic primitives require the IV only to be non-repeating, and the required randomness is derived internally. In this case, the IV is commonly called a nonce (a number used only once), and the primitives (e.g. CBC) are considered stateful rather than randomized. This is because an IV need not be explicitly forwarded to a recipient but may be derived from a common state updated at both sender and receiver side. (In practice, a short nonce is still transmitted along with the message to consider message loss.) An example of stateful encryption schemes is the counter mode of operation, which has a sequence number for a nonce.
+The IV size depends on the cryptographic primitive used; for block ciphers it is generally the cipher's block-size. In encryption schemes, the unpredictable part of the IV has at best the same size as the key to compensate for time/memory/data tradeoff attacks. When the IV is chosen at random, the probability of collisions due to the birthday problem must be taken into account. Traditional stream ciphers such as RC4 do not support an explicit IV as input, and a custom solution for incorporating an IV into the cipher's key or internal state is needed. Some designs realized in practice are known to be insecure; the WEP protocol is a notable example, and is prone to related-IV attacks.
+
+
+== Motivation ==
+
+A block cipher is one of the most basic primitives in cryptography, and frequently used for data encryption. However, by itself, it can only be used to encode a data block of a predefined size, called the block size. For example, a single invocation of the AES algorithm transforms a 128-bit plaintext block into a ciphertext block of 128 bits in size. The key, which is given as one input to the cipher, defines the mapping between plaintext and ciphertext. If data of arbitrary length is to be encrypted, a simple strategy is to split the data into blocks each matching the cipher's block size, and encrypt each block separately using the same key. This method is not secure as equal plaintext blocks get transformed into equal ciphertexts, and a third party observing the encrypted data may easily determine its content even when not knowing the encryption key.
+To hide patterns in encrypted data while avoiding the re-issuing of a new key after each block cipher invocation, a method is needed to randomize the input data. In 1980, the NIST published a national standard document designated Federal Information Processing Standard (FIPS) PUB 81, which specified four so-called block cipher modes of operation, each describing a different solution for encrypting a set of input blocks. The first mode implements the simple strategy described above, and was specified as the electronic codebook (ECB) mode. In contrast, each of the other modes describe a process where ciphertext from one block encryption step gets intermixed with the data from the next encryption step. To initiate this process, an additional input value is required to be mixed with the first block, and which is referred to as an initialization vector. For example, the cipher-block chaining (CBC) mode requires an unpredictable value, of size equal to the cipher's block size, as additional input. This unpredictable value is added to the first plaintext block before subsequent encryption. In turn, the ciphertext produced in the first encryption step is added to the second plaintext block, and so on. The ultimate goal for encryption schemes is to provide semantic security: by this property, it is practically impossible for an attacker to draw any knowledge from observed ciphertext. It can be shown that each of the three additional modes specified by the NIST are semantically secure under so-called chosen-plaintext attacks.
+
+
+== Properties ==
+Properties of an IV depend on the cryptographic scheme used. A basic requirement is uniqueness, which means that no IV may be reused under the same key. For block ciphers, repeated IV values devolve the encryption scheme into electronic codebook mode: equal IV and equal plaintext result in equal ciphertext. In stream cipher encryption uniqueness is crucially important as plaintext may be trivially recovered otherwise.
+
+Example: Stream ciphers encrypt plaintext P to ciphertext C by deriving a key stream K from a given key and IV and computing C as C = P xor K. Assume that an attacker has observed two messages C1 and C2 both encrypted with the same key and IV. Then knowledge of either P1 or P2 reveals the other plaintext since
+C1 xor C2 = (P1 xor K) xor (P2 xor K) = P1 xor P2.
+Many schemes require the IV to be unpredictable by an adversary. This is effected by selecting the IV at random or pseudo-randomly. In such schemes, the chance of a duplicate IV is negligible, but the effect of the birthday problem must be considered. As for the uniqueness requirement, a predictable IV may allow recovery of (partial) plaintext.
+
+Example: Consider a scenario where a legitimate party called Alice encrypts messages using the cipher-block chaining mode. Consider further that there is an adversary called Eve that can observe these encryptions and is able to forward plaintext messages to Alice for encryption (in other words, Eve is capable of a chosen-plaintext attack). Now assume that Alice has sent a message consisting of an initialization vector IV1 and starting with a ciphertext block CAlice. Let further PAlice denote the first plaintext block of Alice's message, let E denote encryption, and let PEve be Eve's guess for the first plaintext block. Now, if Eve can determine the initialization vector IV2 of the next message she will be able to test her guess by forwarding a plaintext message to Alice starting with (IV2 xor IV1 xor PEve); if her guess was correct this plaintext block will get encrypted to CAlice by Alice. This is because of the following simple observation:
+CAlice = E(IV1 xor PAlice) = E(IV2 xor (IV2 xor IV1 xor PAlice)).
+Depending on whether the IV for a cryptographic scheme must be random or only unique the scheme is either called randomized or stateful. While randomized schemes always require the IV chosen by a sender to be forwarded to receivers, stateful schemes allow sender and receiver to share a common IV state, which is updated in a predefined way at both sides.
+
+
+== Block ciphers ==
+Block cipher processing of data is usually described as a mode of operation. Modes are primarily defined for encryption as well as authentication, though newer designs exist that combine both security solutions in so-called authenticated encryption modes. While encryption and authenticated encryption modes usually take an IV matching the cipher's block size, authentication modes are commonly realized as deterministic algorithms, and the IV is set to zero or some other fixed value.
+
+
+== Stream ciphers ==
+In stream ciphers, IVs are loaded into the keyed internal secret state of the cipher, after which a number of cipher rounds are executed prior to releasing the first bit of output. For performance reasons, designers of stream ciphers try to keep that number of rounds as small as possible, but because determining the minimal secure number of rounds for stream ciphers is not a trivial task, and considering other issues such as entropy loss, unique to each cipher construction, related-IVs and other IV-related attacks are a known security issue for stream ciphers, which makes IV loading in stream ciphers a serious concern and a subject of ongoing research.
+
+
+== WEP IV ==
+The 802.11 encryption algorithm called WEP (short for Wired Equivalent Privacy) used a short, 24-bit IV, leading to reused IVs with the same key, which led to it being easily cracked.  Packet injection allowed for WEP to be cracked in times as short as several seconds. This ultimately led to the deprecation of WEP.
+
+
+== SSL 2.0 IV ==
+In cipher-block chaining mode (CBC mode), the IV need not be secret, but must be unpredictable (In particular, for any given plaintext, it must not be possible to predict the IV that will be associated to the plaintext in advance of the generation of the IV.) at encryption time. Additionally for the output feedback mode (OFB mode), the IV must be unique. In particular, the (previously) common practice of re-using the last ciphertext block of a message as the IV for the next message is insecure (for example, this method was used by SSL 2.0). If an attacker knows the IV (or the previous block of ciphertext) before he specifies the next plaintext, he can check his guess about plaintext of some block that was encrypted with the same key before. This is known as the TLS CBC IV attack, also called the BEAST attack.
+
+
+== See also ==
+Cryptographic nonce
+Padding (cryptography)
+Random seed
+Salt (cryptography)
+Block cipher modes of operation
+CipherSaber (RC4 with IV)
+
+
+== References ==
+
+
+== Further reading ==
+Schneier, B. (1996). Applied Cryptography (2nd ed.). New York: Wiley. ISBN 978-0-471-12845-8.
+Ferguson, N.; Schneier, B. (2003). Practical Cryptography. New York: Wiley. ISBN 978-0-471-22894-3.

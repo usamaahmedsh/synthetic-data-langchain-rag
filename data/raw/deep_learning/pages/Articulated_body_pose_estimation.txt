@@ -1,0 +1,495 @@
+In computer vision, articulated body pose estimation is the task of algorithmically determining the pose of a body composed of connected parts (joints and rigid parts) from image or video data. 
+This challenging problem, central to enabling robots and other systems to understand human actions and interactions, has been a long-standing research area due to the complexity of modeling the relationship between visual observations and pose, as well as the wide range of applications.
+
+
+== Description ==
+Enabling robots to perceive humans in their environment is crucial for effective interaction. For example, interpreting pointing gestures requires the ability to recognize and understand human body pose. This makes pose estimation a significant and challenging problem in computer vision, driving extensive research and development of numerous algorithms over the past two decades. Many successful approaches rely on training complex models with large datasets.
+Articulated pose estimation is particularly difficult due to the high dimensionality of human movement. The human body has 244 degrees of freedom and 230 joints. While not all joint movements are readily apparent, even a simplified representation of the body with 10 major parts and 20 degrees of freedom presents considerable challenges. Algorithms must account for substantial appearance variations caused by clothing, body shape, size, and hairstyles. Ambiguities arise from occlusions, both self-occlusions (e.g., a hand obscuring the face) and occlusions from external objects. Furthermore, most algorithms operate on monocular (2D) images, which lack inherent 3D information, exacerbating the ambiguity. Varying lighting conditions and camera viewpoints further complicate the task. These difficulties are amplified when real-time performance or other constraints are imposed. Recent research explores the use of RGB-D cameras, which capture both color and depth information, to address the limitations of monocular approaches.
+
+
+== Sensors ==
+The typical articulated body pose estimation system involves a model-based approach, in which the pose estimation is achieved by maximizing/minimizing a similarity/dissimilarity between an observation (input) and a template model. Different kinds of sensors have been explored for use in making the observation, including the following:
+
+Visible wavelength imagery,
+Long-wave thermal infrared imagery,
+Time-of-flight imagery, and
+Laser range scanner imagery.
+These sensors produce intermediate representations that are directly used by the model. The representations include the following:
+
+Image appearance,
+Voxel (volume element) reconstruction,
+3D point clouds, and sum of Gaussian kernels
+3D surface meshes.
+
+
+== Classical models ==
+
+
+=== Part models ===
+The basic idea of part based model can be attributed to the human skeleton. Any object having the property of articulation can be broken down into smaller parts wherein each part can take different orientations, resulting in different articulations of the same object. Different scales and orientations of the main object can be articulated to scales and orientations of the corresponding parts. To formulate the model so that it can be represented in mathematical terms, the parts are connected to each other using springs. As such, the model is also known as a spring model. The degree of closeness between each part is accounted for by the compression and expansion of the springs. There is geometric constraint on the orientation of
+springs. For example, limbs of legs cannot move 360 degrees. Hence parts cannot have that extreme orientation. This reduces the possible permutations.
+The spring model forms a graph G(V,E) where V (nodes) corresponds to the parts and E (edges) represents springs connecting two neighboring parts. Each location in the image can be reached by the 
+  
+    
+      
+        x
+      
+    
+    {\displaystyle x}
+  
+ and 
+  
+    
+      
+        y
+      
+    
+    {\displaystyle y}
+  
+ coordinates of the pixel location. Let 
+  
+    
+      
+        
+          
+            p
+          
+          
+            i
+          
+        
+        (
+        x
+        ,
+        
+        y
+        )
+      
+    
+    {\displaystyle \mathbf {p} _{i}(x,\,y)}
+  
+ be point at 
+  
+    
+      
+        
+          
+            i
+          
+          
+            t
+            h
+          
+        
+      
+    
+    {\displaystyle \mathbf {i} ^{th}}
+  
+ location. Then the cost associated in joining the spring between 
+  
+    
+      
+        
+          
+            i
+          
+          
+            t
+            h
+          
+        
+      
+    
+    {\displaystyle \mathbf {i} ^{th}}
+  
+ and the 
+  
+    
+      
+        
+          
+            j
+          
+          
+            t
+            h
+          
+        
+      
+    
+    {\displaystyle \mathbf {j} ^{th}}
+  
+ point can be given by 
+  
+    
+      
+        S
+        (
+        
+          
+            p
+          
+          
+            i
+          
+        
+        ,
+        
+        
+          
+            p
+          
+          
+            j
+          
+        
+        )
+        =
+        S
+        (
+        
+          
+            p
+          
+          
+            i
+          
+        
+        −
+        
+          
+            p
+          
+          
+            j
+          
+        
+        )
+      
+    
+    {\displaystyle S(\mathbf {p} _{i},\,\mathbf {p} _{j})=S(\mathbf {p} _{i}-\mathbf {p} _{j})}
+  
+. Hence the
+total cost associated in placing 
+  
+    
+      
+        l
+      
+    
+    {\displaystyle l}
+  
+ components at locations 
+  
+    
+      
+        
+          
+            P
+          
+          
+            l
+          
+        
+      
+    
+    {\displaystyle \mathbf {P} _{l}}
+  
+ is given by
+
+  
+    
+      
+        S
+        (
+        
+          
+            P
+          
+          
+            l
+          
+        
+        )
+        =
+        
+          
+            ∑
+            
+              i
+              =
+              1
+            
+            
+              l
+            
+          
+          
+          
+            
+              ∑
+              
+                j
+                =
+                1
+              
+              
+                i
+              
+            
+            
+            
+              
+                s
+              
+              
+                i
+                j
+              
+            
+            (
+            
+              
+                p
+              
+              
+                i
+              
+            
+            ,
+            
+            
+              
+                p
+              
+              
+                j
+              
+            
+            )
+          
+        
+      
+    
+    {\displaystyle S(\mathbf {P} _{l})=\displaystyle \sum _{i=1}^{l}\;\displaystyle \sum _{j=1}^{i}\;\mathbf {s} _{ij}(\mathbf {p} _{i},\,\mathbf {p} _{j})}
+  
+
+The above equation simply represents the spring model used to describe body pose. To estimate pose from images, cost or energy function must be minimized. This energy function consists of two terms. The first is related to how each component matches the image data and the second deals with how much the
+oriented (deformed) parts match, thus accounting for articulation along with object detection.
+The part models, also known as pictorial structures, are of one of the basic models on which other efficient models are built by slight modification. One such example is the flexible mixture model which reduces the database of hundreds or thousands of deformed parts by exploiting the notion of local rigidity.
+
+
+=== Articulated model with quaternion ===
+The kinematic skeleton is constructed by a tree-structured chain. Each rigid body segment has its local coordinate system that can be transformed to the world coordinate system via a 4×4 transformation matrix 
+  
+    
+      
+        
+          T
+          
+            l
+          
+        
+      
+    
+    {\displaystyle T_{l}}
+  
+,
+
+  
+    
+      
+        
+          T
+          
+            l
+          
+        
+        =
+        
+          T
+          
+            par
+            ⁡
+            (
+            l
+            )
+          
+        
+        
+          R
+          
+            l
+          
+        
+        ,
+      
+    
+    {\displaystyle T_{l}=T_{\operatorname {par} (l)}R_{l},}
+  
+
+where 
+  
+    
+      
+        
+          R
+          
+            l
+          
+        
+      
+    
+    {\displaystyle R_{l}}
+  
+ denotes the local transformation from body segment 
+  
+    
+      
+        
+          S
+          
+            l
+          
+        
+      
+    
+    {\displaystyle S_{l}}
+  
+ to its parent 
+  
+    
+      
+        par
+        ⁡
+        (
+        
+          S
+          
+            l
+          
+        
+        )
+      
+    
+    {\displaystyle \operatorname {par} (S_{l})}
+  
+. Each joint in the body has 3 degrees of freedom (DoF) rotation. Given a transformation matrix 
+  
+    
+      
+        
+          T
+          
+            l
+          
+        
+      
+    
+    {\displaystyle T_{l}}
+  
+ , the joint position at the T-pose can be transferred to its corresponding position in the world coordination. In many works, the 3D joint rotation is expressed as a normalized quaternion 
+  
+    
+      
+        [
+        x
+        ,
+        y
+        ,
+        z
+        ,
+        w
+        ]
+      
+    
+    {\displaystyle [x,y,z,w]}
+  
+ due to its continuity that can facilitate gradient-based optimization in the parameter estimation.
+
+
+== Deep learning based models ==
+Since about 2016, deep learning has emerged as the dominant method for performing accurate articulated body pose estimation. Rather than building an explicit model for the parts as above, the appearances of the joints and relationships between the joints of the body are learned from large training sets. Models generally focus on extracting the 2D positions of joints (keypoints), the 3D positions of joints, or the 3D shape of the body from either a single or multiple images.
+
+
+=== Supervised ===
+
+
+==== 2D joint positions ====
+The first deep learning models that emerged focused on extracting the 2D positions of human joints in an image. Such models take in an image and pass it through a convolutional neural network to obtain a series of heatmaps (one for each joint) which take on high values where joints are detected.
+When there are multiple people per image, two main techniques have emerged for grouping joints within each person. In the first, "bottom-up" approach, the neural network is trained to also generate "part affinity fields" which indicate the location of limbs. Using these fields, joints can be grouped limb by limb by solving a series of  assignment problems. In the second, "top-down" approach, an additional network is used to first detect people in the image and then the pose estimation network is applied to each image.
+
+
+==== 3D joint positions ====
+With the advent of multiple datasets with human pose annotated in multiple views, models which detect 3D joint positions became more popular. These again fell into two categories In the first, a neural network is used to detect 2D joint positions from each view and these detections are then triangulated to obtain 3D joint positions. The 2D network may be refined to produce better detections based on the 3D data. Furthermore, such approaches often have filters in both 2D and 3D to refine the detected points. In the second, a neural network is trained end-to-end to predict 3D joint positions directly from a set of images, without 2D joint position intermediate detections. Such approaches often project image features into a cube and then use a 3D convolutional neural network to predict a 3D heatmap for each joint.
+
+
+==== 3D shape ====
+Concurrently with the work above, scientists have been working on estimating the full 3D shape of a human or animal from a set of images. Most of the work is based on estimating the appropriate pose of the skinned multi-person linear (SMPL) model within an image. Variants of the SMPL model for other animals have also been developed. Generally, some keypoints and a silhouette are detected for each animal within the image, and then the parameters 3D shape model are fit to match the position of keypoints and silhouette.
+
+
+=== Unsupervised ===
+The above algorithms all rely on annotated images, which can be time-consuming to produce. To address this issue, computer vision researchers have developed new algorithms which can learn 3D keypoints given only annotated 2D images from a single view or identify keypoints given videos without any annotations.
+
+
+== Applications ==
+
+
+=== Assisted living ===
+Personal care robots may be deployed in future assisted living homes. For these robots, high-accuracy human detection and pose estimation is necessary to perform a variety of tasks, such as fall detection. Additionally, this application has a number of performance constraints. 
+
+
+=== Character animation ===
+Traditionally, character animation has been a manual process. However, poses can be synced directly to a real-life actor through specialized pose estimation systems. Older systems relied on markers or specialized suits. Recent advances in pose estimation and motion capture have enabled markerless applications, sometimes in real time.
+
+
+=== Intelligent driver assisting system ===
+Car accidents account for about two percent of deaths globally each year. As such, an intelligent system tracking driver pose may be useful for emergency alerts . Along the same lines, pedestrian detection algorithms have been used successfully in autonomous cars, enabling the car to make smarter decisions. 
+
+
+=== Video games ===
+Commercially, pose estimation has been used in the context of video games, popularized with the Microsoft Kinect sensor (a depth camera). These systems track the user to render their avatar in-game, in addition to performing tasks like gesture recognition to enable the user to interact with the game. As such, this application has a strict real-time requirement.
+
+
+=== Medical Applications ===
+Pose estimation has been used to detect postural issues such as scoliosis by analyzing abnormalities in a patient's posture, physical therapy, and the study of the cognitive brain development of young children by monitoring motor functionality.
+
+
+=== Other applications ===
+Other applications include video surveillance, animal tracking and behavior understanding, sign language detection, advanced human–computer interaction, and markerless motion capturing.
+
+
+== Related technology ==
+A commercially successful but specialized computer vision-based articulated body pose estimation technique is optical motion capture. This approach involves placing markers on the individual at strategic locations to capture the 6 degrees-of-freedom of each body part.
+
+
+== Research groups ==
+A number of groups and companies are researching pose estimation, including groups at Brown University, Carnegie Mellon University, MPI Saarbruecken, Stanford University, the University of California, San Diego, the University of Toronto, the École Centrale Paris, ETH Zurich, National University of Sciences and Technology (NUST), the University of California, Irvine and Polytechnic University of Catalonia.
+
+
+== Companies ==
+At present, several companies are working on articulated body pose estimation.
+
+Bodylabs: Bodylabs is a Manhattan-based software provider of human-aware artificial intelligence.
+
+
+== See also ==
+3D pose estimation
+
+
+== References ==
+
+
+== External links ==
+Michael J. Black, Professor at Brown University
+Research Project Page of German Cheung at Carnegie Mellon University
+Homepage of Dr.-Ing at MPI Saarbruecken
+Markerless Motion Capture Project at Stanford
+Computer Vision and Robotics Research Laboratory at the University of California, San Diego
+Research Projects of David J. Fleet at the University of Toronto
+Ronald Poppe at the University of Twente.
+Professor Nikos Paragios at the Ecole Centrale de Paris
+Articulated Pose Estimation with Flexible Mixtures of Parts Project at UC Irvine
+http://screenrant.com/crazy3dtechnologyjamescameronavatarkofi3367/
+2D articulated human pose estimation software
+Articulated Pose Estimation with Flexible Mixtures of Parts

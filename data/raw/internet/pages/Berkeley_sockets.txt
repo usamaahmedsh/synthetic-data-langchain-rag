@@ -1,0 +1,190 @@
+Berkeley sockets is an application programming interface (API) for Internet domain sockets and Unix domain sockets, used for inter-process communication (IPC). It is commonly implemented as a library of linkable modules. It originated with the 4.2BSD Unix operating system, which was released in 1983.
+A socket is an abstract representation (handle) for the local endpoint of a network communication path. The Berkeley sockets API represents it as a file descriptor in the Unix philosophy that provides a common interface for input and output to streams of data.
+Berkeley sockets evolved with little modification from a de facto standard into a component of the POSIX specification. The term POSIX sockets is essentially synonymous with Berkeley sockets, but they are also known as BSD sockets, acknowledging the first implementation in the Berkeley Software Distribution.
+
+
+== History and implementations ==
+Berkeley sockets originated with the 4.2BSD Unix operating system, released in 1983, as a programming interface. Not until 1989, however, could the University of California, Berkeley release versions of the operating system and networking library free from the licensing constraints of AT&T Corporation's proprietary Unix.
+All modern operating systems implement a version of the Berkeley socket interface. It became the standard interface for applications running in the Internet. Even the Winsock implementation for MS Windows, created by unaffiliated developers, closely follows the standard.
+The BSD sockets API is written in the C programming language. Most other programming languages provide similar interfaces, typically written as a wrapper library based on the C API.
+
+
+=== BSD and POSIX sockets ===
+As the Berkeley socket API evolved and ultimately yielded the POSIX socket API, certain functions were deprecated or removed and replaced by others. The POSIX API is also designed to be reentrant and supports IPv6.
+
+
+=== Alternatives ===
+The STREAMS-based Transport Layer Interface (TLI) API offers an alternative to the socket API. Many systems that provide the TLI API also provide the Berkeley socket API.
+Non-Unix systems often expose the Berkeley socket API with a translation layer to a native networking API. Plan 9 and Genode use file-system APIs with control files rather than file-descriptors.
+
+
+== Header files ==
+The Berkeley socket interface is defined in several header files. The names and content of these files differ slightly between implementations.  In general, they include:
+
+
+== Socket API functions ==
+
+The Berkeley socket API typically provides the following functions:
+
+socket() creates a new socket of a certain type, identified by an integer number, and allocates system resources to it.
+bind() is typically used on the server side, and associates a socket with a socket address structure, i.e. a specified local IP address and a port number.
+listen() is used on the server side, and causes a bound TCP socket to enter listening state.
+connect() is used on the client side, and assigns a free local port number to a socket. In case of a TCP socket, it causes an attempt to establish a new TCP connection.
+accept() is used on the server side. It accepts a received incoming attempt to create a new TCP connection from the remote client, and creates a new socket associated with the socket address pair of this connection.
+send(), recv(), sendto(), and recvfrom() are used for sending and receiving data. The standard functions write() and read() may also be used.
+close() causes the system to release resources allocated to a socket. In case of TCP, the connection is terminated.
+gethostbyname() and gethostbyaddr() are used to resolve host names and addresses. IPv4 only.
+getaddrinfo() and freeaddrinfo() are used to resolve host names and addresses. IPv4, IPv6.
+select() is used to suspend, waiting for one or more of a provided list of sockets to be ready to read, ready to write, or that have errors.
+poll() is used to check on the state of a socket in a set of sockets. The set can be tested to see if any socket can be written to, read from or if an error occurred.
+getsockopt() is used to retrieve the current value of a particular socket option for the specified socket.
+setsockopt() is used to set a particular socket option for the specified socket.
+
+
+=== socket ===
+The function socket() creates an endpoint for communication and returns a file descriptor for the socket. It uses three arguments:
+
+domain, which specifies the protocol family of the created socket. For example:
+PF_INET for network protocol IPv4 (IPv4-only)
+PF_INET6 for IPv6 (and in some cases, backward compatible with IPv4)
+PF_UNIX for local socket (using a special filesystem node)
+type, one of:
+SOCK_STREAM (reliable stream-oriented service or stream sockets)
+SOCK_DGRAM (datagram service or datagram sockets)
+SOCK_SEQPACKET (reliable sequenced packet service)
+SOCK_RAW (raw protocols atop the network layer)
+protocol specifying the actual transport protocol to use. The most common are IPPROTO_TCP, IPPROTO_SCTP, IPPROTO_UDP, IPPROTO_DCCP. These protocols are specified in file <netinet/in.h>. The value 0 may be used to select a default protocol from the selected domain and type.
+The function returns -1 if an error occurred. Otherwise, it returns an integer representing the newly assigned descriptor.
+
+
+=== bind ===
+bind() associates a socket with an address. When a socket is created with socket(), it is only given a protocol family, but not assigned an address. This association must be performed before the socket can accept connections from other hosts. The function has three arguments:
+
+sockfd, a descriptor representing the socket
+my_addr, a pointer to a sockaddr structure representing the address to bind to.
+addrlen, a field of type socklen_t specifying the size of the sockaddr structure.
+bind() returns 0 on success and -1 if an error occurs.
+
+
+=== listen ===
+After a socket has been associated with an address, listen() prepares it for incoming connections. However, this is only necessary for the stream-oriented (connection-oriented) data modes, i.e., for socket types (SOCK_STREAM, SOCK_SEQPACKET). listen() requires two arguments:
+
+sockfd, a valid socket descriptor.
+backlog, an integer representing the number of pending connections that can be queued up at any one time. The operating system usually places a cap on this value.
+Once a connection is accepted, it is dequeued. On success, 0 is returned. If an error occurs, -1 is returned.
+
+
+=== accept ===
+When an application is listening for stream-oriented connections from other hosts, it is notified of such events (cf. select() function) and must initialize the connection using function accept(). It creates a new socket for each connection and removes the connection from the listening queue. The function has the following arguments:
+
+sockfd, the descriptor of the listening socket that has the connection queued.
+cliaddr, a pointer to a sockaddr structure to receive the client's address information.
+addrlen, a pointer to a socklen_t location that specifies the size of the client address structure passed to accept(). When accept() returns, this location contains the size (in bytes) of the  structure.
+accept() returns the new socket descriptor for the accepted connection, or the value -1 if an error occurs. All further communication with the remote host now occurs via this new socket.
+Datagram sockets do not require processing by accept() since the receiver may immediately respond to the request using the listening socket.
+
+
+=== connect ===
+connect() establishes a direct communication link to a specific remote host identified by its address via a socket, identified by its file descriptor.
+When using a connection-oriented protocol, this establishes a connection. Certain types of protocols are connectionless, most notably the User Datagram Protocol. When used with connectionless protocols, connect defines the remote address for sending and receiving data, allowing the use of functions such as send and recv. In these cases, the connect function prevents reception of datagrams from other sources.
+connect() returns an integer representing the error code: 0 represents success, while –1 represents an error. Historically, in BSD-derived systems, the state of a socket descriptor is undefined if the call to connect fails (as it is specified in the Single Unix Specification), thus, portable applications should close the socket descriptor immediately and obtain a new descriptor with socket(), in the case the call to connect() fails.
+
+
+=== gethostbyname and gethostbyaddr ===
+The functions gethostbyname() and gethostbyaddr() are used to resolve host names and addresses in the domain name system or the local host's other resolver mechanisms (e.g., /etc/hosts lookup). They return a pointer to an object of type struct hostent, which describes an Internet Protocol host.  The functions use the following arguments:
+
+name specifies the name of the host.
+addr specifies a pointer to a struct in_addr containing the address of the host.
+len specifies the length, in bytes, of addr.
+type specifies the address family type (e.g., AF_INET) of the host address.
+The functions return NULL in case of error, in which case the external integer h_errno may be checked to see whether this is a temporary failure or an invalid or unknown host. Otherwise a valid struct hostent* is returned.
+These functions are not strictly a component of the BSD socket API, but are often used in conjunction with the API functions for looking up a host. These functions are now considered legacy interfaces for querying the domain name system. New functions that are completely protocol-agnostic (supporting IPv6) have been defined. These new functions are getaddrinfo() and getnameinfo(), and are based on a new [[addrinfo]] data structure.
+This pair of functions appeared at the same time as the BSD socket API proper in 4.2BSD (1983), the same year DNS was first created. Early versions did not query DNS and only performed /etc/hosts lookup. The 4.3BSD (1984) version added DNS in a crude way. The current implementation using Name Service Switch derives Solaris and later NetBSD 1.4 (1999). Initially defined for NIS+, NSS makes DNS only one of the many options for lookup by these functions and its use can be disabled even today.
+
+
+== Protocol and address families ==
+The Berkeley socket API is a general interface for networking and interprocess communication and supports the use of various network protocols and address architectures.
+The following lists a sampling of protocol families (preceded by the standard symbolic identifier) defined in a modern Linux or BSD implementation:
+
+A socket for communications is created with the socket() function, by specifying the desired protocol family (PF_-identifier) as an argument.
+The original design concept of the socket interface distinguished between protocol types (families) and the specific address types that each may use. It was envisioned that a protocol family may have several address types. Address types were defined by additional symbolic constants, using the prefix AF instead of PF. The AF-identifiers are intended for all data structures that specifically deal with the address type and not the protocol family.
+However, this concept of separation of protocol and address type has not found implementation support and the AF-constants were defined by the corresponding protocol identifier, leaving the distinction between AF and PF constants as a technical argument of no practical consequence. Indeed, much confusion exists in the proper usage of both forms.
+The POSIX.1—2008 specification doesn't specify any PF-constants, but only AF-constants
+
+
+=== Raw sockets ===
+Raw sockets provide a simple interface that bypasses the processing by the host's TCP/IP stack. They permit implementation of networking protocols in user space and aid in debugging of the protocol stack. Raw sockets are used by some services, such as ICMP, that operate at the Internet Layer of the TCP/IP model.
+
+
+== Blocking and non-blocking mode ==
+Berkeley sockets can operate in one of two modes: blocking or non-blocking.
+A blocking socket does not return control until it has sent (or received) some or all data specified for the operation. It is normal for a blocking socket not to send all data. The application must check the return value to determine how many bytes have been sent or received and it must resend any data not already processed. When using blocking sockets, special consideration should be given to accept() as it may still block after indicating readability if a client disconnects during the connection phase.
+A non-blocking socket returns whatever is in the receive buffer and immediately continues. If not written correctly, programs using non-blocking sockets are particularly susceptible to race conditions due to variances in network link speed.
+A socket is typically set to blocking or non-blocking mode using the functions fcntl and ioctl.
+
+
+== Terminating sockets ==
+The operating system does not release the resources allocated to a socket until the socket is closed. This is especially important if the connect call fails and will be retried.
+When an application closes a socket, only the interface to the socket is destroyed. It is the kernel's responsibility to destroy the socket internally. Sometimes, a socket may enter a TIME_WAIT state, on the server side, for up to 4 minutes.
+On SVR4 systems, use of close() may discard data. The use of shutdown() or SO_LINGER may be required on these systems to guarantee delivery of all data.
+
+
+== Client-server example using TCP ==
+The Transmission Control Protocol (TCP) is a connection-oriented protocol that provides a variety of error correction and performance features for transmission of byte streams. A process creates a TCP socket by calling the socket() function with the parameters for the protocol family (PF INET, PF_INET6), the socket mode for stream sockets (SOCK_STREAM), and the IP protocol identifier for TCP (IPPROTO_TCP).
+
+
+=== Server ===
+Establishing a TCP server involves the following basic steps:
+
+Creating a TCP socket with a call to socket().
+Binding the socket to the listening port bind() after setting the port number.
+Preparing the socket to listen for connections (making it a listening socket), with a call to listen().
+Accepting incoming connections (accept()). This blocks the process until an incoming connection is received, and returns a socket descriptor for the accepted connection. The initial descriptor remains a listening descriptor, and accept() can be called again at any time with this socket, until it is closed.
+Communicating with the remote host with the API functions send() and recv(), as well as with the general-purpose functions write() and read().
+Closing each socket that was opened after use with function close()
+The following program creates a TCP server listening on port number 1100:
+
+
+=== Client ===
+Programming a TCP client application involves the following steps:
+
+Creating a TCP socket.
+Connecting to the server (connect()), by passing a sockaddr_in structure with the sin_family set to AF_INET, sin_port set to the port the endpoint is listening (in network byte order), and sin_addr set to the IP address of the listening server (also in network byte order).
+Communicating with the remote host with the API functions send() and recv(), as well as with the general-purpose functions write() and read().
+Closing each socket that was opened after use with function close().
+
+
+== Client-server example using UDP ==
+The User Datagram Protocol (UDP) is a connectionless protocol with no guarantee of delivery. UDP packets may arrive out of order, multiple times, or not at all. Because of this minimal design, UDP has considerably less overhead than TCP. Being connectionless means that there is no concept of a stream or permanent connection between two hosts. Such data are referred to as datagrams (datagram sockets).
+UDP address space, the space of UDP port numbers (in ISO terminology, the TSAPs), is completely disjoint from that of TCP ports.
+
+
+=== Server ===
+An application may set up a UDP server on port number 7654 as follows. The programs contains an infinite loop that receives UDP datagrams with function recvfrom().
+
+
+=== Client ===
+The following is a client program for sending a UDP packet containing the string "Hello, world!" to address 127.0.0.1 at port number 7654.
+
+In this code, buffer is a pointer to the data to be sent, and buffer_length specifies the size of the data.
+
+
+== References ==
+
+The de jure standard definition of the Sockets interface is contained in the POSIX standard, known as:
+
+IEEE Std. 1003.1-2001 Standard for Information Technology—Portable Operating System Interface (POSIX).
+Open Group Technical Standard: Base Specifications, Issue 6, December 2001.
+ISO/IEC 9945:2002
+Information about this standard and ongoing work on it is available from the Austin website.
+The IPv6 extensions to the base socket API are documented in RFC 3493 and RFC 3542.
+
+Stevens, W. Richard; Rago, Stephen A. (May 24, 2013). Advanced Programming in the UNIX Environment (Third ed.). Addison-Wesley Professional. ISBN 978-0321637734. Retrieved 27 February 2015.
+
+
+== External links ==
+UNIX Programmer's Supplementary Documents (PSD: 20-1)
+Beej's Guide to Network Programming - 2007
+Porting Berkeley Socket programs to Winsock - Microsoft's documentation.
+Programming UNIX Sockets in C - Frequently Asked Questions - 1996
+Linux network programming - Linux Journal, 1998

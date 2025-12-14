@@ -1,0 +1,374 @@
+In machine learning, the kernel perceptron is a variant of the popular perceptron learning algorithm that can learn kernel machines, i.e. non-linear classifiers that employ a kernel function to compute the similarity of unseen samples to training samples. The algorithm was invented in 1964, making it the first kernel classification learner.
+
+
+== Preliminaries ==
+
+
+=== The perceptron algorithm ===
+
+The perceptron algorithm is an online learning algorithm that operates by a principle called "error-driven learning". It iteratively improves a model by running it on training samples, then updating the model whenever it finds it has made an incorrect classification with respect to a supervised signal. The model learned by the standard perceptron algorithm is a linear binary classifier: a vector of weights w (and optionally an intercept term b, omitted here for simplicity) that is used to classify a sample vector x as class "one" or class "minus one" according to
+
+  
+    
+      
+        
+          
+            
+              y
+              ^
+            
+          
+        
+        =
+        sgn
+        ⁡
+        (
+        
+          
+            w
+          
+          
+            ⊤
+          
+        
+        
+          x
+        
+        )
+      
+    
+    {\displaystyle {\hat {y}}=\operatorname {sgn}(\mathbf {w} ^{\top }\mathbf {x} )}
+  
+
+where a zero is arbitrarily mapped to one or minus one. (The "hat" on ŷ denotes an estimated value.)
+In pseudocode, the perceptron algorithm is given by:
+
+Initialize w to an all-zero vector of length p, the number of predictors (features).
+For some fixed number of iterations, or until some stopping criterion is met:
+For each training example xi with ground truth label yi ∈ {-1, 1}:
+Let ŷ = sgn(wT xi).
+If ŷ ≠ yi, update w ← w + yi xi.
+
+
+=== Kernel Methods ===
+
+By contrast with the linear models learned by the perceptron, a kernel method is a classifier that stores a subset of its training examples xi, associates with each a weight αi, and makes decisions for new samples x' by evaluating
+
+  
+    
+      
+        sgn
+        ⁡
+        
+          ∑
+          
+            i
+          
+        
+        
+          α
+          
+            i
+          
+        
+        
+          y
+          
+            i
+          
+        
+        K
+        (
+        
+          
+            x
+          
+          
+            i
+          
+        
+        ,
+        
+          
+            x
+            ′
+          
+        
+        )
+      
+    
+    {\displaystyle \operatorname {sgn} \sum _{i}\alpha _{i}y_{i}K(\mathbf {x} _{i},\mathbf {x'} )}
+  
+.
+Here, K is some kernel function. Formally, a kernel function is a non-negative semidefinite kernel (see Mercer's condition), representing an inner product between samples in a high-dimensional space, as if the samples had been expanded to include additional features by a function Φ: K(x, x') = Φ(x) · Φ(x'). Intuitively, it can be thought of as a similarity function between samples, so the kernel machine establishes the class of a new sample by weighted comparison to the training set. Each function x' ↦ K(xi, x') serves as a basis function in the classification.
+
+
+== Algorithm ==
+To derive a kernelized version of the perceptron algorithm, we must first formulate it in dual form, starting from the observation that the weight vector w can be expressed as a linear combination of the n training samples. The equation for the weight vector is
+
+  
+    
+      
+        
+          w
+        
+        =
+        
+          ∑
+          
+            i
+          
+          
+            n
+          
+        
+        
+          α
+          
+            i
+          
+        
+        
+          y
+          
+            i
+          
+        
+        
+          
+            x
+          
+          
+            i
+          
+        
+      
+    
+    {\displaystyle \mathbf {w} =\sum _{i}^{n}\alpha _{i}y_{i}\mathbf {x} _{i}}
+  
+
+where αi is the number of times xi was misclassified, forcing an update w ← w + yi xi. Using this result, we can formulate the dual perceptron algorithm, which loops through the samples as before, making predictions, but instead of storing and updating a weight vector w, it updates a "mistake counter" vector α.
+We must also rewrite the prediction formula to get rid of w:
+
+  
+    
+      
+        
+          
+            
+              
+                
+                  
+                    
+                      y
+                      ^
+                    
+                  
+                
+              
+              
+                
+                =
+                sgn
+                ⁡
+                (
+                
+                  
+                    w
+                  
+                  
+                    
+                      T
+                    
+                  
+                
+                
+                  x
+                
+                )
+              
+            
+            
+              
+              
+                
+                =
+                sgn
+                ⁡
+                
+                  
+                    (
+                    
+                      
+                        ∑
+                        
+                          i
+                        
+                        
+                          n
+                        
+                      
+                      
+                        α
+                        
+                          i
+                        
+                      
+                      
+                        y
+                        
+                          i
+                        
+                      
+                      
+                        
+                          x
+                        
+                        
+                          i
+                        
+                      
+                    
+                    )
+                  
+                  
+                    
+                      T
+                    
+                  
+                
+                
+                  x
+                
+              
+            
+            
+              
+              
+                
+                =
+                sgn
+                ⁡
+                
+                  ∑
+                  
+                    i
+                  
+                  
+                    n
+                  
+                
+                
+                  α
+                  
+                    i
+                  
+                
+                
+                  y
+                  
+                    i
+                  
+                
+                (
+                
+                  
+                    x
+                  
+                  
+                    i
+                  
+                
+                ⋅
+                
+                  x
+                
+                )
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{aligned}{\hat {y}}&=\operatorname {sgn}(\mathbf {w} ^{\mathsf {T}}\mathbf {x} )\\&=\operatorname {sgn} \left(\sum _{i}^{n}\alpha _{i}y_{i}\mathbf {x} _{i}\right)^{\mathsf {T}}\mathbf {x} \\&=\operatorname {sgn} \sum _{i}^{n}\alpha _{i}y_{i}(\mathbf {x} _{i}\cdot \mathbf {x} )\end{aligned}}}
+  
+
+Plugging these two equations into the training loop turn it into the dual perceptron algorithm.
+Finally, we can replace the dot product in the dual perceptron by an arbitrary kernel function, to get the effect of a feature map Φ without computing Φ(x) explicitly for any samples. Doing this yields the kernel perceptron algorithm:
+
+Initialize α to an all-zeros vector of length n, the number of training samples.
+For some fixed number of iterations, or until some stopping criterion is met:
+For each training example xj, yj:
+Let 
+  
+    
+      
+        
+          
+            
+              y
+              ^
+            
+          
+        
+        =
+        sgn
+        ⁡
+        
+          ∑
+          
+            i
+          
+          
+            n
+          
+        
+        
+          α
+          
+            i
+          
+        
+        
+          y
+          
+            i
+          
+        
+        K
+        (
+        
+          
+            x
+          
+          
+            i
+          
+        
+        ,
+        
+          
+            x
+          
+          
+            j
+          
+        
+        )
+      
+    
+    {\displaystyle {\hat {y}}=\operatorname {sgn} \sum _{i}^{n}\alpha _{i}y_{i}K(\mathbf {x} _{i},\mathbf {x} _{j})}
+  
+
+If ŷ ≠ yj, perform an update by incrementing the mistake counter:
+αj ← αj + 1
+
+
+== Variants and extensions ==
+One problem with the kernel perceptron, as presented above, is that it does not learn sparse kernel machines. Initially, all the αi are zero so that evaluating the decision function to get ŷ requires no kernel evaluations at all, but each update increments a single αi, making the evaluation increasingly more costly. Moreover, when the kernel perceptron is used in an online setting, the number of non-zero αi and thus the evaluation cost grow linearly in the number of examples presented to the algorithm.
+The forgetron variant of the kernel perceptron was suggested to deal with this problem. It maintains an active set of examples with non-zero αi, removing ("forgetting") examples from the active set when it exceeds a pre-determined budget and "shrinking" (lowering the weight of) old examples as new ones are promoted to non-zero αi.
+Another problem with the kernel perceptron is that it does not regularize, making it vulnerable to overfitting. The NORMA online kernel learning algorithm can be regarded as a generalization of the kernel perceptron algorithm with regularization. The sequential minimal optimization (SMO) algorithm used to learn support vector machines can also be regarded as a generalization of the kernel perceptron.
+The voted perceptron algorithm of Freund and Schapire also extends to the kernelized case, giving generalization bounds comparable to the kernel SVM.
+
+
+== References ==

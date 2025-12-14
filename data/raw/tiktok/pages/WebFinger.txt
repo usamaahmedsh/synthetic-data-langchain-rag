@@ -1,0 +1,61 @@
+WebFinger is a protocol specified by the Internet Engineering Task Force IETF in RFC 7033 that allows for discovery of information about people and things identified by a URI. Information about a person might be discovered via an acct: URI, for example, which is a URI that looks like an email address.
+WebFinger is specified as the discovery protocol for OpenID Connect, which is a protocol that allows one to more easily log in to various sites on the Internet.
+The WebFinger protocol is used by federated software, such as GNU social (via its use in OStatus), Diaspora, or Mastodon, to discover users on federated nodes and pods, as well as the remoteStorage protocol. The WebFinger protocol does not specify the usage of "template" within the "links" section. That is an extension made by the former oStatus protocol that the Fediverse inherited from. The reasoning for expanding upon this later was justified by wanting to use a different key for a value that isn't an URL but a pattern to create one.
+As a historical note, the name "WebFinger" is derived from the old ARPANET Finger protocol, but it is a very different protocol designed for HTTP.
+The protocol payload is represented in JSON format with a MIME-Type of  application/jrd+json.
+
+
+== Technical overview ==
+Basically the WebFinger is just a structured data format. The content of this structure depends entirely on the applications using it. While ensuring compatibility and extensibility.
+
+
+=== Basic example with profile page and business card ===
+For this example we've two users Alice and Bob. Alice only knows the E-Mail address of bob bob@example.com. Bob previously setup WebFinger over at example.com.
+
+Alice opens the "Add contact" page of their E-Mail client and only enters Bobs E-Mail Address.
+The application then derives the WebFinger URL:
+test
+https://
++ the domain part of the email address example.com
++ /.well-known/webfinger?resource=
++ the kind of schema the application is looking for, in this case we want to have account information, so it's acct
++ followed by an URL-Encoded :-character, aka. %3A
++ followed by the URL-Encoded value (the email address) we'd like to know more of bob%40example.com.
+Resulting in the URL: https://example.com/.well-known/webfinger?resource=acct%3Abob%40example.com
+The application then makes a HTTP-Request towards it and follows all potential HTTP redirects according to the HTTP specification.
+When the application got a successful result it parses the obtained JSON looking at all of the obtained "properties" and "links" to find ones it understands ignoring all others. Like e.g. http://webfinger.net/rel/profile-page for populating the users homepage field or http://webfinger.net/rel/avatar for adding a picture to the contact details.
+For this the client sends the following request:
+
+Server response body:
+
+
+== Usage within the Fediverse ==
+Fediverse instances like e.g. Mastodon, Peertube, Misskey, ... can look up the server name of a specific usernames by sending a request to the WebFinger endpoint of the domain within their username (the part after the 2nd @-symbol). This also allows companies, influencers (anyone with their own DNS domain name) to point towards their official accounts within the Fediverse (aka. with ActivityPub) without needing to have their own instance running on their own domain and without all of the accounts having to be on the same instance (e.g. automatic accounts populated by the websites CRM, one for some primarily video content on a Peertube instance, and some personalised "employee" accounts on either one or multiple different Mastodon/Fediverse instances WITHOUT having to separate all of these to different (sub) domain names. Allowing to have a single easily readable and recognisable association with ones website within multiple usernames like e.g.: @authorname@bigcompany.tld, @news@bigcompany.tld, and @videotutorialsXYZ@bigcompany.tld instead of a confusing mix of e.g. @authorname@social.bigcompany.tld, @feed@feed.bigcompany.tld, @videotutorialsXYZ@videos.bigcompany.tld, and especially instead of @authorname@othercompany.tld.
+Without WebFinger when a company either chooses to outsource or team up with another company for operating these platforms on their behalf they normally not only make it trivial for others to impersonate them (because of having usernames that do not depend on their websites like e.g. @something@anothercompany.tld) but they also have to give up control over that account and its social capital to that specific company. The owner of anothercompany.tld is now in control of a companies entire social capital. Even worse should that company decide to shut down their servers for one reason or another the entire social capital could have to be rebuilt from scratch as nobody will be able to find the new company they moved to.
+With WebFinger all of these problems can be avoided easily as e.g. @authorname@bigcompany.tld does not have to be served by https://bigcompany.tld/, nor does @otherauthorname@bigcompany.tld have to be on the same server anymore. If WebFinger is used a company gets enabled to use Mastodon.social today but once it either is no longer ideal or becomes inaccessible they can on their own accord - without any approval, vetoing, or even cooperation of the Mastodon gGmbH that owns and operates Mastodon.social, moved towards any other instance without losing their social capital. Be it a self-hosted one, one spun-up and operated by a smal regional IT contractor, or similar. And all of this completely transparently and without any for their community members having to "refollow" or do anything. Basically making migrating ones social media platform operator as easy as the one for ones website. Thereby eliminating vendor lock-in (e.g. as seen on centralised "big-tech" platforms like Twitter, Facebook, TikTok, or Instagram) and allowing one to staying in control of their network relationships and social capital.
+All at the little cost of having to purchase single DNS domain. And to stay in control of it (e.g. by being registered and listed as the rightful owner of that DNS domain name within the DNS registry). Note: In most cases this is neither anything new or unique to WebFinger and for most companies associated risks are also already being managed as losing control over ones domain usually includes also losing ones Website, E-Mail reachability, and thereby not "just" their social capital but their entire web presence including losing out on income from e.g. ads, affiliate links, and/or sales. For WebFinger specifically one most ideally should also ensures to stay in control over their webspace as well. However compared to losing ones entire DNS domain that's basically just an annoying inconvenience.
+When WebFinger is solely being used for the Fediverse alone it can be seen as a more universal, versatile, and simpler alternative to the more walled off AT Protocol controlled and solely used by Bluesky. As all that is needed for WebFinger to function for this is host a single static file per username with a fixed file name of webfinger?resource=acct%3A<<USERNAME>>%40example.com within the .well-known folder on ones website. This means when someone visits https://example.com/.well-known/webfinger?resource=acct%3A<<USERNAME>>%40example.com they need to get a small JSON-file (aka. a text file) with content similar to the example below).
+
+
+=== Example for user @Mastodon@mastodon.social ===
+WebFinger aware platforms and clients first tries to access the URL https://mastodon.social/.well-known/webfinger?resource=acct%3AMastodon%40mastodon.social by sending the HTTP-Request:
+
+Then the server responds with:
+
+
+== See also ==
+Authorization
+IndieAuth
+OpenID
+OpenID Connect
+WebID
+
+
+== References ==
+
+
+== External links ==
+webfinger.net community site
+WebFinger information and open source software
+sabre/webfinger server implementation by sabre.io
+webfinger Cloudflare worker by Kurt Seifried

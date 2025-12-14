@@ -1,0 +1,273 @@
+Sharpness Aware Minimization (SAM) is an optimization algorithm used in machine learning that aims to improve model generalization. The method seeks to find model parameters that are located in regions of the loss landscape with uniformly low loss values, rather than parameters that only achieve a minimal loss value at a single point. This approach is described as finding "flat" minima instead of "sharp" ones. The rationale is that models trained this way are less sensitive to variations between training and test data, which can lead to better performance on unseen data.
+The algorithm was introduced in a 2020 paper by a team of researchers including Pierre Foret, Ariel Kleiner, Hossein Mobahi, and Behnam Neyshabur.
+
+
+== Underlying Principle ==
+SAM modifies the standard training objective by minimizing a "sharpness-aware" loss. This is formulated as a minimax problem where the inner objective seeks to find the highest loss value in the immediate neighborhood of the current model weights, and the outer objective minimizes this value:
+
+  
+    
+      
+        
+          min
+          
+            w
+          
+        
+        
+          max
+          
+            ‖
+            ϵ
+            
+              ‖
+              
+                p
+              
+            
+            ≤
+            ρ
+          
+        
+        
+          L
+          
+            train
+          
+        
+        (
+        w
+        +
+        ϵ
+        )
+        +
+        λ
+        ‖
+        w
+        
+          ‖
+          
+            2
+          
+          
+            2
+          
+        
+      
+    
+    {\displaystyle \min _{w}\max _{\|\epsilon \|_{p}\leq \rho }L_{\text{train}}(w+\epsilon )+\lambda \|w\|_{2}^{2}}
+  
+
+In this formulation:
+
+  
+    
+      
+        w
+      
+    
+    {\displaystyle w}
+  
+ represents the model's parameters (weights).
+
+  
+    
+      
+        
+          L
+          
+            train
+          
+        
+      
+    
+    {\displaystyle L_{\text{train}}}
+  
+ is the loss calculated on the training data.
+
+  
+    
+      
+        ϵ
+      
+    
+    {\displaystyle \epsilon }
+  
+ is a perturbation applied to the weights.
+
+  
+    
+      
+        ρ
+      
+    
+    {\displaystyle \rho }
+  
+ is a hyperparameter that defines the radius of the neighborhood (an 
+  
+    
+      
+        
+          L
+          
+            p
+          
+        
+      
+    
+    {\displaystyle L_{p}}
+  
+ ball) to search for the highest loss.
+An optional L2 regularization term, scaled by 
+  
+    
+      
+        λ
+      
+    
+    {\displaystyle \lambda }
+  
+, can be included.
+A direct solution to the inner maximization problem is computationally expensive. SAM approximates it by taking a single gradient ascent step to find the perturbation 
+  
+    
+      
+        ϵ
+      
+    
+    {\displaystyle \epsilon }
+  
+. This is calculated as:
+
+  
+    
+      
+        ϵ
+        (
+        w
+        )
+        =
+        ρ
+        
+          
+            
+              ∇
+              
+                L
+                
+                  train
+                
+              
+              (
+              w
+              )
+            
+            
+              ‖
+              ∇
+              
+                L
+                
+                  train
+                
+              
+              (
+              w
+              )
+              
+                ‖
+                
+                  2
+                
+              
+            
+          
+        
+      
+    
+    {\displaystyle \epsilon (w)=\rho {\frac {\nabla L_{\text{train}}(w)}{\|\nabla L_{\text{train}}(w)\|_{2}}}}
+  
+
+The optimization process for each training step involves two stages. First, an "ascent step" computes a perturbed set of weights, 
+  
+    
+      
+        
+          w
+          
+            adv
+          
+        
+        =
+        w
+        +
+        ϵ
+        (
+        w
+        )
+      
+    
+    {\displaystyle w_{\text{adv}}=w+\epsilon (w)}
+  
+, by moving towards the direction of the highest local loss. Second, a "descent step" updates the original weights 
+  
+    
+      
+        w
+      
+    
+    {\displaystyle w}
+  
+ using the gradient calculated at these perturbed weights, 
+  
+    
+      
+        ∇
+        
+          L
+          
+            train
+          
+        
+        (
+        
+          w
+          
+            adv
+          
+        
+        )
+      
+    
+    {\displaystyle \nabla L_{\text{train}}(w_{\text{adv}})}
+  
+. This update is typically performed using a standard optimizer like SGD or Adam.
+
+
+== Application and Performance ==
+SAM has been applied in various machine learning contexts, primarily in computer vision. Research has shown it can improve generalization performance in models such as Convolutional Neural Networks (CNNs) and Vision Transformers (ViTs) on image datasets including ImageNet, CIFAR-10, and CIFAR-100.
+The algorithm has also been found to be effective in training models with noisy labels, where it performs comparably to methods designed specifically for this problem. Some studies indicate that SAM and its variants can improve out-of-distribution (OOD) generalization, which is a model's ability to perform well on data from distributions not seen during training. Other areas where it has been applied include gradual domain adaptation and mitigating overfitting in scenarios with repeated exposure to training examples.
+
+
+== Limitations ==
+A primary limitation of SAM is its computational cost. By requiring two gradient computations (one for the ascent and one for the descent) per optimization step, it approximately doubles the training time compared to standard optimizers.
+The theoretical convergence properties of SAM are still under investigation. Some research suggests that with a constant step size, SAM may not converge to a stationary point. The accuracy of the single gradient step approximation for finding the worst-case perturbation may also decrease during the training process.
+The effectiveness of SAM can also be domain-dependent. While it has shown benefits for computer vision tasks, its impact on other areas, such as GPT-style language models where each training example is seen only once, has been reported as limited in some studies. Furthermore, while SAM seeks flat minima, some research suggests that not all flat minima necessarily lead to good generalization. The algorithm also introduces the neighborhood size 
+  
+    
+      
+        ρ
+      
+    
+    {\displaystyle \rho }
+  
+ as a new hyperparameter, which requires tuning.
+
+
+== Research, Variants, and Enhancements ==
+Active research on SAM focuses on reducing its computational overhead and improving its performance. Several variants have been proposed to make the algorithm more efficient. These include methods that attempt to parallelize the two gradient computations, apply the perturbation to only a subset of parameters, or reduce the number of computation steps required. Other approaches use historical gradient information or apply SAM steps intermittently to lower the computational burden.
+To improve performance and robustness, variants have been developed that adapt the neighborhood size based on model parameter scales (Adaptive SAM or ASAM) or incorporate information about the curvature of the loss landscape (Curvature Regularized SAM or CR-SAM). Other research explores refining the perturbation step by focusing on specific components of the gradient or combining SAM with techniques like random smoothing.
+Theoretical work continues to analyze the algorithm's behavior, including its implicit bias towards flatter minima and the development of broader frameworks for sharpness-aware optimization that use different measures of sharpness.
+
+
+== References ==

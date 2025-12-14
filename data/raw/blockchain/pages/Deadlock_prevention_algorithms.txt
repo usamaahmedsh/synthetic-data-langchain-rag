@@ -1,0 +1,48 @@
+In computer science, deadlock prevention algorithms are used in concurrent programming when multiple processes must acquire more than one shared resource.  If two or more concurrent processes obtain multiple resources indiscriminately, a situation can occur where each process has a resource needed by another process.  As a result, none of the processes can obtain all the resources it needs, so all processes are blocked from further execution.  This situation is called a deadlock.  A deadlock prevention algorithm organizes resource usage by each process to ensure that at least one process is always able to get all the resources it needs. One such example of deadlock algorithm is Banker's algorithm.
+
+
+== Overview ==
+
+
+== Distributed deadlock ==
+Distributed deadlocks can occur in distributed systems when distributed transactions or concurrency control is being used. Distributed deadlocks can be detected either by constructing a global wait-for graph, from local wait-for graphs at a deadlock detector or by a distributed algorithm like edge chasing.
+Phantom deadlocks are deadlocks that are detected in a distributed system due to system internal delays but no longer actually exist at the time of detection.
+
+
+== Deadlock prevention ==
+There are many different ways to increase parallelism where recursive locks would otherwise cause deadlocks. But there is a price.  And that price is either performance/overhead, allow data corruption, or both.
+Some examples include: lock hierarchies, lock reference-counting and preemption (either using versioning or allowing data corruption when preemption occurs); Wait-For-Graph (WFG) [1] algorithms, which track all cycles that cause deadlocks (including temporary deadlocks); and heuristics algorithms which don't necessarily increase parallelism in 100% of the places that deadlocks are possible, but instead compromise by solving them in enough places that performance/overhead vs parallelism is acceptable.
+Consider a "when two trains approach each other at a crossing" situation. Just-in-time prevention works like having a person standing at the crossing (the crossing guard) with a switch that will let only one train onto "super tracks" which runs above and over the other waiting train(s).
+
+For non-recursive locks, a lock may be entered only once (where a single thread entering twice without unlocking will cause a deadlock, or throw an exception to enforce circular wait prevention).
+For recursive locks, only one thread is allowed to pass through a lock. If any other threads enter the lock, they must wait until the initial thread that passed through completes n number of times it has entered.
+So the issue with the first one is that it does no deadlock prevention at all. The second does not do distributed deadlock prevention. But the second one is redefined to prevent a deadlock scenario the first one does not address.
+Recursively, only one thread is allowed to pass through a lock. If other threads enter the lock, they must wait until the initial thread that passed through completes n number of times. But if the number of threads that enter locking equal the number that are locked, assign one thread as the super-thread, and only allow it to run (tracking the number of times it enters/exits locking) until it completes.
+After a super-thread is finished, the condition changes back to using the logic from the recursive lock, and the exiting super-thread
+
+sets itself as not being a super-thread
+notifies the locker that other locked, waiting threads need to re-check this condition
+If a deadlock scenario exists, set a new super-thread and follow that logic. Otherwise, resume regular locking.
+
+
+=== Issues not addressed above ===
+A lot of confusion revolves around the halting problem. But this logic does not solve the halting problem because the conditions in which locking occurs are known, giving a specific solution (instead of the otherwise required general solution that the halting problem requires). Still, this locker prevents all deadlocked only considering locks using this logic. But if it is used with other locking mechanisms, a lock that is started never unlocks (exception thrown jumping out without unlocking, looping indefinitely within a lock, or coding error forgetting to call unlock), deadlocking is very possible. To increase the condition to include these would require solving the halting issue, since one would be dealing with conditions that one knows nothing about and is unable to change.
+Another issue is it does not address the temporary deadlocking issue (not really a deadlock, but a performance killer), where two or more threads lock on each other while another unrelated thread is running. These temporary deadlocks could have a thread running exclusively within them, increasing parallelism. But because of how the distributed deadlock detection works for all locks, and not subsets therein, the unrelated running thread must complete before performing the super-thread logic to remove the temporary deadlock.
+One can see the temporary live-lock scenario in the above. If another unrelated running thread begins before the first unrelated thread exits, another duration of temporary deadlocking will occur. If this happens continuously (extremely rare), the temporary deadlock can be extended until right before the program exits, when the other unrelated threads are guaranteed to finish (because of the guarantee that one thread will always run to completion).
+
+
+=== Further expansion ===
+This can be further expanded to involve additional logic to increase parallelism where temporary deadlocks might otherwise occur. But for each step of adding more logic, we add more overhead.
+A couple of examples include: expanding distributed super-thread locking mechanism to consider each subset of existing locks; Wait-For-Graph (WFG) [2] algorithms, which track all cycles that cause deadlocks (including temporary deadlocks); and heuristics algorithms which don't necessarily increase parallelism in 100% of the places that temporary deadlocks are possible, but instead compromise by solving them in enough places that performance/overhead vs parallelism is acceptable (e.g. for each processor available, work towards finding deadlock cycles less than the number of processors + 1 deep).
+
+
+== Wait-die ==
+Iterate through actions of the schedule in chronological order. If a transaction gets aborted from a policy, do not iterate through the rest of that transaction’s actions. If a lower-priority transaction waits for a (either committed or uncommitted) unaborted higher-priority transaction, the lower priority transaction gets aborted.
+Proof: For a deadlock to occur T1 must be waiting for a lock held by T2 while T2 is waiting for a (different) lock held by T1. But T2, waiting for T1, must have a lower priority so T2 dies and the deadlock is prevented.
+
+
+== Wound-wait ==
+Iterate through actions of the schedule in chronological order. If a transaction gets aborted from a policy, do not iterate through the rest of that transaction’s actions. If a higher-priority transaction waits for an uncommitted unaborted lower priority transaction, the lower priority transaction gets aborted.
+
+
+== References ==

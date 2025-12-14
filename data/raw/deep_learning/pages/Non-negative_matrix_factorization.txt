@@ -1,0 +1,1122 @@
+Non-negative matrix factorization (NMF or NNMF), also non-negative matrix approximation is a group of algorithms in multivariate analysis and linear algebra where a matrix V is factorized into (usually) two matrices W and H, with the property that all three matrices have no negative elements. This non-negativity makes the resulting matrices easier to inspect. Also, in applications such as processing of audio spectrograms or muscular activity, non-negativity is inherent to the data being considered. Since the problem is not exactly solvable in general, it is commonly approximated numerically.
+NMF finds applications in such fields as astronomy, computer vision, document clustering, missing data imputation, chemometrics, audio signal processing, recommender systems, and bioinformatics.
+
+
+== History ==
+In chemometrics non-negative matrix factorization has a long history under the name "self modeling curve resolution".
+In this framework the vectors in the right matrix are continuous curves rather than discrete vectors.
+Also early work on non-negative matrix factorizations was performed by a Finnish group of researchers in the 1990s under the name positive matrix factorization.
+It became more widely known as non-negative matrix factorization after Lee and Seung investigated the properties of the algorithm and published some simple and useful
+algorithms for two types of factorizations.
+
+
+== Background ==
+Let matrix V be the product of the matrices W and H,
+
+  
+    
+      
+        
+          V
+        
+        =
+        
+          W
+        
+        
+          H
+        
+        
+        .
+      
+    
+    {\displaystyle \mathbf {V} =\mathbf {W} \mathbf {H} \,.}
+  
+
+Matrix multiplication can be implemented as computing the column vectors of V as linear combinations of the column vectors in W using coefficients supplied by columns of H.  That is, each column of V can be computed as follows:
+
+  
+    
+      
+        
+          
+            v
+          
+          
+            i
+          
+        
+        =
+        
+          W
+        
+        
+          
+            h
+          
+          
+            i
+          
+        
+        
+        ,
+      
+    
+    {\displaystyle \mathbf {v} _{i}=\mathbf {W} \mathbf {h} _{i}\,,}
+  
+
+where vi is the i-th column vector of the product matrix V and hi is the i-th column vector of the matrix H.
+When multiplying matrices, the dimensions of the factor matrices may be significantly lower than those of the product matrix and it is this property that forms the basis of NMF. NMF generates factors with significantly reduced dimensions compared to the original matrix. For example, if V is an m × n matrix, W is an m × p matrix, and H is a p × n matrix then p can be significantly less than both m and n.
+Here is an example based on a text-mining application: 
+
+Let the input matrix (the matrix to be factored) be V with 10000 rows and 500 columns where words are in rows and documents are in columns. That is, we have 500 documents indexed by 10000 words. It follows that a column vector v in V represents a document.
+Assume we ask the algorithm to find 10 features in order to generate a features matrix W with 10000 rows and 10 columns and a coefficients matrix H with 10 rows and 500 columns.
+The product of W and H is a matrix with 10000 rows and 500 columns, the same shape as the input matrix V and, if the factorization worked, it is a reasonable approximation to the input matrix V.
+From the treatment of matrix multiplication above it follows that each column in the product matrix WH is a linear combination of the 10 column vectors in the features matrix W with coefficients supplied by the coefficients matrix H.
+This last point is the basis of NMF because we can consider each original document in our example as being built from a small set of hidden features. NMF generates these features.
+It is useful to think of each feature (column vector) in the features matrix W as a document archetype comprising a set of words where each word's cell value defines the word's rank in the feature: The higher a word's cell value the higher the word's rank in the feature. A column in the coefficients matrix H represents an original document with a cell value defining the document's rank for a feature. We can now reconstruct a document (column vector) from our input matrix by a linear combination of our features (column vectors in W) where each feature is weighted by the feature's cell value from the document's column in H.
+
+
+== Clustering property ==
+NMF has an inherent clustering property, i.e., it automatically clusters the columns of input data 
+  
+    
+      
+        
+          V
+        
+        =
+        (
+        
+          v
+          
+            1
+          
+        
+        ,
+        …
+        ,
+        
+          v
+          
+            n
+          
+        
+        )
+      
+    
+    {\displaystyle \mathbf {V} =(v_{1},\dots ,v_{n})}
+  
+.
+More specifically, the approximation of 
+  
+    
+      
+        
+          V
+        
+      
+    
+    {\displaystyle \mathbf {V} }
+  
+ by 
+  
+    
+      
+        
+          V
+        
+        ≃
+        
+          W
+        
+        
+          H
+        
+      
+    
+    {\displaystyle \mathbf {V} \simeq \mathbf {W} \mathbf {H} }
+  
+ is achieved by finding 
+  
+    
+      
+        W
+      
+    
+    {\displaystyle W}
+  
+ and 
+  
+    
+      
+        H
+      
+    
+    {\displaystyle H}
+  
+ that minimize the error function (using the Frobenius norm)
+
+  
+    
+      
+        
+          
+            ‖
+            
+              V
+              −
+              W
+              H
+            
+            ‖
+          
+          
+            F
+          
+        
+        ,
+      
+    
+    {\displaystyle \left\|V-WH\right\|_{F},}
+  
+ subject to 
+  
+    
+      
+        W
+        ≥
+        0
+        ,
+        H
+        ≥
+        0.
+      
+    
+    {\displaystyle W\geq 0,H\geq 0.}
+  
+, 
+If we furthermore impose an orthogonality constraint on 
+  
+    
+      
+        
+          H
+        
+      
+    
+    {\displaystyle \mathbf {H} }
+  
+, 
+i.e. 
+  
+    
+      
+        
+          H
+        
+        
+          
+            H
+          
+          
+            T
+          
+        
+        =
+        I
+      
+    
+    {\displaystyle \mathbf {H} \mathbf {H} ^{T}=I}
+  
+, then the above minimization is mathematically equivalent to the minimization of K-means clustering.
+Furthermore, the computed 
+  
+    
+      
+        H
+      
+    
+    {\displaystyle H}
+  
+ gives the cluster membership, i.e., if 
+  
+    
+      
+        
+          
+            H
+          
+          
+            k
+            j
+          
+        
+        >
+        
+          
+            H
+          
+          
+            i
+            j
+          
+        
+      
+    
+    {\displaystyle \mathbf {H} _{kj}>\mathbf {H} _{ij}}
+  
+ for all i ≠ k, this suggests that the input data 
+  
+    
+      
+        
+          v
+          
+            j
+          
+        
+      
+    
+    {\displaystyle v_{j}}
+  
+ belongs to 
+  
+    
+      
+        k
+      
+    
+    {\displaystyle k}
+  
+-th cluster. The computed 
+  
+    
+      
+        W
+      
+    
+    {\displaystyle W}
+  
+ gives the cluster centroids, i.e., the 
+  
+    
+      
+        k
+      
+    
+    {\displaystyle k}
+  
+-th column gives the cluster centroid of 
+  
+    
+      
+        k
+      
+    
+    {\displaystyle k}
+  
+-th cluster. This centroid's representation can be significantly enhanced by convex NMF.
+When the orthogonality constraint 
+  
+    
+      
+        
+          H
+        
+        
+          
+            H
+          
+          
+            T
+          
+        
+        =
+        I
+      
+    
+    {\displaystyle \mathbf {H} \mathbf {H} ^{T}=I}
+  
+ is not explicitly imposed, the orthogonality holds to a large extent, and the clustering property holds too. 
+When the error function to be used is Kullback–Leibler divergence, NMF is identical to the probabilistic latent semantic analysis (PLSA), a popular document clustering method.
+
+
+== Types ==
+
+
+=== Approximate non-negative matrix factorization ===
+Usually the number of columns of W and the number of rows of H in NMF are selected so the product WH will become an approximation to V.  The full decomposition of V then amounts to the two non-negative matrices W and H as well as a residual U, such that: V = WH + U. The elements of the residual matrix can either be negative or positive.
+When W and H are smaller than V they become easier to store and manipulate. Another reason for factorizing V into smaller matrices W and H, is that if one's goal is to approximately represent the elements of V by significantly less data, then one has to infer some latent structure in the data.
+
+
+=== Convex non-negative matrix factorization ===
+In standard NMF, matrix factor W ∈ R+m × k， i.e., W can be anything in that space.  Convex NMF restricts the columns of W to convex combinations of the input data vectors 
+  
+    
+      
+        (
+        
+          v
+          
+            1
+          
+        
+        ,
+        …
+        ,
+        
+          v
+          
+            n
+          
+        
+        )
+      
+    
+    {\displaystyle (v_{1},\dots ,v_{n})}
+  
+. This greatly improves the quality of data representation of W. Furthermore, the resulting matrix factor H becomes more sparse and orthogonal.
+
+
+=== Nonnegative rank factorization ===
+In case the nonnegative rank of V is equal to its actual rank, V = WH is called a nonnegative rank factorization (NRF). The problem of finding the NRF of V, if it exists, is known to be NP-hard.
+
+
+=== Different cost functions and regularizations ===
+There are different types of non-negative matrix factorizations.
+The different types arise from using different cost functions for measuring the divergence between V and WH and possibly by regularization of the W and/or H matrices.
+Two simple divergence functions studied by Lee and Seung are the squared error (or Frobenius norm) and an extension of the Kullback–Leibler divergence to positive matrices (the original Kullback–Leibler divergence is defined on probability distributions).
+Each divergence leads to a different NMF algorithm, usually minimizing the divergence using iterative update rules.
+The factorization problem in the squared error version of NMF may be stated as:
+Given a matrix 
+  
+    
+      
+        
+          V
+        
+      
+    
+    {\displaystyle \mathbf {V} }
+  
+ find nonnegative matrices W and H that minimize the function
+
+  
+    
+      
+        F
+        (
+        
+          W
+        
+        ,
+        
+          H
+        
+        )
+        =
+        
+          
+            ‖
+            
+              
+                V
+              
+              −
+              
+                W
+                H
+              
+            
+            ‖
+          
+          
+            F
+          
+          
+            2
+          
+        
+      
+    
+    {\displaystyle F(\mathbf {W} ,\mathbf {H} )=\left\|\mathbf {V} -\mathbf {WH} \right\|_{F}^{2}}
+  
+
+Another type of NMF for images is based on the total variation norm.
+When L1 regularization (akin to Lasso) is added to NMF with the mean squared error cost function, the resulting problem may be called non-negative sparse coding due to the similarity to the sparse coding problem,
+although it may also still be referred to as NMF.
+
+
+=== Online NMF ===
+Many standard NMF algorithms analyze all the data together; i.e., the whole matrix is available from the start. This may be unsatisfactory in applications where there are too many data to fit into memory or where the data are provided in streaming fashion. One such use is for collaborative filtering in recommendation systems, where there may be many users and many items to recommend, and it would be inefficient to recalculate everything when one user or one item is added to the system. The cost function for optimization in these cases may or may not be the same as for standard NMF, but the algorithms need to be rather different.
+
+
+=== Convolutional NMF ===
+If the columns of V represent data sampled over spatial or temporal dimensions, e.g. time signals, images, or video, features that are equivariant w.r.t. shifts along these dimensions can be learned by Convolutional NMF. In this case, W is sparse with columns having local non-zero weight windows that are shared across shifts along the spatio-temporal dimensions of V, representing convolution kernels. By spatio-temporal pooling of H and repeatedly using the resulting representation as input to convolutional NMF, deep feature hierarchies can be learned.
+
+
+== Algorithms ==
+There are several ways in which the W and H may be found: Lee and Seung's multiplicative update rule has been a popular method due to the simplicity of implementation.  This algorithm is:
+
+initialize: W and H non negative.
+Then update the values in W and H by computing the following, with 
+  
+    
+      
+        n
+      
+    
+    {\displaystyle n}
+  
+ as an index of the iteration.
+
+  
+    
+      
+        
+          
+            H
+          
+          
+            [
+            i
+            ,
+            j
+            ]
+          
+          
+            n
+            +
+            1
+          
+        
+        ←
+        
+          
+            H
+          
+          
+            [
+            i
+            ,
+            j
+            ]
+          
+          
+            n
+          
+        
+        
+          
+            
+              (
+              (
+              
+                
+                  W
+                
+                
+                  n
+                
+              
+              
+                )
+                
+                  T
+                
+              
+              
+                V
+              
+              
+                )
+                
+                  [
+                  i
+                  ,
+                  j
+                  ]
+                
+              
+            
+            
+              (
+              (
+              
+                
+                  W
+                
+                
+                  n
+                
+              
+              
+                )
+                
+                  T
+                
+              
+              
+                
+                  W
+                
+                
+                  n
+                
+              
+              
+                
+                  H
+                
+                
+                  n
+                
+              
+              
+                )
+                
+                  [
+                  i
+                  ,
+                  j
+                  ]
+                
+              
+            
+          
+        
+      
+    
+    {\displaystyle \mathbf {H} _{[i,j]}^{n+1}\leftarrow \mathbf {H} _{[i,j]}^{n}{\frac {((\mathbf {W} ^{n})^{T}\mathbf {V} )_{[i,j]}}{((\mathbf {W} ^{n})^{T}\mathbf {W} ^{n}\mathbf {H} ^{n})_{[i,j]}}}}
+  
+
+and
+
+  
+    
+      
+        
+          
+            W
+          
+          
+            [
+            i
+            ,
+            j
+            ]
+          
+          
+            n
+            +
+            1
+          
+        
+        ←
+        
+          
+            W
+          
+          
+            [
+            i
+            ,
+            j
+            ]
+          
+          
+            n
+          
+        
+        
+          
+            
+              (
+              
+                V
+              
+              (
+              
+                
+                  H
+                
+                
+                  n
+                  +
+                  1
+                
+              
+              
+                )
+                
+                  T
+                
+              
+              
+                )
+                
+                  [
+                  i
+                  ,
+                  j
+                  ]
+                
+              
+            
+            
+              (
+              
+                
+                  W
+                
+                
+                  n
+                
+              
+              
+                
+                  H
+                
+                
+                  n
+                  +
+                  1
+                
+              
+              (
+              
+                
+                  H
+                
+                
+                  n
+                  +
+                  1
+                
+              
+              
+                )
+                
+                  T
+                
+              
+              
+                )
+                
+                  [
+                  i
+                  ,
+                  j
+                  ]
+                
+              
+            
+          
+        
+      
+    
+    {\displaystyle \mathbf {W} _{[i,j]}^{n+1}\leftarrow \mathbf {W} _{[i,j]}^{n}{\frac {(\mathbf {V} (\mathbf {H} ^{n+1})^{T})_{[i,j]}}{(\mathbf {W} ^{n}\mathbf {H} ^{n+1}(\mathbf {H} ^{n+1})^{T})_{[i,j]}}}}
+  
+
+Until W and H are stable.
+Note that the updates are done on an element by element basis not matrix multiplication.
+We note that the multiplicative factors for W and H, i.e. the 
+  
+    
+      
+        
+          
+            
+              
+                
+                  W
+                
+                
+                  
+                    T
+                  
+                
+              
+              
+                V
+              
+            
+            
+              
+                
+                  W
+                
+                
+                  
+                    T
+                  
+                
+              
+              
+                W
+              
+              
+                H
+              
+            
+          
+        
+      
+    
+    {\textstyle {\frac {\mathbf {W} ^{\mathsf {T}}\mathbf {V} }{\mathbf {W} ^{\mathsf {T}}\mathbf {W} \mathbf {H} }}}
+  
+ and 
+  
+    
+      
+        
+          
+            
+              
+                
+                  
+                    V
+                  
+                  
+                    
+                      H
+                    
+                    
+                      
+                        T
+                      
+                    
+                  
+                
+                
+                  
+                    W
+                  
+                  
+                    H
+                  
+                  
+                    
+                      H
+                    
+                    
+                      
+                        T
+                      
+                    
+                  
+                
+              
+            
+          
+        
+      
+    
+    {\textstyle {\textstyle {\frac {\mathbf {V} \mathbf {H} ^{\mathsf {T}}}{\mathbf {W} \mathbf {H} \mathbf {H} ^{\mathsf {T}}}}}}
+  
+ terms, are matrices of ones when 
+  
+    
+      
+        
+          V
+        
+        =
+        
+          W
+        
+        
+          H
+        
+      
+    
+    {\displaystyle \mathbf {V} =\mathbf {W} \mathbf {H} }
+  
+.
+More recently other algorithms have been developed.
+Some approaches are based on alternating non-negative least squares: in each step of such an algorithm, first H is fixed and W found by a non-negative least squares solver, then W is fixed and H is found analogously. The procedures used to solve for W and H may be the same or different, as some NMF variants regularize one of W and H. Specific approaches include the projected gradient descent methods, the active set method, the optimal gradient method, and the block principal pivoting method among several others.
+Current algorithms are sub-optimal in that they only guarantee finding a local minimum, rather than a global minimum of the cost function. A provably optimal algorithm is unlikely in the near future as the problem has been shown to generalize the k-means clustering problem which is known to be NP-complete. However, as in many other data mining applications, a local minimum may still prove to be useful.
+In addition to the optimization step, initialization has a significant effect on NMF. The initial values chosen for W and H may affect not only the rate of convergence, but also the overall error at convergence. Some options for initialization include complete randomization, SVD, k-means clustering, and more advanced strategies based on these and other paradigms.
+
+
+=== Sequential NMF ===
+The sequential construction of NMF components (W and H) was firstly used to relate NMF with Principal Component Analysis (PCA) in astronomy. The contribution from the PCA components are ranked by the magnitude of their corresponding eigenvalues; for NMF, its components can be ranked empirically when they are constructed one by one (sequentially), i.e., learn the 
+  
+    
+      
+        (
+        n
+        +
+        1
+        )
+      
+    
+    {\displaystyle (n+1)}
+  
+-th component with the first 
+  
+    
+      
+        n
+      
+    
+    {\displaystyle n}
+  
+ components constructed.
+The contribution of the sequential NMF components can be compared with the Karhunen–Loève theorem, an application of PCA, using the plot of eigenvalues. A typical choice of the number of components with PCA is based on the "elbow" point, then the existence of the flat plateau is indicating that PCA is not capturing the data efficiently, and at last there exists a sudden drop reflecting the capture of random noise and falls into the regime of overfitting. For sequential NMF, the plot of eigenvalues is approximated by the plot of the fractional residual variance curves, where the curves decreases continuously, and converge to a higher level than PCA, which is the indication of less over-fitting of sequential NMF.
+
+
+=== Exact NMF ===
+Exact solutions for the variants of NMF can be expected (in polynomial time) when additional constraints hold for matrix V. A polynomial time algorithm for solving nonnegative rank factorization if V contains a monomial sub matrix of rank equal to its rank was given by Campbell and Poole in 1981. Kalofolias and Gallopoulos (2012) solved the symmetric counterpart of this problem, where V is symmetric and contains a diagonal principal sub matrix of rank r. Their algorithm runs in O(rm2) time in the dense case. Arora, Ge, Halpern, Mimno, Moitra, Sontag, Wu, & Zhu (2013) give a polynomial time algorithm for exact NMF that works for the case where one of the factors W satisfies a separability condition.
+
+
+== Relation to other techniques ==
+In Learning the parts of objects by non-negative matrix factorization Lee and Seung proposed NMF mainly for parts-based decomposition of images.  It compares NMF to vector quantization and principal component analysis, and shows that although the three techniques may be written as factorizations, they implement different constraints and therefore produce different results.
+
+It was later shown that some types of NMF are an instance of a more general probabilistic model called "multinomial PCA".
+When NMF is obtained by minimizing the Kullback–Leibler divergence, it is in fact equivalent to another instance of multinomial PCA, probabilistic latent semantic analysis,
+trained by maximum likelihood estimation.
+That method is commonly used for analyzing and clustering textual data and is also related to the latent class model.
+NMF with the least-squares objective is equivalent to a relaxed form of K-means clustering: the matrix factor W contains cluster centroids and H contains cluster membership indicators.  This provides a theoretical foundation for using NMF for data clustering. However, k-means does not enforce non-negativity on its centroids, so the closest analogy is in fact with "semi-NMF".
+NMF can be seen as a two-layer directed graphical model with one layer of observed random variables and one layer of hidden random variables.
+NMF extends beyond matrices to tensors of arbitrary order. This extension may be viewed as a non-negative counterpart to, e.g., the PARAFAC model.
+Other extensions of NMF include joint factorization of several data matrices and tensors where some factors are shared. Such models are useful for sensor fusion and relational learning.
+NMF is an instance of nonnegative quadratic programming, just like the support vector machine (SVM). However, SVM and NMF are related at a more intimate level than that of NQP, which allows direct application of the solution algorithms developed for either of the two methods to problems in both domains.
+
+
+== Uniqueness ==
+The factorization is not unique: A matrix and its inverse can be used to transform the two factorization matrices by, e.g.,
+
+  
+    
+      
+        
+          W
+          H
+        
+        =
+        
+          
+            W
+            B
+            B
+          
+          
+            −
+            1
+          
+        
+        
+          H
+        
+      
+    
+    {\displaystyle \mathbf {WH} =\mathbf {WBB} ^{-1}\mathbf {H} }
+  
+
+If the two new matrices 
+  
+    
+      
+        
+          
+            
+              
+                W
+                ~
+              
+            
+          
+          =
+          W
+          B
+        
+      
+    
+    {\displaystyle \mathbf {{\tilde {W}}=WB} }
+  
+ and 
+  
+    
+      
+        
+          
+            
+              H
+              ~
+            
+          
+        
+        =
+        
+          
+            B
+          
+          
+            −
+            1
+          
+        
+        
+          H
+        
+      
+    
+    {\displaystyle \mathbf {\tilde {H}} =\mathbf {B} ^{-1}\mathbf {H} }
+  
+ are non-negative they form another parametrization of the factorization.
+The non-negativity of 
+  
+    
+      
+        
+          
+            
+              W
+              ~
+            
+          
+        
+      
+    
+    {\displaystyle \mathbf {\tilde {W}} }
+  
+ and 
+  
+    
+      
+        
+          
+            
+              H
+              ~
+            
+          
+        
+      
+    
+    {\displaystyle \mathbf {\tilde {H}} }
+  
+ applies at least if B is a non-negative monomial matrix.
+In this simple case it will just correspond to a scaling and a permutation.
+More control over the non-uniqueness of NMF is obtained with sparsity constraints.
+
+
+== Applications ==
+
+
+=== Astronomy ===
+In astronomy, NMF is a promising method for dimension reduction in the sense that astrophysical signals are non-negative. NMF has been applied to the spectroscopic observations and the direct imaging observations as a method to study the common properties of astronomical objects and post-process the astronomical observations. The advances in the spectroscopic observations by Blanton & Roweis (2007) takes into account of the uncertainties of astronomical observations, which is later improved by Zhu (2016) where missing data are also considered and parallel computing is enabled. Their method is then adopted by Ren et al. (2018) to the direct imaging field as one of the methods of detecting exoplanets, especially for the direct imaging of circumstellar disks.
+Ren et al. (2018) are able to prove the stability of NMF components when they are constructed sequentially (i.e., one by one), which enables the linearity of the NMF modeling process; the linearity property is used to separate the stellar light and the light scattered from the exoplanets and circumstellar disks.
+In direct imaging, to reveal the faint exoplanets and circumstellar disks from bright the surrounding stellar lights, which has a typical contrast from 10⁵ to 10¹⁰, various statistical methods have been adopted, however the light from the exoplanets or circumstellar disks are usually over-fitted, where forward modeling have to be adopted to recover the true flux. Forward modeling is currently optimized for point sources, however not for extended sources, especially for irregularly shaped structures such as circumstellar disks. In this situation, NMF has been an excellent method, being less over-fitting in the sense of the non-negativity and sparsity of the NMF modeling coefficients, therefore forward modeling can be performed with a few scaling factors, rather than a computationally intensive data re-reduction on generated models.
+
+
+=== Data imputation ===
+To impute missing data in statistics, NMF can take missing data while minimizing its cost function, rather than treating these missing data as zeros. This makes it a mathematically proven method for data imputation in statistics. By first proving that the missing data are ignored in the cost function, then proving that the impact from missing data can be as small as a second order effect, Ren et al. (2020) studied and applied such an approach for the field of astronomy. Their work focuses on two-dimensional matrices, specifically, it includes mathematical derivation, simulated data imputation, and application to on-sky data.
+The data imputation procedure with NMF can be composed of two steps. First, when the NMF components are known, Ren et al. (2020) proved that impact from missing data during data imputation ("target modeling" in their study) is a second order effect. Second, when the NMF components are unknown, the authors proved that the impact from missing data during component construction is a first-to-second order effect.
+Depending on the way that the NMF components are obtained, the former step above can be either independent or dependent from the latter. In addition, the imputation quality can be increased when the more NMF components are used, see Figure 4 of Ren et al. (2020) for their illustration.
+
+
+=== Text mining ===
+NMF can be used for text mining applications.
+In this process, a document-term matrix is constructed with the weights of various terms (typically weighted word frequency information) from a set of documents.
+This matrix is factored into a term-feature and a feature-document matrix.
+The features are derived from the contents of the documents, and the feature-document matrix describes data clusters of related documents.
+One specific application used hierarchical NMF on a small subset of scientific abstracts from PubMed.
+Another research group clustered parts of the Enron email dataset
+with 65,033 messages and 91,133 terms into 50 clusters.
+NMF has also been applied to citations data, with one example clustering English Wikipedia articles and scientific journals based on the outbound scientific citations in English Wikipedia.
+Arora, Ge, Halpern, Mimno, Moitra, Sontag, Wu, & Zhu (2013) have given polynomial-time algorithms to learn topic models using NMF. The algorithm assumes that the topic matrix satisfies a separability condition that is often found to hold in these settings.
+Hassani, Iranmanesh and Mansouri (2019) proposed a feature agglomeration method for term-document matrices which operates using NMF. The algorithm reduces the term-document matrix into a smaller matrix more suitable for text clustering.
+
+
+=== Spectral data analysis ===
+NMF is also used to analyze spectral data; one such use is in the classification of space objects and debris.
+
+
+=== Scalable Internet distance prediction ===
+NMF is applied in scalable Internet distance (round-trip time) prediction. For a network with 
+  
+    
+      
+        N
+      
+    
+    {\displaystyle N}
+  
+ hosts, with the help of NMF, the distances of all the 
+  
+    
+      
+        
+          N
+          
+            2
+          
+        
+      
+    
+    {\displaystyle N^{2}}
+  
+ end-to-end links can be predicted after conducting only 
+  
+    
+      
+        O
+        (
+        N
+        )
+      
+    
+    {\displaystyle O(N)}
+  
+ measurements. This kind of method was firstly introduced in Internet
+Distance Estimation Service (IDES). Afterwards, as a fully decentralized approach, Phoenix network coordinate system
+is proposed. It achieves better overall prediction accuracy by introducing the concept of weight.
+
+
+=== Non-stationary speech denoising ===
+Speech denoising has been a long lasting problem in audio signal processing. There are many algorithms for denoising if the noise is stationary. For example, the Wiener filter is suitable for additive Gaussian noise. However, if the noise is non-stationary, the classical denoising algorithms usually have poor performance because the statistical information of the non-stationary noise is difficult to estimate. Schmidt et al. use NMF to do speech denoising under non-stationary noise, which is completely different from classical statistical approaches. The key idea is that clean speech signal can be sparsely represented by a speech dictionary, but non-stationary noise cannot. Similarly, non-stationary noise can also be sparsely represented by a noise dictionary, but speech cannot.
+The algorithm for NMF denoising goes as follows. Two dictionaries, one for speech and one for noise, need to be trained offline. Once a noisy speech is given, we first calculate the magnitude of the Short-Time-Fourier-Transform. Second, separate it into two parts via NMF, one can be sparsely represented by the speech dictionary, and the other part can be sparsely represented by the noise dictionary. Third, the part that is represented by the speech dictionary will be the estimated clean speech.
+
+
+=== Population genetics ===
+Sparse NMF is used in Population genetics for estimating individual admixture coefficients, detecting genetic clusters of individuals in a population sample or evaluating genetic admixture in sampled genomes. In human genetic clustering, NMF algorithms provide estimates similar to those of the computer program STRUCTURE, but the algorithms are more efficient computationally and allow analysis of large population genomic data sets.
+
+
+=== Bioinformatics ===
+NMF has been successfully applied in bioinformatics for clustering gene expression and DNA methylation data and finding the genes most representative of the clusters. In the analysis of cancer mutations it has been used to identify common patterns of mutations that occur in many cancers and that probably have distinct causes. NMF techniques can identify sources of variation such as cell types, disease subtypes, population stratification, tissue composition, and tumor clonality.
+A particular variant of NMF, namely Non-Negative Matrix Tri-Factorization (NMTF), has been use for drug repurposing tasks in order to predict novel protein targets and therapeutic indications for approved drugs and to infer pair of synergic anticancer drugs.
+
+
+=== Nuclear imaging ===
+NMF, also referred in this field as factor analysis, has been used since the 1980s to analyze sequences of images in SPECT and PET dynamic medical imaging. Non-uniqueness of NMF was addressed using sparsity constraints.
+
+
+== Current research ==
+
+Current research (since 2010) in nonnegative matrix factorization includes, but is not limited to,
+
+Algorithmic: searching for global minima of the factors and factor initialization.
+Scalability: how to factorize million-by-billion matrices, which are commonplace in Web-scale data mining, e.g., see Distributed Nonnegative Matrix Factorization (DNMF), Scalable Nonnegative Matrix Factorization (ScalableNMF), Distributed Stochastic Singular Value Decomposition.
+Online: how to update the factorization when new data comes in without recomputing from scratch, e.g., see online CNSC
+Collective (joint) factorization: factorizing multiple interrelated matrices for multiple-view learning, e.g. multi-view clustering, see CoNMF and MultiNMF
+Cohen and Rothblum 1993 problem: whether a rational matrix always has an NMF of minimal inner dimension whose factors are also rational. Recently, this problem has been answered negatively.
+
+
+== See also ==
+Multilinear algebra
+Multilinear subspace learning
+Tensor
+Tensor decomposition
+Tensor software
+
+
+== Sources and external links ==
+
+
+=== Notes ===
+
+
+=== Others ===

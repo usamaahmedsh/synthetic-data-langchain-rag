@@ -1,0 +1,47 @@
+Stream ciphers, where plaintext bits are combined with a cipher bit stream by an exclusive-or operation (xor), can be secure if used properly. However, they are vulnerable to attacks if certain precautions are not followed:
+
+Keys must never be reused.
+Valid decryption should never be relied on to indicate authenticity.
+
+
+== Reused key attack ==
+Stream ciphers are vulnerable to attack if the same key is used more than once (a depth of two or greater).
+Suppose messages A and B of the same length are both encrypted using the same key, K. The stream cipher produces a string of bits C(K) of the same length as the messages. The encrypted versions of the messages are:
+
+E(A) = A xor C
+E(B) = B xor C
+where xor is performed bit by bit.
+If an adversary intercepts E(A) and E(B), they can compute:
+
+E(A) xor E(B)
+Because xor is commutative and has the property that X xor X = 0 (self-inverse):
+
+E(A) xor E(B) = (A xor C) xor (B xor C) = A xor B xor C xor C = A xor B
+If one message is longer than the other, the adversary can truncate the longer message to the size of the shorter one, revealing only that portion. In other words, if two messages are encrypted with the same key, an attacker can recover A xor B, which is a form of running key cipher. Even if neither message is known, as long as both are in a natural language, such a cipher can often be broken by hand methods. During World War II, British cryptanalyst John Tiltman accomplished this with the Lorenz cipher (dubbed "Tunny"). With an average personal computer, such ciphers can usually be broken in minutes. If one message is known, the solution is trivial.
+Another situation where recovery is trivial is when traffic-flow security measures require each station to send a continuous stream of cipher bits, with null characters (e.g. LTRS in Baudot) transmitted when there is no real traffic. This is common in military communications. In that case, if the transmission channel is not fully loaded, there is a high likelihood that one of the ciphertext streams will consist only of nulls. The NSA has taken extensive measures to prevent keys from being reused. In the 1960s, encryption systems often included a punched card reader for loading keys. The mechanism would automatically cut the card in half when it was removed, preventing reuse.
+One way to avoid this problem is to use an initialization vector (IV), sent in the clear, that is combined with a secret master key to create a one-time key for the stream cipher. This is done in several systems that use the popular stream cipher RC4, including Wired Equivalent Privacy (WEP), Wi-Fi Protected Access (WPA), and Ciphersaber. One of the problems with WEP was that its IV was too short (24 bits). This meant there was a high likelihood that the same IV would be reused if more than a few thousand packets were sent with the same master key (see birthday attack), subjecting those packets to the key reuse attack. This problem was addressed in WPA by changing the "master" key frequently.
+
+
+== Bit-flipping attack ==
+
+Suppose an adversary knows the exact content of all or part of a message. As part of a man in the middle attack or replay attack, they can alter the content without knowing the key, K. For example, if they know a portion of the message contains the ASCII string "$1000.00", they can change it to "$9500.00" by XORing that portion of the ciphertext with the string: "$1000.00" xor "$9500.00".  
+The ciphertext being sent is C(K) xor "$1000.00". The adversary creates a new message:
+
+(C(K) xor "$1000.00") xor ("$1000.00" xor "$9500.00") = C(K) xor "$1000.00" xor "$1000.00" xor "$9500.00" = C(K) xor "$9500.00"
+Since a string XORed with itself produces all zeros, and a string of zeros XORed with another string leaves that string unchanged, the result C(K) xor "$9500.00" is what the ciphertext would have been if $9500 were the original amount.
+Bit-flipping attacks can be prevented by including a message authentication code, which increases the likelihood that tampering will be detected.
+
+
+== Chosen-IV attack ==
+
+Stream ciphers combine a secret key with an agreed initialization vector (IV) to produce a pseudo-random sequence that is periodically re-synchronized.  
+A "chosen IV" attack relies on finding particular IVs which, taken together, may reveal information about the secret key. Typically, multiple pairs of IVs are chosen and differences in the generated key streams are then analyzed statistically for a linear correlation and/or an algebraic Boolean relation (see also Differential cryptanalysis). If choosing particular values of the initialization vector exposes a non-random pattern in the generated sequence, the attack can recover some bits and shorten the effective key length. A symptom of such an attack would be frequent re-synchronization. Modern stream ciphers include steps to adequately mix the secret key with the initialization vector, usually by performing many initial rounds.
+
+
+== References ==
+
+
+== External links ==
+Security of the WEP algorithm
+"Attacks in Stream Ciphers: A Survey" – a 2014 overview of different stream cipher attacks
+"Attacks on Stream Ciphers: A Perspective" – talk slides from 2011

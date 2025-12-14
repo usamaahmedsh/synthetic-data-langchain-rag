@@ -1,0 +1,46 @@
+The Completely Fair Scheduler (CFS) was a process scheduler that was merged into the 2.6.23 (October 2007) release of the Linux kernel. It was the default scheduler of the tasks of the SCHED_NORMAL class (i.e., tasks that have no real-time execution constraints) and handled CPU resource allocation for executing processes, aiming to maximize overall CPU utilization while also maximizing interactive performance.
+In contrast to the previous O(1) scheduler used in older Linux 2.6 kernels, which maintained and switched run queues of active and expired tasks, the CFS scheduler implementation is based on per-CPU run queues, whose nodes are time-ordered schedulable entities that are kept sorted by red–black trees. The CFS does away with the old notion of per-priorities fixed time-slices, and instead it aims at giving a fair share of CPU time to tasks (or, better, schedulable entities).
+Starting from version 6.6 of the Linux kernel, it was replaced by the EEVDF scheduler.
+
+
+== Algorithm ==
+A task (i.e., a synonym for thread) is the minimal entity that Linux can schedule. However, it can also manage groups of threads, whole multi-threaded processes, and even all the processes of a given user. This design leads to the concept of schedulable entities, where tasks are grouped and managed by the scheduler as a whole. For this design to work, each task_struct task descriptor embeds a field of type sched_entity that represents the set of entities the task belongs to. 
+Each per-CPU run-queue of type cfs_rq sorts sched_entity structures in a time-ordered fashion into a red-black tree (or 'rbtree' in Linux lingo), where the leftmost node is occupied by the entity that has received the least slice of execution time (which is saved in the vruntime field of the entity). The nodes are indexed by processor "execution time" in nanoseconds.
+A "maximum execution time" is also calculated for each process to represent the time the process would have expected to run on an "ideal processor". This is the time the process has been waiting to run, divided by the total number of processes.
+When the scheduler is invoked to run a new process:
+
+The leftmost node of the scheduling tree is chosen (as it will have the lowest spent execution time), and sent for execution.
+If the process simply completes execution, it is removed from the system and scheduling tree.
+If the process reaches its maximum execution time or is otherwise stopped (voluntarily or via interrupt) it is reinserted into the scheduling tree based on its newly spent execution time.
+The new leftmost node will then be selected from the tree, repeating the iteration.
+If the process spends a lot of its time sleeping, then its spent time value is low, and it automatically gets the priority boost when it finally needs it. Hence, such tasks do not get less processor time than the tasks that are constantly running.
+The complexity of the algorithm that inserts nodes into the cfs_rq runqueue of the CFS scheduler is O(log N), where N is the total number of entities. Choosing the next entity to run is made in constant time because the leftmost node is always cached.
+
+
+== History ==
+Con Kolivas's work with scheduling, most significantly his implementation of "fair scheduling" named Rotating Staircase Deadline, inspired Ingo Molnár to develop his CFS, as a replacement for the earlier O(1) scheduler, crediting Kolivas in his announcement.
+CFS is an implementation of a well-studied, classic scheduling algorithm called weighted fair queuing. Originally invented for packet networks, fair queuing had been previously applied to CPU scheduling under the name stride scheduling. CFS is the first implementation of a fair queuing process scheduler widely used in a general-purpose operating system.
+The Linux kernel received a patch for CFS in November 2010 for the 2.6.38 kernel that has made the scheduler "fairer" for use on desktops and workstations. Developed by Mike Galbraith using ideas suggested by Linus Torvalds, the patch implements a feature called auto-grouping that significantly boosts interactive desktop performance. The algorithm puts parent processes in the same task group as child processes.
+(Task groups are tied to sessions created via the setsid() system call.)
+This solved the problem of slow interactive response times on multi-core and multi-CPU (SMP) systems when they were performing other tasks that use many CPU-intensive threads in those tasks.  A simple explanation is that, with this patch applied, one is able to still watch a video, read email and perform other typical desktop activities without glitches or choppiness while, say, compiling the Linux kernel or encoding video.
+In 2016, the Linux scheduler was patched for better multicore performance, based on the suggestions outlined in the paper, "The Linux Scheduler: A Decade of Wasted Cores".
+In 2023, a new scheduler based on earliest eligible virtual deadline first scheduling (EEVDF) was being readied to replace CFS. The motivation was to remove the need for CFS "latency nice" patches.
+
+
+== See also ==
+Brain Fuck Scheduler
+SCHED_DEADLINE
+
+
+== References ==
+
+
+== External links ==
+Corbet, Jonathan (2007-04-17). "Schedulers: The Plot Thickens". LWN.net. Archived from the original on 2017-09-06. Retrieved 2016-07-21.
+Corbet, J. (2007-07-02). "CFS Group Scheduling". LWN.net. Archived from the original on 2017-09-06. Retrieved 2016-07-21.
+Corbet, J. (2007-10-16). "Fair user scheduling and other scheduler patches". LWN.net. Archived from the original on 2017-06-12. Retrieved 2016-11-24.
+Corbet, J. (2010-11-17). "TTY-based group scheduling". LWN.net. Archived from the original on 2018-05-21. Retrieved 2016-11-24.
+Corbet, J. (2010-12-06). "Group scheduling and alternatives". LWN.net. Archived from the original on 2017-06-11. Retrieved 2016-11-24.
+Singh Pabla, Chandandeep (2009-08-01). "Completely Fair Scheduler". linuxjournal.com. Archived from the original on 2018-03-18. Retrieved 2014-11-17.
+Jones, Tim (2009-12-15). "Inside the Linux 2.6 Completely Fair Scheduler". IBM.
+Lozi, Jean-Pierre (2016-04-21). "The Linux Scheduler: a Decade of Wasted Cores" (PDF). ACM. Archived from the original (PDF) on 2018-02-05. Retrieved 2016-11-24.

@@ -1,0 +1,98 @@
+In Linux, Logical Volume Manager (LVM) is a device mapper framework that provides logical volume management for the Linux kernel.  Most modern Linux distributions are LVM-aware to the point of being able to have their root file systems on a logical volume.
+Heinz Mauelshagen wrote the original LVM code in 1998, when he was working at Sistina Software, taking its primary design guidelines from the HP-UX's volume manager.
+
+
+== Uses ==
+LVM is used for the following purposes:
+
+Creating single logical volumes of multiple physical volumes or entire hard disks (somewhat similar to RAID 0, but more similar to JBOD), allowing for dynamic volume resizing.
+Managing large hard disk farms by allowing disks to be added and replaced without downtime or service disruption, in combination with hot swapping.
+On small systems (like a desktop), instead of having to estimate at installation time how big a partition might need to be, LVM allows filesystems to be easily resized as needed.
+Performing consistent backups by taking snapshots of the logical volumes.
+Encrypting multiple physical partitions with one password.
+LVM can be considered as a thin software layer on top of the hard disks and partitions, which creates an abstraction of continuity and ease-of-use for managing hard drive replacement, repartitioning and backup.
+
+
+== Features ==
+
+
+=== Basic functionality ===
+Volume groups (VGs) can be resized online by absorbing new physical volumes (PVs) or ejecting existing ones.
+Logical volumes (LVs) can be resized online by concatenating extents onto them or truncating extents from them.
+LVs can be moved between PVs.
+Creation of read-only snapshots of logical volumes (LVM1), leveraging a copy on write (CoW) feature, or read/write snapshots (LVM2)
+VGs can be split or merged in situ as long as no LVs span the split.  This can be useful when migrating whole LVs to or from offline storage.
+LVM objects can be tagged for administrative convenience.
+VGs and LVs can be made active as the underlying devices become available through use of the lvmetad daemon.
+
+
+=== Advanced functionality ===
+Hybrid volumes can be created using the dm-cache target, which allows one or more fast storage devices, such as flash-based SSDs, to act as a cache for one or more slower hard disk drives.
+Thinly provisioned LVs can be allocated from a pool.
+On newer versions of device mapper, LVM is integrated with the rest of device mapper enough to ignore the individual paths that back a dm-multipath device if devices/multipath_component_detection=1 is set in lvm.conf. This prevents LVM from activating volumes on an individual path instead of the multipath device.
+
+
+=== RAID ===
+LVs can be created to include RAID functionality, including RAID 1, 5 and 6.
+Entire LVs or their parts can be striped across multiple PVs, similarly to RAID 0.
+A RAID 1 backend device (a PV) can be configured as "write-mostly", resulting in reads being avoided to such devices unless necessary.
+Recovery rate can be limited using lvchange --raidmaxrecoveryrate and lvchange --raidminrecoveryrate to maintain acceptable I/O performance while rebuilding a LV that includes RAID functionality.
+
+
+=== High availability ===
+The LVM also works in a shared-storage cluster in which disks holding the PVs are shared between multiple host computers, but can require an additional daemon to mediate metadata access via a form of locking.
+
+CLVM
+A distributed lock manager is used to broker concurrent LVM metadata accesses. Whenever a cluster node needs to modify the LVM metadata, it must secure permission from its local clvmd, which is in constant contact with other clvmd daemons in the cluster and can communicate a desire to get a lock on a particular set of objects.
+HA-LVM
+Cluster-awareness is left to the application providing the high availability function. For the LVM's part, HA-LVM can use CLVM as a locking mechanism, or can continue to use the default file locking and reduce "collisions" by restricting access to only those LVM objects that have appropriate tags. Since this simpler solution avoids contention rather than mitigating it, no concurrent accesses are allowed, so HA-LVM is considered useful only in active-passive configurations.
+lvmlockd
+As of 2017, a stable LVM component that is designed to replace clvmd by making the locking of LVM objects transparent to the rest of LVM, without relying on a distributed lock manager. It saw massive development during 2016.
+The above described mechanisms only resolve the issues with LVM's access to the storage. The file system selected to be on top of such LVs must either support clustering by itself (such as GFS2 or VxFS) or it must only be mounted by a single cluster node at any time (such as in an active-passive configuration).
+
+
+=== Volume group allocation policy ===
+LVM VGs must contain a default allocation policy for new volumes created from it. This can later be changed for each LV using the lvconvert -A command, or on the VG itself via vgchange --alloc. To minimize fragmentation, LVM will attempt the strictest policy (contiguous) first and then progress toward the most liberal policy defined for the LVM object until allocation finally succeeds.
+In RAID configurations, almost all policies are applied to each leg in isolation. For example, even if a LV has a policy of cling, expanding the file system will not result in LVM using a PV if it is already used by one of the other legs in the RAID setup. LVs with RAID functionality will put each leg on different PVs, making the other PVs unavailable to any other given leg. If this was the only option available, expansion of the LV would fail. In this sense, the logic behind cling will only apply to expanding each of the individual legs of the array.
+Available allocation policies are:
+
+Contiguous – forces all LEs in a given LV to be adjacent and ordered. This eliminates fragmentation but severely reduces a LV expandability.
+Cling – forces new LEs to be allocated only on PVs already used by an LV. This can help mitigate fragmentation as well as reduce vulnerability of particular LVs should a device go down, by reducing the likelihood that other LVs also have extents on that PV.
+Normal – implies near-indiscriminate selection of PEs, but it will attempt to keep parallel legs (such as those of a RAID setup) from sharing a physical device.
+Anywhere – imposes no restrictions whatsoever. Highly risky in a RAID setup as it ignores isolation requirements, undercutting most of the benefits of RAID. For linear volumes, it can result in increased fragmentation.
+
+
+== Implementation ==
+
+Typically, the first megabyte of each physical volume contains a mostly ASCII-encoded structure referred to as an "LVM header" or "LVM head". Originally, the LVM head used to be written in the first and last megabyte of each PV for redundancy (in case of a partial hardware failure); however, this was later changed to only the first megabyte.  Each PV's header is a complete copy of the entire volume group's layout, including the UUIDs of all other PVs and of LVs, and allocation map of PEs to LEs.  This simplifies data recovery if a PV is lost.
+In the 2.6-series of the Linux Kernel, the LVM is implemented in terms of the device mapper, a simple block-level scheme for creating virtual block devices and mapping their contents onto other block devices.  This minimizes the amount of relatively hard-to-debug kernel code needed to implement the LVM.  It also allows its I/O redirection services to be shared with other volume managers (such as EVMS).  Any LVM-specific code is pushed out into its user-space tools, which merely manipulate these mappings and reconstruct their state from on-disk metadata upon each invocation.
+To bring a volume group online, the "vgchange" tool:
+
+Searches for PVs in all available block devices.
+Parses the metadata header in each PV found.
+Computes the layouts of all visible volume groups.
+Loops over each logical volume in the volume group to be brought online and:
+Checks if the logical volume to be brought online has all its PVs visible.
+Creates a new, empty device mapping.
+Maps it (with the "linear" target) onto the data areas of the PVs the logical volume belongs to.
+To move an online logical volume between PVs on the same Volume Group, use the "pvmove" tool:
+
+Creates a new, empty device mapping for the destination.
+Applies the "mirror" target to the original and destination maps.  The kernel will start the mirror in "degraded" mode and begin copying data from the original to the destination to bring it into sync.
+Replaces the original mapping with the destination when the mirror comes into sync, then destroys the original.
+These device mapper operations take place transparently, without applications or file systems being aware that their underlying storage is moving.
+
+
+=== Caveats ===
+Until Linux kernel 2.6.31, write barriers were not supported (fully supported in 2.6.33). This means that the guarantee against filesystem corruption offered by journaled file systems like ext3 and XFS was negated under some circumstances.
+As of 2015, no online or offline defragmentation program exists for LVM. This is somewhat mitigated by fragmentation only happening if a volume is expanded and by applying the above-mentioned allocation policies. Fragmentation still occurs, however, and if it is to be reduced, non-contiguous extents must be identified and manually rearranged using the pvmove command.
+On most LVM setups, only one copy of the LVM head is saved to each PV, which can make the volumes more susceptible to failed disk sectors. This behavior can be overridden using vgconvert --pvmetadatacopies. If the LVM can not read a proper header using the first copy, it will check the end of the volume for a backup header. Most Linux distributions keep a running backup in /etc/lvm/backup, which enables manual rewriting of a corrupted LVM head using the vgcfgrestore command.
+
+
+== See also ==
+
+
+== References ==
+
+
+== Further reading ==

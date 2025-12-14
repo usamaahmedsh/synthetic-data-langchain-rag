@@ -1,0 +1,2237 @@
+CoBoost is a semi-supervised training algorithm proposed by Collins and Singer in 1999. The original application for the algorithm was the task of named-entity recognition using very weak learners, but it can be used for performing semi-supervised learning in cases where data features may be redundant.
+It may be seen as a combination of co-training and boosting. Each example is available in two views (subsections of the feature set), and boosting is applied iteratively in alternation with each view using predicted labels produced in the alternate view on the previous iteration. CoBoosting is not a valid boosting algorithm in the PAC learning sense.
+
+
+== Motivation ==
+CoBoosting was an attempt by Collins and Singer to improve on previous attempts to leverage redundancy in features for training classifiers in a semi-supervised fashion. CoTraining, a seminal work by Blum and Mitchell, was shown to be a powerful framework for learning classifiers given a small number of seed examples by iteratively inducing rules in a decision list. The advantage of CoBoosting to CoTraining is that it generalizes the CoTraining pattern so that it could be used with any classifier. CoBoosting accomplishes this feat by borrowing concepts from AdaBoost.
+In both CoTrain and CoBoost the training and testing example sets must follow two properties. The first is that the feature space of the examples can separated into two feature spaces (or views) such that each view is sufficiently expressive for classification. 
+Formally, there exist two functions 
+  
+    
+      
+        
+          f
+          
+            1
+          
+        
+        (
+        
+          x
+          
+            1
+          
+        
+        )
+      
+    
+    {\displaystyle f_{1}(x_{1})}
+  
+ and 
+  
+    
+      
+        
+          f
+          
+            2
+          
+        
+        (
+        
+          x
+          
+            2
+          
+        
+        )
+      
+    
+    {\displaystyle f_{2}(x_{2})}
+  
+ such that for all examples 
+  
+    
+      
+        x
+        =
+        (
+        
+          x
+          
+            1
+          
+        
+        ,
+        
+          x
+          
+            2
+          
+        
+        )
+      
+    
+    {\displaystyle x=(x_{1},x_{2})}
+  
+, 
+  
+    
+      
+        
+          f
+          
+            1
+          
+        
+        (
+        
+          x
+          
+            1
+          
+        
+        )
+        =
+        
+          f
+          
+            2
+          
+        
+        (
+        
+          x
+          
+            2
+          
+        
+        )
+        =
+        f
+        (
+        x
+        )
+      
+    
+    {\displaystyle f_{1}(x_{1})=f_{2}(x_{2})=f(x)}
+  
+. While ideal, this constraint is in fact too strong due to noise and other factors, and both algorithms instead seek to maximize the agreement between the two functions. The second property is that the two views must not be highly correlated.
+
+
+== Algorithm ==
+Input: 
+  
+    
+      
+        {
+        (
+        
+          x
+          
+            1
+            ,
+            i
+          
+        
+        ,
+        
+          x
+          
+            2
+            ,
+            i
+          
+        
+        )
+        
+          }
+          
+            i
+            =
+            1
+          
+          
+            n
+          
+        
+      
+    
+    {\displaystyle \{(x_{1,i},x_{2,i})\}_{i=1}^{n}}
+  
+, 
+  
+    
+      
+        {
+        
+          y
+          
+            i
+          
+        
+        
+          }
+          
+            i
+            =
+            1
+          
+          
+            m
+          
+        
+      
+    
+    {\displaystyle \{y_{i}\}_{i=1}^{m}}
+  
+
+Initialize: 
+  
+    
+      
+        ∀
+        i
+        ,
+        j
+        :
+        
+          g
+          
+            j
+          
+          
+            0
+          
+        
+        (
+        
+          
+            x
+            
+              i
+            
+          
+        
+        )
+        =
+        0
+      
+    
+    {\displaystyle \forall i,j:g_{j}^{0}({\boldsymbol {x_{i}}})=0}
+  
+.
+For 
+  
+    
+      
+        t
+        =
+        1
+        ,
+        .
+        .
+        .
+        ,
+        T
+      
+    
+    {\displaystyle t=1,...,T}
+  
+ and for 
+  
+    
+      
+        j
+        =
+        1
+        ,
+        2
+      
+    
+    {\displaystyle j=1,2}
+  
+:
+Set pseudo-labels:
+	
+  
+    
+      
+        
+          
+            
+              
+                y
+                
+                  i
+                
+              
+              ^
+            
+          
+        
+        =
+        
+          {
+          
+            
+              
+                
+                  
+                    y
+                    
+                      i
+                    
+                  
+                  ,
+                  1
+                  ≤
+                  i
+                  ≤
+                  m
+                
+              
+              
+                
+                  s
+                  i
+                  g
+                  n
+                  (
+                  
+                    g
+                    
+                      3
+                      −
+                      j
+                    
+                    
+                      t
+                      −
+                      1
+                    
+                  
+                  (
+                  
+                    
+                      x
+                      
+                        3
+                        −
+                        j
+                        ,
+                        i
+                      
+                    
+                  
+                  )
+                  )
+                  ,
+                  m
+                  <
+                  i
+                  ≤
+                  n
+                
+              
+            
+          
+          
+        
+      
+    
+    {\displaystyle {\hat {y_{i}}}=\left\{{\begin{array}{ll}y_{i},1\leq i\leq m\\sign(g_{3-j}^{t-1}({\boldsymbol {x_{3-j,i}}})),m<i\leq n\end{array}}\right.}
+  
+
+Set virtual distribution:
+
+  
+    
+      
+        
+          D
+          
+            t
+          
+          
+            j
+          
+        
+        (
+        i
+        )
+        =
+        
+          
+            1
+            
+              Z
+              
+                t
+              
+              
+                j
+              
+            
+          
+        
+        
+          e
+          
+            −
+            
+              
+                
+                  
+                    y
+                    
+                      i
+                    
+                  
+                  ^
+                
+              
+            
+            
+              g
+              
+                j
+              
+              
+                t
+                −
+                1
+              
+            
+            (
+            
+              
+                x
+                
+                  j
+                  ,
+                  i
+                
+              
+            
+            )
+          
+        
+      
+    
+    {\displaystyle D_{t}^{j}(i)={\frac {1}{Z_{t}^{j}}}e^{-{\hat {y_{i}}}g_{j}^{t-1}({\boldsymbol {x_{j,i}}})}}
+  
+
+	where 
+  
+    
+      
+        
+          Z
+          
+            t
+          
+          
+            j
+          
+        
+        =
+        
+          ∑
+          
+            i
+            =
+            1
+          
+          
+            n
+          
+        
+        
+          e
+          
+            −
+            
+              
+                
+                  
+                    y
+                    
+                      i
+                    
+                  
+                  ^
+                
+              
+            
+            
+              g
+              
+                j
+              
+              
+                t
+                −
+                1
+              
+            
+            (
+            
+              
+                x
+                
+                  j
+                  ,
+                  i
+                
+              
+            
+            )
+          
+        
+      
+    
+    {\displaystyle Z_{t}^{j}=\sum _{i=1}^{n}e^{-{\hat {y_{i}}}g_{j}^{t-1}({\boldsymbol {x_{j,i}}})}}
+  
+
+	Find the weak hypothesis 
+  
+    
+      
+        
+          h
+          
+            t
+          
+          
+            j
+          
+        
+      
+    
+    {\displaystyle h_{t}^{j}}
+  
+ that minimizes expanded training error.
+	Choose value for 
+  
+    
+      
+        
+          α
+          
+            t
+          
+        
+      
+    
+    {\displaystyle \alpha _{t}}
+  
+ that minimizes expanded training error.
+	Update the value for current strong non-thresholded classifier: 
+
+  
+    
+      
+        ∀
+        i
+        :
+        
+          g
+          
+            j
+          
+          
+            t
+          
+        
+        (
+        
+          
+            x
+            
+              j
+              ,
+              i
+            
+          
+        
+        )
+        =
+        
+          g
+          
+            j
+          
+          
+            t
+            −
+            1
+          
+        
+        (
+        
+          
+            x
+            
+              j
+              ,
+              i
+            
+          
+        
+        )
+        +
+        
+          α
+          
+            t
+          
+        
+        
+          h
+          
+            t
+          
+          
+            j
+          
+        
+        (
+        
+          
+            x
+            
+              j
+              ,
+              i
+            
+          
+        
+        )
+      
+    
+    {\displaystyle \forall i:g_{j}^{t}({\boldsymbol {x_{j,i}}})=g_{j}^{t-1}({\boldsymbol {x_{j,i}}})+\alpha _{t}h_{t}^{j}({\boldsymbol {x_{j,i}}})}
+  
+
+The final strong classifier output is
+
+  
+    
+      
+        f
+        (
+        
+          x
+        
+        )
+        =
+        s
+        i
+        g
+        n
+        
+          (
+          
+            
+              ∑
+              
+                j
+                =
+                1
+              
+              
+                2
+              
+            
+            
+              g
+              
+                j
+              
+              
+                T
+              
+            
+            (
+            
+              
+                x
+                
+                  j
+                
+              
+            
+            )
+          
+          )
+        
+      
+    
+    {\displaystyle f({\boldsymbol {x}})=sign\left(\sum _{j=1}^{2}g_{j}^{T}({\boldsymbol {x_{j}}})\right)}
+  
+
+
+== Setting up AdaBoost ==
+CoBoosting builds on the AdaBoost algorithm, which gives CoBoosting its generalization ability since AdaBoost can be used in conjunction with many other learning algorithms. This build up assumes a two class classification task, although it can be adapted to multiple class classification. In the AdaBoost framework, weak classifiers are generated in series as well as a distribution over examples in the training set. Each weak classifier is given a weight and the final strong classifier is defined as the sign of the sum of the weak classifiers weighted by their assigned weight. (See AdaBoost Wikipedia page for notation). In the AdaBoost framework Schapire and Singer have shown that the training error is bounded by the following equation:
+
+  
+    
+      
+        
+          
+            1
+            m
+          
+        
+        
+          ∑
+          
+            i
+            =
+            1
+          
+          
+            m
+          
+        
+        
+          e
+          
+            
+              (
+              
+                −
+                
+                  y
+                  
+                    i
+                  
+                
+                
+                  (
+                  
+                    
+                      ∑
+                      
+                        t
+                        =
+                        1
+                      
+                      
+                        T
+                      
+                    
+                    
+                      α
+                      
+                        t
+                      
+                    
+                    
+                      h
+                      
+                        t
+                      
+                    
+                    (
+                    
+                      
+                        x
+                        
+                          i
+                        
+                      
+                    
+                    )
+                  
+                  )
+                
+              
+              )
+            
+          
+        
+        =
+        
+          ∏
+          
+            t
+          
+        
+        
+          Z
+          
+            t
+          
+        
+      
+    
+    {\displaystyle {\frac {1}{m}}\sum _{i=1}^{m}e^{\left(-y_{i}\left(\sum _{t=1}^{T}\alpha _{t}h_{t}({\boldsymbol {x_{i}}})\right)\right)}=\prod _{t}Z_{t}}
+  
+
+Where 
+  
+    
+      
+        
+          Z
+          
+            t
+          
+        
+      
+    
+    {\displaystyle Z_{t}}
+  
+ is the normalizing factor for the distribution 
+  
+    
+      
+        
+          D
+          
+            t
+            +
+            1
+          
+        
+      
+    
+    {\displaystyle D_{t+1}}
+  
+. Solving for 
+  
+    
+      
+        
+          Z
+          
+            t
+          
+        
+      
+    
+    {\displaystyle Z_{t}}
+  
+ in the equation for 
+  
+    
+      
+        
+          D
+          
+            t
+          
+        
+        (
+        i
+        )
+      
+    
+    {\displaystyle D_{t}(i)}
+  
+ we get:
+
+  
+    
+      
+        
+          Z
+          
+            t
+          
+        
+        =
+        
+          ∑
+          
+            i
+            :
+            
+              x
+              
+                t
+              
+            
+            ∉
+            
+              x
+              
+                i
+              
+            
+          
+        
+        
+          D
+          
+            t
+          
+        
+        (
+        i
+        )
+        +
+        
+          ∑
+          
+            i
+            :
+            
+              x
+              
+                t
+              
+            
+            ∈
+            
+              x
+              
+                i
+              
+            
+          
+        
+        
+          D
+          
+            t
+          
+        
+        (
+        i
+        )
+        
+          e
+          
+            −
+            
+              y
+              
+                i
+              
+            
+            
+              α
+              
+                i
+              
+            
+            
+              h
+              
+                t
+              
+            
+            (
+            
+              
+                x
+                
+                  i
+                
+              
+            
+            )
+          
+        
+      
+    
+    {\displaystyle Z_{t}=\sum _{i:x_{t}\notin x_{i}}D_{t}(i)+\sum _{i:x_{t}\in x_{i}}D_{t}(i)e^{-y_{i}\alpha _{i}h_{t}({\boldsymbol {x_{i}}})}}
+  
+
+Where 
+  
+    
+      
+        
+          x
+          
+            t
+          
+        
+      
+    
+    {\displaystyle x_{t}}
+  
+ is the feature selected in the current weak hypothesis. Three equations are defined describing the sum of the distributions for in which the current hypothesis has selected either correct or incorrect label. Note that it is possible for the classifier to abstain from selecting a label for an example, in which the label provided is 0. The two labels are selected to be either -1 or 1.
+
+  
+    
+      
+        
+          W
+          
+            0
+          
+        
+        =
+        
+          ∑
+          
+            i
+            :
+            
+              h
+              
+                t
+              
+            
+            (
+            
+              x
+              
+                i
+              
+            
+            )
+            =
+            0
+          
+        
+        
+          D
+          
+            t
+          
+        
+        (
+        i
+        )
+      
+    
+    {\displaystyle W_{0}=\sum _{i:h_{t}(x_{i})=0}D_{t}(i)}
+  
+
+  
+    
+      
+        
+          W
+          
+            +
+          
+        
+        =
+        
+          ∑
+          
+            i
+            :
+            
+              h
+              
+                t
+              
+            
+            (
+            
+              x
+              
+                i
+              
+            
+            )
+            =
+            
+              y
+              
+                i
+              
+            
+          
+        
+        
+          D
+          
+            t
+          
+        
+        (
+        i
+        )
+      
+    
+    {\displaystyle W_{+}=\sum _{i:h_{t}(x_{i})=y_{i}}D_{t}(i)}
+  
+
+  
+    
+      
+        
+          W
+          
+            −
+          
+        
+        =
+        
+          ∑
+          
+            i
+            :
+            
+              h
+              
+                t
+              
+            
+            (
+            
+              x
+              
+                i
+              
+            
+            )
+            =
+            −
+            
+              y
+              
+                i
+              
+            
+          
+        
+        
+          D
+          
+            t
+          
+        
+        (
+        i
+        )
+      
+    
+    {\displaystyle W_{-}=\sum _{i:h_{t}(x_{i})=-y_{i}}D_{t}(i)}
+  
+
+Schapire and Singer have shown that the value 
+  
+    
+      
+        
+          Z
+          
+            t
+          
+        
+      
+    
+    {\displaystyle Z_{t}}
+  
+ can be minimized (and thus the training error) by selecting 
+  
+    
+      
+        
+          α
+          
+            t
+          
+        
+      
+    
+    {\displaystyle \alpha _{t}}
+  
+ to be as follows:
+
+  
+    
+      
+        
+          α
+          
+            t
+          
+        
+        =
+        
+          
+            1
+            2
+          
+        
+        ln
+        ⁡
+        
+          (
+          
+            
+              
+                W
+                
+                  +
+                
+              
+              
+                W
+                
+                  −
+                
+              
+            
+          
+          )
+        
+      
+    
+    {\displaystyle \alpha _{t}={\frac {1}{2}}\ln \left({\frac {W_{+}}{W_{-}}}\right)}
+  
+
+Providing confidence values for the current hypothesized classifier based on the number of correctly classified vs. the number of incorrectly classified examples weighted by the distribution over examples. This equation can be smoothed to compensate for cases in which 
+  
+    
+      
+        
+          W
+          
+            −
+          
+        
+      
+    
+    {\displaystyle W_{-}}
+  
+ is too small. Deriving 
+  
+    
+      
+        
+          Z
+          
+            t
+          
+        
+      
+    
+    {\displaystyle Z_{t}}
+  
+ from this equation we get:
+
+  
+    
+      
+        
+          Z
+          
+            t
+          
+        
+        =
+        
+          W
+          
+            0
+          
+        
+        +
+        2
+        
+          
+            
+              W
+              
+                +
+              
+            
+            
+              W
+              
+                −
+              
+            
+          
+        
+      
+    
+    {\displaystyle Z_{t}=W_{0}+2{\sqrt {W_{+}W_{-}}}}
+  
+
+The training error thus is minimized by selecting the weak hypothesis at every iteration that minimizes the previous equation.
+
+
+== AdaBoost with two views ==
+CoBoosting extends this framework in the case where one has a labeled training set (examples from 
+  
+    
+      
+        1...
+        m
+      
+    
+    {\displaystyle 1...m}
+  
+) and an unlabeled training set (from 
+  
+    
+      
+        
+          m
+          
+            1
+          
+        
+        .
+        .
+        .
+        n
+      
+    
+    {\displaystyle m_{1}...n}
+  
+), as well as satisfy the conditions of redundancy in features in the form of 
+  
+    
+      
+        
+          x
+          
+            i
+          
+        
+        =
+        (
+        
+          x
+          
+            1
+            ,
+            i
+          
+        
+        ,
+        
+          x
+          
+            2
+            ,
+            i
+          
+        
+        )
+      
+    
+    {\displaystyle x_{i}=(x_{1,i},x_{2,i})}
+  
+. The algorithm trains two classifiers in the same fashion as AdaBoost that agree on the labeled training sets correct labels and maximizes the agreement between the two classifiers on the unlabeled training set. The final classifier is the sign of the sum of the two strong classifiers. The bounded training error on CoBoost is extended as follows, where 
+  
+    
+      
+        
+          Z
+          
+            C
+            O
+          
+        
+      
+    
+    {\displaystyle Z_{CO}}
+  
+ is the extension of 
+  
+    
+      
+        
+          Z
+          
+            t
+          
+        
+      
+    
+    {\displaystyle Z_{t}}
+  
+:
+
+  
+    
+      
+        
+          Z
+          
+            C
+            O
+          
+        
+        =
+        
+          ∑
+          
+            i
+            =
+            1
+          
+          
+            m
+          
+        
+        
+          e
+          
+            −
+            
+              y
+              
+                i
+              
+            
+            
+              g
+              
+                1
+              
+            
+            (
+            
+              
+                x
+                
+                  1
+                  ,
+                  i
+                
+              
+            
+            )
+          
+        
+        +
+        
+          ∑
+          
+            i
+            =
+            1
+          
+          
+            m
+          
+        
+        
+          e
+          
+            −
+            
+              y
+              
+                i
+              
+            
+            
+              g
+              
+                2
+              
+            
+            (
+            
+              
+                x
+                
+                  2
+                  ,
+                  i
+                
+              
+            
+            )
+          
+        
+        +
+        
+          ∑
+          
+            i
+            =
+            m
+            +
+            1
+          
+          
+            n
+          
+        
+        
+          e
+          
+            −
+            
+              f
+              
+                2
+              
+            
+            (
+            
+              
+                x
+                
+                  2
+                  ,
+                  i
+                
+              
+            
+            )
+            
+              g
+              
+                1
+              
+            
+            (
+            
+              
+                x
+                
+                  1
+                  ,
+                  i
+                
+              
+            
+            )
+          
+        
+        +
+        
+          ∑
+          
+            i
+            =
+            m
+            +
+            1
+          
+          
+            n
+          
+        
+        
+          e
+          
+            −
+            
+              f
+              
+                1
+              
+            
+            (
+            
+              
+                x
+                
+                  1
+                  ,
+                  i
+                
+              
+            
+            )
+            
+              g
+              
+                2
+              
+            
+            (
+            
+              
+                x
+                
+                  2
+                  ,
+                  i
+                
+              
+            
+            )
+          
+        
+      
+    
+    {\displaystyle Z_{CO}=\sum _{i=1}^{m}e^{-y_{i}g_{1}({\boldsymbol {x_{1,i}}})}+\sum _{i=1}^{m}e^{-y_{i}g_{2}({\boldsymbol {x_{2,i}}})}+\sum _{i=m+1}^{n}e^{-f_{2}({\boldsymbol {x_{2,i}}})g_{1}({\boldsymbol {x_{1,i}}})}+\sum _{i=m+1}^{n}e^{-f_{1}({\boldsymbol {x_{1,i}}})g_{2}({\boldsymbol {x_{2,i}}})}}
+  
+
+Where 
+  
+    
+      
+        
+          g
+          
+            j
+          
+        
+      
+    
+    {\displaystyle g_{j}}
+  
+ is the summation of hypotheses weight by their confidence values for the 
+  
+    
+      
+        
+          j
+          
+            t
+            h
+          
+        
+      
+    
+    {\displaystyle j^{th}}
+  
+ view (j = 1 or 2). 
+  
+    
+      
+        
+          f
+          
+            j
+          
+        
+      
+    
+    {\displaystyle f_{j}}
+  
+ is the sign of 
+  
+    
+      
+        
+          g
+          
+            j
+          
+        
+      
+    
+    {\displaystyle g_{j}}
+  
+. At each iteration of CoBoost both classifiers are updated iteratively. If 
+  
+    
+      
+        
+          g
+          
+            j
+          
+          
+            t
+            −
+            1
+          
+        
+      
+    
+    {\displaystyle g_{j}^{t-1}}
+  
+ is the strong classifier output for the 
+  
+    
+      
+        
+          j
+          
+            t
+            h
+          
+        
+      
+    
+    {\displaystyle j^{th}}
+  
+ view up to the 
+  
+    
+      
+        t
+        −
+        1
+      
+    
+    {\displaystyle t-1}
+  
+ iteration we can set the pseudo-labels for the jth update to be:
+
+  
+    
+      
+        
+          
+            
+              
+                y
+                
+                  i
+                
+              
+              ^
+            
+          
+        
+        =
+        
+          {
+          
+            
+              
+                
+                  
+                    y
+                    
+                      i
+                    
+                  
+                  1
+                  ≤
+                  i
+                  ≤
+                  m
+                
+              
+              
+                
+                  s
+                  i
+                  g
+                  n
+                  (
+                  
+                    g
+                    
+                      3
+                      −
+                      j
+                    
+                    
+                      t
+                      −
+                      1
+                    
+                  
+                  (
+                  
+                    
+                      x
+                      
+                        3
+                        −
+                        j
+                        ,
+                        i
+                      
+                    
+                  
+                  )
+                  )
+                  m
+                  <
+                  i
+                  ≤
+                  n
+                
+              
+            
+          
+          
+        
+      
+    
+    {\displaystyle {\hat {y_{i}}}=\left\{{\begin{array}{ll}y_{i}1\leq i\leq m\\sign(g_{3-j}^{t-1}({\boldsymbol {x_{3-j,i}}}))m<i\leq n\end{array}}\right.}
+  
+
+In which 
+  
+    
+      
+        3
+        −
+        j
+      
+    
+    {\displaystyle 3-j}
+  
+ selects the other view to the one currently being updated. 
+  
+    
+      
+        
+          Z
+          
+            C
+            O
+          
+        
+      
+    
+    {\displaystyle Z_{CO}}
+  
+ is split into two such that 
+  
+    
+      
+        
+          Z
+          
+            C
+            O
+          
+        
+        =
+        
+          Z
+          
+            C
+            O
+          
+          
+            1
+          
+        
+        +
+        
+          Z
+          
+            C
+            O
+          
+          
+            2
+          
+        
+      
+    
+    {\displaystyle Z_{CO}=Z_{CO}^{1}+Z_{CO}^{2}}
+  
+. Where
+
+  
+    
+      
+        
+          Z
+          
+            C
+            O
+          
+          
+            j
+          
+        
+        =
+        
+          ∑
+          
+            i
+            =
+            1
+          
+          
+            n
+          
+        
+        
+          e
+          
+            −
+            
+              
+                
+                  
+                    y
+                    
+                      i
+                    
+                  
+                  ^
+                
+              
+            
+            (
+            
+              g
+              
+                j
+              
+              
+                t
+                −
+                1
+              
+            
+            (
+            
+              
+                x
+                
+                  i
+                
+              
+            
+            )
+            +
+            
+              α
+              
+                t
+              
+              
+                j
+              
+            
+            
+              g
+              
+                t
+              
+              
+                j
+              
+            
+            (
+            
+              
+                x
+                
+                  j
+                  ,
+                  i
+                
+              
+            
+            )
+            )
+          
+        
+      
+    
+    {\displaystyle Z_{CO}^{j}=\sum _{i=1}^{n}e^{-{\hat {y_{i}}}(g_{j}^{t-1}({\boldsymbol {x_{i}}})+\alpha _{t}^{j}g_{t}^{j}({\boldsymbol {x_{j,i}}}))}}
+  
+
+The distribution over examples for each view 
+  
+    
+      
+        j
+      
+    
+    {\displaystyle j}
+  
+ at iteration 
+  
+    
+      
+        t
+      
+    
+    {\displaystyle t}
+  
+ is defined as follows:
+
+  
+    
+      
+        
+          D
+          
+            t
+          
+          
+            j
+          
+        
+        (
+        i
+        )
+        =
+        
+          
+            1
+            
+              Z
+              
+                t
+              
+              
+                j
+              
+            
+          
+        
+        
+          e
+          
+            −
+            
+              
+                
+                  
+                    y
+                    
+                      i
+                    
+                  
+                  ^
+                
+              
+            
+            
+              g
+              
+                j
+              
+              
+                t
+                −
+                1
+              
+            
+            (
+            
+              
+                x
+                
+                  j
+                  ,
+                  i
+                
+              
+            
+            )
+          
+        
+      
+    
+    {\displaystyle D_{t}^{j}(i)={\frac {1}{Z_{t}^{j}}}e^{-{\hat {y_{i}}}g_{j}^{t-1}({\boldsymbol {x_{j,i}}})}}
+  
+
+At which point 
+  
+    
+      
+        
+          Z
+          
+            C
+            O
+          
+          
+            j
+          
+        
+      
+    
+    {\displaystyle Z_{CO}^{j}}
+  
+ can be rewritten as
+
+  
+    
+      
+        
+          Z
+          
+            C
+            O
+          
+          
+            j
+          
+        
+        =
+        
+          ∑
+          
+            i
+            =
+            1
+          
+          
+            n
+          
+        
+        
+          D
+          
+            t
+          
+          
+            j
+          
+        
+        
+          e
+          
+            −
+            
+              
+                
+                  
+                    y
+                    
+                      i
+                    
+                  
+                  ^
+                
+              
+            
+            
+              α
+              
+                t
+              
+              
+                j
+              
+            
+            
+              g
+              
+                t
+              
+              
+                j
+              
+            
+            (
+            
+              
+                x
+                
+                  j
+                  ,
+                  i
+                
+              
+            
+            )
+          
+        
+      
+    
+    {\displaystyle Z_{CO}^{j}=\sum _{i=1}^{n}D_{t}^{j}e^{-{\hat {y_{i}}}\alpha _{t}^{j}g_{t}^{j}({\boldsymbol {x_{j,i}}})}}
+  
+
+Which is identical to the equation in AdaBoost. Thus the same process can be used to update the values of 
+  
+    
+      
+        
+          α
+          
+            t
+          
+          
+            j
+          
+        
+      
+    
+    {\displaystyle \alpha _{t}^{j}}
+  
+ as in AdaBoost using 
+  
+    
+      
+        
+          
+            
+              
+                y
+                
+                  i
+                
+              
+              ^
+            
+          
+        
+      
+    
+    {\displaystyle {\hat {y_{i}}}}
+  
+ and 
+  
+    
+      
+        
+          D
+          
+            t
+          
+          
+            j
+          
+        
+      
+    
+    {\displaystyle D_{t}^{j}}
+  
+. By alternating this, the minimization of 
+  
+    
+      
+        
+          Z
+          
+            C
+            O
+          
+          
+            1
+          
+        
+      
+    
+    {\displaystyle Z_{CO}^{1}}
+  
+ and 
+  
+    
+      
+        
+          Z
+          
+            C
+            O
+          
+          
+            2
+          
+        
+      
+    
+    {\displaystyle Z_{CO}^{2}}
+  
+ in this fashion 
+  
+    
+      
+        
+          Z
+          
+            C
+            O
+          
+        
+      
+    
+    {\displaystyle Z_{CO}}
+  
+ is minimized in a greedy fashion.
+
+
+== References ==
+
+
+=== Footnotes ===

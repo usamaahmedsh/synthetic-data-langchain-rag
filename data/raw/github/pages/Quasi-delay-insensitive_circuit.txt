@@ -1,0 +1,171 @@
+A quasi-delay-insensitive circuit (QDI circuit) is an asynchronous circuit design methodology employed in digital logic design. Developed in response to the performance challenges of building sub-micron, multi-core architectures with conventional synchronous designs, QDI circuits exhibit lower power consumption, extremely fine-grain pipelining, high circuit robustness against process–voltage–temperature variations, on-demand (event-driven) operation, and data-dependent completion time.
+
+
+== Overview ==
+Advantages
+
+Robust against process variation, temperature fluctuation, circuit redesign, and FPGA remapping.
+Natural event sequencing facilitates complex control circuitry.
+Automatic clock gating and compute-dependent cycle time can save dynamic power and increase throughput by optimizing for average-case workload characteristics instead of worst-case.
+Disadvantages
+
+Delay insensitive encodings generally require twice as many wires for the same data.
+Communication protocols and encodings generally require twice as many devices for the same functionality.
+
+
+== Chips ==
+QDI circuits have been used to manufacture a large number of research chips, a small selection of which follows.
+
+Caltech's asynchronous microprocessor and MIPS R3000 clone
+Tokyo University's TITAC and TITAC-2 processors
+
+
+== Theory ==
+
+The simplest QDI circuit is a ring oscillator implemented using a cycle of inverters. Each gate drives two events on its output node. Either the pull up network drives node's voltage from GND to Vdd or the pull down network from VDD to GND. This gives the ring oscillator six events in total.
+Multiple cycles may be connected using a multi-input gate. A c-element, which waits for its inputs to match before copying the value to its output, may be used to synchronize multiple cycles. If one cycle reaches the c-element before another, it is forced to wait. Synchronizing three or more of these cycles creates a pipeline allowing the cycles to trigger one after another.
+If cycles are known to be mutually exclusive, then they may be connected using combinational logic (AND, OR). This allows the active cycle to continue regardless of the inactive cycles, and is generally used to implement delay insensitive encodings.
+For larger systems, this is too much to manage. So, they are partitioned into processes. Each process describes the interaction between a set of cycles grouped into channels, and the process boundary breaks these cycles into channel ports. Each port has a set of request nodes that tend to encode data and acknowledge nodes that tend to be dataless. The process that drives the request is the sender while the process that drives the acknowledgement is the receiver. Now, the sender and receiver communicate using certain protocols and the sequential triggering of communication actions from one process to the next is modeled as a token traversing the pipeline.
+
+
+=== Stability and non-interference ===
+The correct operation of a QDI circuit requires that events be limited to monotonic digital transitions. Instability (glitch) or interference (short) can force the system into illegal states causing incorrect/unstable results, deadlock, and circuit damage. The previously described cyclic structure that ensures stability is called acknowledgement. A transition T1 acknowledges another T2 if there is a causal sequence of events from T1 to T2 that prevents T2 from occurring until T1 has completed. For a DI circuit, every transition must acknowledge every input to its associated gate. For a QDI circuit, there are a few exceptions in which the stability property is maintained using timing assumptions guaranteed with layout constraints rather than causality.
+
+
+==== Isochronic fork assumption ====
+An isochronic fork is a wire fork in which one end does not acknowledge the transition driving the wire. A good example of such a fork can be found in the standard implementation of a pre-charge half buffer. There are two types of Isochronic forks. An asymmetric isochronic fork assumes that the transition on the non-acknowledging end happens before or when the transition has been observed on the acknowledging end. A symmetric isochronic fork ensures that both ends observe the transition simultaneously. In QDI circuits, every transition that drives a wire fork must be acknowledged by at least one end of that fork. This concept was first introduced by A. J. Martin to distinguish between asynchronous circuits that satisfy QDI requirements and those that do not. Martin also established that it is impossible to design useful systems without including at least some isochronic forks given reasonable assumptions about the available circuit elements. Isochronic forks were long thought to be the weakest compromise away from fully delay-insensitive systems.
+In fact, every CMOS gate has one or more internal isochronic forks between the pull-up and pull-down networks. The pull-down network only acknowledges the up-going transitions of the inputs while the pull-up network only acknowledges the down-going transitions.
+
+
+==== Adversarial path assumption ====
+The adversarial path assumption also deals with wire forks, but is ultimately weaker than the isochronic fork assumption. At some point in the circuit after a wire fork, the two paths must merge back into one. The adversarial path is the one that fails to acknowledge the transition on the wire fork. This assumption states that the transition propagating down the acknowledging path reaches the merge point after it would have down the adversarial path. This effectively extends the isochronic fork assumption beyond the confines of the forked wire and into the connected paths of gates.
+
+
+==== Half-cycle timing assumption ====
+This assumption relaxes the QDI requirements a little further in the quest for performance. The c-element is effectively three gates, the logic, the driver, and the feedback and is non-inverting. This gets to be cumbersome and expensive if there is a need for a large amount of logic. The acknowledgement theorem states that the driver must acknowledge the logic. The half-cycle timing assumption assumes that the driver and feedback will stabilize before the inputs to the logic are allowed to switch. This allows the designer use the output of the logic directly, bypassing the driver and making shorter cycles for higher frequency processing.
+
+
+==== Atomic complex gates ====
+A large amount of the automatic synthesis literature uses atomic complex gates. A tree of gates is assumed to transition completely before any of the inputs at the leaves of the tree are allowed to switch again. While this assumption allows automatic synthesis tools to bypass the bubble reshuffling problem, the reliability of these gates tends to be difficult to guarantee.
+
+
+==== Relative timing ====
+Relative Timing is a framework for making and implementing arbitrary timing assumptions in QDI circuits. It represents a timing assumption as a virtual causality arc to complete a broken cycle in the event graph. This allows designers to reason about timing assumptions as a method to realize circuits with higher throughput and energy efficiency by systematically sacrificing robustness.
+
+
+== Representations ==
+
+
+=== Communicating hardware processes (CHP) ===
+Communicating hardware processes (CHP) is a program notation for QDI circuits inspired by Tony Hoare's communicating sequential processes (CSP) and Edsger W. Dijkstra's guarded commands. The syntax is described below in descending precedence.
+
+Skip skip does nothing. It simply acts as a placeholder for pass-through conditions.
+Dataless assignment a+ sets the voltage of the node a to Vdd while a- sets the voltage of a to GND.
+Assignment a := e evaluates the expression e then assigns the resulting value to the variable a.
+Send X!e evaluates the expression e then sends the resulting value across the channel X. X! is a dataless send.
+Receive X?a waits until there is a valid value on the channel X then assigns that value to the variable a. X? is a dataless receive.
+Probe #X returns the value waiting on the channel X without executing the receive.
+Simultaneous composition S * T executes the process fragments S and T at the same time.
+Internal parallel composition S, T executes the process fragments S and T in any order.
+Sequential composition S; T executes the process fragments S followed by T.
+Parallel composition S || T executes the process fragments S and T in any order. This is functionally equivalent to internal parallel composition but with lower precedence.
+Deterministic selection [G0 -> S0[]G1 -> S1[]...[]Gn -> Sn] implements choice in which G0,G1,...,Gn are guards which are dataless boolean expressions or data expressions that are implicitly cast using a validity check and S0,S1,...,Sn are process fragments. Deterministic selection waits until one of the guards evaluates to Vdd, then proceeds to execute the guard's associated process fragment. If two guards evaluate to Vdd during the same window of time, an error occurs. [G] is shorthand for [G -> skip] and simply implements a wait.
+Non-deterministic selection [G0 -> S0:G1 -> S1:...:Gn -> Sn] is the same as deterministic selection except that more than one guard is allowed to evaluate to Vdd. Only the process fragment associated with the first guard to evaluate to Vdd is executed.
+Repetition *[G0 -> S0[]G1 -> S1[]...[]Gn -> Sn] or *[G0 -> S0:G1 -> S1:...:Gn -> Sn] is similar to the associated selection statements except that the action is repeated while any guard evaluates to Vdd. *[S] is shorthand for *[Vdd -> S] and implements infinite repetition.
+
+
+==== Hand-shaking expansions (HSE) ====
+Hand-shaking expansions are a subset of CHP in which channel protocols are expanded into guards and assignments and only dataless operators are permitted. This is an intermediate representation toward the synthesis of QDI circuits.
+
+
+=== Petri nets (PN) ===
+
+A petri net (PN) is a bipartite graph of places and transitions used as a model for QDI circuits. Transitions in the petri net represent voltage transitions on nodes in the circuit. Places represent the partial states between transitions. A token inside a place acts as a program counter identifying the current state of the system and multiple tokens may exist in a petri net simultaneously. However, for QDI circuits multiple tokens in the same place is an error.
+When a transition has tokens on every input place, that transition is enabled. When the transition fires, the tokens are removed from the input places and new tokens are created on all of the output places. This means that a transition that has multiple output places is a parallel split and a transition with multiple input places is a parallel merge. If a place has multiple output transitions, then any one of those transitions could fire. However, doing so would remove the token from the place and prevent any other transition from firing. This effectively implements choice. Therefore, a place with multiple output transitions is a conditional split and a place with multiple input transitions is a conditional merge.
+
+
+==== Event-rule systems (ER) ====
+Event-rule systems (ER) use a similar notation to implement a restricted subset of petri net functionality in which there are transitions and arcs, but no places. This means that the baseline ER system lacks choice as implemented by conditional splits and merges in a petri net and disjunction implemented by conditional merges. The baseline ER system also doesn't allow feedback.
+While petri nets are used to model the circuit logic, an ER system models the timing and execution trace of the circuit, recording the delays and dependencies of each transition. This is generally used to determine which gates need to be faster and which gates can be slower, optimizing the sizing of devices in the system.
+Repetitive event-rule systems (RER) add feedback by folding the trace back on itself, marking the fold point with a tick mark. Extended event-rule systems (XER) add disjunction.
+
+
+=== Production rule set (PRS) ===
+
+A production rule specifies either the pull-up or pull-down network of a gate in a QDI circuit and follows the syntax G -> S in which G is a guard as described above and S is one or more dataless assignments in parallel as described above. In states not covered by the guards, it is assumed that the assigned nodes remain at their previous states. This can be achieved using a staticizor of either weak or combinational feedback (shown in red). The most basic example is the C-element in which the guards do not cover the states where A and B are not the same value.
+
+
+== Synthesis ==
+
+There are many techniques for constructing a QDI circuits, but they can generally be classified into two strategies.
+
+
+=== Formal synthesis ===
+Formal synthesis was introduced by Alain Martin in 1991. The method involves making successive program transformations which are proven to maintain program correctness. The goal of these transformations is to convert the original sequential program into a parallel set of communicating process which each map well to a single pipeline stage. The possible transformations include:
+
+Projection splits a process which has disparate, non-interacting sets of variables into a separate process per set. 
+Process decomposition splits a process with minimally interacting variables sets into a separate process per set in which each process communicates to another only as necessary across channels.
+Slack matching involves adding pipeline stages between two communicating processes in order to increase overall throughput. 
+Once the program is decomposed into a set of small communicating processes, it is expanded into hand-shaking expansions (HSE). Channel actions are expanded into their constituent protocols and multi-bit operators are expanded into their circuit implementations. These HSE are then reshuffled to optimize the circuit implementation by reducing the number of dependencies. Once the reshuffling is decided upon, state variables are added to disambiguate circuit states for a complete state encoding. Next, minimal guards are derived for each signal assignment, producing production rules. There are multiple methods for doing this including guard strengthening, guard weakening, and others. The production rules are not necessarily CMOS implementable at this point, so bubble reshuffling moves signal inversions around the circuit in an attempt to make it so. However, bubble reshuffling is not guaranteed to succeed. This is where atomic complex gates are generally used in automated synthesis programs.
+
+
+=== Syntax directed translation ===
+The second strategy, syntax directed translation, was first introduced in 1988 by Steven Burns. This seeks a simpler approach at the expense of circuit performance by mapping each CHP syntax to a hand-compiled circuit template. Synthesizing a QDI circuit using this method strictly implements the control flow as dictated by the program. This was later adopted by Philips Research Laboratories in their implementation of Tangram. Unlike Steven Burns' approach using circuit templates, Tangram mapped the syntax to a strict set of standard cells, facilitating layout as well as synthesis.
+
+
+=== Templated synthesis ===
+A hybrid approach introduced by Andrew Lines in 1998 transforms the sequential specification into parallel specifications as in formal synthesis, but then uses predefined pipeline templates to implement those parallel processes similar to syntax-directed translation. Lines outlined three efficient logic families or reshufflings.
+
+
+==== Weak condition half buffer (WCHB) ====
+Weak condition half buffer (WCHB) is the simplest and fastest of the logic families with a 10 transition pipeline cycle (or 6 using the half-cycle timing assumption). However, it is also limited to simpler computations because more complex computations tend to necessitate long chains of transistors in the pull-up network of the forward driver. More complex computations can generally be broken up into simpler stages or handled directly with one of the pre-charge families. The WCHB is a half buffer meaning that a pipeline of N stages can contain at most N/2 tokens at once. This is because the reset of the output request Rr must wait until after the reset of the input Lr.
+
+
+==== Pre-charge half buffer (PCHB) ====
+Pre-charge half buffer (PCHB) uses domino logic to implement a more complex computational pipeline stage. This removes the long pull-up network problem, but also introduces an isochronic fork on the input data which must be resolved later in the cycle. This causes the pipeline cycle to be 14 transitions long (or 10 using the half-cycle timing assumption).
+
+
+==== Pre-charge full buffer (PCFB) ====
+Pre-charge full buffers (PCFB) are very similar to PCHB, but adjust the reset phase of the reshuffling to implement full buffering. This means that a pipeline of N PCFB stages can contain at most N tokens at once. This is because the reset of the output request Rr is allowed to happen before the reset of the input Lr.
+
+
+== Verification ==
+Along with the normal verification techniques of testing, coverage, etc, QDI circuits may be verified formally by inverting the formal synthesis procedure to derive a CHP specification from the circuit. This CHP specification can then be compared against the original to prove correctness. 
+
+
+== References ==
+
+
+=== Synthesis ===
+
+
+=== Timing ===
+
+
+=== Verification ===
+
+
+=== Sizing ===
+
+
+=== Layout ===
+
+
+=== Chips ===
+
+
+== External links ==
+
+
+=== Tools ===
+"Petrify: a tool for synthesis of Petri Nets and asynchronous circuits". UPC/DAC VLSI CAD Group. Retrieved 6 October 2017.
+Fang, David. "The Hierarchical Asynchronous Circuit Kompiler Toolkit". Retrieved 6 October 2017.
+"Balsa Asynchronous Synthesis System". GitHub. Retrieved 6 October 2017.
+Manohar, Rajit. "The ACT language and core tools". GitHub. Retrieved 14 February 2020.
+Bingham, Ned (14 September 2024). "Loom". Broccoli. Retrieved 14 September 2024.
+
+
+=== Tutorials ===
+Introduction to Self Timed Circuits ("web"., "slides"., "videos". YouTube.)
+ASYNC 2022 Summer School ("web".)
+Silicon Compilation at Yale ("web".)

@@ -1,0 +1,149 @@
+Pan-European Privacy-Preserving Proximity Tracing (PEPP-PT/PEPP) is a full-stack open protocol designed to facilitate digital contact tracing of infected participants. The protocol was developed in the context of the ongoing COVID-19 pandemic. The protocol, like the competing Decentralized Privacy-Preserving Proximity Tracing (DP-3T) protocol, makes use of Bluetooth LE to discover and locally log clients near a user. However, unlike DP-3T, it uses a centralized reporting server to process contact logs and individually notify clients of potential contact with an infected patient. It has been argued that this approaches compromises privacy, but has the benefit of human-in-the-loop checks and health authority verification. While users are not expected to register with their real name, the back-end server processes pseudonymous personal data that would eventually be capable of being reidentified. It has also been put forward that the distinction between centralized/decentralized systems is mostly technical and PEPP-PT is equally able to preserve privacy.
+
+
+== Technical specification ==
+The protocol can be divided into two broad responsibilities: local device encounters and logging, and transmission of contact logs to a central health authority. These two areas will be referred to as the encounter handshake and infection reporting respectively. Additionally authentication, notification, and other minor responsibilities of the protocol are defined.
+
+
+=== Authentication ===
+Authentication during registration is required to prevent malicious actors from creating a multiple false user accounts, using them to interfere with the system. In order to preserve the anonymity of the users, traditional authentication models using static identifiers such as email addresses or phone numbers could not be employed. Rather, the protocol uses a combination of a proof-of-work challenge and CAPTCHA. The suggested proof-of-work algorithm is scrypt as defined in RFC7914, popularized in various blockchain systems such as Dogecoin and Litecoin. Scrypt was chosen because it is memory bound rather than CPU bound. Once a user registers with the app, they are issued a unique 128 bit pseudo-random identifier (PUID) by the server. It will be marked inactive until the app solves the PoW challenge with the input parameters of 
+  
+    
+      
+        i
+        n
+        p
+        u
+        t
+        =
+        n
+        o
+        n
+        c
+        e
+        
+          |
+        
+        
+          |
+        
+        c
+        h
+        a
+        l
+        l
+        e
+        n
+        g
+        e
+      
+    
+    {\displaystyle input=nonce||challenge}
+  
+, a cost factor of 2, and a block size of 8.  Once completed, OAuth2 credentials are issued to the client to authenticate all future requests.
+
+
+=== Encounter handshake ===
+When two clients encounter each other, they must exchange and log identifying details. In order to prevent the tracking of clients over time through the use of static identifiers, clients exchange time sensitive temporary IDs issued by the central server. In order to generate these temporary IDs, the central server generates a global secret key 
+  
+    
+      
+        B
+        
+          K
+          
+            t
+          
+        
+      
+    
+    {\displaystyle BK_{t}}
+  
+, which is used to calculate all temporary IDs for a short timeframe 
+  
+    
+      
+        t
+      
+    
+    {\displaystyle t}
+  
+. From this an Ephemeral Bluetooth ID (EBID) is calculated for each user with the algorithm 
+  
+    
+      
+        E
+        B
+        I
+        
+          D
+          
+            t
+          
+        
+        (
+        P
+        U
+        I
+        D
+        )
+        =
+        A
+        E
+        S
+        (
+        B
+        
+          K
+          
+            t
+          
+        
+        ,
+        P
+        U
+        I
+        D
+        )
+      
+    
+    {\displaystyle EBID_{t}(PUID)=AES(BK_{t},PUID)}
+  
+ where 
+  
+    
+      
+        A
+        E
+        S
+      
+    
+    {\displaystyle AES}
+  
+ is the AES encryption algorithm. These EBIDs are used by the clients as the temporary IDs in the exchange. EBIDs are fetched in forward dated batches to account for poor internet access.
+Clients then constantly broadcast their EBID under the PEPP-PT Bluetooth service identifier, while also scanning for other clients. If another client is found, the two exchange and log EBIDs, along with metadata about the encounter such as the signal strength and a timestamp.
+
+
+=== Infection reporting ===
+When a user, out of band, has been confirmed positive for infection the patient is asked to upload their contact logs to the central reporting server. If the user consents, the health authority issues a key authorizing the upload. The user then transmits the contact log over HTTPS to the reporting server to be processed.
+Once the reporting server has received a contact log, each entry is run through a proximity check algorithm to reduce the likelihood of false positives. The resulting list of contact is manually confirmed and they, along with a random sample of other users, are sent a message containing a random number and message hash. This message serves to wake up the client and have them check the server for new reports. If the client is on the list of confirmed users, the server will confirm potential infection to the client which will in turn warn the user. If a client is in the random sample, it will receive a response with no meaning. The reason a random sample of users is sent a message for every report is so that eavesdroppers are not able to determine who is at risk for infection by listening to communication between the client and server.
+
+
+== Controversy ==
+The Helmholtz Center for Information Security (CISPA) confirmed in a press release on April 20, 2020 that it was withdrawing from the consortium, citing a 'lack of transparency and clear governance' as well as data protection concerns around the PEPP-PT design. The École Polytechnique Fédérale de Lausanne, ETH Zurich, KU Leuven and the Institute for Scientific Interchange withdrew from the project in the same week. This group was also responsible for the development of the competing Decentralized Privacy-Preserving Proximity Tracing protocol.
+On 20 April 2020, an open letter was released signed by over 300 security and privacy academics from 26 countries criticising the approach taken by PEPP-PT, stating that 'solutions which allow reconstructing invasive information about the population should be rejected without further discussion'.
+
+
+== See also ==
+Decentralized Privacy-Preserving Proximity Tracing
+BlueTrace
+Google / Apple contact tracing project
+TCN Protocol
+
+
+== References ==
+
+
+== External links ==
+PEPP-PT consortium website Archived 2020-04-09 at the Wayback Machine
+PEPP-PT GitHub

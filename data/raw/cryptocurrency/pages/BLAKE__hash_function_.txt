@@ -1,0 +1,310 @@
+BLAKE is a cryptographic hash function based on Daniel J. Bernstein's ChaCha stream cipher, but a permuted copy of the input block, XORed with round constants, is added before each ChaCha round. Like SHA-2, there are two variants differing in the word size. ChaCha operates on a 4×4 array of words. BLAKE repeatedly combines an 8-word hash value with 16 message words, truncating the ChaCha result to obtain the next hash value. BLAKE-256 and BLAKE-224 use 32-bit words and produce digest sizes of 256 bits and 224 bits, respectively, while BLAKE-512 and BLAKE-384 use 64-bit words and produce digest sizes of 512 bits and 384 bits, respectively.
+The BLAKE2 hash function, based on BLAKE, was announced in 2012. The BLAKE3 hash function, based on BLAKE2, was announced in 2020.
+
+
+== History ==
+BLAKE was submitted to the NIST hash function competition by Jean-Philippe Aumasson, Luca Henzen, Willi Meier, and Raphael C.-W. Phan. In 2008, there were 51 entries. BLAKE made it to the final round consisting of five candidates but lost to Keccak in 2012, which was selected for the SHA-3 algorithm.
+
+
+== Algorithm ==
+Like SHA-2, BLAKE comes in two variants: one that uses 32-bit words, used for computing hashes up to 256 bits long, and one that uses 64-bit words, used for computing hashes up to 512 bits long. The core block transformation combines 16 words of input with 16 working variables, but only 8 words (256 or 512 bits) are preserved between blocks.
+It uses a table of 16 constant words (the leading 512 or 1024 bits of the fractional part of π), and a table of 10 16-element permutations:
+
+σ[0] =  0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15
+σ[1] = 14 10  4  8  9 15 13  6  1 12  0  2 11  7  5  3
+σ[2] = 11  8 12  0  5  2 15 13 10 14  3  6  7  1  9  4
+σ[3] =  7  9  3  1 13 12 11 14  2  6  5 10  4  0 15  8
+σ[4] =  9  0  5  7  2  4 10 15 14  1 11 12  6  8  3 13
+σ[5] =  2 12  6 10  0 11  8  3  4 13  7  5 15 14  1  9
+σ[6] = 12  5  1 15 14 13  4 10  0  7  6  3  9  2  8 11
+σ[7] = 13 11  7 14 12  1  3  9  5  0 15  4  8  6  2 10
+σ[8] =  6 15 14  9 11  3  0  8 12  2 13  7  1  4 10  5
+σ[9] = 10  2  8  4  7  6  1  5 15 11  9 14  3 12 13  0
+
+The core operation, equivalent to ChaCha's quarter round, operates on a 4-word column or diagonal a b c d, which is combined with 2 words of message m[] and two constant words n[]. It is performed 8 times per full round:
+
+j ← σ[r%10][2×i]            // Index computations
+k ← σ[r%10][2×i+1]
+a ← a + b + (m[j] ⊕ n[k])   // Step 1 (with input)
+d ← (d ⊕ a) >>> 16
+c ← c + d                   // Step 2 (no input)
+b ← (b ⊕ c) >>> 12
+a ← a + b + (m[k] ⊕ n[j])   // Step 3 (with input)
+d ← (d ⊕ a) >>> 8
+c ← c + d                   // Step 4 (no input)
+b ← (b ⊕ c) >>> 7
+
+In the above, r is the round number (0–13), and i varies from 0 to 7.
+The differences from the ChaCha quarter-round function are:
+
+The addition of the message words has been added.
+The rotation directions have been reversed.
+"BLAKE reuses the permutation of the ChaCha stream cipher with rotations done in the opposite directions. Some have suspected an advanced optimization, but in fact it originates from a typo in the original BLAKE specifications", Jean-Philippe Aumasson explains in his "Crypto Dictionary".
+The 64-bit version (which does not exist in ChaCha) is identical, but the rotation amounts are 32, 25, 16 and 11, respectively, and the number of rounds is increased to 16.
+
+
+== Tweaks ==
+Throughout the NIST hash function competition, entrants are permitted to "tweak" their algorithms to address issues that are discovered. Changes that have been made to BLAKE are: the number of rounds was increased from 10/14 to 14/16. This is to be more conservative about security while still being fast.
+
+
+== Example digests ==
+Hash values of an empty string:
+
+BLAKE-224("") =
+7dc5313b1c04512a174bd6503b89607aecbee0903d40a8a569c94eed
+BLAKE-256("") =
+716f6e863f744b9ac22c97ec7b76ea5f5908bc5b2f67c61510bfc4751384ea7a
+BLAKE-384("") =
+c6cbd89c926ab525c242e6621f2f5fa73aa4afe3d9e24aed727faaadd6af38b620bdb623dd2b4788b1c8086984af8706
+BLAKE-512("") =
+a8cfbbd73726062df0c6864dda65defe58ef0cc52a5625090fa17601e1eecd1b628e94f396ae402a00acc9eab77b4d4c2e852aaaa25a636d80af3fc7913ef5b8
+
+Changing a single bit causes each bit in the output to change with 50% probability, demonstrating an avalanche effect:
+
+BLAKE-512("The quick brown fox jumps over the lazy dog") =
+1f7e26f63b6ad25a0896fd978fd050a1766391d2fd0471a77afb975e5034b7ad2d9ccf8dfb47abbbe656e1b82fbc634ba42ce186e8dc5e1ce09a885d41f43451
+BLAKE-512("The quick brown fox jumps over the lazy dof") =
+a701c2a1f9baabd8b1db6b75aee096900276f0b86dc15d247ecc03937b370324a16a4ffc0c3a85cd63229cfa15c15f4ba6d46ae2e849ed6335e9ff43b764198a
+
+(In this example 266 matching bits out of 512 is about 52% due to the random nature of the avalanche.)
+
+
+== BLAKE2 ==
+
+BLAKE2 is a cryptographic hash function based on BLAKE, created by Jean-Philippe Aumasson, Samuel Neves, Zooko Wilcox-O'Hearn, and Christian Winnerlein. The design goal was to replace the widely used, but broken, MD5 and SHA-1 algorithms in applications requiring high performance in software. BLAKE2 was announced on December 21, 2012. A reference implementation is available under CC0, the OpenSSL License, and the Apache License 2.0.
+BLAKE2b is faster than MD5, SHA-1, SHA-2, and SHA-3, on 64-bit x86-64 and ARM architectures.  Its creators state that BLAKE2 provides better security than SHA-2 and similar to that of SHA-3: immunity to length extension, indifferentiability from a random oracle, etc.
+BLAKE2 removes addition of constants to message words from BLAKE round function, changes two rotation constants, simplifies padding, adds parameter block that is XOR'ed with initialization vectors, and reduces the number of rounds from 16 to 12 for BLAKE2b (successor of BLAKE-512), and from 14 to 10 for BLAKE2s (successor of BLAKE-256).
+BLAKE2 supports keying, salting, personalization, and hash tree modes, and can output digests from 1 up to 64 bytes for BLAKE2b, or up to 32 bytes for BLAKE2s. There are also parallel versions designed for increased performance on multi-core processors; BLAKE2bp (4-way parallel) and BLAKE2sp (8-way parallel).
+BLAKE2X is a family of extendable-output functions (XOFs). Whereas BLAKE2 is limited to 64-byte digests, BLAKE2X allows for digests of up to 256 GiB. BLAKE2X is itself not an instance of a hash function, and must be based on an actual BLAKE2 instance. An example of a BLAKE2X instance could be BLAKE2Xb16MiB, which would be a BLAKE2X version based on BLAKE2b producing 16,777,216-byte digests (or exactly 16 MiB, hence the name of such an instance).
+BLAKE2b and BLAKE2s are specified in RFC 7693. Optional features using the parameter block (salting, personalized hashes, tree hashing, et cetera), are not specified, and thus neither is support for BLAKE2bp, BLAKE2sp, or BLAKE2X.
+
+
+=== Initialization vector ===
+BLAKE2b uses an initialization vector that is the same as the IV used by SHA-512. These values are transparently obtained by taking the first 64 bits of the fractional parts of the positive square roots of the first eight prime numbers.
+
+IV0 = 0x6a09e667f3bcc908   // Frac(sqrt(2))
+IV1 = 0xbb67ae8584caa73b   // Frac(sqrt(3))
+IV2 = 0x3c6ef372fe94f82b   // Frac(sqrt(5))
+IV3 = 0xa54ff53a5f1d36f1   // Frac(sqrt(7))
+IV4 = 0x510e527fade682d1   // Frac(sqrt(11))
+IV5 = 0x9b05688c2b3e6c1f   // Frac(sqrt(13))
+IV6 = 0x1f83d9abfb41bd6b   // Frac(sqrt(17))
+IV7 = 0x5be0cd19137e2179   // Frac(sqrt(19))
+
+
+=== BLAKE2b algorithm ===
+Pseudocode for the BLAKE2b algorithm. The BLAKE2b algorithm uses 8-byte (UInt64) words, and 128-byte chunks.
+
+Algorithm BLAKE2b
+   Input:
+      M                               Message to be hashed
+      cbMessageLen: Number, (0..2128)  Length of the message in bytes
+      Key                             Optional 0..64 byte key
+      cbKeyLen: Number, (0..64)       Length of optional key in bytes
+      cbHashLen: Number, (1..64)      Desired hash length in bytes
+   Output:
+      Hash                            Hash of cbHashLen bytes
+
+   Initialize State vector h with IV
+   h0..7 ← IV0..7
+
+   Mix key size (cbKeyLen) and desired hash length (cbHashLen) into h0
+   h0 ← h0 xor 0x0101kknn
+         where kk is Key Length (in bytes)
+               nn is Desired Hash Length (in bytes)
+
+   Each time we Compress we record how many bytes have been compressed
+   cBytesCompressed ← 0
+   cBytesRemaining  ← cbMessageLen
+
+   If there was a key supplied (i.e. cbKeyLen > 0) 
+   then pad with trailing zeros to make it 128-bytes (i.e. 16 words) 
+   and prepend it to the message M
+   if (cbKeyLen > 0) then
+      M ← Pad(Key, 128) || M
+      cBytesRemaining ← cBytesRemaining + 128
+   end if
+
+   Compress whole 128-byte chunks of the message, except the last chunk
+   while (cBytesRemaining > 128) do
+      chunk ← get next 128 bytes of message M
+      cBytesCompressed ← cBytesCompressed + 128  increase count of bytes that have been compressed
+      cBytesRemaining  ← cBytesRemaining  - 128  decrease count of bytes in M remaining to be processed
+
+      h ← Compress(h, chunk, cBytesCompressed, false)  false ⇒ this is not the last chunk
+   end while
+
+   Compress the final bytes from M
+   chunk ← get next 128 bytes of message M  We will get cBytesRemaining bytes (i.e. 0..128 bytes)
+   cBytesCompressed ← cBytesCompressed+cBytesRemaining  The actual number of bytes leftover in M
+   chunk ← Pad(chunk, 128)  If M was empty, then we will still compress a final chunk of zeros
+
+   h ← Compress(h, chunk, cBytesCompressed, true)  true ⇒ this is the last chunk
+
+   Result ← first cbHashLen bytes of little endian state vector h
+End Algorithm BLAKE2b
+
+
+==== Compress ====
+The Compress function takes a full 128-byte chunk of the input message and mixes it into the ongoing state array:
+
+Function Compress
+   Input:
+      h                      Persistent state vector
+      chunk                  128-byte (16 double word) chunk of message to compress
+      t: Number, 0..2128     Count of bytes that have been fed into the Compression
+      IsLastBlock: Boolean   Indicates if this is the final round of compression
+   Output:
+      h                      Updated persistent state vector
+
+   Setup local work vector V
+   V0..7 ← h0..7   First eight items are copied from persistent state vector h
+   V8..15 ← IV0..7 Remaining eight items are initialized from the IV
+
+   Mix the 128-bit counter t into V12:V13
+   V12 ← V12 xor Lo(t)    Lo 64-bits of UInt128 t
+   V13 ← V13 xor Hi(t)    Hi 64-bits of UInt128 t
+  
+   If this is the last block then invert all the bits in V14
+   if IsLastBlock then
+      V14 ← V14 xor 0xFFFFFFFFFFFFFFFF
+   
+   Treat each 128-byte message chunk as sixteen 8-byte (64-bit) words m
+   m0..15 ← chunk
+
+   Twelve rounds of cryptographic message mixing
+   for i from 0 to 11 do
+      Select message mixing schedule for this round.
+       BLAKE2b uses 12 rounds, while SIGMA has only 10 entries.
+      S0..15 ← SIGMA[i mod 10]   Rounds 10 and 11 use SIGMA[0] and SIGMA[1] respectively
+
+      Mix(V0, V4, V8,  V12, m[S0], m[S1])
+      Mix(V1, V5, V9,  V13, m[S2], m[S3])
+      Mix(V2, V6, V10, V14, m[S4], m[S5])
+      Mix(V3, V7, V11, V15, m[S6], m[S7])
+
+      Mix(V0, V5, V10, V15, m[S8],  m[S9])
+      Mix(V1, V6, V11, V12, m[S10], m[S11])
+      Mix(V2, V7, V8,  V13, m[S12], m[S13])
+      Mix(V3, V4, V9,  V14, m[S14], m[S15])
+   end for
+
+   Mix the upper and lower halves of V into ongoing state vector h
+   h0..7 ← h0..7 xor V0..7
+   h0..7 ← h0..7 xor V8..15
+
+   Result ← h
+End Function Compress
+
+
+==== Mix ====
+The Mix function is called by the Compress function, and mixes two 8-byte words from the message into the hash state. In most implementations this function would be written inline, or as an inlined function.
+
+Function Mix
+   Inputs:
+        Va, Vb, Vc, Vd       four 8-byte word entries from the work vector V
+        x, y                two 8-byte word entries from padded message m
+   Output:
+        Va, Vb, Vc, Vd       the modified versions of Va, Vb, Vc, Vd
+
+   Va ← Va + Vb + x          with input
+   Vd ← (Vd xor Va) rotateright 32
+
+   Vc ← Vc + Vd              no input
+   Vb ← (Vb xor Vc) rotateright 24
+
+   Va ← Va + Vb + y          with input
+   Vd ← (Vd xor Va) rotateright 16
+
+   Vc ← Vc + Vd              no input
+   Vb ← (Vb xor Vc) rotateright 63
+
+   Result ← Va, Vb, Vc, Vd
+
+End Function Mix
+
+
+=== Example digests ===
+Hash values of an empty string:
+
+BLAKE2s-224("") =
+1fa1291e65248b37b3433475b2a0dd63d54a11ecc4e3e034e7bc1ef4
+BLAKE2s-256("") =
+69217a3079908094e11121d042354a7c1f55b6482ca1a51e1b250dfd1ed0eef9
+BLAKE2b-384("") =
+b32811423377f52d7862286ee1a72ee540524380fda1724a6f25d7978c6fd3244a6caf0498812673c5e05ef583825100
+BLAKE2b-512("") =
+786a02f742015903c6c6fd852552d272912f4740e15847618a86e217f71f5419d25e1031afee585313896444934eb04b903a685b1448b755d56f701afe9be2ce
+
+Changing a single bit causes each bit in the output to change with 50% probability, demonstrating an avalanche effect:
+
+BLAKE2b-512("The quick brown fox jumps over the lazy dog") =
+a8add4bdddfd93e4877d2746e62817b116364a1fa7bc148d95090bc7333b3673f82401cf7aa2e4cb1ecd90296e3f14cb5413f8ed77be73045b13914cdcd6a918
+BLAKE2b-512("The quick brown fox jumps over the lazy dof") =
+ab6b007747d8068c02e25a6008db8a77c218d94f3b40d2291a7dc8a62090a744c082ea27af01521a102e42f480a31e9844053f456b4b41e8aa78bbe5c12957bb
+
+
+=== Users of BLAKE2 ===
+Argon2, the winner of the Password Hashing Competition, uses BLAKE2b
+Chef's Habitat deployment system uses BLAKE2b for package signing
+FreeBSD Ports package management tool uses BLAKE2b
+GNU Core Utilities implements BLAKE2b in its b2sum command
+IPFS allows use of BLAKE2b for tree hashing
+librsync uses BLAKE2b
+Noise (cryptographic protocol), which is used in WhatsApp includes BLAKE2 as an option.
+RAR archive format version 5 supports an optional 256-bit BLAKE2sp file checksum instead of the default 32-bit CRC-32; it was implemented in WinRAR v5+
+7-Zip (in order to support the RAR archive format version 5) can generate the BLAKE2sp signature for each file in the Explorer shell via "CRC SHA" context menu, and choosing '*'
+rmlint uses BLAKE2b for duplicate file detection
+WireGuard uses BLAKE2s for hashing
+Zcash, a cryptocurrency, uses BLAKE2b in the Equihash proof of work, and as a key derivation function
+NANO, a cryptocurrency, uses BLAKE2b in the proof of work, for hashing digital signatures and as a key derivation function
+Polkadot, a multi-chain blockchain uses BLAKE2b as its hashing algorithm.
+Kadena (cryptocurrency), a scalable proof of work blockchain that uses Blake2s_256 as its hashing algorithm.
+PCI Vault, uses BLAKE2b as its hashing algorithm for the purpose of PCI compliant PCD tokenization.
+Ergo, a cryptocurrency, uses BLAKE2b256 as a subroutine of its hashing algorithm called Autolykos.
+Linux kernel, version 5.17 replaced SHA-1 with BLAKE2s for hashing the entropy pool in the random number generator.
+Open Network for Digital Commerce, a Government of India initiative, uses BLAKE-512 to sign API requests.
+checksum, a Windows file hashing program has Blake2s as one of its algorithms
+
+
+=== Implementations ===
+In addition to the reference implementation, the following cryptography libraries provide implementations of BLAKE2:
+
+Botan
+Bouncy Castle
+Crypto++
+Libgcrypt
+libsodium
+OpenSSL
+wolfSSL
+
+
+== BLAKE3 ==
+
+BLAKE3 is a cryptographic hash function based on Bao and BLAKE2, created by Jack O'Connor, Jean-Philippe Aumasson, Samuel Neves, and Zooko Wilcox-O'Hearn. It was announced on January 9, 2020, at Real World Crypto.
+BLAKE3 is a single algorithm with many desirable features (parallelism, XOF, KDF, PRF and MAC), in contrast to BLAKE and BLAKE2, which are algorithm families with multiple variants. BLAKE3 has a binary tree structure, so it supports a practically unlimited degree of parallelism (both SIMD and multithreading) given long enough input. The official Rust and C implementations are dual-licensed as public domain (CC0) and the Apache License.
+BLAKE3 is designed to be as fast as possible. It is consistently a few times faster than BLAKE2. The BLAKE3 compression function is closely based on that of BLAKE2s, with the biggest difference being that the number of rounds is reduced from 10 to 7, a change based on an argument that past cryptography is too conservative compared to current cryptoanalysis records. In addition to providing parallelism, the Merkle tree format also allows for verified streaming (on-the-fly verifying) and incremental updates.
+
+
+=== Users of BLAKE3 ===
+Bazel build system supports using BLAKE3 as a file digest function.
+Ccache uses it for its hash function.
+ClickHouse has it as dependency.
+Total Commander supports BLAKE3 for file checksums.
+IPFS again has support for BLAKE3 hashes.
+OpenZFS supports BLAKE3 from version 2.2
+Cargo (Rust) uses BLAKE3 for checksums.
+Czkawka files janitor https://github.com/qarmin/czkawka
+LLVM has introduced BLAKE3 implementation.
+Wasmer a WebAssembly runtime that uses BLAKE3 hashing.
+Software bill of material software CycloneDX uses it as part of its suite of hash functions.
+Mosaic uses BLAKE3 instead of SHA-512 (SHA-2) for its Ed25519 signature.
+
+
+== References ==
+
+
+== External links ==
+The BLAKE web site
+The BLAKE2 web site
+The BLAKE3 web site

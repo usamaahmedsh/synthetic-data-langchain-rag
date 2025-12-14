@@ -1,0 +1,249 @@
+OpenMP is an application programming interface (API) that supports multi-platform shared-memory multiprocessing programming in C, C++, and Fortran, on many platforms, instruction-set architectures and operating systems, including Solaris, AIX, FreeBSD, HP-UX, Linux, macOS, Windows and OpenHarmony. It consists of a set of compiler directives, library routines, and environment variables that influence run-time behavior.
+OpenMP is managed by the nonprofit technology consortium OpenMP Architecture Review Board (or OpenMP ARB), jointly defined by a broad swath of leading computer hardware and software vendors, including Arm, AMD, IBM, Intel, Cray, HP, Fujitsu, Nvidia, NEC, Red Hat, Texas Instruments, and Oracle Corporation.
+OpenMP uses a portable, scalable model that gives programmers a simple and flexible interface for developing parallel applications for platforms ranging from the standard desktop computer to the supercomputer.
+An application built with the hybrid model of parallel programming can run on a computer cluster using both OpenMP and Message Passing Interface (MPI), such that OpenMP is used for parallelism within a (multi-core) node while MPI is used for parallelism between nodes. There have also been efforts to run OpenMP on software distributed shared memory systems, to translate OpenMP into MPI
+and to extend OpenMP for non-shared memory systems.
+
+
+== Design ==
+
+OpenMP is an implementation of multithreading, a method of parallelizing whereby a primary thread (a series of instructions executed consecutively) forks a specified number of sub-threads and the system divides a task among them. The threads then run concurrently, with the runtime environment allocating threads to different processors.
+The section of code that is meant to run in parallel is marked accordingly, with a compiler directive that will cause the threads to form before the section is executed. Each thread has an ID attached to it which can be obtained using a function (called omp_get_thread_num()). The thread ID is an integer, and the primary thread has an ID of 0. After the execution of the parallelized code, the threads join back into the primary thread, which continues onward to the end of the program.
+By default, each thread executes the parallelized section of code independently. Work-sharing constructs can be used to divide a task among the threads so that each thread executes its allocated part of the code. Both task parallelism and data parallelism can be achieved using OpenMP in this way.
+The runtime environment allocates threads to processors depending on usage, machine load and other factors. The runtime environment can assign the number of threads based on environment variables, or the code can do so using functions. The OpenMP functions are included in a header file labelled omp.h in C/C++.
+
+
+== History ==
+The OpenMP Architecture Review Board (ARB) published its first API specifications, OpenMP for Fortran 1.0, in October 1997. In October the following year they released the C/C++ standard. 2000 saw version 2.0 of the Fortran specifications with version 2.0 of the C/C++ specifications being released in 2002. Version 2.5 is a combined C/C++/Fortran specification that was released in 2005.
+Up to version 2.0, OpenMP primarily specified ways to parallelize highly regular loops, as they occur in matrix-oriented numerical programming, where the number of iterations of the loop is known at entry time. This was recognized as a limitation, and various task parallel extensions were added to implementations. In 2005, an effort to standardize task parallelism was formed, which published a proposal in 2007, taking inspiration from task parallelism features in Cilk, X10 and Chapel.
+Version 3.0 was released in May 2008. Included in the new features in 3.0 is the concept of tasks and the task construct, significantly broadening the scope of OpenMP beyond the parallel loop constructs that made up most of OpenMP 2.0. OpenMP 3.1 was released in September 2011, enhancing tasking with features like task finalization (final clause) and task dependencies (depend clause). It also improved support for Fortran 2003 and added atomic construct enhancements.
+Version 4.0 of the specification was released in July 2013. It adds or improves the following features: support for accelerators; atomics; error handling; thread affinity; tasking extensions; user defined reduction; SIMD support; Fortran 2003 support. OpenMP 4.0 (2013) also introduced support for accelerators (e.g., GPUs) via the target directive, enabling offloading computations to devices like GPUs or FPGAs. It also added SIMD (Single Instruction, Multiple Data) directives for vectorization and user-defined reductions. Version 4.5 (2015) enhanced device support, improved tasking with dependencies, and introduced loop transformations for better optimization.
+Version 5.0 (2018) added significant features like memory management for accelerators, support for deep copy in target directives, and loop transformation constructs. It also improved interoperability with other programming models like MPI. OpenMP 5.1 (2020) focused on usability, adding features like loop fusion, improved task reduction, and better support for C++11/14/17 constructs. Version 5.2 (2021) refined existing features, improved compatibility with modern hardware, and added support for descriptive loop directives..
+Version 6.0 was released in November 2024. This version focuses on enhancing OpenMP for heterogeneous computing, integrating with AI/ML workloads, and improving performance portability across diverse architectures.
+Note that not all compilers (and OSes) support the full set of features for the latest version/s.
+
+
+== Core elements ==
+
+The core elements of OpenMP are the constructs for thread creation, workload distribution (work sharing), data-environment management, thread synchronization, user-level runtime routines and environment variables.
+In C/C++, OpenMP uses #pragmas. The OpenMP specific pragmas are listed below.
+
+
+=== Thread creation ===
+The pragma omp parallel is used to fork additional threads to carry out the work enclosed in the construct in parallel. The original thread will be denoted as master thread with thread ID 0.
+Example (C program): Display "Hello, world." using multiple threads.
+
+Use flag -fopenmp to compile using GCC:
+
+Output on a computer with two cores, and thus two threads:
+
+However, the output may also be garbled because of the race condition caused from the two threads sharing the standard output.
+
+Whether printf is atomic depends on the underlying implementation unlike C++11's std::cout, which is thread-safe by default.
+
+
+=== Work-sharing constructs ===
+Used to specify how to assign independent work to one or all of the threads.
+
+omp for or omp do: used to split up loop iterations among the threads, also called loop constructs.
+sections: assigning consecutive but independent code blocks to different threads
+single: specifying a code block that is executed by only one thread, a barrier is implied in the end
+master: similar to single, but the code block will be executed by the master thread only and no barrier implied in the end.
+Example: initialize the value of a large array in parallel, using each thread to do part of the work
+
+This example is embarrassingly parallel, and depends only on the value of i. The OpenMP parallel for flag tells the OpenMP system to split this task among its working threads. The threads will each receive a unique and private version of the variable. For instance, with two worker threads, one thread might be handed a version of i that runs from 0 to 49999 while the second gets a version running from 50000 to 99999.
+
+
+=== Variant directives ===
+Variant directives are one of the major features introduced in OpenMP 5.0 specification to facilitate programmers to improve performance portability. They enable adaptation of OpenMP pragmas and user code at compile time. The specification defines traits to describe active OpenMP constructs, execution devices, and functionality provided by an implementation, context selectors based on the traits and user-defined conditions, and metadirective and declare directive directives for users to program the same code region with variant directives.
+
+The metadirective is an executable directive that conditionally resolves to another directive at compile time by selecting from multiple directive variants based on traits that define an OpenMP condition or context.
+The declare variant directive has similar functionality as metadirective but selects a function variant at the call-site based on context or user-defined conditions.
+The mechanism provided by the two variant directives for selecting variants is more convenient to use than the C/C++ preprocessing since it directly supports variant selection in OpenMP and allows an OpenMP compiler to analyze and determine the final directive from variants and context.
+
+
+=== Clauses ===
+Since OpenMP is a shared memory programming model, most variables in OpenMP code are visible to all threads by default. But sometimes private variables are necessary to avoid race conditions and there is a need to pass values between the sequential part and the parallel region (the code block executed in parallel), so data environment management is introduced as data sharing attribute clauses by appending them to the OpenMP directive. The different types of clauses are:
+
+
+==== Data sharing attribute clauses ====
+shared: the data declared outside a parallel region is shared, which means visible and accessible by all threads simultaneously. By default, all variables in the work sharing region are shared except the loop iteration counter.
+private: the data declared within a parallel region is private to each thread, which means each thread will have a local copy and use it as a temporary variable. A private variable is not initialized and the value is not maintained for use outside the parallel region. By default, the loop iteration counters in the OpenMP loop constructs are private.
+default: allows the programmer to state that the default data scoping within a parallel region will be either shared, or none for C/C++, or shared, firstprivate, private, or none for Fortran. The none option forces the programmer to declare each variable in the parallel region using the data sharing attribute clauses.
+firstprivate: the data is private to each thread, but initialized using the value of the variable using the same name from the master thread.
+lastprivate: the data is private to each thread. The value of this private data will be copied to a global variable using the same name outside the parallel region if current iteration is the last iteration in the parallelized loop. A variable can be both firstprivate and lastprivate.
+threadprivate: The data is a global data, but it is private in each parallel region during the runtime. The difference between threadprivate and private is the global scope associated with threadprivate and the preserved value across parallel regions.
+
+
+==== Synchronization clauses ====
+critical: the enclosed code block will be executed by only one thread at a time, and not simultaneously executed by multiple threads. It is often used to protect shared data from race conditions.
+atomic: the memory update (write, or read-modify-write) in the next instruction will be performed atomically. It does not make the entire statement atomic; only the memory update is atomic. A compiler might use special hardware instructions for better performance than when using critical.
+ordered: the structured block is executed in the order in which iterations would be executed in a sequential loop
+barrier: each thread waits until all of the other threads of a team have reached this point. A work-sharing construct has an implicit barrier synchronization at the end.
+nowait: specifies that threads completing assigned work can proceed without waiting for all threads in the team to finish. In the absence of this clause, threads encounter a barrier synchronization at the end of the work sharing construct.
+
+
+==== Scheduling clauses ====
+schedule (type, chunk): This is useful if the work sharing construct is a do-loop or for-loop. The iterations in the work sharing construct are assigned to threads according to the scheduling method defined by this clause. The three types of scheduling are:
+static: Here, all the threads are allocated iterations before they execute the loop iterations. The iterations are divided among threads equally by default. However, specifying an integer for the parameter chunk will allocate chunk number of contiguous iterations to a particular thread.
+dynamic: Here, some of the iterations are allocated to a smaller number of threads. Once a particular thread finishes its allocated iteration, it returns to get another one from the iterations that are left. The parameter chunk defines the number of contiguous iterations that are allocated to a thread at a time.
+guided: A large chunk of contiguous iterations are allocated to each thread dynamically (as above). The chunk size decreases exponentially with each successive allocation to a minimum size specified in the parameter chunk
+
+
+==== IF control ====
+if: This will cause the threads to parallelize the task only if a condition is met. Otherwise the code block executes serially.
+
+
+==== Data copying ====
+copyin: similar to firstprivate for private variables, threadprivate variables are not initialized, unless using copyin to pass the value from the corresponding global variables. No copyout is needed because the value of a threadprivate variable is maintained throughout the execution of the whole program.
+copyprivate: used with single to support the copying of data values from private objects on one thread (the single thread) to the corresponding objects on other threads in the team.
+
+
+==== Reduction ====
+reduction (operator | intrinsic : list): the variable has a local copy in each thread, but the values of the local copies will be summarized (reduced) into a global shared variable. This is very useful if a particular operation (specified in operator for this particular clause) on a variable runs iteratively, so that its value at a particular iteration depends on its value at a prior iteration. The steps that lead up to the operational increment are parallelized, but the threads updates the global variable in a thread safe manner. This would be required in parallelizing numerical integration of functions and differential equations, as a common example.
+
+
+==== Others ====
+flush: The value of this variable is restored from the register to the memory for using this value outside of a parallel part
+master: Executed only by the master thread (the thread which forked off all the others during the execution of the OpenMP directive). No implicit barrier; other team members (threads) not required to reach.
+
+
+=== User-level runtime routines ===
+Used to modify/check the number of threads, detect if the execution context is in a parallel region, how many processors in current system, set/unset locks, timing functions, etc
+
+
+=== Environment variables ===
+A method to alter the execution features of OpenMP applications. Used to control loop iterations scheduling, default number of threads, etc. For example, OMP_NUM_THREADS is used to specify number of threads for an application.
+
+
+== Implementations ==
+OpenMP has been implemented in many commercial compilers. For instance, Visual C++ 2005, 2008, 2010, 2012 and 2013 support it (OpenMP 2.0, in Professional, Team System, Premium and Ultimate editions), as well as Intel Parallel Studio for various processors. Oracle Solaris Studio compilers and tools support the latest OpenMP specifications with productivity enhancements for Solaris OS (UltraSPARC and x86/x64) and Linux platforms. The Fortran, C and C++ compilers from The Portland Group also support OpenMP 2.5. GCC has also supported OpenMP since version 4.2.
+Compilers with an implementation of OpenMP 3.0:
+
+GCC 4.3.1
+Mercurium compiler
+Intel Fortran and C/C++ versions 11.0 and 11.1 compilers, Intel C/C++ and Fortran Composer XE 2011 and Intel Parallel Studio.
+IBM XL compiler
+Sun Studio 12 update 1 has a full implementation of OpenMP 3.0
+Multi-Processor Computing
+Several compilers support OpenMP 3.1:
+
+GCC 4.7
+Intel Fortran and C/C++ compilers 12.1
+IBM XL C/C++ compilers for AIX and Linux, V13.1 & IBM XL Fortran compilers for AIX and Linux, V14.1
+LLVM/Clang 3.7
+Absoft Fortran Compilers v. 19 for Windows, Mac OS X and Linux
+Compilers supporting OpenMP 4.0:
+
+GCC 4.9.0 for C/C++, GCC 4.9.1 for Fortran
+Intel Fortran and C/C++ compilers 15.0
+IBM XL C/C++ for Linux, V13.1 (partial) & XL Fortran for Linux, V15.1 (partial)
+LLVM/Clang 3.7 (partial)
+Several Compilers supporting OpenMP 4.5:
+
+GCC 6 for C/C++ 
+Intel Fortran and C/C++ compilers 17.0, 18.0, 19.0 
+LLVM/Clang 12 
+Partial support for OpenMP 5.0:
+
+GCC 9 for C/C++ 
+Intel Fortran and C/C++ compilers 19.1 
+LLVM/Clang 12 
+Auto-parallelizing compilers that generates source code annotated with OpenMP directives:
+
+iPat/OMP
+Parallware
+PLUTO
+ROSE (compiler framework)
+S2P by KPIT Cummins Infosystems Ltd.
+ComPar
+PragFormer
+Several profilers and debuggers expressly support OpenMP:
+
+Intel VTune Profiler - a profiler for the x86 CPU and Xe GPU architectures
+Intel Advisor - a design assistance and analysis tool for OpenMP and MPI codes
+Allinea Distributed Debugging Tool (DDT) – debugger for OpenMP and MPI codes
+Allinea MAP – profiler for OpenMP and MPI codes
+TotalView - debugger from Rogue Wave Software for OpenMP, MPI and serial codes
+ompP – profiler for OpenMP
+VAMPIR – profiler for OpenMP and MPI code
+
+
+== Pros and cons ==
+
+Pros:
+
+Portable multithreading code (in C/C++ and other languages, one typically has to call platform-specific primitives in order to get multithreading).
+Simple: need not deal with message passing as MPI does.
+Data layout and decomposition is handled automatically by directives.
+Scalability comparable to MPI on shared-memory systems.
+Incremental parallelism: can work on one part of the program at one time, no dramatic change to code is needed.
+Unified code for both serial and parallel applications: OpenMP constructs are treated as comments when sequential compilers are used.
+Original (serial) code statements need not, in general, be modified when parallelized with OpenMP. This reduces the chance of inadvertently introducing bugs.
+Both coarse-grained and fine-grained parallelism are possible.
+In irregular multi-physics applications which do not adhere solely to the SPMD mode of computation, as encountered in tightly coupled fluid-particulate systems, the flexibility of OpenMP can have a big performance advantage over MPI.
+Can be used on various accelerators such as GPGPU and FPGAs.
+Cons:
+
+Risk of introducing difficult to debug synchronization bugs and race conditions.
+As of 2017 only runs efficiently in shared-memory multiprocessor platforms (see however Intel's Cluster OpenMP Archived 2018-11-16 at the Wayback Machine and other distributed shared memory platforms).
+Requires a compiler that supports OpenMP.
+Scalability is limited by memory architecture.
+No support for compare-and-swap.
+Reliable error handling is missing.
+Lacks fine-grained mechanisms to control thread-processor mapping.
+High chance of accidentally writing false sharing code.
+
+
+== Performance expectations ==
+One might expect to get an N times speedup when running a program parallelized using OpenMP on a N processor platform. However, this seldom occurs for these reasons:
+
+When a dependency exists, a process must wait until the data it depends on is computed.
+When multiple processes share a non-parallel proof resource (like a file to write in), their requests are executed sequentially. Therefore, each thread must wait until the other thread releases the resource.
+A large part of the program may not be parallelized by OpenMP, which means that the theoretical upper limit of speedup is limited according to Amdahl's law.
+N processors in a symmetric multiprocessing (SMP) may have N times the computation power, but the memory bandwidth usually does not scale up N times. Quite often, the original memory path is shared by multiple processors and performance degradation may be observed when they compete for the shared memory bandwidth.
+Many other common problems affecting the final speedup in parallel computing also apply to OpenMP, like load balancing and synchronization overhead.
+Compiler optimisation may not be as effective when invoking OpenMP. This can commonly lead to a single-threaded OpenMP program running slower than the same code compiled without an OpenMP flag (which will be fully serial).
+
+
+== Thread affinity ==
+Some vendors recommend setting the processor affinity on OpenMP threads to associate them with particular processor cores.
+This minimizes thread migration and context-switching cost among cores. It also improves the data locality and reduces the cache-coherency traffic among the cores (or processors).
+
+
+== Benchmarks ==
+A variety of benchmarks has been developed to demonstrate the use of OpenMP, test its performance and evaluate correctness.
+Simple examples
+
+OmpSCR: OpenMP Source Code Repository
+Performance benchmarks include:
+
+NAS Parallel Benchmark
+Barcelona OpenMP Task Suite a collection of applications that allow to test OpenMP tasking implementations.
+SPEC series
+SPEC OMP 2012
+The SPEC ACCEL benchmark suite testing OpenMP 4 target offloading API
+The SPEChpc 2002 benchmark
+CORAL benchmarks
+Exascale Proxy Applications
+Rodinia focusing on accelerators.
+Problem Based Benchmark Suite
+Correctness benchmarks include:
+
+OpenMP Validation Suite
+OpenMP Validation and Verification Testsuite
+DataRaceBench is a benchmark suite designed to systematically and quantitatively evaluate the effectiveness of OpenMP data race detection tools.
+AutoParBench is a benchmark suite to evaluate compilers and tools which can automatically insert OpenMP directives.
+
+
+== See also ==
+
+
+== References ==
+
+
+== Further reading ==
+
+
+== External links ==
+Official website

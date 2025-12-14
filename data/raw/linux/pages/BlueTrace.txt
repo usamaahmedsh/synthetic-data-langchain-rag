@@ -1,0 +1,70 @@
+BlueTrace is an open-source application protocol that facilitates digital contact tracing of users to stem the spread of the COVID-19 pandemic. Initially developed by the Singaporean Government, BlueTrace powers the contact tracing for the TraceTogether app. Australia and the United Arab Emirates have already adopted the protocol in their gov apps, and other countries were considering BlueTrace for adoption. A principle of the protocol is the preservation of privacy and health authority co-operation.
+
+
+== Overview ==
+Preservation of user privacy was one of the core considerations around which BlueTrace was designed. To achieve this, personal information is collected only once at the point of registration and is only used to contact potentially infected patients. Additionally, users can opt-out at any time, clearing all personal information and rendering any recorded data untraceable. Contact tracing is done entirely locally on a client device using Bluetooth Low Energy, storing all encounters in a contact history log chronicling encounters for the past 21 days. Users in the contact log are identified using anonymous time-shifting "temporary IDs" issued by the health authority. This means a user's identity cannot be ascertained by anyone except the health authority with which they are registered. Additionally, since temporary IDs change on a regular basis, malicious third parties cannot track users by observing log entries over time.
+Once a user tests positive for infection, the health authority requests the contact log. If the user chooses to share their log, it is sent to the health authority where they match the temporary ID with contact information. Health authorities are not able to access log entries about foreign users, so those entries are sent to the appropriate foreign health authority to be processed there. Once a log has been processed, the health authority contacts the user identified by the record.
+
+
+== Technical specification ==
+
+The protocol is focused on two areas: locally logging registered users in the vicinity of a device and the transmission of the log to the operating health authority, all while preserving privacy. To achieve this, the protocol can be divided into the areas of device to device communication (DDC), and device to reporting server communication (DRSC).
+The DDC component operates on top of the existing Bluetooth Low Energy protocol, defining how two devices acknowledge each other's presence. The DRSC component uses HTTPS to communicate a timeline of visits to a centralized server owned by a health authority once a user has tested positive for an infection. The health authority can then, using the log, notify the users who came in contact with the infected patient.
+
+
+=== Device to reporting server communication protocol ===
+Each app implementing the BlueTrace protocol has a corresponding central reporting server operated by a health authority. The reporting server is responsible for handling initial registration, provisioning unique user identifiers, and collecting contact logs created by the DDC part of the protocol. When the user first launches a BlueTrace app, they will be asked for their internationally formatted phone number and are assigned a static UserID. This phone number is later used if the user has registered an encounter in an infected patient's contact log.
+Once registered, users are provisioned Temporary IDs (TempID) uniquely identifying them to other devices. Each TempID has a lifetime of 15 minutes to prevent malicious parties from performing replay attacks or tracking users over time with static unique identifiers. TempIDs are generated from a user's UserID, the TempID start time, and the TempID expiry time, which is encrypted and turned into a Base64 encoded string by the server using a secret symmetric encryption key. To ensure devices have a constant supply of TempIDs, even in an unstable network environment, TempIDs are transmitted to devices in forward dated batches. The composition of a TempID is shown below:
+
+Once a user has been tested positive for infection, the health authority generates a PIN authenticating the user to upload their contact log to the reporting server. As part of the log, metadata about each encounter is included; the most important of which being the timestamp and health authority identifier (HAI).
+The HAI identifies to which health authority the logged contact reports. If the HAI represents a foreign health authority the log entry is transmitted to the identified authority to be processed there.
+Once a health authority has filtered log entries to only include home clients, they decrypt the TempID to reveal the UserID, start time, and expiry time. The start and expiry date are compared with the encounter timestamp to ensure validity, and the UserID is matched to a phone number. The health authority can then contact the phone number to inform a user of potential contact with an infected patient.
+
+
+=== Device to device communication protocol ===
+The DDC part of the protocol defines how two devices communicate and log their contact. Each device is in one of two states, Central or Peripheral, on a duty cycle of around 1:4, respectively.
+In Peripheral mode, a device advertises its presence, and in Central mode, it scans for advertising devices. Additionally, certain devices are incapable of operating in Central mode and thus operate purely in Peripheral mode. Once two devices have discovered each other, they communicate a characteristic packet containing information about themselves. The packet is formed as a JSON file, containing the device's TempID, device model, HAI, and BlueTrace protocol version.
+When operating in Central mode, the device additionally sends the strength of the signal, allowing the approximate distance between the two devices to be calculated later. Below is an example Central characteristic packet:
+
+These characteristics are then added to a local database on the device where they are stored for 21 days and can be sent to the reporting server later. The contacted device is also added to a local blacklist for two duty cycles in order to stop two devices repeatedly contacting each other, saving power and storage.
+
+
+== Health authority cooperation ==
+
+The cooperation between separate health authorities is a core component of the BlueTrace protocol, and it is designed such that multiple authorities can work together without revealing personal information to foreign authorities with which a user is not registered. Since each authority maintains its separate encryption key and user records, a health authority can't decrypt and see a foreign user's data.
+To ensure log entries are sent to the correct authority, part of the DDC handshake contains a health authority identifier (HAI), a unique string assigned to registered health authorities. Once a foreign health authority's log entry is identified, the receiving health authority transmits the log entry to the foreign authority's reporting server where it is verified, and a static PseudoID is returned.
+The PseudoID is a salted cryptographic hash of the UserID, designed to allow foreign health authorities to perform statistical analysis on contact logs and communicate about a specific user without revealing unnecessary personal information. Once the PseudoID is assessed to have been in close contact with the infected patient, the foreign health authority that issued the PseudoID is informed and can follow up as necessary.
+
+
+== Withdrawal of consent ==
+The ability of users to withdraw consent to the use and collection of their data at any time was an important consideration in the design of the protocol. To allow this, personally identifiable information is excluded from the DDC component of the protocol. This means the only place personal information is stored is on the reporting server, where it is associated with an anonymous static UserID. This UserID (encrypted in a TempID) is what is used for identification in the DDC part of the protocol. If a user withdraws consent, the user record is deleted from the reporting server, meaning UserIDs obtained through contact logs can no longer be matched to a phone number.
+
+
+== Controversy ==
+One of the largest privacy concerns raised about protocols such as BlueTrace or PEPP-PT is the usage of centralised report processing. In a centralised report processing protocol, a user must upload their entire contact log to a health authority administered server, where the health authority is then responsible for matching the log entries to contact details, ascertaining potential contact, and ultimately warning users of potential contact.
+Alternatively, decentralised report processing protocols, while still having a central reporting server, delegate the responsibility to process logs to clients on the network. Protocols using this approach, such as TCN and DP-3T, have the client upload a number from which encounter tokens can be derived by individual devices. Clients then check these tokens against their local contact logs to determine if they have come in contact with an infected patient. Inherent in the fact the protocol never allows the government access to contact logs, this approach has major privacy benefits. However, this method also presents some issues, primarily the lack of human in the loop reporting, leading to a higher occurrence of false positives; and potential scale issues, as some devices might become overwhelmed with a large number of reports. Decentralised reporting protocols are also less mature than their centralised counterparts.
+
+
+== OpenTrace ==
+OpenTrace is the open-source reference implementation of BlueTrace released under the GPL-3.0 license. The DRSC side of the protocol is implemented using the Firebase platform, using Firebase functions, a serverless computing framework, for all client calls; and Firebase Secret Manager and Storage for storing the encryption key and contact logs respectively. For the app/DDC side of the protocol, a modified version of the TraceTogether app for Android and iOS devices is included.
+
+
+=== COVIDSafe ===
+
+COVIDSafe is a digital contact tracing app announced by the Federal Australian Government based on OpenTrace/BlueTrace, announced on 14 April 2020 to help combat the ongoing COVID-19 pandemic. On 26 April 2020, the Australian federal government publicly released the first version of the app. Within the first 24 hours after release, over 1 million people downloaded the app, and within 48 hours, over 2 million. By the second week, over 4 million users had registered. Accompanying the release, Peter Dutton, the Minister for Home Affairs, announced new legislation that would make it illegal to force anyone to hand over data from the app, even if they had registered and tested positive. The app source code was also released on 8 May 2020, after delays until a review by the Australian Signals Directorate had been completed.
+
+
+== See also ==
+TraceTogether
+TCN Protocol
+Pan-European Privacy-Preserving Proximity Tracing
+(Google/Apple) Exposure Notification (GAEN)
+
+
+== References ==
+
+
+== External links ==
+White paper Archived 20 April 2020 at the Wayback Machine
+OpenTrace GitHub
+BlueTrace homepage Archived 11 April 2020 at the Wayback Machine

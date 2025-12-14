@@ -1,0 +1,116 @@
+IEEE 802.1X is an IEEE Standard for port-based network access control (PNAC). It is part of the IEEE 802.1 group of networking protocols.  It provides an authentication mechanism to devices wishing to attach to a LAN or WLAN.
+The standard directly addresses an attack technique called Hardware Addition where an attacker posing as a guest, customer or staff smuggles a hacking device into the building that they then plug into the network giving them full access. A notable example of the issue occurred in 2005 when a machine attached to Walmart's network hacked thousands of their servers. 
+IEEE 802.1X defines the encapsulation of the Extensible Authentication Protocol (EAP) over wired IEEE 802 networks and over 802.11 wireless networks, which is known as "EAP over LAN" or EAPOL. EAPOL was originally specified for IEEE 802.3 Ethernet, IEEE 802.5 Token Ring, and FDDI (ANSI X3T9.5/X3T12 and ISO 9314) in 802.1X-2001, but was extended to suit other IEEE 802 LAN technologies such as IEEE 802.11 wireless in 802.1X-2004. The EAPOL was also modified for use with IEEE 802.1AE ("MACsec") and IEEE 802.1AR (Secure Device Identity, DevID) in 802.1X-2010 to support service identification and optional point to point encryption over the internal LAN segment. 802.1X is part of the logical link control (LLC) sublayer of the 802 reference model.
+
+
+== Overview ==
+
+802.1X authentication involves three parties: a supplicant, an authenticator, and an authentication server. The supplicant is a client device (such as a laptop) that wishes to attach to the LAN/WLAN. The term 'supplicant' is also used interchangeably to refer to the software running on the client that provides credentials to the authenticator. The authenticator is a network device that provides a data link between the client and the network and can allow or block network traffic between the two, such as an Ethernet switch or wireless access point; and the authentication server is typically a trusted server that can receive and respond to requests for network access, and can tell the authenticator if the connection is to be allowed, and various settings that should apply to that client's connection or setting. Authentication servers typically run software supporting the RADIUS and EAP protocols. In some cases, the authentication server software may be running on the authenticator hardware.
+The authenticator acts like a security guard to a protected network. The supplicant (i.e., client device) is not allowed access through the authenticator to the protected side of the network until the supplicant's identity has been validated and authorized. With 802.1X port-based authentication, the supplicant must initially provide the required credentials to the authenticator - these will have been specified in advance by the network administrator and could include a user name/password or a permitted digital certificate. The authenticator forwards these credentials to the authentication server to decide whether access is to be granted. If the authentication server determines the credentials are valid, it informs the authenticator, which in turn allows the supplicant (client device) to access resources located on the protected side of the network.
+
+
+== Protocol operation ==
+EAPOL operates over the data link layer, and in Ethernet II framing protocol has an EtherType value of 0x888E.
+
+
+=== Port entities ===
+802.1X-2001 defines two logical port entities for an authenticated port—the "controlled port" and the "uncontrolled port". The controlled port is manipulated by the 802.1X PAE (Port Access Entity) to allow (in the authorized state) or prevent (in the unauthorized state) network traffic ingress and egress to/from the controlled port. The uncontrolled port is used by the 802.1X PAE to transmit and receive EAPOL frames.
+802.1X-2004 defines the equivalent port entities for the supplicant; so a supplicant implementing 802.1X-2004 may prevent higher-level protocols from being used if it is not content that authentication has successfully completed. This is particularly useful when an EAP method providing mutual authentication is used, as the supplicant can prevent data leakage when connected to an unauthorized network.
+
+
+=== Typical authentication progression ===
+The typical authentication procedure consists of:
+
+Initialization On detection of a new supplicant, the port on the switch (authenticator) is enabled and set to the "unauthorized" state. In this state, only 802.1X traffic is allowed; other traffic, such as the Internet Protocol (and with that TCP and UDP), is dropped.
+Initiation To initiate authentication the authenticator will periodically transmit EAP-Request Identity frames to a special Layer 2 MAC address (01:80:C2:00:00:03) on the local network segment. The supplicant listens at this address, and on receipt of the EAP-Request Identity frame, it responds with an EAP-Response Identity frame containing an identifier for the supplicant such as a User ID. The authenticator then encapsulates this Identity response in a RADIUS Access-Request packet and forwards it on to the authentication server. The supplicant may also initiate or restart authentication by sending an EAPOL-Start frame to the authenticator, which will then reply with an EAP-Request Identity frame.
+Negotiation (Technically EAP negotiation) The authentication server sends a reply (encapsulated in a RADIUS Access-Challenge packet) to the authenticator, containing an EAP Request specifying the EAP Method (The type of EAP based authentication it wishes the supplicant to perform). The authenticator encapsulates the EAP Request in an EAPOL frame and transmits it to the supplicant. At this point, the supplicant can start using the requested EAP Method, or do a NAK ("Negative Acknowledgement") and respond with the EAP Methods it is willing to perform.
+Authentication If the authentication server and supplicant agree on an EAP Method, EAP Requests and Responses are sent between the supplicant and the authentication server (translated by the authenticator) until the authentication server responds with either an EAP-Success message (encapsulated in a RADIUS Access-Accept packet), or an EAP-Failure message (encapsulated in a RADIUS Access-Reject packet). If authentication is successful, the authenticator sets the port to the "authorized" state and normal traffic is allowed. If it is unsuccessful, the port remains in the "unauthorized" state. When the supplicant logs off, it sends an EAPOL-logoff message to the authenticator, the authenticator then sets the port to the "unauthorized" state, once again blocking all non-EAP traffic.
+
+
+== Implementations ==
+
+An open-source project named Open1X produces a client, Xsupplicant. This client is currently available for both Linux and Windows. The main drawbacks of the Open1X client are that it does not provide comprehensible and extensive user documentation and that most Linux vendors do not provide a package for it.  The more general wpa_supplicant can be used for 802.11 wireless networks and wired networks.  Both support a very wide range of EAP types.
+The iPhone and iPod Touch support 802.1X since the release of iOS 2.0.
+Android has support for 802.1X since the release of 1.6 Donut.
+ChromeOS has supported 802.1X since mid-2011.
+macOS has offered native support since Mac OS X Panther.
+Avenda Systems provides a supplicant for Windows, Linux and macOS.  They also have a plugin for the Microsoft NAP framework. Avenda also offers health checking agents.
+
+
+=== Windows ===
+Windows defaults to not responding to 802.1X authentication requests for 20 minutes after a failed authentication. This can cause significant disruption to clients.
+The block period can be configured using the HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\dot3svc\BlockTime DWORD value (HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\wlansvc\BlockTime for wireless networks) in the registry (entered in minutes).  A hotfix is required for Windows XP SP3 and Windows Vista SP2 to make the period configurable.
+Wildcard server certificates are not supported by EAPHost, the Windows component that provides EAP support in the operating system. The implication of this is that when using a commercial certification authority, individual certificates must be purchased.
+
+
+==== Windows XP ====
+Windows XP has major issues with its handling of IP address changes resulting from user-based 802.1X authentication that changes the VLAN and thus subnet of clients. Microsoft has stated that it will not backport the SSO feature from Vista that resolves these issues.
+If users are not logging in with roaming profiles, a hotfix must be downloaded and installed if authenticating via PEAP with PEAP-MSCHAPv2.
+
+
+==== Windows Vista ====
+Windows Vista-based computers that are connected via an IP phone may not authenticate as expected and, as a result, the client can be placed into the wrong VLAN.  A hotfix is available to correct this.
+
+
+==== Windows 7 ====
+Windows 7 based computers that are connected via an IP phone may not authenticate as expected and, consequently, the client can be placed into the wrong VLAN.  A hotfix is available to correct this.
+Windows 7 does not respond to 802.1X authentication requests after initial 802.1X authentication fails.  This can cause significant disruption to clients.  A hotfix is available to correct this.
+
+
+==== Windows PE ====
+Windows PE does not have native support for 802.1X.  However, support can be added to WinPE 2.1 and WinPE 3.0 through hotfixes that are available from Microsoft.  Although full documentation is not yet available, preliminary documentation for the use of these hotfixes is available via a Microsoft blog.
+
+
+=== Linux ===
+Most Linux distributions support 802.1X via wpa_supplicant and desktop integration like NetworkManager.
+
+
+=== Apple devices ===
+As of iOS 17 and macOS 14, Apple devices support connecting to 802.1X networks using EAP-TLS with TLS 1.3 (EAP-TLS 1.3). Additionally, devices running iOS/iPadOS/tvOS 17 or later support wired 802.1X networks.
+
+
+=== Federations ===
+eduroam (the international roaming service), mandates the use of 802.1X authentication when providing network access to guests visiting from other eduroam-enabled institutions.
+BT (British Telecom, PLC) employs Identity Federation for authentication in services delivered to a wide variety of industries and governments.
+
+
+== Proprietary extensions ==
+
+
+=== MAB (MAC Authentication Bypass) ===
+Not all devices support 802.1X authentication.  Examples include network printers, Ethernet-based electronics like environmental sensors, cameras, and wireless phones. For those devices to be used in a protected network environment, alternative mechanisms must be provided to authenticate them.
+One option would be to disable 802.1X on that port, but that leaves that port unprotected and open for abuse. Another slightly more reliable option is to use the MAB option. When MAB is configured on a port, that port will first try to check if the connected device is 802.1X compliant, and if no reaction is received from the connected device, it will try to authenticate with the AAA server using the connected device's MAC address as username and password. The network administrator then must make provisions on the RADIUS server to authenticate those MAC addresses, either by adding them as regular users or implementing additional logic to resolve them in a network inventory database.
+Many managed Ethernet switches  offer options for this.
+
+
+== Vulnerabilities in 802.1X-2001 and 802.1X-2004 ==
+
+
+=== Shared media ===
+In the summer of 2005, Microsoft's Steve Riley posted an article (based on the original research of Microsoft MVP Svyatoslav Pidgorny) detailing a serious vulnerability in the 802.1X protocol, involving a man-in-the-middle attack. In summary, the flaw stems from the fact that 802.1X authenticates only at the beginning of the connection, but after that authentication, it's possible for an attacker to use the authenticated port if they have the ability to physically insert themselves (perhaps using a workgroup hub) between the authenticated computer and the port. Riley suggests that for wired networks the use of IPsec or a combination of IPsec and 802.1X would be more secure.
+EAPOL-Logoff frames transmitted by the 802.1X supplicant are sent in the clear and contain no data derived from the credential exchange that initially authenticated the client. They are therefore trivially easy to spoof on shared media and can be used as part of a targeted DoS on both wired and wireless LANs. In an EAPOL-Logoff attack, a malicious third party with access to the medium the authenticator is attached to repeatedly sends forged EAPOL-Logoff frames from the target device's MAC Address. The authenticator (believing that the targeted device wishes to end its authentication session) closes the target's authentication session, blocking traffic ingressing from the target, denying it access to the network.
+The 802.1X-2010 specification, which began as 802.1af, addresses vulnerabilities in previous 802.1X specifications, by using MACsec IEEE 802.1AE to encrypt data between logical ports (running on top of a physical port) and IEEE 802.1AR (Secure Device Identity / DevID) authenticated devices.
+As a stopgap, until these enhancements are widely implemented, some vendors have extended the 802.1X-2001 and 802.1X-2004 protocol, allowing multiple concurrent authentication sessions to occur on a single port. While this prevents traffic from devices with unauthenticated MAC addresses ingressing on an 802.1X authenticated port, it will not stop a malicious device snooping on traffic from an authenticated device and provides no protection against MAC spoofing, or EAPOL-Logoff attacks.
+
+
+== Alternatives ==
+The IETF-backed alternative is the Protocol for Carrying Authentication for Network Access (PANA), which also carries EAP, although it works at layer 3, using UDP, thus not being tied to the 802 infrastructure.
+
+
+== See also ==
+AEGIS SecureConnect
+IEEE 802.11i-2004
+
+
+== References ==
+
+
+== External links ==
+IEEE page on 802.1X
+GetIEEE802 Download 802.1X-2020
+GetIEEE802 Download 802.1X-2010
+GetIEEE802 Download 802.1X-2004
+GetIEEE802 Download 802.1X-2001
+Ultimate wireless security guide: Self-signed certificates for your RADIUS server
+WIRE1x Archived 2015-08-22 at the Wayback Machine
+Wired Networking with 802.1X Authentication on Microsoft TechNet

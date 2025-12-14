@@ -1,0 +1,264 @@
+Deep learning speech synthesis  refers to the application of deep learning models to generate natural-sounding human speech from written text (text-to-speech) or spectrum (vocoder). Deep neural networks are trained using large amounts of recorded speech and, in the case of a text-to-speech system, the associated labels and/or input text.
+
+
+== Formulation ==
+Given an input text or some sequence of linguistic units 
+  
+    
+      
+        Y
+      
+    
+    {\displaystyle Y}
+  
+, the target speech 
+  
+    
+      
+        X
+      
+    
+    {\displaystyle X}
+  
+ can be derived by
+
+  
+    
+      
+        X
+        =
+        arg
+        ⁡
+        max
+        P
+        (
+        X
+        
+          |
+        
+        Y
+        ,
+        θ
+        )
+      
+    
+    {\displaystyle X=\arg \max P(X|Y,\theta )}
+  
+
+where 
+  
+    
+      
+        θ
+      
+    
+    {\displaystyle \theta }
+  
+ is the set of model parameters.
+Typically, the input text will first be passed to an acoustic feature generator, then the acoustic features are passed to the neural vocoder. For the acoustic feature generator, the loss function is typically L1 loss (Mean Absolute Error, MAE) or L2 loss (Mean Square Error, MSE). These loss functions impose a constraint that the output acoustic feature distributions must be Gaussian or Laplacian. In practice, since the human voice band ranges from approximately 300 to 4000 Hz, the loss function will be designed to have more penalty on this range:
+
+  
+    
+      
+        l
+        o
+        s
+        s
+        =
+        α
+        
+          
+            loss
+          
+          
+            human
+          
+        
+        +
+        (
+        1
+        −
+        α
+        )
+        
+          
+            loss
+          
+          
+            other
+          
+        
+      
+    
+    {\displaystyle loss=\alpha {\text{loss}}_{\text{human}}+(1-\alpha ){\text{loss}}_{\text{other}}}
+  
+
+where 
+  
+    
+      
+        
+          
+            loss
+          
+          
+            human
+          
+        
+      
+    
+    {\displaystyle {\text{loss}}_{\text{human}}}
+  
+ is the loss from human voice band and 
+  
+    
+      
+        α
+      
+    
+    {\displaystyle \alpha }
+  
+ is a scalar, typically around 0.5. The acoustic feature is typically a spectrogram or Mel scale. These features capture the time-frequency relation of the speech signal, and thus are sufficient to generate intelligent outputs. The Mel-frequency cepstrum feature used in the speech recognition task is not suitable for speech synthesis, as it reduces too much information.
+
+
+== History ==
+
+In September 2016, DeepMind released WaveNet, which demonstrated that deep learning-based models are capable of modeling raw waveforms and generating speech from acoustic features like spectrograms or mel-spectrograms. Although WaveNet was initially considered to be computationally expensive and slow to be used in consumer products at the time, a year after its release, DeepMind unveiled a modified version of WaveNet known as "Parallel WaveNet," a production model 1,000 faster than the original.
+
+This was followed by Google AI's Tacotron 2 in 2018, which demonstrated that neural networks could produce highly natural speech synthesis but required substantial training data—typically tens of hours of audio—to achieve acceptable quality. Tacotron 2 used an autoencoder architecture with attention mechanisms to convert input text into mel-spectrograms, which were then converted to waveforms using a separate neural vocoder. When trained on smaller datasets, such as 2 hours of speech, the output quality degraded while still being able to maintain intelligible speech, and with just 24 minutes of training data, Tacotron 2 failed to produce intelligible speech.
+In 2019, Microsoft Research introduced FastSpeech, which addressed speed limitations in autoregressive models like Tacotron 2. FastSpeech utilized a non-autoregressive architecture that enabled parallel sequence generation, significantly reducing inference time while maintaining audio quality. Its feedforward transformer network with length regulation allowed for one-shot prediction of the full mel-spectrogram sequence, avoiding the sequential dependencies that bottlenecked previous approaches. The same year saw the release of HiFi-GAN, a generative adversarial network (GAN)-based vocoder that improved the efficiency of waveform generation while producing high-fidelity speech. In 2020, the release of Glow-TTS introduced a flow-based approach that allowed for fast inference and voice style transfer capabilities.
+In March 2020, the free text-to-speech website 15.ai was launched. 15.ai gained widespread international attention in early 2021 for its ability to synthesize emotionally expressive speech of fictional characters from popular media with minimal amount of data. The creator of 15.ai (known pseudonymously as 15) stated that 15 seconds of training data is sufficient to perfectly clone a person's voice (hence its name, "15.ai"), a significant reduction from the previously known data requirement of tens of hours. 15.ai is credited as the first platform to popularize AI voice cloning in memes and content creation. 15.ai used a multi-speaker model that enabled simultaneous training of multiple voices and emotions, implemented sentiment analysis using DeepMoji, and supported precise pronunciation control via ARPABET. The 15-second data efficiency benchmark was later corroborated by OpenAI in 2024.
+
+
+== Semi-supervised learning ==
+Currently, self-supervised learning has gained much attention through better use of unlabelled data. Research has shown that, with the aid of self-supervised loss, the need for paired data decreases.
+
+
+== Zero-shot speaker adaptation ==
+Zero-shot speaker adaptation is promising because a single model can generate speech with various speaker styles and characteristic. In June 2018, Google proposed to use pre-trained speaker verification models as speaker encoders to extract speaker embeddings. The speaker encoders then become part of the neural text-to-speech models, so that it can determine the style and characteristics of the output speech. This procedure has shown the community that it is possible to use only a single model to generate speech with multiple styles.
+
+
+== Neural vocoder ==
+
+In deep learning-based speech synthesis, neural vocoders play an important role in generating high-quality speech from acoustic features. The WaveNet model proposed in 2016 achieves excellent performance on speech quality. Wavenet factorised the joint probability of a waveform 
+  
+    
+      
+        
+          x
+        
+        =
+        {
+        
+          x
+          
+            1
+          
+        
+        ,
+        .
+        .
+        .
+        ,
+        
+          x
+          
+            T
+          
+        
+        }
+      
+    
+    {\displaystyle \mathbf {x} =\{x_{1},...,x_{T}\}}
+  
+ as a product of conditional probabilities as follows
+
+  
+    
+      
+        
+          p
+          
+            θ
+          
+        
+        (
+        
+          x
+        
+        )
+        =
+        
+          ∏
+          
+            t
+            =
+            1
+          
+          
+            T
+          
+        
+        p
+        (
+        
+          x
+          
+            t
+          
+        
+        
+          |
+        
+        
+          x
+          
+            1
+          
+        
+        ,
+        .
+        .
+        .
+        ,
+        
+          x
+          
+            t
+            −
+            1
+          
+        
+        )
+      
+    
+    {\displaystyle p_{\theta }(\mathbf {x} )=\prod _{t=1}^{T}p(x_{t}|x_{1},...,x_{t-1})}
+  
+
+where 
+  
+    
+      
+        θ
+      
+    
+    {\displaystyle \theta }
+  
+ is the model parameter including many dilated convolution layers. Thus, each audio sample 
+  
+    
+      
+        
+          x
+          
+            t
+          
+        
+      
+    
+    {\displaystyle x_{t}}
+  
+ is conditioned on the samples at all previous timesteps. However, the auto-regressive nature of WaveNet makes the inference process dramatically slow. To solve this problem, Parallel WaveNet was proposed. Parallel WaveNet is an inverse autoregressive flow-based model which is trained by knowledge distillation with a pre-trained teacher WaveNet model. Since such inverse autoregressive flow-based models are non-auto-regressive when performing inference, the inference speed is faster than real-time. Meanwhile, Nvidia proposed a flow-based WaveGlow model, which can also generate speech faster than real-time. However, despite the high inference speed, parallel WaveNet has the limitation of needing a pre-trained WaveNet model, so that WaveGlow takes many weeks to converge with limited computing devices. This issue has been solved by Parallel WaveGAN, which learns to produce speech through multi-resolution spectral loss and GAN learning strategies.
+
+
+== References ==

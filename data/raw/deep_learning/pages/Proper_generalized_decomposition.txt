@@ -1,0 +1,330 @@
+The proper generalized decomposition (PGD) is an iterative numerical method for solving boundary value problems (BVPs), that is, partial differential equations constrained by a set of boundary conditions, such as the Poisson's equation or the Laplace's equation.
+The PGD algorithm computes an approximation of the solution of the BVP by successive enrichment. This means that, in each iteration, a new component (or mode) is computed and added to the approximation. In principle, the more modes obtained, the closer the approximation is to its theoretical solution. Unlike POD principal components, PGD modes are not necessarily orthogonal to each other.
+By selecting only the most relevant PGD modes, a reduced order model of the solution is obtained. Because of this, PGD is considered a dimensionality reduction algorithm.
+
+
+== Description ==
+The proper generalized decomposition is a method characterized by 
+
+a variational formulation of the problem,
+a discretization of the domain in the style of the finite element method,
+the assumption that the solution can be approximated as a separate representation and
+a numerical greedy algorithm to find the solution.
+
+
+=== Variational formulation ===
+In the Proper Generalized Decomposition method, the variational formulation involves translating the problem into a format where the solution can be approximated by minimizing (or sometimes maximizing) a functional. A functional is a scalar quantity that depends on a function, which in this case, represents our problem.
+The most commonly implemented variational formulation in PGD is the Bubnov-Galerkin method. This method is chosen for its ability to provide an approximate solution to complex problems, such as those described by partial differential equations (PDEs). In the Bubnov-Galerkin approach, the idea is to project the problem onto a space spanned by a finite number of basis functions. These basis functions are chosen to approximate the solution space of the problem.
+In the Bubnov-Galerkin method, we seek an approximate solution that satisfies the integral form of the PDEs over the domain of the problem. This is different from directly solving the differential equations. By doing so, the method transforms the problem into finding the coefficients that best fit this integral equation in the chosen function space.
+While the Bubnov-Galerkin method is prevalent, other variational formulations are also used in PGD, depending on the specific requirements and characteristics of the problem, such as:
+
+Petrov-Galerkin Method: This method is similar to the Bubnov-Galerkin approach but differs in the choice of test functions. In the Petrov-Galerkin method, the test functions (used to project the residual of the differential equation) are different from the trial functions (used to approximate the solution). This can lead to improved stability and accuracy for certain types of problems.
+Collocation Method: In collocation methods, the differential equation is satisfied at a finite number of points in the domain, known as collocation points. This approach can be simpler and more direct than the integral-based methods like Galerkin's, but it may also be less stable for some problems.
+Least Squares Method: This approach involves minimizing the square of the residual of the differential equation over the domain. It is particularly useful when dealing with problems where traditional methods struggle with stability or convergence.
+Mixed Finite Element Method: In mixed methods, additional variables (such as fluxes or gradients) are introduced and approximated along with the primary variable of interest. This can lead to more accurate and stable solutions for certain problems, especially those involving incompressibility or conservation laws.
+Discontinuous Galerkin Method: This is a variant of the Galerkin method where the solution is allowed to be discontinuous across element boundaries. This method is particularly useful for problems with sharp gradients or discontinuities.
+
+
+=== Domain discretization ===
+The discretization of the domain is a well defined set of procedures that cover (a) the creation of finite element meshes, (b) the definition of basis function on reference elements (also called shape functions) and (c) the mapping of reference elements onto the elements of the mesh.
+
+
+=== Separate representation ===
+PGD assumes that the solution u of a (multidimensional) problem can be approximated as a separate representation of the form
+
+  
+    
+      
+        
+          u
+        
+        ≈
+        
+          
+            u
+          
+          
+            N
+          
+        
+        (
+        
+          x
+          
+            1
+          
+        
+        ,
+        
+          x
+          
+            2
+          
+        
+        ,
+        …
+        ,
+        
+          x
+          
+            d
+          
+        
+        )
+        =
+        
+          ∑
+          
+            i
+            =
+            1
+          
+          
+            N
+          
+        
+        
+          
+            
+              X
+              
+                1
+              
+            
+          
+          
+            i
+          
+        
+        (
+        
+          x
+          
+            1
+          
+        
+        )
+        ⋅
+        
+          
+            
+              X
+              
+                2
+              
+            
+          
+          
+            i
+          
+        
+        (
+        
+          x
+          
+            2
+          
+        
+        )
+        ⋯
+        
+          
+            
+              X
+              
+                d
+              
+            
+          
+          
+            i
+          
+        
+        (
+        
+          x
+          
+            d
+          
+        
+        )
+        ,
+      
+    
+    {\displaystyle \mathbf {u} \approx \mathbf {u} ^{N}(x_{1},x_{2},\ldots ,x_{d})=\sum _{i=1}^{N}\mathbf {X_{1}} _{i}(x_{1})\cdot \mathbf {X_{2}} _{i}(x_{2})\cdots \mathbf {X_{d}} _{i}(x_{d}),}
+  
+
+where the number of addends N and the functional products X1(x1), X2(x2), ..., Xd(xd), each depending on a variable (or variables), are unknown beforehand.
+
+
+=== Greedy algorithm ===
+The solution is sought by applying a greedy algorithm, usually the fixed point algorithm, to the weak formulation of the problem. For each iteration i of the algorithm, a mode of the solution is computed. Each mode consists of a set of numerical values of the functional products X1(x1), ..., Xd(xd), which enrich the approximation of the solution. Due to the greedy nature of the algorithm, the term 'enrich' is used rather than 'improve', since some modes may actually worsen the approach. The number of computed modes required to obtain an approximation of the solution below a certain error threshold depends on the stopping criterion of the iterative algorithm.
+
+
+== Features ==
+PGD is suitable for solving high-dimensional problems, since it overcomes the limitations of classical approaches. In particular, PGD avoids the curse of dimensionality, as solving decoupled problems is computationally much less expensive than solving multidimensional problems.
+Therefore, PGD enables to re-adapt parametric problems into a multidimensional framework by setting the parameters of the problem as extra coordinates:
+
+  
+    
+      
+        
+          u
+        
+        ≈
+        
+          
+            u
+          
+          
+            N
+          
+        
+        (
+        
+          x
+          
+            1
+          
+        
+        ,
+        …
+        ,
+        
+          x
+          
+            d
+          
+        
+        ;
+        
+          k
+          
+            1
+          
+        
+        ,
+        …
+        ,
+        
+          k
+          
+            p
+          
+        
+        )
+        =
+        
+          ∑
+          
+            i
+            =
+            1
+          
+          
+            N
+          
+        
+        
+          
+            
+              X
+              
+                1
+              
+            
+          
+          
+            i
+          
+        
+        (
+        
+          x
+          
+            1
+          
+        
+        )
+        ⋯
+        
+          
+            
+              X
+              
+                d
+              
+            
+          
+          
+            i
+          
+        
+        (
+        
+          x
+          
+            d
+          
+        
+        )
+        ⋅
+        
+          
+            
+              K
+              
+                1
+              
+            
+          
+          
+            i
+          
+        
+        (
+        
+          k
+          
+            1
+          
+        
+        )
+        ⋯
+        
+          
+            
+              K
+              
+                p
+              
+            
+          
+          
+            i
+          
+        
+        (
+        
+          k
+          
+            p
+          
+        
+        )
+        ,
+      
+    
+    {\displaystyle \mathbf {u} \approx \mathbf {u} ^{N}(x_{1},\ldots ,x_{d};k_{1},\ldots ,k_{p})=\sum _{i=1}^{N}\mathbf {X_{1}} _{i}(x_{1})\cdots \mathbf {X_{d}} _{i}(x_{d})\cdot \mathbf {K_{1}} _{i}(k_{1})\cdots \mathbf {K_{p}} _{i}(k_{p}),}
+  
+
+where a series of functional products K1(k1), K2(k2), ..., Kp(kp), each depending on a parameter (or parameters), has been incorporated to the equation.
+In this case, the obtained approximation of the solution is called computational vademecum: a general meta-model containing all the particular solutions for every possible value of the involved parameters.
+
+
+== Sparse Subspace Learning ==
+
+The Sparse Subspace Learning (SSL) method leverages the use of hierarchical collocation to approximate the numerical solution of parametric models. With respect to traditional projection-based reduced order modeling, the use of a collocation enables non-intrusive approach based on sparse adaptive sampling of the parametric space. This allows to recover the lowdimensional structure of the parametric solution subspace while also learning the functional dependency from the parameters in explicit form. A sparse low-rank approximate tensor representation of the parametric solution can be built through an incremental strategy that only needs to have access to the output of a deterministic solver. Non-intrusiveness makes this approach straightforwardly applicable to challenging problems characterized by nonlinearity or non affine weak forms.
+
+
+== References ==

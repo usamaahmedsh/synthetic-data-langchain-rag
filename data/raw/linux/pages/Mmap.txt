@@ -1,0 +1,60 @@
+In computing, mmap(2) is a POSIX-compliant Unix system call that maps files or devices into memory. It is a method of memory-mapped file I/O. It implements demand paging because file contents are not immediately read from disk and initially use no physical RAM at all. The actual reads from disk are performed after a specific location is accessed, in a lazy manner. After the mapping is no longer needed, the pointers must be unmapped with munmap(2). Protection information—for example, marking mapped regions as executable—can be managed using mprotect(2), and special treatment can be enforced using madvise(2).
+In Linux, macOS and the BSDs, mmap can create several types of mappings. Other operating systems may only support a subset of these; for example, shared mappings may not be practical in an operating system without a global VFS or I/O cache.
+
+
+== History ==
+The original design of memory-mapped files came from the TOPS-20 operating system. mmap and associated systems calls were designed as part of the Berkeley Software Distribution (BSD) version of Unix. Their API was already described in the 4.2BSD System Manual, even though it was neither implemented in that release, nor in 4.3BSD. Sun Microsystems had implemented this API, though, in the 4.0 release of their SunOS operating system. The BSD developers at University of California, Berkeley unsuccessfully requested Sun to donate its implementation; 4.3BSD-Reno was instead shipped with an implementation based on the virtual memory system of Mach.
+
+
+== File-backed and anonymous ==
+File-backed mapping maps an area of the process's virtual memory to files; that is, reading those areas of memory causes the file to be read. It is the default mapping type.
+Anonymous mapping maps an area of the process's virtual memory not backed by any file, made available via the MAP_ANONYMOUS/MAP_ANON flags. The contents are initialized to zero. In this respect an anonymous mapping is similar to malloc, and is used in some malloc implementations for certain allocations, particularly large ones.
+
+
+== Memory visibility ==
+If the mapping is shared (the MAP_SHARED flag is set), then it is preserved when a process is forked (using a fork(2) system call). Therefore, writes to a mapped area in one process are immediately visible in all related (parent, child or sibling) processes. If the mapping is shared and backed by a file (not MAP_ANONYMOUS) the underlying file medium is only guaranteed to be written after it is passed to the msync(2) system call. In contrast, if the mapping is private (the MAP_PRIVATE flag is set), the changes will neither be seen by other processes nor written to the file.
+A process reading from, or writing to, the underlying file will not always see the same data as a different process that has mapped the file, since segments of the file are copied into RAM and only periodically flushed to disk. Synchronization can be forced with a call to msync(2).
+Using mmap on files can significantly reduce memory overhead for applications accessing the same file; they can share the memory area the file encompasses, instead of loading the file for each application that wants access to it. This means that mmap(2) is sometimes used for Interprocess Communication (IPC). On modern operating systems, mmap(2) is typically preferred to the System V IPC Shared Memory facility.
+The main difference between System V shared memory (shmem) and memory mapped I/O (mmap) is that System V shared memory is persistent: unless explicitly removed by a process, it is kept in memory and remains available until the system is shut down. mmap'd memory is not persistent between application executions (unless it is backed by a file).
+
+
+== Example of usage under the C programming language ==
+
+sample output:
+
+PID 22475:      anonymous string 1, zero-backed string 1
+PID 22476:      anonymous string 1, zero-backed string 1
+PID 22475:      anonymous string 2, zero-backed string 2
+PID 22476:      anonymous string 2, zero-backed string 2
+
+
+== Usage in database implementations ==
+The mmap system call has been used in various database implementations as an alternative for implementing a buffer pool, although this created a different set of problems that could realistically only be fixed using a buffer pool.
+
+
+== See also ==
+Virtual memory for when there is more address space than physical memory
+Paging for the implementation of virtual memory
+Page cache for a disk caching mechanism utilized by mmap
+Demand paging for a scheme implemented by mmap
+
+
+== References ==
+
+
+== Further reading ==
+Description from POSIX standard
+Differences:
+DragonFly BSD
+FreeBSD
+NetBSD
+OpenBSD
+illumos
+Mac OS X
+Solaris
+HP-UX
+QNX
+Windows
+MapViewOfFile win32 function is somewhat equivalent to mmap.
+More example source code:
+SharedHashFile, An open source, shared memory hash table implemented using mmap().

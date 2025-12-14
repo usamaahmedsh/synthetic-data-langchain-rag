@@ -1,0 +1,162 @@
+GNU GRUB (short for GNU GRand Unified Bootloader, commonly referred to as GRUB) is a boot loader package from the GNU Project. GRUB is the reference implementation of the Free Software Foundation's Multiboot Specification, which provides a user the choice to boot one of multiple operating systems installed on a computer set up for multi-booting or select a specific kernel configuration available on a particular operating system's partitions.
+GNU GRUB was developed from a package called the Grand Unified Bootloader (a play on Grand Unified Theory). It is predominantly used for Unix-like systems.
+
+
+== Operation ==
+
+
+=== Booting ===
+
+When a computer is turned on, its BIOS finds the primary bootable device (usually the computer's hard disk) and runs the initial bootstrap program from the master boot record (MBR). The MBR is the first sector of the hard disk. This bootstrap program must be small because it has to fit in a single sector. For a long time, the size of a sector has been 512 bytes. Since 2009 there are hard disks available with a sector size of 4096 bytes, called Advanced Format disks, but as of October 2013, such hard disks are still accessed in 512-byte sectors, using the 512e emulation.
+The legacy MBR partition table supports a maximum of four partitions and occupies 64 bytes, combined. Together with the optional disk signature (four bytes) and disk timestamp (six bytes), this leaves between 434 and 446 bytes available for the machine code of a boot loader. Although such a small space can be sufficient for very simple boot loaders, it is not big enough to contain a boot loader supporting complex and multiple file systems, menu-driven selection of boot choices, etc. Boot loaders with bigger footprints are therefore split into pieces, where the smallest piece fits in the MBR, while one or more larger pieces are stored in other locations such as empty sectors between the MBR and the first partition. The code in the MBR then does little more than starting the second part.
+The purpose of the remaining part(s) of the boot loader is to actually boot an operating system by configuring it and starting the kernel. Kernels are in most cases stored as files residing on appropriate file systems, but the concept of a file system is unknown to the BIOS. Thus, in BIOS-based systems, the duty of a boot loader is to access the content of those files, so it can be loaded into the RAM and executed.
+One possible approach for boot loaders is to load kernel images by directly accessing hard disk sectors without understanding the underlying file system. Usually, an additional level of indirection is required, in form of maps or map files –  auxiliary files that contain a list of physical sectors occupied by kernel images. Such maps need to be updated each time a kernel image changes its physical location on disk, due to installing new kernel images, file system defragmentation, etc. Also, in case of the maps changing their physical location, their locations need to be updated within the boot loader's MBR code, so the sectors indirection mechanism continues to work. This is not only cumbersome, but it also leaves the system in need of manual repairs in case something goes wrong during system updates.
+Another approach is to make a boot loader aware of the underlying file systems, so kernel images are configured and accessed using their actual file paths. That requires a boot loader to contain a driver for each of the supported file systems, so they can be understood and accessed by the boot loader itself. This approach eliminates the need for hardcoded locations of hard disk sectors and existence of map files, and does not require MBR updates after kernel images are added or moved around. The configuration of a boot loader is stored in a regular file, which is also accessed in a file system-aware way to obtain boot configurations before the actual booting of any kernel images. Thus, fewer things can go wrong during system updates. As a downside, such boot loaders are larger and more complex.
+GNU GRUB uses the second approach, by understanding the underlying file systems. The boot loader itself is split into multiple stages so that it fits in the MBR boot scheme.
+Two major versions of GRUB are in common use: GRUB version 0, called GRUB legacy, is only prevalent in older releases of Linux distributions. GRUB 2 was written from scratch and intended to replace its predecessor, and is now used by a majority of Linux distributions.
+
+
+=== Version 0 (GRUB Legacy) ===
+
+GRUB 0.x follows a two-stage approach. The master boot record (MBR) usually contains GRUB stage 1, or can contain a standard MBR implementation which chainloads GRUB stage 1 from the active partition's boot sector. Given the small size of a boot sector (512 bytes), stage 1 can do little more than load the next stage of GRUB by loading a few disk sectors from a fixed location near the start of the disk (within its first 1024 cylinders).
+Stage 1 can load stage 2 directly, but it is normally set up to load the stage 1.5., located in the first 30 KiB of hard disk immediately following the MBR and before the first partition. In case this space is not available (unusual partition table, special disk drivers, GPT or LVM disk) the install of stage 1.5 will fail. The stage 1.5 image contains file system drivers, enabling it to directly load stage 2 from any known location in the filesystem, for example from /boot/grub. Stage 2 will then load the default configuration file and any other modules needed.
+
+
+=== Version 2 (GRUB 2) ===
+
+
+==== Startup on systems using BIOS firmware ====
+See illustration in last image on the right.
+boot.img (stage 1) is written to the first 440 bytes of the Master Boot Record (MBR boot code in sector 0), or optionally in a partition boot sector (PBR). It addresses diskboot.img by a 64-bit  LBA address. The actual sector number is written by grub-install. diskboot.img is the first sector of core.img with the sole purpose to load the rest of core.img identified by LBA sector numbers also written by grub-install.
+On MBR partitioned disks, core.img (stage 1.5) is stored in the empty sectors (if available) between the MBR and the first partition. Recent operating systems suggest a 1 MiB gap here for alignment (2047 512-byte, or 255 4KiB, sectors). This gap used to be 62 sectors (31 KiB) as a reminder of the sector number limit of Cylinder-Head-Sector (C/H/S) addressing used by BIOS before 1996, therefore core.img is designed to be smaller than 32 KiB.
+On GPT partitioned disks core.img is written to its own partition which must be flagged "BIOS_grub", must not be formatted and can be as tiny as 1 MiB.
+stage 2: core.img loads /boot/grub/i386-pc/normal.mod from the partition configured by grub-install. If the partition index has changed, GRUB will be unable to find the normal.mod, and presents the user with the GRUB Rescue prompt.
+Depending on how GRUB2 was installed, the /boot/grub/ is either in the root partition of the Linux distribution, or in the separate /boot partition.
+after normal.mod loaded: normal.mod parses /boot/grub/grub.cfg, optionally loads modules (eg. for graphical UI and file system support) and shows the menu.
+
+
+==== Startup on systems using UEFI firmware ====
+/efi/<distro>/grubx64.efi (for x64 UEFI systems) is installed as a file in the EFI System Partition, and booted by the firmware directly, without a boot.img in MBR sector 0. This file is like stage1 and stage1.5.
+/boot/grub/ can be installed on the EFI System Partition or the separate /boot partition, among others.
+For x64 UEFI systems, stage2 are the /boot/grub/x86_64-efi/normal.mod file and other /boot/grub/ files.
+
+
+==== After startup ====
+GRUB presents a menu where the user can choose from operating systems (OS) found by grub-install. GRUB can be configured to automatically load a specified OS after a user-defined timeout. If the timeout is set to zero seconds, pressing and holding ⇧ Shift, or in some modern GRUB versions loaded using UEFI, pressing Esc rapidly while the computer is booting makes it possible to access the boot menu.
+In the operating system selection menu GRUB accepts a couple of commands:
+
+By pressing e, it is possible to edit kernel parameters of the selected menu item before the operating system is started. The reason for doing this in GRUB (i.e. not editing the parameters in an already booted system) can be an emergency case: the system has failed to boot. Using the kernel parameters line it is possible, among other things, to specify a module to be disabled (blacklisted) for the kernel. This could be required if the specific kernel module is broken and thus prevents boot-up. For example, to blacklist the kernel module nvidia-current, one could append modprobe.blacklist=nvidia-current at the end of the kernel parameters.
+By pressing c, the user enters the GRUB command line. The GRUB command line resembles GNU Bash, but only implements a subset of the line editing functions and GRUB-specific commands.
+Once boot options have been selected, GRUB loads the selected kernel into memory and passes control to the kernel. Alternatively, GRUB can pass control of the boot process to another boot loader, using chain loading. This is the method used to load operating systems that do not support the Multiboot Specification or are not supported directly by GRUB.
+
+
+=== Identifying partitions (UUID workaround) ===
+A computer can have multiple hard disks connected to it. These could be identified via their SATA port. Each time the computer POSTs, the hard disk connected to a specific motherboard port could be assigned the same identifier, for example hd0, hd1, …. But what if such consistency cannot be guaranteed? What if the constellation of connected hard disks changed from one start up to another? What if a hard disk will be connected to another computer?
+By entering ls into either the GRUB rescue console (available after loading core.img ) or the GRUB console (available after loading normal.mod) a list of all available hard disks and partitions can be obtained. For example, ls (hd0,5)/) will show numbers that can be assigned to actual hard disks and partitions.
+As it cannot be guaranteed that the "hd0"style numbering of hard disks via device numbers is consistent, GNU GRUB can use a Universally Unique Identifier (UUID) to identify partitions (actually file system instances).
+The file systems ext2, ext3, ext4 and xfs use a UUID to uniquely identify an instance. The UUID is created when a partition is formatted. The UUID is part of the file system and written to the superblock. All operations other than formatting should leave the UUID unaltered. It is possible to change the UUID or duplicate it by using dd to clone an entire partition.
+The file grub.cfg is used to configure GRUB. It contains commands to be executed during each start-up. Without an existing and valid grub.cfg, GRUB will present a prompt.
+An absolute minimal grub.cfg might contain only the following two commands (cf. initial ramdisk):
+
+linux (hd0,1)/kernel/vmlinuz-3.20.1-4 ro  # use the file name "vmlinuz-…" located in the directory /kernel on the first partition of the first hard disk as linux kernel image
+initrd (hd0,1)/boot/initrd.img-3.20.1-4   # use the file named "initrd.img–…" located in the directory /boot on the first partition of the first hard disk as initial ramdisk
+
+A fancier grub.cfg will describe a menu to be presented, use multiple colors, and may specify a background picture.
+
+
+== History ==
+GRUB was initially developed by Erich Boleyn as part of work on booting the operating system GNU/Hurd, developed by the Free Software Foundation. In 1999, Gordon Matzigkeit and Yoshinori K. Okuji made GRUB an official software package of the GNU Project and opened the development process to the public. As of 2014, the majority of Linux distributions have adopted GNU GRUB 2.
+
+
+=== Development ===
+GRUB version 0 (also known as "GRUB Legacy") is no longer under development and is being phased out. The GNU GRUB developers have switched their focus to GRUB 2, a complete rewrite with goals including making GNU GRUB cleaner, more robust, more portable and more powerful. GRUB 2 started under the name PUPA. PUPA was supported by the Information-technology Promotion Agency (IPA) in Japan. PUPA was integrated into GRUB 2 development around 2002, when GRUB version 0.9x was renamed GRUB Legacy.
+Some of the goals of the GRUB 2 project include support for non-x86 platforms, internationalization and localization, non-ASCII characters, dynamic modules, memory management, a scripting mini-language, migrating platform specific (x86) code to platform specific modules, and an object-oriented framework. GNU GRUB version 2.00 was officially released on June 26, 2012.
+Three of the most widely used Linux distributions use GRUB 2 as their mainstream boot loader. Ubuntu adopted it as the default boot loader in its 9.10 version of October 2009. Fedora followed suit with Fedora 16 released in November 2011. OpenSUSE adopted GRUB 2 as the default boot loader with its 12.2 release of September 2012. Solaris also adopted GRUB 2 on the x86 platform in the Solaris 11.1 release. Buildroot also uses GNU GRUB for x86 and x86_64 targets.
+In late 2015, the exploit of pressing backspace 28 times to bypass the login password was found and quickly fixed.
+
+
+=== Variants ===
+GNU GRUB is free software, so several variants have been created. Some notable ones, which have not been merged into GRUB mainline:
+
+OpenSolaris includes a modified GRUB Legacy that supports Solaris VTOC slices, automatic 64-bit kernel selection, and booting from ZFS (with compression and multiple boot environments).
+Google Summer of Code 2008 had a project to support GRUB legacy to boot from ext4 formatted partitions.
+The Syllable project made a modified version of GRUB to load the system from its AtheOS File System.
+TrustedGRUB extends GRUB by implementing verification of the system integrity and boot process security, using the Trusted Platform Module (TPM).
+The Intel BIOS Implementation Test Suite (BITS) provides a GRUB environment for testing BIOSes and in particular their initialization of Intel processors, hardware, and technologies. BITS supports scripting via Python, and includes Python APIs to access various low-level functionality of the hardware platform, including ACPI, CPU and chipset registers, PCI, and PCI Express.
+GRUB4DOS is a GRUB legacy fork that improves the installation experience on DOS and Microsoft Windows by putting everything besides the GRLDR config in one image file. It can be loaded directly from DOS, or by NTLDR or Windows Boot Manager. GRUB4DOS is under active development and as of 2021 supports UEFI.
+
+
+== Utilities ==
+
+
+=== GRUB configuration tools ===
+
+The setup tools in use by various distributions often include modules to set up GRUB. For example, YaST2 on SUSE Linux and openSUSE distributions and Anaconda on Fedora/RHEL distributions. StartUp-Manager and GRUB Customizer are graphical configuration editors for Debian-based distributions. The development of StartUp-Manager stopped on 6 May 2011 after the lead developer cited personal reasons for not actively developing the program. GRUB Customizer is also available for Arch-based distributions.
+For GRUB 2 there are KDE Control Modules.
+GRLDR ICE is a tiny tool for modifying the default configuration of grldr file for GRUB4DOS.
+
+
+=== Boot repair utilities ===
+Boot-Repair is a simple graphical tool for recovering from frequent boot-related problems with GRUB and Microsoft Windows bootloader. This application is available under GNU GPL license. Boot-Repair can repair GRUB on multiple Linux distributions including, but not limited to, Debian, Ubuntu, Mint, Fedora, openSUSE, and Arch Linux.
+
+
+=== Installer for Windows ===
+Grub2Win is a Windows open-source software package. It allows GNU GRUB to boot from a Windows directory. The setup program installs GNU GRUB version 2.12 to an NTFS partition. A Windows GUI application is then used to customize the GRUB boot menu, themes, UEFI boot order, scripts etc. All GNU GRUB scripts and commands are supported for both UEFI and legacy systems. Grub2Win can configure GRUB for multiboot of Windows, Ubuntu, openSuse, Fedora and many other Linux distributions. It is freely available under GNU GPL License at SourceForge.
+
+
+== Alternative boot managers ==
+
+The strength of GRUB is the wide range of supported platforms, file systems, and operating systems, making it the default choice for distributions and embedded systems.
+However, there are boot managers targeted at the end user that give more friendly user experience, graphical OS selector and simpler configuration:
+
+rEFInd – Macintosh-style graphical boot manager, only for UEFI-based computers (BIOS not supported).
+CloverEFI – Macintosh-style graphical boot manager for BIOS and UEFI-based computers. It emulates UEFI with a heavily modified DUET from the TianoCore project and requires a FAT formatted partition even on BIOS systems. As a benefit, it has a basic filesystem driver in the partition boot sector, avoiding the brittleness of a second or third stage and the infamous GRUB Rescue prompt. The user interface looks similar to rEFInd: both inherit from the abandoned boot manager rEFIt.
+Non-graphical alternatives:
+
+systemd-boot – Light, UEFI-only boot manager with text-based OS selector menu.
+
+
+== External links ==
+
+
+=== How-Tos and troubleshooting ===
+Distribution wikis have many solutions for common issues and custom setups that might help you:
+
+Arch Linux /GRUB
+Ubuntu /Grub2 (also see Links at the bottom)
+Fedora /GRUB_2
+Gentoo /GRUB2
+Grub2 theme tutorial Archived June 7, 2021, at the Wayback Machine
+
+
+=== Documentation ===
+GRUB manual – most detailed documentation, including all commands
+Official website 
+GRUB wiki archived in 2010
+
+
+=== Introductory articles ===
+Boot with GRUB, an April 2001 article in Linux Journal
+
+
+=== Technicalities ===
+Booting Linux on x86 using Grub2 – in-depth article
+Unified Extensible Firmware Interface (UEFI firmware, common since 2012)
+GUID Partition Table (GPT) – handles hard drives bigger than 2 TiB and more than 4 partitions
+Master boot record used with BIOS firmware (motherboards roughly before 2012)
+BIOS Boot Specification Version 1.01 (January 11, 1996) – hard to find
+
+
+== See also ==
+
+SysLinux (IsoLinux) – commonly used bootloader on CDs, DVDs
+BOOTMGR – current Windows bootloader
+NTLDR - previous Windows bootloader, used before Windows Vista
+rEFInd - alternative boot loader for UEFI-based computers
+Comparison of bootloaders
+
+
+== Notes ==
+
+
+== References ==

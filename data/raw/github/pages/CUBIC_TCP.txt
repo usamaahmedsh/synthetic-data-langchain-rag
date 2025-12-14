@@ -1,0 +1,125 @@
+CUBIC is a network congestion avoidance algorithm for TCP which can achieve high bandwidth connections over networks more quickly and reliably in the face of high latency than earlier algorithms. It helps optimize long fat networks.
+In 2006, the first CUBIC implementation was released in Linux kernel 2.6.13. Since kernel version 2.6.19, CUBIC replaces BIC-TCP as the default TCP congestion control algorithm in the Linux kernel.
+MacOS adopted TCP CUBIC with the OS X Yosemite release in 2014, while the previous release OS X Mavericks still used TCP New Reno.
+Microsoft adopted it by default in Windows 10.1709 Fall Creators Update (2017), and Windows Server 2016 1709 update.
+
+
+== Characteristics ==
+CUBIC is a less aggressive and more systematic derivative of BIC TCP, in which the window size is a cubic function of time since the last congestion event, with the inflection point set to the window size prior to the event. Because it is a cubic function, there are two components to window growth. The first is a concave portion where the window size quickly ramps up to the size before the last congestion event. Next is the convex growth where CUBIC probes for more bandwidth, slowly at first then very rapidly. CUBIC spends a lot of time at a plateau between the concave and convex growth region which allows the network to stabilize before CUBIC begins looking for more bandwidth.
+Another major difference between CUBIC and many earlier TCP algorithms is that it does not rely on the cadence of RTTs to increase the window size. CUBIC's window size is dependent only on the last congestion event. With earlier algorithms like TCP New Reno, flows with very short round-trip delay times (RTTs) will receive ACKs faster and therefore have their congestion windows grow faster than other flows with longer RTTs. CUBIC allows for more fairness between flows since the window growth is independent of RTT.
+This RTT-independence is particularly important in modern data centers and cloud environments where flows may traverse paths with vastly different round-trip times. Studies have shown that in networks with mixed RTT flows, CUBIC achieves up to 3-5 times better fairness compared to traditional loss-based algorithms like Reno. The RTT-fairness property makes CUBIC especially suitable for Content Delivery Networks (CDNs) and distributed systems where servers at different geographical locations communicate with clients simultaneously.
+
+
+== Algorithm ==
+CUBIC increases its window to be real-time dependent, not RTT dependent like BIC. The calculation for cwnd (congestion window) is simpler than BIC, too.
+Define the following variables:
+
+β:     Multiplicative decrease factor
+wmax:   Window size just before the last reduction
+T:     Time elapsed since the last window reduction
+C:     A scaling constant
+cwnd:  The congestion window at the current time
+RFC 8312 indicates the following:
+
+The unit of all window sizes in this document is segments of the maximum segment size (MSS), and the unit of all times is seconds. (Section 4)
+β SHOULD be set to 0.7 (Section 4.5)
+C SHOULD be set to 0.4 (Section 5)
+Then cwnd can be modeled by:
+
+  
+    
+      
+        
+          
+            
+              
+                c
+                w
+                n
+                d
+                 
+                =
+                 
+                C
+                (
+                T
+                −
+                K
+                
+                  )
+                  
+                    3
+                  
+                
+                +
+                
+                  w
+                  
+                    m
+                    a
+                    x
+                  
+                
+              
+            
+            
+              
+                
+                  
+                    where
+                  
+                
+                 
+                K
+                =
+                
+                  
+                    
+                      
+                        
+                          w
+                          
+                            m
+                            a
+                            x
+                          
+                        
+                        (
+                        1
+                        −
+                        β
+                        )
+                      
+                      C
+                    
+                    
+                      3
+                    
+                  
+                
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{array}{lcr}cwnd\ =\ C(T-K)^{3}+w_{max}\\{\textrm {where}}\ K={\sqrt[{3}]{\frac {w_{max}(1-\beta )}{C}}}\end{array}}}
+  
+
+
+== Alternatives ==
+Apart from window based algorithms like Cubic, there are rate based algorithms (including TCP BBR from Google) that works differently using "sending rate" instead of the window. Unlike CUBIC, which relies primarily on packet loss as a congestion signal, BBR uses a model-based approach that estimates the available bandwidth and minimum RTT of the network path. BBR operates by cycling through four states: STARTUP, DRAIN, PROBE_BW, and PROBE_RTT, continuously measuring and adapting to network conditions. The fundamental difference in approach means that BBR can achieve higher throughput in networks with shallow buffers or where random packet loss occurs (such as wireless networks), as it doesn't interpret all losses as congestion signals. However, studies have shown that when BBR flows compete with CUBIC flows, BBR can be more aggressive and may dominate bandwidth allocation. 
+
+
+== See also ==
+TCP congestion avoidance algorithm
+Transmission Control Protocol § Development
+SCTP
+Compound TCP
+
+
+== References ==
+
+
+== External links ==
+BIC & CUBIC Home Page at NC State University.

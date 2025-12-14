@@ -1,0 +1,140 @@
+F2FS (Flash-Friendly File System) is a flash file system initially developed by Samsung Electronics for the Linux kernel.
+The motive for F2FS was to build a file system that, from the start, takes into account the characteristics of NAND flash memory-based storage devices (such as solid-state disks, eMMC, and SD cards), which are widely used in computer systems ranging from mobile devices to servers.
+F2FS was designed on a basis of a log-structured file system approach, which is adapted to newer forms of storage. Jaegeuk Kim, the principal F2FS author, has stated that it remedies some known issues of the older log-structured file systems, such as the snowball effect of wandering trees and high cleaning overhead. In addition, since a NAND-based storage device shows different characteristics according to its internal geometry or flash memory management scheme (such as the Flash Translation Layer or FTL), it supports various parameters not only for configuring on-disk layout, but also for selecting allocation and cleaning algorithms.
+
+
+== Features ==
+Multi-head logging
+Multi-level hash table for directory entries
+Static/dynamic hot and cold data separation
+Adaptive logging scheme
+Configurable operational units
+Dual checkpoint
+Roll-back and roll-forward recovery
+Heap-style block allocation
+TRIM/FITRIM support
+Online fs defragmentation/file defragmentation
+Inline xattrs/data/dir
+Offline filesystem check (Check and fix inconsistency)
+Atomic operations
+Filesystem-level encryption
+Offline resizing (shrinking not supported.)
+Inner periodically data flush
+Extent cache
+Transparent file compression using LZO or LZ4 (with Linux 5.6), or zstd (with Linux 5.7)
+
+
+== Design ==
+
+
+=== On-disk layout ===
+F2FS divides the whole volume into a number of segments, each of which is fixed at 2 MB. A section is composed of consecutive segments, and a zone consists of a set of sections. By default, section and zone sizes are set to the same size, but users can easily modify the size with mkfs.
+F2FS splits the entire volume into six areas, and all except the superblock area consist of multiple segments as described below.
+
+Superblock (SB)
+The SB is located at the beginning of the partition. There are two copies to avoid file-system corruption. It contains basic partition information and some default F2FS parameters.
+Checkpoint (CP)
+The CP contains file system information, bitmaps for valid NAT/SIT sets, orphan inode lists, and summary entries of current active segments.
+Segment Information Table (SIT)
+The SIT contains the valid block count and validity bitmap of all the Main Area blocks.
+Node Address Table (NAT)
+The NAT is an address table for the Main Area node blocks.
+Segment Summary Area (SSA)
+The SSA contains entries which contain the owner information of the Main Area data and node blocks.
+Main Area
+The main area contains file and directory data and their indices.
+In order to avoid misalignment between file system and flash storage, F2FS aligns the start block address of the CP with the segment size. It also aligns the Main Area start block address with the zone size by reserving some segments in the SSA area.
+
+
+=== Metadata structure ===
+F2FS uses the checkpoint scheme to maintain file system integrity. At mount time, F2FS first tries to find the last valid checkpoint data by scanning the CP area. In order to reduce the scanning time, F2FS uses only two copies of the CP. One of them always indicates the last valid data, which is called a shadow copy mechanism. In addition to the CP, the NAT and SIT also use the shadow copy mechanism. For file system consistency, each CP points to which NAT and SIT copies are valid.
+
+
+=== Index structure ===
+The key data structure is the "node". Similar to traditional file structures, F2FS has three types of nodes: inode, direct node, indirect node. F2FS assigns 4 KB to an inode block which contains 923 data block indices, two direct node pointers, two indirect node pointers, and one double indirect node pointer as described below. A direct node block contains 1018 data block indices, and an indirect node block contains 1018 node block indices. Thus, one inode block (i.e., a file) covers:
+
+4 KiB × (923 + 2×1018 + 2×10182 + 10183) = 4,228,213,756 KiB = 4,129,114.996 MiB = 4,032.338863 GiB = 3.937830921 TiB
+
+Note that all the node blocks are mapped by the NAT, which means that the location of each node is translated by the NAT. To mitigate the wandering tree problem, F2FS is able to cut off the propagation of node updates caused by leaf data writes.
+
+
+=== Directory structure ===
+A directory entry (dentry) occupies 11 bytes, which consists of the following attributes.
+
+A dentry block consists of 214 dentry slots and file names. A bitmap is used to represent whether each dentry is valid or not. A dentry block occupies 4 KB and has the following composition:
+
+Dentry Block (4 K) = bitmap (27 bytes)
++ reserved (3 bytes)
++ dentries (11 * 214 bytes)
++ file name (8 * 214 bytes)
+
+F2FS implements multi-level hash tables for the directory structure. Each level has a hash table with a dedicated number of hash buckets as shown below. Note that "A(2B)" means a bucket includes 2 data blocks.
+
+Term
+A indicates bucket
+B indicates block
+N indicates MAX_DIR_HASH_DEPTH
+level #0    A(2B)
+level #1    A(2B) - A(2B)
+level #2    A(2B) - A(2B) - A(2B) - A(2B)
+    ...
+level #N/2  A(2B) - A(2B) - A(2B) - A(2B) - A(2B) - ... - A(2B)
+    ...
+level #N    A(4B) - A(4B) - A(4B) - A(4B) - A(4B) - ... - A(4B)
+
+When F2FS finds a file name in a directory, first a hash value of the file name is calculated. Then, F2FS scans the hash table in level #0 to find the dentry consisting of the file name and its inode number. If not found, F2FS scans the next hash table in level #1. In this way, F2FS scans hash tables in each level incrementally from 1 to N. In each level F2FS needs to scan only one bucket determined by the following equation, which shows O(log(# of files)) complexity.
+
+ bucket number to scan in level #n = (hash value) % (# of buckets in level #n)
+
+In the case of file creation, F2FS finds empty consecutive slots that cover the file name. F2FS searches the empty slots in the hash tables of whole levels from 1 to N in the same way as the lookup operation.
+
+
+=== Default block allocation ===
+At runtime, F2FS manages six active logs inside the "Main Area:" Hot/Warm/Cold node and Hot/Warm/Cold data.
+
+LFS has two schemes for free space management: threaded log and copy-and-compaction. The copy-and-compaction scheme which is known as cleaning, is well-suited for devices showing very good sequential write performance, since free segments are served all the time for writing new data. However, it suffers from cleaning overhead during high utilization. Conversely, the threaded log scheme suffers from random writes, but no cleaning process is needed. F2FS adopts a hybrid scheme where the copy-and-compaction scheme is adopted by default, but the policy is dynamically changed to the threaded log scheme according to the file system status.
+In order to align F2FS with underlying flash-based storage, F2FS allocates a segment in a unit of a section. F2FS expects  the section size to be the same as the garbage collection unit size in FTL. With respect to the mapping granularity in FTL, F2FS allocates each section of the active logs to as many different zones as possible. FTL can write the active log data into one allocation unit according to its mapping granularity.
+
+
+=== Cleaning process ===
+F2FS does cleaning both on demand, and in the background. On-demand cleaning is triggered when there are not enough free segments to serve VFS calls. The background cleaner is executed by a kernel thread, and triggers the cleaning job when the system is idle.
+F2FS supports two victim selection policies: greedy, and cost-benefit algorithms. In the greedy algorithm, F2FS selects a victim segment having the smallest number of valid blocks. In the cost-benefit algorithm, F2FS selects a victim segment according to the segment age and the number of valid blocks in order to address the log block thrashing problem present in the greedy algorithm. F2FS uses the greedy algorithm for on-demand cleaning, the background cleaner uses the cost-benefit algorithm.
+In order to identify whether the data in the victim segment are valid or not, F2FS manages a bitmap. Each bit represents the validity of a block, and the bitmap is composed of a bit stream covering whole blocks in the Main Area.
+
+
+== Adoption ==
+
+
+=== Phone manufacturers ===
+Google first used F2FS in their Nexus 9 in 2014.
+
+However Google's other products didn't adopt F2FS until the Pixel 3 when F2FS was updated with inline crypto hardware support.
+
+Huawei has used F2FS since the Huawei P9 in 2016.
+
+ OnePlus has used F2FS in the OnePlus 3T.
+Motorola Mobility has used F2FS in their Moto G/E/X and Droid phones since 2012.
+ZTE has used F2FS since the ZTE Axon 10 Pro in 2019.
+
+
+=== Linux distributions ===
+F2FS has been merged into Linux kernel in late 2012. Numerous distributions support it.
+
+
+== Detailed features description ==
+
+
+== See also ==
+Comparison of file systems
+List of flash file systems
+
+
+== References ==
+
+
+== External links ==
+FAST '15 - F2FS: A New File System for Flash Storage (2015-02-17)
+WHAT IS Flash-Friendly File System (F2FS) documentation for Linux
+Flash Friendly File System (F2FS), Embedded Linux Conference (2013-02-22)
+LWN.net: An f2fs teardown (2012-10-10)
+eMMC/SSDFile SystemTuningMethodology (2013-05-24)

@@ -1,0 +1,201 @@
+Relief is an algorithm developed by Kenji Kira and Larry Rendell in 1992 that takes a filter-method approach to feature selection that is notably sensitive to feature interactions.  It was originally designed for application to binary classification problems with discrete or numerical features.  Relief calculates a feature score for each feature which can then be applied to rank and select top scoring features for feature selection.  Alternatively, these scores may be applied as feature weights to guide downstream modeling. Relief feature scoring is based on the identification of feature value differences between nearest neighbor instance pairs. If a feature value difference is observed in a neighboring instance pair with the same class (a 'hit'), the feature score decreases.  Alternatively, if a feature value difference is observed in a neighboring instance pair with different class values (a 'miss'), the feature score increases. The original Relief algorithm has since inspired a family of Relief-based feature selection algorithms (RBAs), including the ReliefF algorithm.  Beyond the original Relief algorithm, RBAs have been adapted to (1) perform more reliably in noisy problems, (2) generalize to multi-class problems  (3) generalize to numerical outcome (i.e. regression) problems, and (4) to make them robust to incomplete (i.e. missing) data.
+To date, the development of RBA variants and extensions has focused on four areas; (1) improving performance of the 'core' Relief algorithm, i.e. examining strategies for neighbor selection and instance weighting, (2) improving scalability of the 'core' Relief algorithm to larger feature spaces through iterative approaches, (3) methods for flexibly adapting Relief to different data types, and (4) improving Relief run efficiency.
+Their strengths are that they are not dependent on heuristics, they run in low-order polynomial time, and they are noise-tolerant and robust to feature interactions, as well as being applicable for binary or continuous data; however, it does not discriminate between redundant features, and low numbers of training instances fool the algorithm. 
+
+
+== Relief Algorithm ==
+
+Take a data set with n instances of p features, belonging to two known classes. Within the data set, each feature should be scaled to the interval [0 1] (binary data should remain as 0 and 1). The algorithm will be repeated m times. Start with a p-long weight vector (W) of zeros.
+At each iteration, take the feature vector (X) belonging to one random instance, and the feature vectors of the instance closest to X (by Euclidean distance) from each class. The closest same-class instance is called 'near-hit', and the closest different-class instance is called 'near-miss'. Update the weight vector such that
+
+  
+    
+      
+        
+          W
+          
+            i
+          
+        
+        =
+        
+          W
+          
+            i
+          
+        
+        −
+        (
+        
+          x
+          
+            i
+          
+        
+        −
+        
+          
+            n
+            e
+            a
+            r
+            H
+            i
+            t
+          
+          
+            i
+          
+        
+        
+          )
+          
+            2
+          
+        
+        +
+        (
+        
+          x
+          
+            i
+          
+        
+        −
+        
+          
+            n
+            e
+            a
+            r
+            M
+            i
+            s
+            s
+          
+          
+            i
+          
+        
+        
+          )
+          
+            2
+          
+        
+        ,
+      
+    
+    {\displaystyle W_{i}=W_{i}-(x_{i}-\mathrm {nearHit} _{i})^{2}+(x_{i}-\mathrm {nearMiss} _{i})^{2},}
+  
+
+where 
+  
+    
+      
+        i
+      
+    
+    {\displaystyle i}
+  
+ indexes the components and runs from 1 to p.
+Thus the weight of any given feature decreases if it differs from that feature in nearby instances of the same class more than nearby instances of the other class, and increases in the reverse case.
+After m iterations, divide each element of the weight vector by m. This becomes the relevance vector. Features are selected if their relevance is greater than a threshold τ.
+Kira and Rendell's experiments showed a clear contrast between relevant and irrelevant features, allowing τ to be determined by inspection. However, it can also be determined by Chebyshev's inequality for a given confidence level (α) that a τ of 1/sqrt(α*m) is good enough to make the probability of a Type I error less than α, although it is stated that τ can be much smaller than that.
+Relief was also described as generalizable to multinomial classification by decomposition into a number of binary problems.
+
+
+== ReliefF Algorithm ==
+Kononenko et al. propose a number of updates to Relief. Firstly, they find the near-hit and near-miss instances using the Manhattan (L1) norm rather than the Euclidean (L2) norm, although the rationale is not specified. Furthermore, they found taking the absolute differences between xi and near-hiti, and xi and near-missi to be sufficient when updating the weight vector (rather than the square of those differences).
+
+
+=== Reliable probability estimation ===
+Rather than repeating the algorithm m times, implement it exhaustively (i.e. n times, once for each instance) for relatively small n (up to one thousand). Furthermore, rather than finding the single nearest hit and single nearest miss, which may cause redundant and noisy attributes to affect the selection of the nearest neighbors, ReliefF searches for k nearest hits and misses and averages their contribution to the weights of each feature. k can be tuned for any individual problem.
+
+
+=== Incomplete data ===
+In ReliefF, the contribution of missing values to the feature weight is determined using the conditional probability that two values should be the same or different, approximated with relative frequencies from the data set. This can be calculated if one or both features are missing.
+
+
+=== Multi-class problems ===
+Rather than use Kira and Rendell's proposed decomposition of a multinomial classification into a number of binomial problems, ReliefF searches for k near misses from each different class and averages their contributions for updating W, weighted with the prior probability of each class.
+
+
+== Other Relief-based Algorithm Extensions/Derivatives ==
+The following RBAs are arranged chronologically from oldest to most recent.  They include methods for improving (1) the core Relief algorithm concept, (2) iterative approaches for scalability, (3) adaptations to different data types, (4) strategies for computational efficiency, or (5) some combination of these goals. For more on RBAs see these book chapters  or this most recent review paper.
+
+
+=== RRELIEFF ===
+Robnik-Šikonja and Kononenko propose further updates to ReliefF, making it appropriate for regression.
+
+
+=== Relieved-F ===
+Introduced deterministic neighbor selection approach and a new approach for incomplete data handling.
+
+
+=== Iterative Relief ===
+Implemented method to address bias against non-monotonic features. Introduced the first iterative Relief approach. For the first time, neighbors were uniquely determined by a radius threshold and instances were weighted by their distance from the target instance.
+
+
+=== I-RELIEF ===
+Introduced sigmoidal weighting based on distance from target instance. All instance pairs (not just a defined subset of neighbors) contributed to score updates. Proposed an on-line learning variant of Relief. Extended the iterative Relief concept. Introduced local-learning updates between iterations for improved convergence.
+
+
+=== TuRF (a.k.a. Tuned ReliefF) ===
+Specifically sought to address noise in large feature spaces through the recursive elimination of features and the iterative application of ReliefF.
+
+
+=== Evaporative Cooling ReliefF ===
+Similarly seeking to address noise in large feature spaces.  Utilized an iterative `evaporative' removal of lowest quality features using ReliefF scores in association with mutual information.
+
+
+=== EReliefF (a.k.a. Extended ReliefF) ===
+Addressing issues related to incomplete and multi-class data.
+
+
+=== VLSReliefF (a.k.a. Very Large Scale ReliefF) ===
+Dramatically improves the efficiency of detecting 2-way feature interactions in very large feature spaces by scoring random feature subsets rather than the entire feature space.
+
+
+=== ReliefMSS ===
+Introduced calculation of feature weights relative to average feature 'diff' between instance pairs.
+
+
+=== SURF ===
+SURF identifies nearest neighbors (both hits and misses) based on a distance threshold from the target instance defined by the average distance between all pairs of instances in the training data. Results suggest improved power to detect 2-way epistatic interactions over ReliefF.
+
+
+=== SURF* (a.k.a. SURFStar) ===
+SURF*  extends the SURF algorithm to not only utilized 'near' neighbors in scoring updates, but 'far' instances as well, but employing inverted scoring updates for 'far instance pairs. Results suggest improved power to detect 2-way epistatic interactions over SURF, but an inability to detect simple main effects (i.e. univariate associations).
+
+
+=== SWRF* ===
+SWRF* extends the SURF* algorithm adopting sigmoid weighting to take distance from the threshold into account.  Also introduced a modular framework for further developing RBAs called MoRF.
+
+
+=== MultiSURF* (a.k.a. MultiSURFStar) ===
+MultiSURF* extends the SURF* algorithm adapting the near/far neighborhood boundaries based on the average and standard deviation of distances from the target instance to all others. MultiSURF* uses the standard deviation to define a dead-band zone where 'middle-distance' instances do not contribute to scoring. Evidence suggests MultiSURF* performs best in detecting pure 2-way feature interactions.
+
+
+=== ReliefSeq ===
+Introduces a feature-wise adaptive k parameter for more flexibly detecting univariate effects and interaction effects.
+
+
+=== MultiSURF ===
+MultiSURF simplifies the MultiSURF* algorithm by preserving the dead-band zone, and target-instance-centric neighborhood determination, but eliminating the 'far' scoring. Evidence suggests MultiSURF to be a well rounded option, able to detect 2-way and 3-way interactions, as well as simple univariate associations. Also introduced the RBA software package called ReBATE that includes implementations of (Relief, ReliefF, SURF, SURF*, MultiSURF*, MultiSURF, and TuRF).
+
+
+=== STIR ===
+STIR  reformulates and slightly adjusts the original Relief formula by incorporating sample variance of the nearest neighbor distances into the attribute importance estimation. This variance permits the calculation of statistical significance of features and adjustment for multiple testing of Relief-based scores. Currently, STIR supports binary outcome variable but will soon be extended to multi-state and continuous outcome.
+
+
+== RBA Applications ==
+Different RBAs have been applied to feature selection in a variety of problem domains.
+
+
+== See also ==
+Feature Selection
+Nearest Neighbor Search
+
+
+== References ==

@@ -1,0 +1,78 @@
+Deep Learning Super Sampling (DLSS) is a suite of real-time deep learning image enhancement and upscaling technologies developed by Nvidia that are available in a number of video games. The goal of these technologies is to allow the majority of the graphics pipeline to run at a lower resolution for increased performance, and then infer a higher resolution image from this that approximates the same level of detail as if the image had been rendered at this higher resolution. This allows for higher graphical settings and/or frame rates for a given output resolution, depending on user preference.
+All generations of DLSS are available on all RTX-branded cards from Nvidia in supported titles. However, the Frame Generation feature is only supported on 40 series GPUs or newer and Multi Frame Generation is only available on 50 series GPUs.
+
+
+== History ==
+Nvidia advertised DLSS as a key feature of the GeForce 20 series cards when they launched in September 2018. At that time, the results were limited to a few video games, namely Battlefield V, or Metro Exodus, because the algorithm had to be trained specifically on each game on which it was applied and the results were usually not as good as simple resolution upscaling. In 2019, the video game Control shipped with real-time ray tracing and an image processing algorithm that approximated DLSS, which did not use the Tensor Cores.
+In April 2020, Nvidia advertised and shipped an improved version of DLSS named DLSS 2.0 with driver version 445.75. DLSS 2.0 was available for a few existing games including Control and Wolfenstein: Youngblood, and would later be added to many newly released games and game engines such as Unreal Engine and Unity. This time Nvidia said that it used the Tensor Cores again, and that the AI did not need to be trained specifically on each game. Despite sharing the DLSS branding, the two iterations of DLSS differ significantly and are not backwards-compatible.
+In January 2025, Nvidia stated that there are over 540 games and apps supporting DLSS, and that over 80% of Nvidia RTX users activate DLSS.
+In March 2025, there were more than 100 games that support DLSS 4, according to Nvidia. By May 2025, over 125 games supported DLSS 4.
+The first video game console to use DLSS, the Nintendo Switch 2, was released on June 5, 2025.
+
+
+=== Release history ===
+
+
+== Quality presets ==
+When using DLSS, depending on the game, users have access to various quality presets in addition to the option to set the internally rendered, upscaled resolution manually:
+
+
+== Implementation ==
+
+
+=== DLSS 1.0 ===
+The first iteration of DLSS is a predominantly spatial image upscaler with two stages, both relying on convolutional auto-encoder neural networks. The first step is an image enhancement network which uses the current frame and motion vectors to perform edge enhancement, and spatial anti-aliasing. The second stage is an image upscaling step which uses the single raw, low-resolution frame to upscale the image to the desired output resolution. Using just a single frame for upscaling means the neural network itself must generate a large amount of new information to produce the high resolution output, this can result in slight hallucinations such as leaves that differ in style to the source content.
+The neural networks are trained on a per-game basis by generating a "perfect frame" using traditional supersampling to 64 samples per pixel, as well as the motion vectors for each frame. The data collected must be as comprehensive as possible, including as many levels, times of day, graphical settings, resolutions, etc. as possible. This data is also augmented using common augmentations such as rotations, colour changes, and random noise to help generalize the test data. Training is performed on Nvidia's Saturn V supercomputer.
+This first iteration received a mixed response, with many criticizing the often soft appearance and artifacts in certain situations; likely a side effect of the limited data from only using a single frame input to the neural networks which could not be trained to perform optimally in all scenarios and edge-cases. Nvidia also demonstrated the ability for the auto-encoder networks to learn the ability to recreate depth-of-field and motion blur, although this functionality has never been included in a publicly released product.
+
+
+=== DLSS 2.0 ===
+DLSS 2.0 is a temporal anti-aliasing upsampling (TAAU) implementation, using data from previous frames extensively through sub-pixel jittering to resolve fine detail and reduce aliasing. The data DLSS 2.0 collects includes: the raw low-resolution input, motion vectors, depth buffers, and exposure / brightness information. It can also be used as a simpler TAA implementation where the image is rendered at 100% resolution, rather than being upsampled by DLSS, Nvidia brands this as DLAA (Deep Learning Anti-Aliasing).
+TAA(U) is used in many modern video games and game engines; however, all previous implementations have used some form of manually written heuristics to prevent temporal artifacts such as ghosting and flickering. One example of this is neighborhood clamping which forcefully prevents samples collected in previous frames from deviating too much compared to nearby pixels in newer frames. This helps to identify and fix many temporal artifacts, but deliberately removing fine details in this way is analogous to applying a blur filter, and thus the final image can appear blurry when using this method.
+DLSS 2.0 uses a convolutional auto-encoder neural network trained to identify and fix temporal artifacts, instead of manually programmed heuristics as mentioned above. Because of this, DLSS 2.0 can generally resolve detail better than other TAA and TAAU implementations, while also removing most temporal artifacts. This is why DLSS 2.0 can sometimes produce a sharper image than rendering at higher, or even native resolutions using traditional TAA. However, no temporal solution is perfect, and artifacts (ghosting in particular) are still visible in some scenarios when using DLSS 2.0.
+Because temporal artifacts occur in most art styles and environments in broadly the same way, the neural network that powers DLSS 2.0 does not need to be retrained when being used in different games. Despite this, Nvidia does frequently ship new minor revisions of DLSS 2.0 with new titles, so this could suggest some minor training optimizations may be performed as games are released, although Nvidia does not provide changelogs for these minor revisions to confirm this. The main advancements compared to DLSS 1.0 include: Significantly improved detail retention, a generalized neural network that does not need to be re-trained per-game, and ~2x less overhead (~1–2 ms vs ~2–4 ms).
+It should also be noted that forms of TAAU such as DLSS 2.0 are not upscalers in the same sense as techniques such as ESRGAN or DLSS 1.0, which attempt to create new information from a low-resolution source; instead, TAAU works to recover data from previous frames, rather than creating new data. In practice, this means low resolution textures in games will still appear low-resolution when using current TAAU techniques. This is why Nvidia recommends game developers use higher resolution textures than they would normally for a given rendering resolution by applying a mip-map bias when DLSS 2.0 is enabled.
+
+
+=== DLSS 3.0 ===
+Augments DLSS 2.0 by making use of motion interpolation. The DLSS Frame Generation algorithm takes two rendered frames from the rendering pipeline and generates a new frame that smoothly transitions between them. So for every frame rendered, one additional frame is generated. DLSS 3.0 makes use of a new generation Optical Flow Accelerator (OFA) included in Ada Lovelace generation RTX GPUs. The new OFA is faster and more accurate than the OFA already available in previous Turing and Ampere RTX GPUs. This results in DLSS 3.0 being exclusive for the RTX 40 Series. At release, DLSS 3.0 does not work for VR displays.
+
+
+=== DLSS 3.5 ===
+DLSS 3.5 adds Ray Reconstruction, replacing multiple denoising algorithms with a single AI model trained on five times more data than DLSS 3. Ray Reconstruction is available on all RTX GPUs and first targeted games with path tracing (aka "full ray tracing"), including Cyberpunk 2077's Phantom Liberty DLC, Portal with RTX, and Alan Wake 2.
+
+
+=== DLSS 4.0 ===
+The fourth generation of Deep Learning Super Sampling (DLSS) was unveiled alongside the GeForce RTX 50 series. DLSS 4 upscaling uses a new vision transformer-based model for enhanced image quality with reduced ghosting and greater image stability in motion compared to the previous convolutional neural network (CNN) model. DLSS 4 allows a greater number of frames to be generated and interpolated based on a single traditionally rendered frame. This form of frame generation called Multi Frame Generation is exclusive to the GeForce RTX 50 series while the GeForce RTX 40 series is limited to one interpolated frame per traditionally rendered frame. Nvidia claims that DLSS 4x Frame Generation model uses 30% less video memory with the example of Warhammer 40,000: Darktide using 400MB less memory at 4K resolution with Frame Generation enabled. Nvidia claims that 75 games will integrate DLSS 4 Multi Frame Generation at launch, including Alan Wake 2, Cyberpunk 2077, Indiana Jones and the Great Circle, and Star Wars Outlaws.
+
+
+=== Manually upgrading DLSS support ===
+Users can manually replace the DLLs in games to support a newer version of DLSS.  DLSS Swapper, an open source utility, can automatically do this for all installed games. Replacing DLL files can not add DLSS support or features to games that do not already implement them, though some mods can add frame generation support.
+
+
+== Anti-aliasing ==
+DLSS requires and applies its own anti-aliasing method. Thus, depending on the game and quality setting used, using DLSS may improve image quality even over native resolution rendering. It operates on similar principles to TAA. Like TAA, it uses information from past frames to produce the current frame. Unlike TAA, DLSS does not sample every pixel in every frame. Instead, it samples different pixels in different frames and uses pixels sampled in past frames to fill in the unsampled pixels in the current frame. DLSS uses machine learning to combine samples in the current frame and past frames, and it can be thought of as an advanced and superior TAA implementation made possible by the available tensor cores. Nvidia also offers Deep Learning Anti-Aliasing (DLAA), which provides the same AI-driven anti-aliasing DLSS uses, but without any upscaling or downscaling.
+
+
+== Architecture ==
+With the exception of the shader-core version implemented in Control, DLSS is only available on GeForce RTX 20, GeForce RTX 30, GeForce RTX 40, GeForce RTX 50, and Quadro RTX series of video cards, using dedicated AI accelerators called Tensor Cores. Tensor Cores are available since the Nvidia Volta GPU microarchitecture, which was first used on the Tesla V100 line of products. They are used for doing fused multiply-add (FMA) operations that are used extensively in neural network calculations for applying a large series of multiplications on weights, followed by the addition of a bias. Tensor cores can operate on FP16, INT8, INT4, and INT1 data types. Each core can do 1024 bits of FMA operations per clock, so 1024 INT1, 256 INT4, 128 INT8, and 64 FP16 operations per clock per tensor core, and most Turing GPUs have a few hundred tensor cores. The Tensor Cores use CUDA Warp-Level Primitives on 32 parallel threads to take advantage of their parallel architecture. A Warp is a set of 32 threads which are configured to execute the same instruction. Since Windows 10 version 1903, Microsoft Windows provided DirectML as one part of DirectX to support Tensor Cores.
+
+
+== Reception ==
+Particularly in early versions of DLSS, users reported blurry frames. Andrew Edelsten, an employee at Nvidia, therefore commented on the problem in a blog post in 2019 and promised that they were working on improving the technology and clarified that the DLSS AI algorithm was mainly trained with 4K image material. That the use of DLSS leads to particularly blurred images at lower resolutions, such as Full HD, is due to the fact that the algorithm has far less image information available to calculate an appropriate image compared to higher resolutions like 4K.
+The use of DLSS Frame Generation may lead to increased input latency, as well as visual artifacts. It has also been criticized that by implementing DLSS in their games, game developers no longer have an incentive to optimize them so that they also run smoothly in native resolution on modern PC hardware. For example, for the game Alan Wake 2 in 4K resolution at the highest graphics settings with ray tracing enabled, the use of DLSS in Performance mode is recommended even with graphics cards such as the Nvidia GeForce RTX 4080 in order to achieve 60 fps.
+The transformer-based AI upscaling model introduced with DLSS 4 received moderate praise for its improved image quality with regard to increased stability, reduced ghosting, better anti-aliasing, and higher level of detail, as well as its backward compatibility and higher training scalability regarding future improvements.
+
+
+== See also ==
+FidelityFX Super Resolution – competing technology from AMD
+Intel XeSS – competing technology from Intel
+PlayStation Spectral Super Resolution – similar technology from PlayStation
+
+
+== References ==
+
+
+== External links ==
+Official website 
+DLSS on the Nvidia developer website

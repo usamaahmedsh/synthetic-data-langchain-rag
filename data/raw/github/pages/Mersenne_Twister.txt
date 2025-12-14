@@ -1,0 +1,2119 @@
+The Mersenne Twister is a general-purpose pseudorandom number generator (PRNG) developed in 1997 by Makoto Matsumoto (松本 眞) and Takuji Nishimura (西村 拓士). Its name derives from the choice of a Mersenne prime as its period length.
+The Mersenne Twister was created specifically to address most of the flaws found in earlier PRNGs.
+The most commonly used version of the Mersenne Twister algorithm is based on the Mersenne prime 
+  
+    
+      
+        
+          2
+          
+            19937
+          
+        
+        −
+        1
+      
+    
+    {\displaystyle 2^{19937}-1}
+  
+.  The standard implementation of that, MT19937, uses a 32-bit word length. There is another implementation (with five variants) that uses a 64-bit word length, MT19937-64; it generates a different sequence.
+
+
+== k-distribution ==
+A pseudorandom sequence 
+  
+    
+      
+        
+          x
+          
+            i
+          
+        
+      
+    
+    {\displaystyle x_{i}}
+  
+ of 
+  
+    
+      
+        w
+      
+    
+    {\displaystyle w}
+  
+-bit integers of period 
+  
+    
+      
+        P
+      
+    
+    {\displaystyle P}
+  
+ is said to be 
+  
+    
+      
+        k
+      
+    
+    {\displaystyle k}
+  
+-distributed to 
+  
+    
+      
+        v
+      
+    
+    {\displaystyle v}
+  
+-bit accuracy if the following holds:
+
+Let 
+  
+    
+      
+        
+          trunc
+          
+            v
+          
+        
+        ⁡
+        (
+        x
+        )
+      
+    
+    {\displaystyle \operatorname {trunc} _{v}(x)}
+  
+ denote the number formed by the leading 
+  
+    
+      
+        v
+      
+    
+    {\displaystyle v}
+  
+ bits of 
+  
+    
+      
+        x
+      
+    
+    {\displaystyle x}
+  
+, and consider 
+  
+    
+      
+        P
+      
+    
+    {\displaystyle P}
+  
+ of the 
+  
+    
+      
+        k
+        v
+      
+    
+    {\displaystyle kv}
+  
+-bit vectors
+
+  
+    
+      
+        (
+        
+          trunc
+          
+            v
+          
+        
+        ⁡
+        (
+        
+          x
+          
+            i
+          
+        
+        )
+        ,
+        
+          trunc
+          
+            v
+          
+        
+        ⁡
+        (
+        
+          x
+          
+            i
+            +
+            1
+          
+        
+        )
+        ,
+        …
+        ,
+        
+          trunc
+          
+            v
+          
+        
+        ⁡
+        (
+        
+          x
+          
+            i
+            +
+            k
+            −
+            1
+          
+        
+        )
+        )
+      
+    
+    {\displaystyle (\operatorname {trunc} _{v}(x_{i}),\operatorname {trunc} _{v}(x_{i+1}),\dots ,\operatorname {trunc} _{v}(x_{i+k-1}))}
+  
+
+for 
+  
+    
+      
+        0
+        ≤
+        i
+        <
+        P
+      
+    
+    {\displaystyle 0\leq i<P}
+  
+. Then each of the 
+  
+    
+      
+        
+          2
+          
+            k
+            v
+          
+        
+      
+    
+    {\displaystyle 2^{kv}}
+  
+ possible combinations of bits occurs the same number of times in a period, except for the all-zero combination that occurs once less often.
+
+
+== Algorithmic detail ==
+
+For a w-bit word length, the Mersenne Twister generates integers in the range 
+  
+    
+      
+        [
+        0
+        ,
+        
+          2
+          
+            w
+          
+        
+        −
+        1
+        ]
+      
+    
+    {\displaystyle [0,2^{w}-1]}
+  
+.
+The Mersenne Twister algorithm is based on a matrix linear recurrence over the finite field 
+  
+    
+      
+        
+          
+            F
+          
+          
+            2
+          
+        
+      
+    
+    {\displaystyle \mathbb {F} _{2}}
+  
+. The algorithm is a twisted generalised feedback shift register (twisted GFSR, or TGFSR) of rational normal form (TGFSR(R)), with state bit reflection and tempering. The basic idea is to define a series 
+  
+    
+      
+        
+          x
+          
+            i
+          
+        
+      
+    
+    {\displaystyle x_{i}}
+  
+ through a simple recurrence relation, and then output numbers of the form 
+  
+    
+      
+        
+          x
+          
+            i
+          
+          
+            T
+          
+        
+      
+    
+    {\displaystyle x_{i}^{T}}
+  
+, where 
+  
+    
+      
+        T
+      
+    
+    {\displaystyle T}
+  
+ is an invertible 
+  
+    
+      
+        
+          
+            F
+          
+          
+            2
+          
+        
+      
+    
+    {\displaystyle \mathbb {F} _{2}}
+  
+-matrix called a tempering matrix.
+The general algorithm is characterized by the following quantities:
+
+  
+    
+      
+        w
+      
+    
+    {\displaystyle w}
+  
+: word size (in number of bits)
+
+  
+    
+      
+        n
+      
+    
+    {\displaystyle n}
+  
+: degree of recurrence
+
+  
+    
+      
+        m
+      
+    
+    {\displaystyle m}
+  
+: middle word, an offset used in the recurrence relation defining the series 
+  
+    
+      
+        x
+      
+    
+    {\displaystyle x}
+  
+, 
+  
+    
+      
+        1
+        ≤
+        m
+        <
+        n
+      
+    
+    {\displaystyle 1\leq m<n}
+  
+
+  
+    
+      
+        r
+      
+    
+    {\displaystyle r}
+  
+: separation point of one word, or the number of bits of the lower bitmask, 
+  
+    
+      
+        0
+        ≤
+        r
+        ≤
+        w
+        −
+        1
+      
+    
+    {\displaystyle 0\leq r\leq w-1}
+  
+
+  
+    
+      
+        a
+      
+    
+    {\displaystyle a}
+  
+: coefficients of the rational normal form twist matrix
+
+  
+    
+      
+        b
+        ,
+        c
+      
+    
+    {\displaystyle b,c}
+  
+: TGFSR(R) tempering bitmasks
+
+  
+    
+      
+        s
+        ,
+        t
+      
+    
+    {\displaystyle s,t}
+  
+: TGFSR(R) tempering bit shifts
+
+  
+    
+      
+        u
+        ,
+        d
+        ,
+        l
+      
+    
+    {\displaystyle u,d,l}
+  
+: additional Mersenne Twister tempering bit shifts/masks
+with the restriction that 
+  
+    
+      
+        
+          2
+          
+            n
+            w
+            −
+            r
+          
+        
+        −
+        1
+      
+    
+    {\displaystyle 2^{nw-r}-1}
+  
+ is a Mersenne prime. This choice simplifies the primitivity test and k-distribution test needed in the parameter search.
+The series 
+  
+    
+      
+        x
+      
+    
+    {\displaystyle x}
+  
+ is defined as a series of 
+  
+    
+      
+        w
+      
+    
+    {\displaystyle w}
+  
+-bit quantities with the recurrence relation:
+
+  
+    
+      
+        
+          x
+          
+            k
+            +
+            n
+          
+        
+        :=
+        
+          x
+          
+            k
+            +
+            m
+          
+        
+        ⊕
+        
+          (
+          
+            (
+            
+              
+                
+                  x
+                  
+                    k
+                  
+                
+              
+              
+                u
+              
+            
+            ∣
+            
+              
+                
+                  x
+                  
+                    k
+                    +
+                    1
+                  
+                
+              
+              
+                l
+              
+            
+            )
+            A
+          
+          )
+        
+        
+        k
+        =
+        0
+        ,
+        1
+        ,
+        2
+        ,
+        …
+      
+    
+    {\displaystyle x_{k+n}:=x_{k+m}\oplus \left(({x_{k}}^{u}\mid {x_{k+1}}^{l})A\right)\qquad k=0,1,2,\ldots }
+  
+
+where 
+  
+    
+      
+        ∣
+      
+    
+    {\displaystyle \mid }
+  
+ denotes concatenation of bit vectors (with upper bits on the left), 
+  
+    
+      
+        ⊕
+      
+    
+    {\displaystyle \oplus }
+  
+ the bitwise exclusive or (XOR), 
+  
+    
+      
+        
+          x
+          
+            k
+          
+          
+            u
+          
+        
+      
+    
+    {\displaystyle x_{k}^{u}}
+  
+ means the upper 
+  
+    
+      
+        w
+        −
+        r
+      
+    
+    {\displaystyle w-r}
+  
+ bits of 
+  
+    
+      
+        
+          x
+          
+            k
+          
+        
+      
+    
+    {\displaystyle x_{k}}
+  
+, and 
+  
+    
+      
+        
+          x
+          
+            k
+            +
+            1
+          
+          
+            l
+          
+        
+      
+    
+    {\displaystyle x_{k+1}^{l}}
+  
+ means the lower 
+  
+    
+      
+        r
+      
+    
+    {\displaystyle r}
+  
+ bits of 
+  
+    
+      
+        
+          x
+          
+            k
+            +
+            1
+          
+        
+      
+    
+    {\displaystyle x_{k+1}}
+  
+.
+The subscripts may all be offset by 
+  
+    
+      
+        −
+        n
+      
+    
+    {\displaystyle -n}
+  
+:
+
+  
+    
+      
+        
+          x
+          
+            k
+          
+        
+        :=
+        
+          x
+          
+            k
+            −
+            (
+            n
+            −
+            m
+            )
+          
+        
+        ⊕
+        
+          (
+          
+            (
+            
+              
+                
+                  x
+                  
+                    k
+                    −
+                    n
+                  
+                
+              
+              
+                u
+              
+            
+            ∣
+            
+              
+                
+                  x
+                  
+                    k
+                    −
+                    (
+                    n
+                    −
+                    1
+                    )
+                  
+                
+              
+              
+                l
+              
+            
+            )
+            A
+          
+          )
+        
+        
+        k
+        =
+        n
+        ,
+        n
+        +
+        1
+        ,
+        n
+        +
+        2
+        ,
+        …
+      
+    
+    {\displaystyle x_{k}:=x_{k-(n-m)}\oplus \left(({x_{k-n}}^{u}\mid {x_{k-(n-1)}}^{l})A\right)\qquad k=n,n+1,n+2,\ldots }
+  
+
+where now the LHS, 
+  
+    
+      
+        
+          x
+          
+            k
+          
+        
+      
+    
+    {\displaystyle x_{k}}
+  
+, is the next generated value in the series in terms of values generated in the past, which are on the RHS.
+The twist transformation 
+  
+    
+      
+        A
+      
+    
+    {\displaystyle A}
+  
+ is defined in rational normal form as:
+  
+    
+      
+        A
+        =
+        
+          
+            (
+            
+              
+                
+                  0
+                
+                
+                  
+                    I
+                    
+                      w
+                      −
+                      1
+                    
+                  
+                
+              
+              
+                
+                  
+                    a
+                    
+                      w
+                      −
+                      1
+                    
+                  
+                
+                
+                  (
+                  
+                    a
+                    
+                      w
+                      −
+                      2
+                    
+                  
+                  ,
+                  …
+                  ,
+                  
+                    a
+                    
+                      0
+                    
+                  
+                  )
+                
+              
+            
+            )
+          
+        
+      
+    
+    {\displaystyle A={\begin{pmatrix}0&I_{w-1}\\a_{w-1}&(a_{w-2},\ldots ,a_{0})\end{pmatrix}}}
+  
+
+with 
+  
+    
+      
+        
+          I
+          
+            w
+            −
+            1
+          
+        
+      
+    
+    {\displaystyle I_{w-1}}
+  
+ as the 
+  
+    
+      
+        (
+        w
+        −
+        1
+        )
+        (
+        w
+        −
+        1
+        )
+      
+    
+    {\displaystyle (w-1)(w-1)}
+  
+ identity matrix. The rational normal form has the benefit that multiplication by 
+  
+    
+      
+        A
+      
+    
+    {\displaystyle A}
+  
+ can be efficiently expressed as: (remember that here matrix multiplication is being done in 
+  
+    
+      
+        
+          
+            F
+          
+          
+            2
+          
+        
+      
+    
+    {\displaystyle \mathbb {F} _{2}}
+  
+, and therefore bitwise XOR takes the place of addition)
+  
+    
+      
+        
+          x
+        
+        A
+        =
+        
+          
+            {
+            
+              
+                
+                  
+                    x
+                  
+                  ≫
+                  1
+                
+                
+                  
+                    x
+                    
+                      0
+                    
+                  
+                  =
+                  0
+                
+              
+              
+                
+                  (
+                  
+                    x
+                  
+                  ≫
+                  1
+                  )
+                  ⊕
+                  
+                    a
+                  
+                
+                
+                  
+                    x
+                    
+                      0
+                    
+                  
+                  =
+                  1
+                
+              
+            
+            
+          
+        
+      
+    
+    {\displaystyle {\boldsymbol {x}}A={\begin{cases}{\boldsymbol {x}}\gg 1&x_{0}=0\\({\boldsymbol {x}}\gg 1)\oplus {\boldsymbol {a}}&x_{0}=1\end{cases}}}
+  
+where 
+  
+    
+      
+        
+          x
+          
+            0
+          
+        
+      
+    
+    {\displaystyle x_{0}}
+  
+ is the lowest order bit of 
+  
+    
+      
+        x
+      
+    
+    {\displaystyle x}
+  
+.
+As like TGFSR(R), the Mersenne Twister is cascaded with a tempering transform to compensate for the reduced dimensionality of equidistribution (because of the choice of A being in the rational normal form). Note that this is equivalent to using the matrix A where 
+  
+    
+      
+        A
+        =
+        
+          T
+          
+            −
+            1
+          
+        
+        ∗
+        A
+        T
+      
+    
+    {\displaystyle A=T^{-1}*AT}
+  
+ for 
+  
+    
+      
+        T
+      
+    
+    {\displaystyle T}
+  
+ an invertible matrix, and therefore the analysis of characteristic polynomial mentioned below still holds.
+As with 
+  
+    
+      
+        A
+      
+    
+    {\displaystyle A}
+  
+, we choose a tempering transform to be easily computable, and so do not actually construct 
+  
+    
+      
+        T
+      
+    
+    {\displaystyle T}
+  
+ itself. This tempering is defined in the case of Mersenne Twister as
+
+  
+    
+      
+        
+          
+            
+              
+                y
+              
+              
+                
+                ≡
+                x
+                ⊕
+                (
+                (
+                x
+                ≫
+                u
+                )
+                 
+                &
+                 
+                d
+                )
+              
+            
+            
+              
+                y
+              
+              
+                
+                ≡
+                y
+                ⊕
+                (
+                (
+                y
+                ≪
+                s
+                )
+                 
+                &
+                 
+                b
+                )
+              
+            
+            
+              
+                y
+              
+              
+                
+                ≡
+                y
+                ⊕
+                (
+                (
+                y
+                ≪
+                t
+                )
+                 
+                &
+                 
+                c
+                )
+              
+            
+            
+              
+                z
+              
+              
+                
+                ≡
+                y
+                ⊕
+                (
+                y
+                ≫
+                l
+                )
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{aligned}y&\equiv x\oplus ((x\gg u)~\And ~d)\\y&\equiv y\oplus ((y\ll s)~\And ~b)\\y&\equiv y\oplus ((y\ll t)~\And ~c)\\z&\equiv y\oplus (y\gg l)\end{aligned}}}
+  
+
+where 
+  
+    
+      
+        x
+      
+    
+    {\displaystyle x}
+  
+ is the next value from the series, 
+  
+    
+      
+        y
+      
+    
+    {\displaystyle y}
+  
+ is a temporary intermediate value, and 
+  
+    
+      
+        z
+      
+    
+    {\displaystyle z}
+  
+ is the value returned from the algorithm, with 
+  
+    
+      
+        ≪
+      
+    
+    {\displaystyle \ll }
+  
+and 
+  
+    
+      
+        ≫
+      
+    
+    {\displaystyle \gg }
+  
+ as the bitwise left and right shifts, and 
+  
+    
+      
+        &
+      
+    
+    {\displaystyle \&}
+  
+ as the bitwise AND. The first and last transforms are added in order to improve lower-bit equidistribution. From the property of TGFSR, 
+  
+    
+      
+        s
+        +
+        t
+        ≥
+        
+          ⌊
+          
+            
+              w
+              2
+            
+          
+          ⌋
+        
+        −
+        1
+      
+    
+    {\displaystyle s+t\geq \left\lfloor {\frac {w}{2}}\right\rfloor -1}
+  
+ is required to reach the upper bound of equidistribution for the upper bits.
+The coefficients for MT19937 are:
+
+  
+    
+      
+        
+          
+            
+              
+                (
+                w
+                ,
+                n
+                ,
+                m
+                ,
+                r
+                )
+              
+              
+                
+                =
+                (
+                32
+                ,
+                624
+                ,
+                397
+                ,
+                31
+                )
+              
+            
+            
+              
+                a
+              
+              
+                
+                =
+                
+                  
+                    
+                      9908B0DF
+                    
+                  
+                  
+                    16
+                  
+                
+              
+            
+            
+              
+                (
+                u
+                ,
+                d
+                )
+              
+              
+                
+                =
+                (
+                11
+                ,
+                
+                  
+                    
+                      FFFFFFFF
+                    
+                  
+                  
+                    16
+                  
+                
+                )
+              
+            
+            
+              
+                (
+                s
+                ,
+                b
+                )
+              
+              
+                
+                =
+                (
+                7
+                ,
+                
+                  
+                    
+                      9D2C5680
+                    
+                  
+                  
+                    16
+                  
+                
+                )
+              
+            
+            
+              
+                (
+                t
+                ,
+                c
+                )
+              
+              
+                
+                =
+                (
+                15
+                ,
+                
+                  
+                    
+                      EFC60000
+                    
+                  
+                  
+                    16
+                  
+                
+                )
+              
+            
+            
+              
+                l
+              
+              
+                
+                =
+                18
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{aligned}(w,n,m,r)&=(32,624,397,31)\\a&={\textrm {9908B0DF}}_{16}\\(u,d)&=(11,{\textrm {FFFFFFFF}}_{16})\\(s,b)&=(7,{\textrm {9D2C5680}}_{16})\\(t,c)&=(15,{\textrm {EFC60000}}_{16})\\l&=18\\\end{aligned}}}
+  
+
+Note that 32-bit implementations of the Mersenne Twister generally have d = FFFFFFFF16. As a result, the d is occasionally omitted from the algorithm description, since the bitwise and with d in that case has no effect.
+The coefficients for MT19937-64 are:
+
+  
+    
+      
+        
+          
+            
+              
+                (
+                w
+                ,
+                n
+                ,
+                m
+                ,
+                r
+                )
+                =
+                (
+                64
+                ,
+                312
+                ,
+                156
+                ,
+                31
+                )
+              
+            
+            
+              
+                a
+                =
+                
+                  
+                    
+                      B5026F5AA96619E9
+                    
+                  
+                  
+                    16
+                  
+                
+              
+            
+            
+              
+                (
+                u
+                ,
+                d
+                )
+                =
+                (
+                29
+                ,
+                
+                  
+                    
+                      5555555555555555
+                    
+                  
+                  
+                    16
+                  
+                
+                )
+              
+            
+            
+              
+                (
+                s
+                ,
+                b
+                )
+                =
+                (
+                17
+                ,
+                
+                  
+                    
+                      71D67FFFEDA60000
+                    
+                  
+                  
+                    16
+                  
+                
+                )
+              
+            
+            
+              
+                (
+                t
+                ,
+                c
+                )
+                =
+                (
+                37
+                ,
+                
+                  
+                    
+                      FFF7EEE000000000
+                    
+                  
+                  
+                    16
+                  
+                
+                )
+              
+            
+            
+              
+                l
+                =
+                43
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\begin{aligned}(w,n,m,r)=(64,312,156,31)\\a={\textrm {B5026F5AA96619E9}}_{16}\\(u,d)=(29,{\textrm {5555555555555555}}_{16})\\(s,b)=(17,{\textrm {71D67FFFEDA60000}}_{16})\\(t,c)=(37,{\textrm {FFF7EEE000000000}}_{16})\\l=43\\\end{aligned}}}
+  
+
+
+=== Initialization ===
+The state needed for a Mersenne Twister implementation is an array of n values of w bits each. To initialize the array, a w-bit seed value is used to supply 
+  
+    
+      
+        
+          x
+          
+            0
+          
+        
+      
+    
+    {\displaystyle x_{0}}
+  
+ through 
+  
+    
+      
+        
+          x
+          
+            n
+            −
+            1
+          
+        
+      
+    
+    {\displaystyle x_{n-1}}
+  
+ by setting 
+  
+    
+      
+        
+          x
+          
+            0
+          
+        
+      
+    
+    {\displaystyle x_{0}}
+  
+ to the seed value and thereafter setting
+
+  
+    
+      
+        
+          x
+          
+            i
+          
+        
+        =
+        f
+        ×
+        (
+        
+          x
+          
+            i
+            −
+            1
+          
+        
+        ⊕
+        (
+        
+          x
+          
+            i
+            −
+            1
+          
+        
+        ≫
+        (
+        w
+        −
+        2
+        )
+        )
+        )
+        +
+        i
+      
+    
+    {\displaystyle x_{i}=f\times (x_{i-1}\oplus (x_{i-1}\gg (w-2)))+i}
+  
+
+for 
+  
+    
+      
+        i
+      
+    
+    {\displaystyle i}
+  
+ from 
+  
+    
+      
+        1
+      
+    
+    {\displaystyle 1}
+  
+ to 
+  
+    
+      
+        n
+        −
+        1
+      
+    
+    {\displaystyle n-1}
+  
+.
+
+The first value the algorithm then generates is based on 
+  
+    
+      
+        
+          x
+          
+            n
+          
+        
+      
+    
+    {\displaystyle x_{n}}
+  
+, not on 
+  
+    
+      
+        
+          x
+          
+            0
+          
+        
+      
+    
+    {\displaystyle x_{0}}
+  
+.
+The constant f forms another parameter to the generator, though not part of the algorithm proper.
+The value for f for MT19937 is 1812433253.
+The value for f for MT19937-64 is 6364136223846793005.
+
+
+=== C code ===
+
+
+=== Comparison with classical GFSR ===
+In order to achieve the 
+  
+    
+      
+        
+          2
+          
+            n
+            w
+            −
+            r
+          
+        
+        −
+        1
+      
+    
+    {\displaystyle 2^{nw-r}-1}
+  
+ theoretical upper limit of the period in a TGFSR, 
+  
+    
+      
+        
+          ϕ
+          
+            B
+          
+        
+        (
+        t
+        )
+      
+    
+    {\displaystyle \phi _{B}(t)}
+  
+ must be a primitive polynomial, 
+  
+    
+      
+        
+          ϕ
+          
+            B
+          
+        
+        (
+        t
+        )
+      
+    
+    {\displaystyle \phi _{B}(t)}
+  
+ being the characteristic polynomial of:
+
+  
+    
+      
+        B
+        =
+        
+          
+            (
+            
+              
+                
+                  0
+                
+                
+                  
+                    I
+                    
+                      w
+                    
+                  
+                
+                
+                  ⋯
+                
+                
+                  0
+                
+                
+                  0
+                
+              
+              
+                
+                  ⋮
+                
+                
+                
+                
+                
+              
+              
+                
+                  
+                    I
+                    
+                      w
+                    
+                  
+                
+                
+                  ⋮
+                
+                
+                  ⋱
+                
+                
+                  ⋮
+                
+                
+                  ⋮
+                
+              
+              
+                
+                  ⋮
+                
+                
+                
+                
+                
+              
+              
+                
+                  0
+                
+                
+                  0
+                
+                
+                  ⋯
+                
+                
+                  
+                    I
+                    
+                      w
+                    
+                  
+                
+                
+                  0
+                
+              
+              
+                
+                  0
+                
+                
+                  0
+                
+                
+                  ⋯
+                
+                
+                  0
+                
+                
+                  
+                    I
+                    
+                      w
+                      −
+                      r
+                    
+                  
+                
+              
+              
+                
+                  S
+                
+                
+                  0
+                
+                
+                  ⋯
+                
+                
+                  0
+                
+                
+                  0
+                
+              
+            
+            )
+          
+        
+        
+          
+            
+              
+            
+            
+              
+            
+            
+              
+                ←
+                m
+                
+                  -th row
+                
+              
+            
+            
+              
+            
+            
+              
+            
+            
+              
+            
+          
+        
+      
+    
+    {\displaystyle B={\begin{pmatrix}0&I_{w}&\cdots &0&0\\\vdots &&&&\\I_{w}&\vdots &\ddots &\vdots &\vdots \\\vdots &&&&\\0&0&\cdots &I_{w}&0\\0&0&\cdots &0&I_{w-r}\\S&0&\cdots &0&0\end{pmatrix}}{\begin{matrix}\\\\\leftarrow m{\text{-th row}}\\\\\\\\\end{matrix}}}
+  
+
+  
+    
+      
+        S
+        =
+        
+          
+            (
+            
+              
+                
+                  0
+                
+                
+                  
+                    I
+                    
+                      r
+                    
+                  
+                
+              
+              
+                
+                  
+                    I
+                    
+                      w
+                      −
+                      r
+                    
+                  
+                
+                
+                  0
+                
+              
+            
+            )
+          
+        
+        A
+      
+    
+    {\displaystyle S={\begin{pmatrix}0&I_{r}\\I_{w-r}&0\end{pmatrix}}A}
+  
+
+The twist transformation improves the classical GFSR with the following key properties:
+
+The period reaches the theoretical upper limit 
+  
+    
+      
+        
+          2
+          
+            n
+            w
+            −
+            r
+          
+        
+        −
+        1
+      
+    
+    {\displaystyle 2^{nw-r}-1}
+  
+ (except if initialized with 0)
+Equidistribution in n dimensions (e.g. linear congruential generators can at best manage reasonable distribution in five dimensions)
+
+
+== Characteristics ==
+The Mersenne Twister has widespread use in part to its very long period of 
+  
+    
+      
+        
+          2
+          
+            19937
+          
+        
+        −
+        1
+      
+    
+    {\displaystyle 2^{19937}-1}
+  
+, exceeding that of generators in older software packages, which remedies problems with older generators. It's permissively-licensed and patent-free for all variants except CryptMT. Additionally, the Mersenne Twister is k-distributed to 32-bit accuracy for every 
+  
+    
+      
+        1
+        ≤
+        k
+        ≤
+        623
+      
+    
+    {\displaystyle 1\leq k\leq 623}
+  
+, improving its output quality. It does, however, use a relatively large state buffer, of almost 2.5kB and it is not cryptographically secure, unless the TinyMT and CryptMT variants are used respectively. CryptMT is used over the Mersenne Twister because after observing a sufficient number of iterations (624 in the case of MT19937, since this is the size of the state vector from which future iterations are produced), all future iterations of the algorithm can be predicted. 
+Implementations generally create random numbers faster than hardware-implemented methods. A study found that the Mersenne Twister creates 64-bit floating point random numbers approximately twenty times faster than the hardware-implemented, processor-based RDRAND instruction set. However, the throughput is mediocre by modern standards, unless the SFMT variant (discussed below) is used. 
+It is not generally appropriate to use multiple instances of the Mersenne Twister that differ only in seed value (but not other parameters) for Monte Carlo simulations that require independent random number generators, though there exists a method for choosing multiple sets of parameter values.
+The Mersenne Twister generally performs well in test for statistical randomness, including the Diehard tests and most, but not all, of the TestU01 tests where it exhibits two clear failures (linear complexity) in both Crush and BigCrush in the TestU01 suite. The test, like Mersenne Twister, is based on an 
+  
+    
+      
+        
+          
+            
+              F
+            
+          
+          
+            2
+          
+        
+      
+    
+    {\displaystyle {\textbf {F}}_{2}}
+  
+-algebra.
+It can exhibit poor diffusion resulting in outputs that pass randomness tests being generated after a long time, if the initial state is highly non-random. This happens particularly if the initial state has many zeroes. Generated results also contain subsequences with more 0's than 1's which adds to the poor diffusion property, resulting in recovery from many-zero states difficult. A consequence of poor diffusion is that two instances of the generator, started with initial states that are almost the same, will usually output nearly the same sequence for many iterations, before eventually diverging. The 2002 update to the MT algorithm has improved initialization, so that beginning with such a state is very unlikely. The GPU version (MTGP) is said to be even better.
+
+
+== Variants ==
+CryptMT is a stream cipher and cryptographically secure pseudorandom number generator which uses Mersenne Twister internally. It was developed by Matsumoto and Nishimura alongside Mariko Hagita and Mutsuo Saito. It has been submitted to the eSTREAM project of the eCRYPT network. Unlike Mersenne Twister or its other derivatives, CryptMT is patented.
+MTGP is a variant of Mersenne Twister optimised for graphics processing units published by Mutsuo Saito and Makoto Matsumoto. The basic linear recurrence operations are extended from MT and parameters are chosen to allow many threads to compute the recursion in parallel, while sharing their state space to reduce memory load.  The paper claims improved equidistribution over MT and performance on an old (2008-era) GPU (Nvidia GTX260 with 192 cores) of 4.7 ms for 5×107 random 32-bit integers.
+The SFMT (SIMD-oriented Fast Mersenne Twister) is a variant of Mersenne Twister, introduced in 2006, designed to be fast when it runs on 128-bit SIMD.
+
+It is roughly twice as fast as Mersenne Twister.
+It has a better equidistribution property of v-bit accuracy than MT but worse than WELL ("Well Equidistributed Long-period Linear").
+It has quicker recovery from zero-excess initial state than MT, but slower than WELL.
+It supports various periods from 2607 − 1 to 2216091 − 1.
+Intel SSE2 and PowerPC AltiVec are supported by SFMT. It is also used for games with the Cell BE in the PlayStation 3.
+TinyMT is a variant of Mersenne Twister, proposed by Saito and Matsumoto in 2011. TinyMT uses just 127 bits of state space, a significant decrease compared to the original's 2.5 KiB of state. However, it has a period of 
+  
+    
+      
+        
+          2
+          
+            127
+          
+        
+        −
+        1
+      
+    
+    {\displaystyle 2^{127}-1}
+  
+, far shorter than the original, so it is only recommended by the authors in cases where memory is at a premium.
+
+
+== Applications ==
+The Mersenne Twister is used as default PRNG by the following software:
+
+Programming languages: Dyalog APL, IDL, R, Ruby, Free Pascal, PHP, Python (also available in NumPy, however the default was changed to PCG64 instead as of version 1.17), CMU Common Lisp, Embeddable Common Lisp, Steel Bank Common Lisp, Julia (up to Julia 1.6 LTS, still available in later, but a better/faster RNG used by default as of 1.7)
+Unix-likes libraries and software: GLib, GNU Multiple Precision Arithmetic Library, GNU Octave, GNU Scientific Library
+Other: Microsoft Excel, GAUSS, gretl, Stata, SageMath, Scilab, Maple, MATLAB
+It is also available in Apache Commons, in the standard C++ library (since C++11), and in Mathematica. Add-on implementations are provided in many program libraries, including the Boost C++ Libraries, the CUDA Library, and the NAG Numerical Library.
+The Mersenne Twister is one of two PRNGs in SPSS: the other generator is kept only for compatibility with older programs, and the Mersenne Twister is stated to be "more reliable". The Mersenne Twister is similarly one of the PRNGs in SAS: the other generators are older and deprecated. The Mersenne Twister is the default PRNG in Stata, the other one is KISS, for compatibility with older versions of Stata.
+
+
+== Alternatives ==
+An alternative generator, WELL ("Well Equidistributed Long-period Linear"), offers quicker recovery, and equal randomness, and nearly equal speed.
+Marsaglia's xorshift generators and variants are the fastest in the class of LFSRs.
+64-bit MELGs ("64-bit Maximally Equidistributed 
+  
+    
+      
+        
+          
+            
+              F
+            
+          
+          
+            2
+          
+        
+      
+    
+    {\displaystyle {\textbf {F}}_{2}}
+  
+-Linear Generators with Mersenne Prime Period") are completely optimized in terms of the k-distribution properties.
+The ACORN family (published 1989) is another k-distributed PRNG, which shows similar computational speed to MT, and better statistical properties as it satisfies all the current (2019) TestU01 criteria; when used with appropriate choices of parameters, ACORN can have arbitrarily long period and precision.
+The PCG family is a more modern long-period generator, with better cache locality, and less detectable bias using modern analysis methods.
+
+
+== References ==
+
+
+== Further reading ==
+Harase, S. (2014), "On the 
+  
+    
+      
+        
+          
+            F
+          
+          
+            2
+          
+        
+      
+    
+    {\displaystyle \mathbb {F} _{2}}
+  
+-linear relations of Mersenne Twister pseudorandom number generators", Mathematics and Computers in Simulation, 100: 103–113, arXiv:1301.5435, doi:10.1016/j.matcom.2014.02.002, S2CID 6984431.
+Harase, S. (2019), "Conversion of Mersenne Twister to double-precision floating-point numbers", Mathematics and Computers in Simulation, 161: 76–83, arXiv:1708.06018, doi:10.1016/j.matcom.2018.08.006, S2CID 19777310.
+
+
+== External links ==
+The academic paper for MT, and related articles by Makoto Matsumoto
+Mersenne Twister home page, with codes in C, Fortran, Java, Lisp and some other languages
+Mersenne Twister examples — a collection of Mersenne Twister implementations, in several programming languages - at GitHub
+SFMT in Action: Part I – Generating a DLL Including SSE2 Support – at Code Project

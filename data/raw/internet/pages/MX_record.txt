@@ -1,0 +1,77 @@
+A  mail exchanger record (MX record) specifies the mail server responsible for accepting email messages on behalf of a domain name. It is a resource record in the Domain Name System (DNS). It is possible to configure several MX records, typically pointing to an array of mail servers for load balancing and redundancy. 
+
+
+== Overview ==
+Resource records are the basic information element of the Domain Name System (DNS). An MX record is one of these, and a domain may have one or more of these set up, as below:
+
+The characteristic payload information of an MX record is a preference value (above labelled "Priority"), and the domain name of a mailserver ("Host" above). 
+The priority field identifies which mailserver should be preferred - in this case the values are both 10, so mail would be expected to flow evenly to both onemail.example.com and twomail.example.com - a common configuration. The host name must map directly to one or more address records (A, or AAAA) in the DNS, and must not point to any CNAME records.
+When an e-mail message is sent through the Internet, the sending mail transfer agent (MTA) queries the Domain Name System for the MX records of each recipient's domain name. This query returns a list of host names of mail exchange servers accepting incoming mail for that domain and their preferences. The sending agent then attempts to establish an SMTP connection, trying the host with the lowest "Priority" value first. The system allows high-availability clusters of mail gateways to be built for one domain if necessary.
+The MX mechanism does not grant the ability to provide mail service on alternative port numbers, nor does it provide the ability to distribute mail delivery across a set of unequal-priority mail servers by assigning a weighting value to each one.
+
+
+== MX preference, distance, and priority ==
+According to RFC 5321, the lowest-numbered records are the most preferred. This phrasing can be confusing, and so the preference number is sometimes referred to as the distance: smaller distances are more preferable. An older RFC, RFC 974, indicates that when the preference numbers are the same for two servers, they have the same priority, hence those two terms are used interchangeably.
+The preference number is an unsigned 16-bit field, thus valid values range from 0 to 65535.
+
+
+=== The basics ===
+In the simplest case, a domain may have just one mail server. For example, if an MTA looks up the MX records for example.com, and the DNS server replied with only mail.example.com with a preference number of 50, then the MTA will attempt delivery of the mail to the server listed. In this case, the number 50 could have been any integer permitted by the SMTP specification.
+When more than one server is returned for an MX query, the server with the smallest preference number must be tried first.  If there is more than one MX record with the same preference number, all of those must be tried before moving on to lower-priority entries. An SMTP client must be able to try (and retry) each of the relevant addresses in the list in order, until a delivery attempt succeeds.
+
+
+=== Load distribution ===
+The standard approach to distributing a load of incoming mail over an array of servers is to return the same preference number for each server in the set. When determining which server of equal preference to send mail to, "the sender-SMTP MUST randomize them to spread the load across multiple mail exchangers for a specific organization", unless there is a clear reason to favor one. 
+An alternative approach is to use multihomed servers, where the one host returns several IP addresses. This method places the burden on the DNS rather than the SMTP-sender to perform the load balancing, which in this case will present a list of IP addresses in a specific order to the clients querying the A record of the mail exchanger. Since the RFC requires that the SMTP-sender use the order given in the A record query, the DNS server is free to carefully manipulate its balancing based on any method, including round robin DNS, mail server load, or some undisclosed priority scheme.
+
+
+=== Spammers ===
+Spammers may deliberately direct mail to one of the backup (high distance) MX servers of a domain first, on the assumption that such a server will have less effective anti-spam filters. An anti-spam technique called nolisting is based on assuming this behaviour.
+
+
+== Handling of delivery failure ==
+The SMTP RFC is ambiguous about exactly what kinds of delivery failure must result in re-attempting delivery via more distant MX records (those with higher preference values).
+When servers indicate temporary failures, either by explicitly sending a 4xx error or by ending the connection unexpectedly (which must be treated as a 451 error, according to Section 3.8 of the RFC), Section 4.5.4.1 says:
+
+The sender MUST delay retrying a particular destination after one attempt has failed.
+However, when the sender retries, the RFC is silent about whether this should be to the same server, or a more "distant" MX record. It does say, in Section 5.1:
+
+When the lookup succeeds, the mapping can result in a list of alternative delivery addresses rather than a single address, because of multiple MX records, multihoming, or both.   To provide reliable mail transmission, the SMTP client MUST be able to try (and retry) each of the relevant addresses in this list in order, until a delivery attempt succeeds.
+Some servers (such as Sendmail and Postfix 2.1 or later), will attempt the next-furthest MX server after some types of temporary delivery failures, such as greeting failures. Other servers (such as qmail and Postfix 2.0 or earlier) will only use more distant MX records if the servers specified in the shortest-distance MX records could not be contacted at all. Despite the difference, both behaviors are valid - since the RFC is not specific.
+
+
+== Fallback to the address record ==
+In the absence of an MX record, email senders will attempt delivery to the address record - e.g. example.com.
+This is based on RFC 5321 sec. 5.1, which states :
+
+SMTP clients must look up an MX record;
+If (and only if) no MX record for the domain is present, treat the domain as if it had an MX record with the given domain as the target hostname and a preference value of 0
+Perform A or AAAA lookups as required to determine the IP address of the target hostname
+
+
+=== Historical background ===
+RFC 821 was published in 1982. It makes only passing references to DNS, because at the time the transition from HOSTS.TXT to the DNS had not yet started. RFC 883, the first description of the DNS, was published over a year later in late 1983. It described the experimental and little used MD and MF records. According to RFC 897 and RFC 921, the transition to DNS started in 1983, but HOSTS.TXT was not scheduled to be phased out until the end of 1985 and was not totally phased out until the late 1990s.
+In January 1986, RFC 973 and RFC 974 deprecated the MD and MF records, replaced them with MX, and defined the MX lookup with fallback to A. RFC 974 recommends that clients do a WKS lookup on each MX host to see if it actually supports SMTP and discard the MX entry if not. However, RFC 1123 changed this to say that WKS should not be checked.
+This means that SMTP had been in use for at least a year using HOSTS.TXT, and then another couple of years using A, MD, and MF, before MX came along. MD and MF were hard to use, so most people just used the A record. Under the circumstances, MX without fallback to A would not have worked because of the substantial installed base of mail servers using A records. The early use of MX was to identify gateways to other networks, but it did not come into wide use until the DNS was well established in the early 1990s.
+
+
+== Standards documents ==
+RFC 1035 (1987), Domain Names - Implementation and Specification
+RFC 1912 (1996), Common DNS Operational and Configuration Errors
+RFC 5321 (2008), Simple Mail Transfer Protocol
+RFC 7505 (2015), A "Null MX" No Service Resource Record for Domains That Accept No Mail
+Obsoletes:
+
+RFC 974 (1986), Mail Routing and the Domain System (obsoleted by RFC-5321)
+RFC 2821 (2001), Simple Mail Transfer Protocol (obsoleted by RFC-5321)
+
+
+== See also ==
+SRV record
+Sender Policy Framework
+List of DNS record types
+A record
+Nolisting
+
+
+== References ==

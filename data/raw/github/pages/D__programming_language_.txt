@@ -1,0 +1,238 @@
+D, also known as dlang, is a multi-paradigm system programming language created by Walter Bright at Digital Mars and released in 2001. Andrei Alexandrescu joined the design and development effort in 2007. Though it originated as a re-engineering of C++, D is now a very different language. As it has developed, it has drawn inspiration from other high-level programming languages. Notably, it has been influenced by Java, Python, Ruby, C#, and Eiffel.
+The D language reference describes it as follows:
+
+D is a general-purpose systems programming language with a C-like syntax that compiles to native code. It is statically typed and supports both automatic (garbage collected) and manual memory management. D programs are structured as modules that can be compiled separately and linked with external libraries to create native libraries or executables.
+
+
+== Features ==
+D is not source-compatible with C and C++ source code in general. However, any code that is legal in both C/C++ and D should behave in the same way.
+Like C++, D has closures, anonymous functions, compile-time function execution, design by contract, ranges, built-in container iteration concepts, and type inference. D's declaration, statement and expression syntaxes also closely match those of C++.
+Unlike C++, D also implements garbage collection, first class arrays (std::array in C++ are technically not first class), array slicing, nested functions and lazy evaluation. D uses Java-style single inheritance with interfaces and mixins rather than C++-style multiple inheritance.
+D is a systems programming language. Like C++, and unlike application languages such as Java and C#, D supports low-level programming, including inline assembler. Inline assembler allows programmers to enter machine-specific assembly code within standard D code. System programmers use this method to access the low-level features of the processor that are needed to run programs that interface directly with the underlying hardware, such as operating systems and device drivers. Low-level programming is also used to write higher performance code than would be produced by a compiler.
+D supports function overloading and operator overloading. Symbols (functions, variables, classes) can be declared in any order; forward declarations are not needed.
+In D, text character strings are arrays of characters, and arrays in D are bounds-checked. D has first class types for complex and imaginary numbers.
+
+
+=== Programming paradigms ===
+D supports five main programming paradigms:
+
+Concurrent (actor model)
+Object-oriented
+Imperative
+Functional
+Metaprogramming
+
+
+==== Imperative ====
+Imperative programming in D is almost identical to that in C. Functions, data, statements, declarations and expressions work just as they do in C, and the C runtime library may be accessed directly. On the other hand, unlike C, D's foreach loop construct allows looping over a collection. D also allows nested functions, which are functions that are declared inside another function, and which may access the enclosing function's local variables.
+
+
+==== Object-oriented ====
+Object-oriented programming in D is based on a single inheritance hierarchy, with all classes derived from class Object. D does not support multiple inheritance; instead, it uses Java-style interfaces, which are comparable to C++'s pure abstract classes, and mixins, which separate common functionality from the inheritance hierarchy. D also allows the defining of static and final (non-virtual) methods in interfaces.
+Interfaces and inheritance in D support covariant types for return types of overridden methods.
+D supports type forwarding, as well as optional custom dynamic dispatch.
+Classes (and interfaces) in D can contain invariants which are automatically checked before and after entry to public methods, in accordance with the design by contract methodology.
+Many aspects of classes (and structs) can be introspected automatically at compile time (a form of reflective programming (reflection) using type traits) and at run time (RTTI / TypeInfo), to facilitate generic code or automatic code generation (usually using compile-time techniques).
+
+
+==== Functional ====
+D supports functional programming features such as function literals, closures, recursively-immutable objects and the use of higher-order functions. There are two syntaxes for anonymous functions, including a multiple-statement form and a "shorthand" single-expression notation:
+
+There are two built-in types for function literals, function, which is simply a pointer to a stack-allocated function, and delegate, which also includes a pointer to the relevant stack frame, the surrounding ‘environment’, which contains the current local variables. Type inference may be used with an anonymous function, in which case the compiler creates a delegate unless it can prove that an environment pointer is not necessary. Likewise, to implement a closure, the compiler places enclosed local variables on the heap only if necessary (for example, if a closure is returned by another function, and exits that function's scope). When using type inference, the compiler will also add attributes such as pure and nothrow to a function's type, if it can prove that they apply.
+Other functional features such as currying and common higher-order functions such as map, filter, and reduce are available through the standard library modules std.functional and std.algorithm.
+
+Alternatively, the above function compositions can be expressed using Uniform function call syntax (UFCS) for more natural left-to-right reading:
+
+
+==== Parallelism ====
+Parallel programming concepts are implemented in the library, and do not require extra support from the compiler. However the D type system and compiler ensure that data sharing can be detected and managed transparently.
+
+iota(11).parallel is equivalent to std.parallelism.parallel(iota(11)) by using UFCS.
+The same module also supports taskPool which can be used for dynamic creation of parallel tasks, as well as map-filter-reduce and fold style operations on ranges (and arrays), which is useful when combined with functional operations. std.algorithm.map returns a lazily evaluated range rather than an array. This way, the elements are computed by each worker task in parallel automatically.
+
+
+==== Concurrency ====
+Concurrency is fully implemented in the library, and it does not require support from the compiler. Alternative implementations and methodologies of writing concurrent code are possible. The use of D typing system does help ensure memory safety.
+
+
+==== Metaprogramming ====
+Metaprogramming is supported through templates, compile-time function execution, tuples, and string mixins. The following examples demonstrate some of D's compile-time features.
+Templates in D can be written in a more imperative style compared to the C++ functional style for templates. This is a regular function that calculates the factorial of a number:
+
+Here, the use of static if, D's compile-time conditional construct, is demonstrated to construct a template that performs the same calculation using code that is similar to that of the function above:
+
+In the following two examples, the template and function defined above are used to compute factorials. The types of constants need not be specified explicitly as the compiler infers their types from the right-hand sides of assignments:
+
+This is an example of compile-time function execution (CTFE). Ordinary functions may be used in constant, compile-time expressions provided they meet certain criteria:
+
+The std.string.format function performs printf-like data formatting (also at compile-time, through CTFE), and the "msg" pragma displays the result at compile time:
+
+String mixins, combined with compile-time function execution, allow for the generation of D code using string operations at compile time. This can be used to parse domain-specific languages, which will be compiled as part of the program:
+
+
+=== Memory management ===
+Memory is usually managed with garbage collection, but specific objects may be finalized immediately when they go out of scope. This is what the majority of programs and libraries written in D use.
+In case more control over memory layout and better performance is needed, explicit memory management is possible using the overloaded operator new, by calling C's malloc and free directly, or implementing custom allocator schemes (i.e. on stack with fallback, RAII style allocation, reference counting, shared reference counting). Garbage collection can be controlled: programmers may add and exclude memory ranges from being observed by the collector, can disable and enable the collector and force either a generational or full collection cycle. The manual gives many examples of how to implement different highly optimized memory management schemes for when garbage collection is inadequate in a program.
+In functions, struct instances are by default allocated on the stack, while class instances by default allocated on the heap (with only reference to the class instance being on the stack). However this can be changed for classes, for example using standard library template std.typecons.scoped, or by using new for structs and assigning to a pointer instead of a value-based variable.
+In functions, static arrays (of known size) are allocated on the stack. For dynamic arrays, one can use the core.stdc.stdlib.alloca function (similar to alloca in C), to allocate memory on the stack. The returned pointer can be used (recast) into a (typed) dynamic array, by means of a slice (however resizing array, including appending must be avoided; and for obvious reasons they must not be returned from the function).
+A scope keyword can be used both to annotate parts of code, but also variables and classes/structs, to indicate they should be destroyed (destructor called) immediately on scope exit. Whatever the memory is deallocated also depends on implementation and class-vs-struct differences.
+std.experimental.allocator contains a modular and composable allocator templates, to create custom high performance allocators for special use cases.
+
+
+=== SafeD ===
+SafeD
+is the name given to the subset of D that can be guaranteed to be memory safe. Functions marked @safe are checked at compile time to ensure that they do not use any features that could result in corruption of memory, such as pointer arithmetic and unchecked casts. Any other functions called must also be marked as @safe or @trusted. Functions can be marked @trusted for the cases where the compiler cannot distinguish between safe use of a feature that is disabled in SafeD and a potential case of memory corruption.
+
+
+==== Scope lifetime safety ====
+Initially under the banners of DIP1000 and DIP25 (now part of the language specification), D provides protections against certain ill-formed constructions involving the lifetimes of data.
+The current mechanisms in place primarily deal with function parameters and stack memory however it is a stated ambition of the leadership of the programming language to provide a more thorough treatment of lifetimes within the D programming language (influenced by ideas from Rust programming language).
+
+
+==== Lifetime safety of assignments ====
+Within @safe code, the lifetime of an assignment involving a reference type is checked to ensure that the lifetime of the assignee is longer than that of the assigned.
+For example:
+
+
+==== Function parameter lifetime annotations within @safe code ====
+When applied to function parameter which are either of pointer type or references, the keywords return and scope constrain the lifetime and use of that parameter.
+The language standard dictates the following behaviour:
+
+An annotated example is given below.
+
+
+=== Interaction with other systems ===
+C's application binary interface (ABI) is supported, as well as all of C's fundamental and derived types, enabling direct access to existing C code and libraries. D bindings are available for many popular C libraries. Additionally, C's standard library is part of standard D.
+On Microsoft Windows, D can access Component Object Model (COM) code.
+As long as memory management is properly taken care of, many other languages can be mixed with D in a single binary. For example, the GDC compiler allows to link and intermix C, C++, and other supported language codes such as Objective-C. D code (functions) can also be marked as using C, C++, Pascal ABIs, and thus be passed to the libraries written in these languages as callbacks. Similarly data can be interchanged between the codes written in these languages in both ways. This usually restricts use to primitive types, pointers, some forms of arrays, unions, structs, and only some types of function pointers.
+Because many other programming languages often provide the C API for writing extensions or running the interpreter of the languages, D can interface directly with these languages as well, using standard C bindings (with a thin D interface file). For example, there are bi-directional bindings for languages like Python, Lua and other languages, often using compile-time code generation and compile-time type reflection methods.
+
+
+==== Interaction with C++ code ====
+For D code marked as extern(C++), the following features are specified:
+
+The name mangling conventions shall match those of C++ on the target.
+For function calls, the ABI shall be equivalent.
+The vtable shall be matched up to single inheritance (the only level supported by the D language specification).
+C++ namespaces are used via the syntax extern(C++, namespace) where namespace is the name of the C++ namespace.
+
+
+===== An example of C++ interoperation =====
+The C++ side
+
+The D side
+
+
+=== Better C ===
+The D programming language has an official subset known as "Better C". This subset forbids access to D features requiring use of runtime libraries other than that of C.
+Enabled via the compiler flags "-betterC" on DMD and LDC, and "-fno-druntime" on GDC, Better C may only call into D code compiled under the same flag (and linked code other than D) but code compiled without the Better C option may call into code compiled with it: this will, however, lead to slightly different behaviours due to differences in how C and D handle asserts.
+
+
+==== Features included in Better C ====
+Unrestricted use of compile-time features (for example, D's dynamic allocation features can be used at compile time to pre-allocate D data)
+Full metaprogramming facilities
+Nested functions, nested structs, delegates and lambdas
+Member functions, constructors, destructors, operating overloading, etc.
+The full module system
+Array slicing, and array bounds checking
+RAII
+scope(exit)
+Memory safety protections
+Interfacing with C++
+COM classes and C++ classes
+assert failures are directed to the C runtime library
+switch with strings
+final switch
+unittest blocks
+printf format validation
+
+
+==== Features excluded from Better C ====
+Garbage collection
+TypeInfo and ModuleInfo
+Built-in threading (e.g. core.thread)
+Dynamic arrays (though slices of static arrays work) and associative arrays
+Exceptions
+synchronized and core.sync
+Static module constructors or destructors
+
+
+== History ==
+Walter Bright started working on a new language in 1999. D was first released in December 2001 and reached version 1.0 in January 2007. The first version of the language (D1) concentrated on the imperative, object oriented and metaprogramming paradigms, similar to C++.
+Some members of the D community dissatisfied with Phobos, D's official runtime and standard library, created an alternative runtime and standard library named Tango. The first public Tango announcement came within days of D 1.0's release. Tango adopted a different programming style, embracing OOP and high modularity. Being a community-led project, Tango was more open to contributions, which allowed it to progress faster than the official standard library. At that time, Tango and Phobos were incompatible due to different runtime support APIs (the garbage collector, threading support, etc.). This made it impossible to use both libraries in the same project. The existence of two libraries, both widely in use, has led to significant dispute due to some packages using Phobos and others using Tango.
+In June 2007, the first version of D2 was released. The beginning of D2's development signaled D1's stabilization. The first version of the language has been placed in maintenance, only receiving corrections and implementation bugfixes. D2 introduced breaking changes to the language, beginning with its first experimental const system. D2 later added numerous other language features, such as closures, purity, and support for the functional and concurrent programming paradigms. D2 also solved standard library problems by separating the runtime from the standard library. The completion of a D2 Tango port was announced in February 2012.
+The release of Andrei Alexandrescu's book The D Programming Language on 12 June 2010, marked the stabilization of D2, which today is commonly referred to as just "D".
+In January 2011, D development moved from a bugtracker / patch-submission basis to GitHub. This has led to a significant increase in contributions to the compiler, runtime and standard library.
+In December 2011, Andrei Alexandrescu announced that D1, the first version of the language, would be discontinued on 31 December 2012. The final D1 release, D v1.076, was on 31 December 2012.
+Code for the official D compiler, the Digital Mars D compiler by Walter Bright, was originally released under a custom license, qualifying as source available but not conforming to the Open Source Definition. In 2014, the compiler front-end was re-licensed as open source under the Boost Software License. This re-licensed code excluded the back-end, which had been partially developed at Symantec. On 7 April 2017, the whole compiler was made available under the Boost license after Symantec gave permission to re-license the back-end, too. On 21 June 2017, the D Language was accepted for inclusion in GCC.
+
+
+== Implementations ==
+Most current D implementations compile directly into machine code.
+Production ready compilers:
+
+DMD – The Digital Mars D compiler by Walter Bright is the official D compiler; open sourced under the Boost Software License. The DMD frontend is shared by GDC (now in GCC) and LDC, to improve compatibility between compilers. Initially the frontend was written in C++, but now most of it is written in D itself (self-hosting). The backend and machine code optimizers are based on the Symantec compiler. At first it supported only 32-bit x86, with support added for 64-bit amd64 and PowerPC by Walter Bright.
+Bright said in 2020 "The biggest project is implementing the D compiler itself in 100% D". The backend and almost the entire compiler was ported from C++ to D for full bootstrapping.
+GCC – The GNU Compiler Collection, merged GDC into GCC 9 on 29 October 2018. The first working versions of GDC with GCC, based on GCC 3.3 and GCC 3.4 on 32-bit x86 on Linux and macOS was released on 22 March 2004. Since then GDC has gained support for additional platforms, improved performance, and fixed bugs, while tracking upstream DMD code for the frontend and language specification.
+LDC – A compiler based on the DMD front-end that uses LLVM as its compiler back-end. The first release-quality version was published on 9 January 2009. It supports version 2.0.
+Toy and proof-of-concept compilers:
+
+D Compiler for .NET – A back-end for the D programming language 2.0 compiler. It compiles the code to Common Intermediate Language (CIL) bytecode rather than to machine code. The CIL can then be run via a Common Language Infrastructure (CLI) virtual machine. The project has not been updated in years and the author indicated the project is not active anymore.
+SDC – The Snazzy D Compiler uses a custom front-end and LLVM as its compiler back-end. It is written in D and uses a scheduler to handle symbol resolution in order to elegantly handle the compile-time features of D. This compiler currently supports a limited subset of the language.
+Using above compilers and toolchains, it is possible to compile D programs to target many different architectures, including IA-32, amd64, AArch64, PowerPC, MIPS64, DEC Alpha, Motorola m68k, SPARC, s390, WebAssembly. The primary supported operating systems are Windows and Linux, but various compilers also support Mac OS X, FreeBSD, NetBSD, AIX, Solaris/OpenSolaris and Android, either as a host or target, or both. WebAssembly target (supported via LDC and LLVM) can operate in any WebAssembly environment, like modern web browser (Google Chrome, Mozilla Firefox, Microsoft Edge, Apple Safari), or dedicated Wasm virtual machines.
+
+
+== Development tools ==
+Editors and integrated development environments (IDEs) supporting syntax highlighting and partial code completion for the language include SlickEdit, Emacs, vim, SciTE, Smultron, Zeus, and Geany among others.
+
+Dexed (formerly Coedit), a D focused graphical IDE written in Object Pascal
+Mono-D is a feature rich cross-platform D focused graphical IDE based on MonoDevelop / Xamarin Studio, mainly written in C Sharp.
+Eclipse plug-ins for D include DDT and Descent (dead project).
+Visual Studio integration is provided by VisualD.
+Visual Studio Code integration with extensions as Dlang-Vscode or Code-D.
+A bundle is available for TextMate, and the Code::Blocks IDE includes partial support for the language. However, standard IDE features such as code completion or refactoring are not yet available, though they do work partially in Code::Blocks (due to D's similarity to C).
+The Xcode 3 plugin "D for Xcode" enables D-based projects and development.
+KDevelop (as well as its text editor backend, Kate) autocompletion plugin is available.
+Dlang IDE is a cross-platform IDE written in D using DlangUI library.
+Open source D IDEs for Windows exist, some written in D, such as Poseidon, D-IDE, and Entice Designer.
+D applications can be debugged using any C/C++ debugger, like GNU Debugger (GDB) or WinDbg, although support for various D-specific language features is extremely limited. On Windows, D programs can be debugged using Ddbg, or Microsoft debugging tools (WinDBG and Visual Studio), after having converted the debug information using cv2pdb. The ZeroBUGS Archived 23 December 2017 at the Wayback Machine debugger for Linux has experimental support for the D language. Ddbg can be used with various IDEs or from the command line; ZeroBUGS has its own graphical user interface (GUI).
+DustMite is a tool for minimizing D source code, useful when finding compiler or tests issues.
+dub is a popular package and build manager for D applications and libraries, and is often integrated into IDE support.
+
+
+== Examples ==
+
+
+== Uses ==
+Notable organisations that use the D programming language for projects include Facebook, eBay, and Netflix.
+D has been successfully used for AAA games, language interpreters, virtual machines, an operating system kernel, GPU programming, web development, numerical analysis, GUI applications, a passenger information system, machine learning, text processing, web and application servers and research.
+The North Korean hacking group Lazarus exploited CVE-2021-44228, aka "Log4Shell," to deploy three malware families written in DLang.
+
+
+== Critique ==
+The lack of agility in the development process and the difficulty of introducing changes to the D language are described in a blog post article by a former contributor. The apparent frustration described there has led to the OpenD fork on January 1, 2024.
+
+
+== See also ==
+
+D Language Foundation
+
+
+== References ==
+
+
+== Further reading ==
+Alexandrescu, Andrei (4 January 2010). The D Programming Language (1 ed.). Addison-Wesley Professional. ISBN 978-0-321-63536-5.
+Alexandrescu, Andrei (15 June 2009). "The Case for D". Dr. Dobb's Journal.
+Bright, Walter (8 April 2014). "How I Came to Write D". Dr. Dobb's Journal.
+Çehreli, Ali (1 February 2012). "Programming in D". (distributed under CC-BY-NC-SA license). This book teaches programming to novices, but covers many advanced D topics as well.
+Metz, Cade (7 July 2014). "The Next Big Programming Language You've Never Heard Of". Wired.
+Ruppe, Adam (May 2014). D Cookbook (1 ed.). PACKT Publishing. ISBN 978-1-783-28721-5.
+
+
+== External links ==
+
+Official website 
+Digital Mars
+Turkish Forum
+Dlang on GitHub

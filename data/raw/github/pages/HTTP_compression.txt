@@ -1,0 +1,89 @@
+HTTP compression is a capability that can be built into web servers and web clients to improve transfer speed and bandwidth utilization.
+HTTP data is compressed before it is sent from the server: compliant browsers will announce what methods are supported to the server before downloading the correct format; browsers that do not support compliant compression method will download uncompressed data. The most common compression schemes include gzip and Brotli; a full list of available schemes is maintained by the IANA. 
+There are two different ways compression can be done in HTTP. At a lower level, a Transfer-Encoding header field may indicate the payload of an HTTP message is compressed. At a higher level, a Content-Encoding header field may indicate that a resource being transferred, cached, or otherwise referenced is compressed. Compression using Content-Encoding is more widely supported than Transfer-Encoding, and some browsers do not advertise support for Transfer-Encoding compression to avoid triggering bugs in servers.
+
+
+== Compression scheme negotiation ==
+The negotiation is done in two steps, described in RFC 2616 and RFC 9110:
+1. The web client advertises which compression schemes it supports by including a list of tokens in the HTTP request. For Content-Encoding, the list is in a field called Accept-Encoding; for Transfer-Encoding, the field is called TE.
+
+2. If the server supports one or more compression schemes, the outgoing data may be compressed by one or more methods supported by both parties. If this is the case, the server will add a Content-Encoding or Transfer-Encoding field in the HTTP response with the used schemes, separated by commas.
+
+The web server is by no means obligated to use any compression method – this depends on the internal settings of the web server and also may depend on the internal architecture of the website in question.
+
+
+== Content-Encoding tokens ==
+The official list of tokens available to servers and client is maintained by IANA, and it includes:
+
+br – Brotli, a compression algorithm specifically designed for HTTP content encoding, defined in RFC 7932 and implemented in all modern major browsers.
+compress – UNIX "compress" program method (historic; deprecated in most applications and replaced by gzip or deflate)
+deflate – compression based on the deflate algorithm (described in RFC 1951), a combination of the LZ77 algorithm and Huffman coding, wrapped inside the zlib data format (RFC 1950);
+exi – W3C Efficient XML Interchange
+gzip – GNU zip format (described in RFC 1952). Uses the deflate algorithm for compression, but the data format and the checksum algorithm differ from the "deflate" content-encoding. This method is the most broadly supported as of March 2011.
+identity – No transformation is used. This is the default value for content coding.
+pack200-gzip – Network Transfer Format for Java Archives
+zstd – Zstandard compression, defined in RFC 8478
+In addition to these, a number of unofficial or non-standardized tokens are used in the wild by either servers or clients:
+
+bzip2 – compression based on the free bzip2 format, supported by lighttpd
+lzip – compression based on the free lzip format, supported by wget and Links
+lzma – compression based on (raw) LZMA is available in Opera 20, and in elinks via a compile-time option
+peerdist – Microsoft Peer Content Caching and Retrieval
+rsync – delta encoding in HTTP, implemented by a pair of rproxy proxies.
+xpress – Microsoft compression protocol used by Windows 8 and later for Windows Store application updates. LZ77-based compression optionally using a Huffman encoding.
+xz – LZMA2-based content compression, supported by a non-official Firefox patch; and fully implemented in mget since 2013-12-31.
+
+
+== Servers that support HTTP compression ==
+SAP NetWeaver
+Microsoft IIS: built-in or using third-party module
+Apache HTTP Server, via mod_deflate (despite its name, only supporting gzip), and mod_brotli
+Hiawatha HTTP server: serves pre-compressed files
+Cherokee HTTP server, On the fly gzip and deflate compressions
+Oracle iPlanet Web Server
+Zeus Web Server
+lighttpd
+nginx – built-in
+Applications based on Tornado, if "compress_response" is set to True in the application settings (for versions prior to 4.0, set "gzip" to True)
+Jetty Server – built-into default static content serving and available via servlet filter configurations
+GeoServer
+Apache Tomcat
+IBM Websphere
+AOLserver
+Ruby Rack, via the Rack::Deflater middleware
+HAProxy
+Varnish – built-in. Works also with ESI
+Armeria – Serving pre-compressed files
+NaviServer – built-in, dynamic and static compression
+Caddy – built-in via encode
+Many content delivery networks also implement HTTP compression to improve speedy delivery of resources to end users.
+The compression in HTTP can also be achieved by using the functionality of server-side scripting languages like PHP, or programming languages like Java.
+Various online tools exist to verify a working implementation of HTTP compression. These online tools usually request multiple variants of a URL, each with different request headers (with varying Accept-Encoding content). HTTP compression is considered to be implemented correctly when the server returns a document in a compressed format. By comparing the sizes of the returned documents, the effective compression ratio can be calculated (even between different compression algorithms).
+
+
+== Problems preventing the use of HTTP compression ==
+A 2009 article by Google engineers Arvind Jain and Jason Glasgow states that more than 99 person-years are wasted daily due to increase in page load time when users do not receive compressed content. This occurs when anti-virus software interferes with connections to force them to be uncompressed, where proxies are used (with overcautious web browsers), where servers are misconfigured, and where browser bugs stop compression being used. Internet Explorer 6, which drops to HTTP 1.0 (without features like compression or pipelining) when behind a proxy – a common configuration in corporate environments – was the mainstream browser most prone to failing back to uncompressed HTTP.
+Another problem found while deploying HTTP compression on large scale is due to the deflate encoding definition: while HTTP 1.1 defines the deflate encoding as data compressed with deflate (RFC 1951) inside a zlib formatted stream (RFC 1950), Microsoft server and client products historically implemented it as a "raw" deflated stream, making its deployment unreliable. For this reason, some software, including the Apache HTTP Server, only implements gzip encoding.
+
+
+== Security implications ==
+
+Compression allows a form of chosen plaintext attack to be performed: if an attacker can inject any chosen content into the page, they can know whether the page contains their given content by observing the size increase of the encrypted stream. If the increase is smaller than expected for random injections, it means that the compressor has found a repeat in the text, i.e. the injected content overlaps the secret information. This is the idea behind CRIME.
+In 2012, a general attack against the use of data compression, called CRIME, was announced. While the CRIME attack could work effectively against a large number of protocols, including but not limited to TLS, and application-layer protocols such as SPDY or HTTP, only exploits against TLS and SPDY were demonstrated and largely mitigated in browsers and servers. The CRIME exploit against HTTP compression has not been mitigated at all, even though the authors of CRIME have warned that this vulnerability might be even more widespread than SPDY and TLS compression combined.
+In 2013, a new instance of the CRIME attack against HTTP compression, dubbed BREACH, was published. A BREACH attack can extract login tokens, email addresses or other sensitive information from TLS encrypted web traffic in as little as 30 seconds (depending on the number of bytes to be extracted), provided the attacker tricks the victim into visiting a malicious web link.  All versions of TLS and SSL are at risk from BREACH regardless of the encryption algorithm or cipher used. Unlike previous instances of CRIME, which can be successfully defended against by turning off TLS compression or SPDY header compression, BREACH exploits HTTP compression which cannot realistically be turned off, as virtually all web servers rely upon it to improve data transmission speeds for users.
+As of 2016, the TIME attack and the HEIST attack are now public knowledge.
+
+
+== References ==
+
+
+== External links ==
+RFC 2616: Hypertext Transfer Protocol – HTTP/1.1
+RFC 9110: HTTP Semantics
+HTTP Content-Coding Values by Internet Assigned Numbers Authority
+Compression with lighttpd
+Coding Horror: HTTP Compression on IIS 6.0 Archived 2014-02-06 at the Wayback Machine
+15 Seconds: Web Site Compression at the Wayback Machine (archived July 16, 2011)
+Using HTTP Compression Archived 2016-03-14 at the Wayback Machine by Martin Brown of Server Watch
+Using HTTP Compression in PHP
+Dynamic and static HTTP compression with Apache httpd

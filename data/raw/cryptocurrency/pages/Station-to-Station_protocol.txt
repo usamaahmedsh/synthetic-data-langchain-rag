@@ -1,0 +1,92 @@
+Station-to-Station (STS) protocol is a cryptographic key agreement scheme. The protocol is based on classic Diffie–Hellman, and provides mutual key and entity authentication. Unlike the classic Diffie–Hellman, which is vulnerable to man-in-the-middle attacks, this protocol assumes that both parties have signature keys which are used to sign messages, thereby providing security against man-in-the-middle attacks.
+In addition to protecting the established key from an attacker, the STS protocol uses no timestamps and provides perfect forward secrecy.  It also entails two-way explicit key confirmation, making it an authenticated key agreement with key confirmation (AKC) protocol.
+STS was originally presented in 1987 in the context of ISDN security, driven in part by a need to eliminate the potential for spies to sell used keys to adversaries.  It was finalized in 1989 and generally presented by Whitfield Diffie, Paul C. van Oorschot and Michael J. Wiener in 1992.
+
+
+== Description ==
+Deployment of STS can take different forms depending on communication requirements and the level of prior communication between parties.  The data described in STS Setup may be shared prior to the beginning of a session to lessen the impact of the session's establishment.
+In the following explanations, exponentiation (Diffie–Hellman) operations provide the basis for key agreement, though this is not a requirement.  The protocol may be modified, for example, to use elliptic curves instead.
+
+
+=== STS Setup ===
+The following data must be generated before initiating the protocol.
+
+An asymmetric signature keypair for each party
+Required for authentication.  The public portion of this keypair may be shared prior to session establishment.
+Key establishment parameters
+The specification of a cyclic group p and a generator g for that group.  These parameters may be public.  For additional security, each party may supply its own parameters.
+Sharing these data prior to the beginning of the session lessens the complexity of the protocol.
+
+
+=== Basic STS ===
+Supposing all setup data has been shared, the STS protocol proceeds as follows.  If a step cannot be completed, the protocol immediately stops.  All exponentials are in the group specified by p.
+
+Alice generates a random number x and computes and sends the exponential gx to Bob.
+Bob generates a random number y and computes the exponential gy.
+Bob computes the shared secret key K = (gx)y.
+Bob concatenates the exponentials (gy, gx) (order is important), signs them using his asymmetric (private) key B, and then encrypts the signature with K.  He sends the ciphertext along with his own exponential gy to Alice.
+Alice computes the shared secret key K = (gy)x.
+Alice decrypts and verifies Bob's signature using his asymmetric public key.
+Alice concatenates the exponentials (gx, gy) (order is important), signs them using her asymmetric (private) key A, and then encrypts the signature with K.  She sends the ciphertext to Bob.
+Bob decrypts and verifies Alice's signature using her asymmetric public key.
+Alice and Bob are now mutually authenticated and have a shared secret.  This secret, K, can then be used to encrypt further communication.  The basic form of the protocol is formalized in the following three steps:
+
+(1) Alice → Bob : gx
+(2) Alice ← Bob : gy, EK(SB(gy, gx))
+(3) Alice → Bob : EK(SA(gx, gy))
+
+
+=== Full STS ===
+Setup data can also be incorporated into the protocol itself.  Public key certificates may be sent in steps 2 and 3 if the keys are not known in advance.
+
+(1) Alice → Bob : gx
+(2) Alice ← Bob : gy, CertB, EK(SB(gy, gx))
+(3) Alice → Bob : CertA, EK(SA(gx, gy))
+
+If system-wide key establishment parameters are not used, the initiator and responder may create and send their own parameters.  In this case, parameters should be sent with the exponential.
+
+(1) Alice → Bob : g, p, gx
+
+They must also be verified by Bob to prevent an active attacker from inserting weak parameters (and thus a weak key K).  Rather than special checks to prevent this, it may be preferable to include the group parameters in Alice's certificate.
+
+
+== Variations ==
+The variations mentioned here are from the original STS paper.  A number of other, more significant variations have been proposed since.
+
+
+=== Authentication-only STS ===
+A simplified form of STS is available that provides mutual authentication but does not produce a shared secret.  It uses random number challenges instead of the above Diffie–Hellman technique.
+
+Alice generates a random number x sends it to Bob.
+Bob generates a random number y.
+Bob concatenates the random numbers (y, x) (order is important) and signs them using his asymmetric key B.  He sends the signature along with his own random number to Alice.
+Alice verifies Bob's signature.
+Alice concatenates the random numbers (x, y) (order is important) and signs them using her asymmetric key A.  She sends the signature to Bob.
+Bob verifies Alice's signature.
+Formally:
+
+(1) Alice → Bob : x
+(2) Alice ← Bob : y, SB(y, x)
+(3) Alice → Bob : SA(x, y)
+
+This protocol can be extended to include certificates as in Full STS.
+
+
+=== STS-MAC ===
+In cases where encryption is a not viable choice in session establishment, K can instead be used to create a MAC.
+
+(1) Alice → Bob : gx
+(2) Alice ← Bob : gy, SB(gy, gx), MACK(SB(gy, gx))
+(3) Alice → Bob : SA(gx, gy), MACK(SA(gx, gy))
+
+This variation may be preferable to original STS ("STS-ENC") in any case because
+
+.. the use of encryption to provide key confirmation in STS-ENC is questionable — traditionally the sole goal of encryption is to provide confidentiality and if an encryption scheme is used to demonstrate possession of a key then it is shown by decryption, not by encryption.
+The paper goes on to counsel, however, that using K for both a MAC and as the session key violates the principle that keys should not be used for more than one purpose, and presents various workarounds.
+
+
+== Cryptanalysis ==
+STS-MAC is vulnerable to some unknown key-share attacks, whereby an active attacker can inject his own identity into the session establishment procedure in place of either initiator or responder.  Various solutions now exist to work around these vulnerabilities.
+
+
+== References ==

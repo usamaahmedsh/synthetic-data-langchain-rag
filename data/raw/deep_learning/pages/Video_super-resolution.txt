@@ -1,0 +1,362 @@
+Video super-resolution (VSR) is the process of generating high-resolution video frames from the given low-resolution video frames. Unlike single-image super-resolution (SISR), the main goal is not only to restore more fine details while saving coarse ones, but also to preserve motion consistency.
+There are many approaches for this task, but this problem still remains to be popular and challenging.
+
+
+== Mathematical explanation ==
+Most research considers the degradation process of frames as
+
+  
+    
+      
+        {
+        y
+        }
+        =
+        (
+        {
+        x
+        }
+        ∗
+        k
+        )
+        ↓
+        
+          
+            
+            
+              s
+            
+          
+        
+        +
+        {
+        n
+        }
+      
+    
+    {\displaystyle \{y\}=(\{x\}*k)\downarrow {_{s}}+\{n\}}
+  
+
+where:
+
+  
+    
+      
+        {
+        x
+        }
+      
+    
+    {\displaystyle \{x\}}
+  
+ — original high-resolution frame sequence,
+
+  
+    
+      
+        k
+      
+    
+    {\displaystyle k}
+  
+ — blur kernel,
+
+  
+    
+      
+        ∗
+      
+    
+    {\displaystyle *}
+  
+ — convolution operation,
+
+  
+    
+      
+        ↓
+        
+          
+            
+            
+              s
+            
+          
+        
+      
+    
+    {\displaystyle \downarrow {_{s}}}
+  
+ — downscaling operation,
+
+  
+    
+      
+        {
+        n
+        }
+      
+    
+    {\displaystyle \{n\}}
+  
+ — additive noise,
+
+  
+    
+      
+        {
+        y
+        }
+      
+    
+    {\displaystyle \{y\}}
+  
+ — low-resolution frame sequence.
+Super-resolution is an inverse operation, so its problem is to estimate frame sequence 
+  
+    
+      
+        {
+        
+          
+            x
+            ¯
+          
+        
+        }
+      
+    
+    {\displaystyle \{{\overline {x}}\}}
+  
+ from frame sequence 
+  
+    
+      
+        {
+        y
+        }
+      
+    
+    {\displaystyle \{y\}}
+  
+ so that 
+  
+    
+      
+        {
+        
+          
+            x
+            ¯
+          
+        
+        }
+      
+    
+    {\displaystyle \{{\overline {x}}\}}
+  
+ is close to original 
+  
+    
+      
+        {
+        x
+        }
+      
+    
+    {\displaystyle \{x\}}
+  
+. Blur kernel, downscaling operation and additive noise should be estimated for given input to achieve better results.
+Video super-resolution approaches tend to have more components than the image counterparts as they need to exploit the additional temporal dimension. Complex designs are not uncommon. Some most essential components for VSR are guided by four basic functionalities: Propagation, Alignment, Aggregation, and Upsampling.
+
+Propagation refers to the way in which features are propagated temporally
+Alignment concerns on the spatial transformation applied to misaligned images/features
+Aggregation defines the steps to combine aligned features
+Upsampling describes the method to transform the aggregated features to the final output image
+
+
+== Methods ==
+When working with video, temporal information could be used to improve upscaling quality. Single image super-resolution methods could be used too, generating high-resolution frames independently from their neighbours, but it's less effective and introduces temporal instability. There are a few traditional methods, which consider the video super-resolution task as an optimization problem. Last years deep learning based methods for video upscaling outperform traditional ones.
+
+
+=== Traditional methods ===
+There are several traditional methods for video upscaling. These methods try to use some natural preferences and effectively estimate motion between frames. The high-resolution frame is reconstructed based on both natural preferences and estimated motion.
+
+
+==== Frequency domain ====
+Firstly the low-resolution frame is transformed to the frequency domain. The high-resolution frame is estimated in this domain. Finally, this result frame is transformed to the spatial domain.
+Some methods use Fourier transform, which helps to extend the spectrum of captured signal and though increase resolution. There are different approaches for these methods: using  weighted least squares theory,  total least squares (TLS) algorithm, space-varying or spatio-temporal varying filtering.
+Other methods use wavelet transform, which helps to find similarities in neighboring local areas. Later second-generation wavelet transform was used for video super resolution.
+
+
+==== Spatial domain ====
+Iterative back-projection methods assume some function between low-resolution and high-resolution frames and try to improve their guessed function in each step of an iterative process. Projections onto convex sets (POCS), that defines a specific cost function, also can be used for iterative methods.
+Iterative adaptive filtering algorithms use Kalman filter to estimate transformation from low-resolution frame to high-resolution one. To improve the final result these methods consider temporal correlation among low-resolution sequences. Some approaches also consider temporal correlation among high-resolution sequence. To approximate Kalman filter a common way is to use least mean squares (LMS). One can also use steepest descent, least squares (LS), recursive least squares (RLS).
+Direct methods estimate motion between frames, upscale a reference frame, and warp neighboring frames to the high-resolution reference one. To construct result, these upscaled frames are fused together by median filter, weighted median filter, adaptive normalized averaging,  AdaBoost classifier or SVD based filters.
+Non-parametric algorithms join motion estimation and frames fusion to one step. It is performed by consideration of patches similarities. Weights for fusion can be calculated by nonlocal-means filters. To strength searching for similar patches, one can use rotation invariance similarity measure or adaptive patch size. Calculating intra-frame similarity help to preserve small details and edges. Parameters for fusion also can be calculated by kernel regression.
+Probabilistic methods use statistical theory to solve the task. maximum likelihood (ML) methods estimate more probable image. Another group of methods use maximum a posteriori (MAP) estimation. Regularization parameter for MAP can be estimated by Tikhonov regularization.  Markov random fields (MRF) is often used along with MAP and helps to preserve similarity in neighboring patches. Huber MRFs are used to preserve sharp edges. Gaussian MRF can smooth some edges, but remove noise.
+
+
+=== Deep learning based methods ===
+
+
+==== Aligned by motion estimation and motion compensation ====
+In approaches with alignment, neighboring frames are firstly aligned with target one. One can align frames by performing motion estimation and motion compensation (MEMC) or by using Deformable convolution (DC). Motion estimation gives information about the motion of pixels between frames. motion compensation is a warping operation, which aligns one frame to another based on motion information. Examples of such methods:
+
+Deep-DE (deep draft-ensemble learning) generates a series of SR feature maps and then process them together to estimate the final frame
+VSRnet is based on SRCNN (model for single image super resolution), but takes multiple frames as input. Input frames are first aligned by the Druleas algorithm
+VESPCN uses a spatial motion compensation transformer module (MCT), which estimates and compensates motion. Then a series of convolutions performed to extract feature and fuse them
+DRVSR (detail-revealing deep video super-resolution) consists of three main steps: motion estimation, motion compensation and fusion. The motion compensation transformer (MCT) is used for motion estimation. The sub-pixel motion compensation layer (SPMC) compensates motion. Fusion step uses encoder-decoder architecture and ConvLSTM module to unit information from both spatial and temporal dimensions
+RVSR (robust video super-resolution) have two branches: one for spatial alignment and another for temporal adaptation. The final frame is a weighted sum of branches' output
+FRVSR (frame recurrent video super-resolution) estimate low-resolution optical flow, upsample it to high-resolution and warp previous output frame by using this high-resolution optical flow
+STTN (the spatio-temporal transformer network) estimate optical flow by U-style network based on Unet and compensate motion by a trilinear interpolation method
+SOF-VSR (super-resolution optical flow for video super-resolution) calculate high-resolution optical flow in coarse-to-fine manner. Then the low-resolution optical flow is estimated by a space-to-depth transformation. The final super-resolution result is gained from aligned low-resolution frames
+TecoGAN (the temporally coherent GAN) consists of generator and discriminator. Generator estimates LR optical flow between consecutive frames and from this approximate HR optical flow to yield output frame. The discriminator assesses the quality of the generator
+TOFlow (task-oriented flow) is a combination of optical flow network and reconstruction network. Estimated optical flow is suitable for a particular task, such as video super resolution
+MMCNN (the multi-memory convolutional neural network) aligns frames with target one and then generates the final HR-result through the feature extraction, detail fusion and feature reconstruction modules
+RBPN (the recurrent back-projection network). The input of each recurrent projection module features from the previous frame, features from the consequence of frames, and optical flow between neighboring frames
+MEMC-Net (the motion estimation and motion compensation network) uses both motion estimation network and kernel estimation network to warp frames adaptively
+RTVSR (real-time video super-resolution) aligns frames with estimated convolutional kernel
+MultiBoot VSR (the multi-stage multi-reference bootstrapping method) aligns frames and then have two-stage of SR-reconstruction to improve quality
+BasicVSR aligns frames with optical flow and then fuse their features in a recurrent bidirectional scheme
+IconVSR is a refined version of BasicVSR with a recurrent coupled propagation scheme
+UVSR (unrolled network for video super-resolution) adapted unrolled optimization algorithms to solve the VSR problem
+
+
+==== Aligned by deformable convolution ====
+Another way to align neighboring frames with target one is deformable convolution. While usual convolution has fixed kernel, deformable convolution on the first step estimate shifts for kernel and then do convolution. Examples of such methods:
+
+EDVR (The enhanced deformable video restoration) can be divided into two main modules: the pyramid, cascading and deformable (PCD) module for alignment and the temporal-spatial attention (TSA) module for fusion
+DNLN (The deformable non-local network) has alignment module, based on deformable convolution with the hierarchical feature fusion module (HFFB) for better quality) and non-local attention module
+TDAN (The temporally deformable alignment network) consists of an alignment module and a reconstruction module. Alignment performed by deformable convolution based on feature extraction and alignment
+Multi-Stage Feature Fusion Network for Video Super-Resolution uses the multi-scale dilated deformable convolution for frame alignment and the Modulative Feature Fusion Branch to integrate aligned frames
+
+
+==== Aligned by homography ====
+Some methods align frames by calculated homography between frames.
+
+TGA (Temporal Group Attention) divide input frames to N groups dependent on time difference and extract information from each group independently. Fast Spatial Alignment module based on homography used to align frames
+
+
+==== Spatial non-aligned ====
+Methods without alignment do not perform alignment as a first step and just process input frames.
+
+VSRResNet like GAN consists of generator and discriminator. Generator upsamples input frames, extracts features and fuses them. Discriminator assess the quality of result high-resolution frames
+FFCVSR (frame and feature-context video super-resolution) takes unaligned low-resolution frames and output high-resolution previous frames to simultaneously restore high-frequency details and maintain temporal consistency
+MRMNet (the multi-resolution mixture network) consists of three modules: bottleneck, exchange, and residual. Bottleneck unit extract features that have the same resolution as input frames. Exchange module exchange features between neighboring frames and enlarges feature maps. Residual module extract features after exchange one
+STMN (the spatio-temporal matching network) use discrete wavelet transform to fuse temporal features. Non-local matching block integrates super-resolution and denoising. At the final step, SR-result is got on the global wavelet domain
+MuCAN (the multi-correspondence aggregation network) uses temporal multi-correspondence strategy to fuse temporal features and cross-scale nonlocal-correspondence to extract self-similarities in frames
+
+
+==== 3D convolutions ====
+While 2D convolutions work on spatial domain, 3D convolutions use both spatial and temporal information. They perform motion compensation and maintain temporal consistency
+
+DUF (the dynamic upsampling filters) uses deformable 3D convolution for motion compensation. The model estimates kernels for specific input frames
+FSTRN (The fast spatio-temporal residual network) includes a few modules: LR video shallow feature extraction net (LFENet), LR feature fusion and up-sampling module (LSRNet) and two residual modules: spatio-temporal and global
+3DSRnet (The 3D super-resolution network) uses 3D convolutions to extract spatio-temporal information. Model also has a special approach for frames, where scene change is detected
+MP3D (the multi-scale pyramid 3D convolutional network) uses 3D convolution to extract spatial and temporal features simultaneously, which then passed through reconstruction module with 3D sub-pixel convolution for upsampling
+DMBN (the dynamic multiple branch network) has three branches to exploit information from multiple resolutions. Finally, information from branches fuse dynamically
+
+
+==== Recurrent neural networks ====
+Recurrent convolutional neural networks perform video super-resolution by storing temporal dependencies.
+
+STCN (the spatio-temporal convolutional network) extract features in the spatial module, pass them through the recurrent temporal module and final reconstruction module. Temporal consistency is maintained by long short-term memory (LSTM) mechanism
+BRCN (the bidirectional recurrent convolutional network) has two subnetworks: with forward fusion and backward fusion. The result of the network is a composition of two branches' output
+RISTN (the residual invertible spatio-temporal network) consists of spatial, temporal and reconstruction module. Spatial module composed of residual invertible blocks (RIB), which extract spatial features effectively. The output of the spatial module is processed by the temporal module, which extracts spatio-temporal information and then fuses important features. The final result is calculated in the reconstruction module by deconvolution operation
+RRCN (the residual recurrent convolutional network) is a bidirectional recurrent network, which calculates a residual image. Then the final result is gained by adding a bicubically upsampled input frame
+RRN (the recurrent residual network) uses a recurrent sequence of residual blocks to extract spatial and temporal information
+BTRPN (the bidirectional temporal-recurrent propagation network) use bidirectional recurrent scheme. Final-result combined from two branches with channel attention mechanism
+RLSP (recurrent latent state propagation) fully convolutional network cell with highly efficient propagation of temporal information through a hidden state
+RSDN (the recurrent structure-detail network) divide input frame into structure and detail components and process them in two parallel streams
+
+
+==== Videos ====
+Non-local methods extract both spatial and temporal information. The key idea is to use all possible positions as a weighted sum. This strategy may be more effective than local approaches (the progressive fusion non-local method) extract spatio-temporal features by non-local residual blocks, then fuse them by progressive fusion residual block (PFRB). The result of these blocks is a residual image. The final result is gained by adding bicubically upsampled input frame
+
+NLVSR (the novel video super‐resolution network) aligns frames with target one by temporal‐spatial non‐local operation. To integrate information from aligned frames an attention‐based mechanism is used
+MSHPFNL also incorporates multi-scale structure and hybrid convolutions to extract wide-range dependencies. To avoid some artifacts like flickering or ghosting, they use generative adversarial training
+
+
+== Metrics ==
+
+The common way to estimate the performance of video super-resolution algorithms is to use a few metrics:
+
+PSNR (Peak signal-noise ratio) calculates the difference between two corresponding frames based on mean squared error (MSE)
+SSIM (Structural similarity index) measures the similarity of structure between two corresponding frames
+IFC (Information Fidelity Criterion) shows information similarity with the reference frame
+MOVIE (Motion-based Video Integrity Evaluation index) integrates explicit motion information by estimating distortions along motion trajectories
+VMAF (Video Multimethod Assessment Fusion) predicts subjective video quality based on a reference and distorted video sequence
+VIF (Visual Information Fidelity) is a full-reference image quality assessment index based on natural scene statistics and the notion of image information extracted by the human visual system
+LPIPS (Learned Perceptual Image Patch Similarity) compares the perceptual similarity of frames based on high-order image structure
+tOF measures pixel-wise motion similarity with reference frame based on optical flow
+tLP calculates how LPIPS changes from frame to frame in comparison with the reference sequence
+FSIM (Feature Similarity Index for Image Quality) uses phase congruency as the primary feature to measure the similarity between two corresponding frames.
+Currently, there aren't so many objective metrics to verify video super-resolution method's ability to restore real details. Research is currently underway in this area.
+Another way to assess the performance of the video super-resolution algorithm is to organize the subjective evaluation. People are asked to compare the corresponding frames, and the final  mean opinion score (MOS) is calculated as the arithmetic mean overall ratings.
+
+
+== Datasets ==
+While deep learning approaches of video super-resolution outperform traditional ones, it's crucial to form a high-quality dataset for evaluation. It's important to verify models' ability to restore small details, text, and objects with complicated structure, to cope with big motion and noise.
+
+
+== Benchmarks ==
+
+A few benchmarks in video super-resolution were organized by companies and conferences. The purposes of such challenges are to compare diverse algorithms and to find the state-of-the-art for the task.
+
+
+=== NTIRE 2019 Challenge ===
+The NTIRE 2019 Challenge was organized by CVPR and proposed two tracks for Video Super-Resolution: clean (only bicubic degradation) and blur (blur added firstly). Each track had more than 100 participants and 14 final results were submitted. 
+Dataset REDS was collected for this challenge. It consists of 30 videos of 100 frames each. The resolution of ground-truth frames is 1280×720. The tested scale factor is 4. To evaluate models' performance PSNR and SSIM were used. The best participants' results are performed in the table:
+
+
+=== Youku-VESR Challenge 2019 ===
+The Youku-VESR Challenge was organized to check models' ability to cope with degradation and noise, which are real for Youku online video-watching application. The proposed dataset consists of 1000 videos, each length is 4–6 seconds. The resolution of ground-truth frames is 1920×1080. The tested scale factor is 4.  PSNR and VMAF metrics were used for performance evaluation. Top methods are performed in the table:
+
+
+=== AIM 2019 Challenge ===
+The challenge was held by ECCV and had two tracks on video extreme super-resolution: first track checks the fidelity with reference frame (measured by PSNR and SSIM). The second track checks the perceptual quality of videos (MOS).
+Dataset consists of 328 video sequences of 120 frames each. The resolution of ground-truth frames is 1920×1080. The tested scale factor is 16. Top methods are performed in the table:
+
+
+=== AIM 2020 Challenge ===
+Challenge's conditions are the same as AIM 2019 Challenge. Top methods are performed in the table:
+
+
+=== MSU Video Super-Resolution Benchmark ===
+The MSU Video Super-Resolution Benchmark was organized by MSU and proposed three types of motion, two ways to lower resolution, and eight types of content in the dataset. The resolution of ground-truth frames is 1920×1280. The tested scale factor is 4. 14 models were tested. To evaluate models' performance PSNR and SSIM were used with shift compensation. Also proposed a few new metrics: ERQAv1.0, QRCRv1.0, and CRRMv1.0. Top methods are performed in the table:
+
+
+=== MSU Super-Resolution for Video Compression Benchmark ===
+The MSU Super-Resolution for Video Compression Benchmark was organized by MSU. This benchmark tests models' ability to work with compressed videos. The dataset consists of 9 videos, compressed with different Video codec standards and different bitrates. Models are ranked by BSQ-rate over subjective score. The resolution of ground-truth frames is 1920×1080. The tested scale factor is 4. 17 models were tested. 5 video codecs were used to compress ground-truth videos. Top combinations of Super-Resolution methods and video codecs are performed in the table:
+
+
+== Application ==
+In many areas, working with video, we deal with different types of video degradation, including downscaling. The resolution of video can be degraded because of imperfections of measuring devices, such as optical degradations and limited size of camera sensors. Bad light and weather conditions add noise to video. Object and camera motion also decrease video quality.
+Super Resolution techniques help to restore the original video. It's useful in a wide range of applications, such as
+
+video surveillance (to improve video captured from the camera and recognize car numbers and faces)
+medical imaging (to discover better some organs or tissues for clinical analysis and medical intervention)
+forensic science (to help in the investigation during the criminal procedure)
+astronomy (to improve quality of video of stars and planets)
+remote sensing (to alleviate observation of an object)
+microscopy (to strength microscopes' ability)
+It also helps to solve task of object detection, face and character recognition (as preprocessing step). The interest to super-resolution is growing with the development of high definition computer displays and TVs.
+
+Video super-resolution finds its practical use in some modern smartphones and cameras, where it is used to reconstruct digital photographs.
+Reconstructing details on digital photographs is a difficult task since these photographs are already incomplete: the camera sensor elements measure only the intensity of the light, not directly its color. A process called demosaicing is used to reconstruct the photos from partial color information. A single frame doesn't give us enough data to fill in the missing colors, however, we can receive some of the missing information from multiple images taken one after the other. This process is known as burst photography and can be used to restore a single image of good quality from multiple sequential frames.
+When we capture a lot of sequential photos with a smartphone or handheld camera, there is always some movement present between the frames because of the hand motion. We can take advantage of this hand tremor by combining the information on those images. We choose a single image as the "base" or reference frame and align every other frame relative to it.
+There are situations where hand motion is simply not present because the device is stabilized (e.g. placed on a tripod). There is a way to simulate natural hand motion by intentionally slightly moving the camera. The movements are extremely small so they don't interfere with regular photos. You can observe these motions on Google Pixel 3 phone by holding it perfectly still (e.g. pressing it against the window) and maximally pinch-zooming the viewfinder.
+
+
+== See also ==
+Super-resolution imaging
+Image resolution
+High definition video
+Display resolution
+Ultra-high-definition television
+Oversampling
+High-dynamic-range video
+
+
+== References ==

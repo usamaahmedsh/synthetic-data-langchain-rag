@@ -1,0 +1,105 @@
+Technical Report 069 (TR-069) is a document by the Broadband Forum that specifies the CPE WAN Management Protocol (CWMP). CWMP is a SOAP-based protocol for communication between an internet service provider auto configuration server (ACS) and customer-premises equipment (CPE). Features include auto-configuration, firmware image management, status and performance monitoring, and diagnostics. Examples of CPE types include modems, routers, gateways, set-top boxes, and VoIP-phones.
+TR-069 was first published in May 2004, with amendments in 2006, 2007, 2010, July 2011 (version 1.3), and November 2013 (version 1.4 am5) The Home Gateway Initiative (HGI), Digital Video Broadcasting Project (DVB) and WiMAX Forum have endorsed CWMP.
+As of 2020, CWMP is deployed in nearly a billion devices.
+
+
+== Features ==
+Service activation and reconfiguration
+Initial configuration of the service as part of zero-touch or one-touch configuration process
+Service re-establishment (ex. after device is factory-reset, exchanged)
+Remote subscriber support
+Verification of the device status and functionality
+Manual reconfiguration
+Firmware and configuration management
+Firmware upgrade/downgrade
+Configuration backup/restore
+Diagnostics and monitoring
+Throughput (TR-143) and connectivity diagnostics
+Parameter value retrieval
+Log file retrieval
+
+
+== Communication ==
+
+
+=== Transport ===
+CWMP is a text based protocol. Orders sent between the device (CPE) and auto configuration server (ACS) are transported over HTTP (or more frequently HTTPS). At this level (HTTP), the CPE acts as client and ACS as HTTP server. This essentially means that control over the flow of the provisioning session is the sole responsibility of the device.
+
+
+=== Configuration parameters ===
+In order for the device to connect to the server, it needs to have certain parameters configured first. These include the URL of the server the device wants to connect to and the interval at which the device will initiate the provisioning session (PeriodicInformInterval). Additionally, if authentication is required for security reasons, data such as the username and the password needs to be provided.
+
+
+=== Provisioning session ===
+All communications and operations are performed in the scope of the provisioning session. The session is always started by the device (CPE) and begins with the transmission of an Inform message. Its reception and readiness of the server for the session is indicated by an InformResponse message. That concludes the session initialization stage. The order of the next two stages depends on the value of the flag HoldRequests. If the value is false the initialization stage is followed by the transmission of device requests, otherwise ACS orders are transmitted first. The following description assumes the value is false.
+In the second stage, orders are transmitted from the device to the ACS. Even though the protocol defines multiple methods that may be invoked by the device on the ACS, only one is commonly found - TransferComplete - which is used to inform the ACS of the completion of a file transfer initiated by a previously issued Download or Upload request. This stage is finalized by transmission of empty HTTP-request to the ACS.
+In the third stage the roles change on the CWMP level. The HTTP-response for the empty HTTP-request by the device will contain a CWMP-request from the ACS. This will subsequently be followed by an HTTP-request containing a CWMP-response for the previous CWMP-request. Multiple orders may be transmitted one-by-one. This stage (and the whole provisioning session) is terminated by an empty HTTP-response from the ACS indicating that no more orders are pending.
+
+
+==== Session triggers ====
+There are certain events that will trigger the provisioning session. These include:
+
+Bootstrap – when device contacts the server for the first time, the server URL changed, or the device settings were reset to default;
+Periodic – the device is scheduled to perform a periodic session, as per the PeriodicInformInterval settings;
+Connection request – the device responds to the server's request for a connection;
+Value change – value for a parameter that is being monitored has changed;
+Boot – after the device was reset or lost power and was reconnected;
+Scheduled – when the device was previously instructed by the server to initialize an additional session with ScheduleInform command;
+Transfer complete – after the device finished downloading or uploading files requested by the server;
+Diagnostic complete – once the device finishes a diagnostic.
+
+
+==== Security and authentication ====
+As vital data (like user names and passwords) may be transmitted to the CPE via CWMP, it is essential to provide a secure transport channel and always authenticate the CPE against the ACS. Secure transport and authentication of the ACS identity can easily be provided by usage of HTTPS and verification of the ACS certificate. Authentication of the CPE is more problematic. The identity of the device is verified based on a shared secret (password) at the HTTP level. Passwords may be negotiated between the parties (CPE-ACS) at every provisioning session. When the device contacts the ACS for the first time (or after a factory-reset) default passwords are used. In large networks it is the responsibility of the procurement to ensure each device is using unique credentials, their list is delivered with the devices themselves and secured..
+
+
+=== Connection request ===
+Initialization and control of the provisioning session flow is the sole responsibility of the device, but it is possible for the ACS to request a session start from the device. The connection request mechanism is also based on HTTP. In this case the device (CPE) is put in the role of HTTP-server. The ACS requests a connection from the device by visiting a negotiated URL and performing HTTP Authentication. A shared secret is also negotiated with the device in advance (e.g. previous provisioning session) to prevent the usage of CPEs for DDoS attacks on the provisioning server (ACS). After confirmation is sent by the device the provisioning session should be started as soon as possible and not later than 30 seconds after confirmation is transmitted.
+
+
+==== Connection request over NAT ====
+The CWMP protocol also defines a mechanism for reaching the devices that are connected behind NAT (e.g. IP-Phones, Set-top boxes). This mechanism, based on STUN and UDP NAT traversal, is defined in document TR-069 Annex G (formerly in TR-111).
+Amendment 5 of the protocol introduces alternative method of executing Connection Request via NAT based on XMPP (see Annex K of TR-069 Amendment 5 for details).
+
+
+== Data model ==
+Most of the configuration and diagnostics is performed through setting and retrieving the value of the device parameters. These are organized in a well defined hierarchical structure that is more or less common to all device models and manufacturers. Broadband Forum publishes its data model standards in two formats - XML files containing a detailed specification of each subsequent data model and all of the changes between their versions and PDF files containing human-readable details. Supported standards and extensions should be clearly marked in the device data model. This should be in the field Device.DeviceSummary or InternetGatewayDevice.DeviceSummary which is required starting from Device:1.0 and InternetGatewayDevice:1.1 respectively. If the field is not found InternetGatewayDevice:1.0 is implied. As of Device:1.4 and InternetGatewayDevice:1.6 new field ( '<RO>'.SupportedDatamodel) for supported standard specification was introduced.
+The model is always rooted in the single key named Device or InternetGatewayDevice depending on the manufacturer's choice. At each level of the structure objects and parameters (or array-instances) are allowed. Keys are constructed by concatenating the names of objects and parameter using '.'(dot) as a separator, e.g. InternetGatewayDevice.Time.NTPServer1 .
+Each of the parameters may be marked as writable or non-writable. This is reported by the device in GetParameterNamesResponse message. The device should not permit the change of any parameter marked as read-only. Data model specifications and extensions clearly mark required status of most of the parameters.
+Values applicable for the parameter, their type and meaning are also precisely defined by the standard.
+
+
+=== Multi-instance objects ===
+Some parts of the data model require the existence of multiple copies of the subtree. The best examples are those describing tables, e.g. Port Forwarding Table. An object representing an array will only have instance numbers or alias names as its children.
+A multi-instance object may be writable or read-only, depending on what it represents.  Writable objects allow dynamic creation and removal of their children.  For example, if an object represents four physical ports on an Ethernet switch, then it should not be possible to add or remove them from the data model.  If an instance is added to an object, an identifier is assigned.  After being assigned, identifiers cannot change during the life-cycle of the device, except by factory reset.
+
+
+=== Common problems ===
+Even though the list of the parameters and their attributes is well-defined, most of the devices do not follow standards completely. Most common problems include missing parameters, omitted instance identifiers (for multi-instance objects where only one instance is present), wrong parameter access level and correctly using only defined valid values. For example, for the field that indicates supported standard of WLAN protocols, the value 'g' should indicate support of 802.11b and 802.11g, and 'g-only' support only of 802.11g. Even though values such as 'bg' or 'b/g' are not legal according to the Broadband Forum standards, they are very commonly found in device data models.
+
+
+== Common operations ==
+The whole provisioning is built on top of a defined set of simple operations. Each order is considered atomic, though there is no support of transactions. If the device cannot fulfill the order a proper error must be returned to the ACS – the device should never break the provisioning session.
+
+For a more complete list of operations and an analysis of the protocol, see 
+
+
+== Security ==
+The compromise of an ISP ACS or the link between an ACS and CPE by unauthorized entities can yield access to the TR-069-enabled devices of a service provider's entire subscriber base. Customer information and device operation would be available to the potential attackers, including other MAC addresses on client's networks.  Covert redirection of DNS queries to a rogue DNS server might be possible, and even surreptitious firmware updates with backdoor features. TR-069 ACS software has been found to be often implemented insecurely. Flaws in combined implementations of TR-064 (LAN side DSL CPE configuration) and TR-069 (CWMP), that reused the same HTTP endpoint over public internet for Connection Requests without proper protections, were found in devices by various vendors and are exploited by Mirai-based botnet and other malware.
+
+
+== Implementations ==
+ 
+
+TR-069 is implemented both on the side of the CPE and ACS. A common implementation of an ACS is GenieACS.
+
+
+== Further reading ==
+"TR-069 – A Crash Course" (PDF). University of New Hampshire InterOperability Laboratory. 2009. Archived (PDF) from the original on September 12, 2016.
+
+
+== References ==
+
+
+== External links ==
+Official website

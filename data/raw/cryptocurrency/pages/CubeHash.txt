@@ -1,0 +1,126 @@
+CubeHash is a  cryptographic hash function submitted to the NIST hash function competition by Daniel J. Bernstein. CubeHash has a 128 byte state, uses wide pipe construction, and is ARX based. Message blocks are XORed into the initial bits of a 128-byte state, which then goes through an r-round bijective transformation between blocks. The initial NIST proposal ("Cubehash8/1") required about 200 cycles per byte. After clarifications from NIST, the author changed the proposal to Cubehash16/32, which "is approximately 16 times faster than CubeHash8/1, easily catching up to both SHA-256 and SHA-512 on the reference platform" while still maintaining a "comfortable security margin".
+CubeHash advanced to the second round of the competition, but was not chosen as one of the 5 finalists. According to NIST, it has a "simple, well-understood design" that is suitable for constrained environments. However, performance suffers for short messages when the processor does not have a vector unit.
+Bernstein has since tuned the parameters further and his main recommendation is CubeHash512, defined as CubeHash16+16/32+32–512.
+
+
+== Operation ==
+This description refers to the latest specification, and not the NIST submission.
+CubeHash has 5 parameters, a certain instance is denoted by CubeHashi+r/b+f-h.
+
+i is the number of initial rounds
+r is the number of rounds per block
+b is the block size in bytes, defined for {1, 2, 3, ... 128}
+f is the number of final rounds
+h is the size of the hash output in bits, defined for {8, 16, 24, 32, ... 512}
+In the original NIST submission, i and f was fixed to 10r. The obsolete notation CubeHashr/b-h indicates i and f being implicitly 10r.
+The internal state is defined as a five-dimensional array of words (four-byte integers), 0-1 in both dimensions. The words are referred to with their coordinates [00000] to [11111]. The words are treated as little-endian.
+The internal state is initialized by setting the first three words ([00000], [00001], [00010]) to h/8, b, and r respectively, all other words to zero.  The state is then run through i rounds, and the initialization stage is complete. The state is now the Initialization Vector (IV). The IV can be saved and reused for a given combination of h, b, r, and i.
+The message is padded and split to b-byte blocks. The padding appends a 1 bit, followed by as many 0 bits as necessary to make a complete block.
+Each block is inputted by XORing to the first b bytes of the state, and then performing r rounds of transformation.
+Finally, 1 is XORed to the state word [11111], and then f rounds of transformation are performed.
+The output hash is now contained in the first h/8 bytes of this final state.
+
+
+=== Round function ===
+
+CubeHash round function consists of the following ten steps:
+
+Add x[0jklm] into x[1jklm] modulo 232, for each (j,k,l,m).
+Rotate x[0jklm] upwards by 7 bits, for each (j,k,l,m).
+Swap x[00klm] with x[01klm], for each (k,l,m).
+Xor x[1jklm] into x[0jklm], for each (j,k,l,m).
+Swap x[1jk0m] with x[1jk1m], for each (j,k,m).
+Add x[0jklm] into x[1jklm] modulo 232, for each (j,k,l,m).
+Rotate x[0jklm] upwards by 11 bits, for each (j,k,l,m).
+Swap x[0j0lm] with x[0j1lm], for each (j,l,m).
+Xor x[1jklm] into x[0jklm], for each (j,k,l,m).
+Swap x[1jkl0] with x[1jkl1], for each (j,k,l).
+
+
+== Example hashes ==
+This example uses CubeHash80+8/1+80-512. The initialization vector is the same for all 80+8/1+f-512 hashes, and is as follows:
+
+6998f35dfb0930c760948910e626160f36077cf3b58b0d0c57cf193d3341e7b8\
+a334805b2089f9ef31ffc4142aef3850fe121839e940a4527d5293a27045ca12\
+9358096e81bf70349a90a44a93c33edb14c3e9844a87dbd0bc451df25212b3ac\
+6aabe51c5df0f63bddbb8ae8fad3cf0fd52582fbad2e2446094025a521a23d5c
+
+Hashing the ASCII message "Hello" (hex:  0x48, 0x65, 0x6c, 0x6c, 0x6f) uses 6 message blocks. There are 5 blocks from the message, and since this is a byte-aligned input, there is 1 block for padding. The 512 bit hash value is:
+
+7ce309a25e2e1603ca0fc369267b4d43f0b1b744ac45d6213ca08e7567566444\
+8e2f62fdbf7bbd637ce40fc293286d75b9d09e8dda31bd029113e02ecccfd39b
+
+A small change in the message, such as flipping a single bit, will wildly change the hash output, due to the avalanche effect. Hashing the message "hello" (which only differs from "Hello" in 1 bit position) gives the following hash value:
+
+01ee7f4eb0e0ebfdb8bf77460f64993faf13afce01b55b0d3d2a63690d25010f\
+7127109455a7c143ef12254183e762b15575e0fcc49c79a0471a970ba8a66638
+
+
+=== Parameter changes ===
+CubeHash allows for many different parameters to be used to determine the hash output.  It is up to the user to decide which parameters they wish to use.  Here are several example hashes of different messages, using different parameters.  The messages are all in ASCII.
+
+message: ""  (the zero-length string)
+CubeHash160+16/32+160-512: 4a1d00bbcfcb5a9562fb981e7f7db3350fe2658639d948b9d57452c22328bb32\
+                           f468b072208450bad5ee178271408be0b16e5633ac8a1e3cf9864cfbfc8e043a
+
+CubeHash80+8/1+80-512: 90bc3f2948f7374065a811f1e47a208a53b1a2f3be1c0072759ed49c9c6c7f28\
+                       f26eb30d5b0658c563077d599da23f97df0c2c0ac6cce734ffe87b2e76ff7294
+
+CubeHash10+1/1+10-512: 3f917707df9acd9b94244681b3812880e267d204f1fdf795d398799b584fa8f1\
+                       f4a0b2dbd52fd1c4b6c5e020dc7a96192397dd1bce9b6d16484049f85bb71f2f
+
+CubeHash160+16/32+160-256: 44c6de3ac6c73c391bf0906cb7482600ec06b216c7c54a2a8688a6a42676577d
+
+CubeHash80+8/1+80-256: 38d1e8a22d7baac6fd5262d83de89cacf784a02caa866335299987722aeabc59
+
+CubeHash10+1/1+10-256: 80f72e07d04ddadb44a78823e0af2ea9f72ef3bf366fd773aa1fa33fc030e5cb
+
+message: "Hello"
+CubeHash160+16/32+160-512: dcc0503aae279a3c8c95fa1181d37c418783204e2e3048a081392fd61bace883\
+                           a1f7c4c96b16b4060c42104f1ce45a622f1a9abaeb994beb107fed53a78f588c
+
+CubeHash80+8/1+80-512: 7ce309a25e2e1603ca0fc369267b4d43f0b1b744ac45d6213ca08e7567566444\
+                       8e2f62fdbf7bbd637ce40fc293286d75b9d09e8dda31bd029113e02ecccfd39b
+
+CubeHash10+1/1+10-512: 13cf99c1a71e40b135f5535bee02e151eb4897e4de410b9cb6d7179c677074eb\
+                       6ef1ae9a9e685ef2d2807509541f484d39559525179d53838eda95eb3f6a401d
+
+CubeHash160+16/32+160-256: e712139e3b892f2f5fe52d0f30d78a0cb16b51b217da0e4acb103dd0856f2db0
+
+CubeHash80+8/1+80-256: 692638db57760867326f851bd2376533f37b640bd47a0ddc607a9456b692f70f
+
+CubeHash10+1/1+10-256: f63041a946aa98bd47f3175e6009dcb2ccf597b2718617ba46d56f27ffe35d49
+
+message: "The quick brown fox jumps over the lazy dog"
+CubeHash160+16/32+160-512: bdba44a28cd16b774bdf3c9511def1a2baf39d4ef98b92c27cf5e37beb8990b7\
+                           cdb6575dae1a548330780810618b8a5c351c1368904db7ebdf8857d596083a86
+
+CubeHash80+8/1+80-512: ca942b088ed9103726af1fa87b4deb59e50cf3b5c6dcfbcebf5bba22fb39a6be\
+                       9936c87bfdd7c52fc5e71700993958fa4e7b5e6e2a3672122475c40f9ec816ba
+
+CubeHash10+1/1+10-512: eb7f5f80706e8668c61186c3c710ce57f9094fbfa1dbdc7554842cdbb4d10ce4\
+                       2fce72736d10b152f6216f23fc648bce810a7af4d58e571ec1b852fa514a0a8e
+
+CubeHash160+16/32+160-256: 5151e251e348cbbfee46538651c06b138b10eeb71cf6ea6054d7ca5fec82eb79
+
+CubeHash80+8/1+80-256: 94e0c958d85cdfaf554919980f0f50b945b88ad08413e0762d6ff0219aff3e55
+
+CubeHash10+1/1+10-256: 217a4876f2b24cec489c9171f85d53395cc979156ea0254938c4c2c59dfdf8a4
+
+The Initialization Vectors for the four variants shown are all different as well. For example, the Initialization Vector for CubeHash80+8/1+80-512 can be seen above, and the IV for CubeHash80+8/1+80-256 is:
+
+830b2bd5273d616fd785876a4a500218a5388963eeb702fb47547842459f8d89\
+8727a1c8ba40bd48cef47fe82543c2735c033052ae9fcd632d4541bde6b6cb0d\
+cb8a9cdf579f5b67b2ae00968180af6e51ebdf0ca597cd2bf91f981f7ab29a62\
+01ad72d946e6c075c6d1337e0a293d6f90c438ac38be153f32aa288ffc5eca8a
+
+
+== Security ==
+The strength of this function increases as b decreases towards 1, and as r increases. So CubeHash 8/1-512 is stronger (more secure) than CubeHash 1/1-512, and CubeHash 1/1-512 is stronger than CubeHash 1/2-512.  The weakest possible version of this algorithm is CubeHash 1/128-h. However, there is a security versus time tradeoff.  A more secure version will take longer to compute a hash value than a weakened version.
+
+
+== References ==
+
+
+== External links ==
+The CubeHash web site

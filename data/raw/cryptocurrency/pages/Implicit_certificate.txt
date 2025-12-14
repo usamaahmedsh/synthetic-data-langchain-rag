@@ -1,0 +1,857 @@
+In cryptography, implicit certificates are a variant of public key certificate. A subject's public key is reconstructed from the data in an implicit certificate, and is then said to be "implicitly" verified. Tampering with the certificate will result in the reconstructed public key being invalid, in the sense that it is infeasible to find the matching private key value, as would be required to make use of the tampered certificate.
+By comparison, traditional public-key certificates include a copy of the subject's public key, and a digital signature made by the issuing certificate authority (CA).  The public key must be explicitly validated, by verifying the signature using the CA's public key. For the purposes of this article, such certificates will be called "explicit" certificates.
+Elliptic Curve Qu-Vanstone (ECQV) is one kind of implicit certificate scheme. It is described in the document Standards for Efficient Cryptography 4 (SEC4).This article will use ECQV as a concrete example to illustrate implicit certificates.
+
+
+== Comparison of ECQV with explicit certificates ==
+Conventional explicit certificates are made up of three parts: subject identification data, a public key and a digital signature which binds the public key to the user's identification data (ID).  These are distinct data elements within the certificate, and contribute to the size of the certificate: for example, a standard X.509 certificate is on the order of 1KB in size (~8000 bits).
+An ECQV implicit certificate consists of identification data, and a single cryptographic value. This value, an elliptic curve point, combines the function of public key data and CA signature. ECQV implicit certificates can therefore be considerably smaller than explicit certificates, and so are useful in highly constrained environments such as Radio-frequency Identification RFID tags, where not a lot of memory or bandwidth is available.
+ECQV certificates are useful for any ECC scheme where the private and public keys are of the form ( d, dG ). This includes key agreement protocols such as ECDH and ECMQV, or signing algorithms such as ECDSA. The operation will fail if the certificate has been altered, as the reconstructed public key will be invalid. Reconstructing the public key is fast (a single point multiplication operation) compared to ECDSA signature verification.
+
+
+== Comparison with ID-based cryptography ==
+Implicit certificates are not to be confused with identity-based cryptography. In ID-based schemes, the subject's identity itself is used to derive their public key; there is no 'certificate' as such. The corresponding private key is calculated and issued to the subject by a trusted third party.
+In an implicit certificate scheme, the subject has a private key which is not revealed to the CA during the certificate-issuing process. The CA is trusted to issue certificates correctly, but not to hold individual user's private keys. Wrongly issued certificates can be revoked, whereas there is no comparable mechanism for misuse of private keys in an identity-based scheme.
+
+
+== Description of the ECQV scheme ==
+Initially the scheme parameters must be agreed upon. These are:
+
+The elliptic curve parameters, including a generating point 
+  
+    
+      
+        G
+        
+      
+    
+    {\displaystyle G\,}
+  
+of order 
+  
+    
+      
+        n
+        
+      
+    
+    {\displaystyle n\,}
+  
+.
+An encoding function 
+  
+    
+      
+        
+          
+            Encode
+          
+        
+        (
+        γ
+        ,
+        I
+        D
+        )
+      
+    
+    {\displaystyle {\textrm {Encode}}(\gamma ,ID)}
+  
+ with a public key reconstruction data 
+  
+    
+      
+        γ
+      
+    
+    {\displaystyle \gamma }
+  
+ and an identifying information 
+  
+    
+      
+        I
+        D
+      
+    
+    {\displaystyle ID}
+  
+ encodes its arguments as a byte-block, and a corresponding 
+  
+    
+      
+        
+          
+            
+              Decode
+            
+          
+          
+            γ
+          
+        
+        (
+        ⋅
+        )
+      
+    
+    {\displaystyle {\textrm {Decode}}_{\gamma }(\cdot )}
+  
+ which extracts the 
+  
+    
+      
+        γ
+      
+    
+    {\displaystyle \gamma }
+  
+ value from an encoding.
+A hash function 
+  
+    
+      
+        
+          H
+          
+            n
+          
+        
+        (
+        ⋅
+        )
+      
+    
+    {\displaystyle H_{n}(\cdot )}
+  
+ which accepts a byte-block and yields a hash value as an integer in the range 
+  
+    
+      
+        [
+        0
+        ,
+        n
+        −
+        1
+        ]
+      
+    
+    {\displaystyle [0,n-1]}
+  
+
+The certificate authority CA will have private key 
+  
+    
+      
+        c
+        
+      
+    
+    {\displaystyle c\,}
+  
+ and public key 
+  
+    
+      
+        
+          Q
+          
+            C
+            A
+          
+        
+        =
+        c
+        G
+      
+    
+    {\displaystyle Q_{CA}=cG}
+  
+
+
+=== Certificate request protocol ===
+Here, Alice will be the user who requests the implicit certificate from the CA. She has identifying information 
+  
+    
+      
+        I
+        
+          D
+          
+            A
+          
+        
+      
+    
+    {\displaystyle ID_{A}}
+  
+.
+
+Alice generates a random integer 
+  
+    
+      
+        α
+        
+      
+    
+    {\displaystyle \alpha \,}
+  
+
+Alice computes 
+  
+    
+      
+        A
+        =
+        α
+        
+        G
+        
+      
+    
+    {\displaystyle A=\alpha \,G\,}
+  
+ and sends 
+  
+    
+      
+        A
+      
+    
+    {\displaystyle A}
+  
+ and 
+  
+    
+      
+        I
+        
+          D
+          
+            A
+          
+        
+      
+    
+    {\displaystyle ID_{A}}
+  
+ to the CA.
+CA selects a random integer 
+  
+    
+      
+        k
+        
+      
+    
+    {\displaystyle k\,}
+  
+ from 
+  
+    
+      
+        [
+        1
+        ,
+        n
+        −
+        1
+        ]
+        
+      
+    
+    {\displaystyle [1,n-1]\,}
+  
+ and computes 
+  
+    
+      
+        k
+        G
+        
+      
+    
+    {\displaystyle kG\,}
+  
+.
+CA computes 
+  
+    
+      
+        γ
+        =
+        A
+        +
+        k
+        G
+        
+      
+    
+    {\displaystyle \gamma =A+kG\,}
+  
+ (this is the public key reconstruction data)
+CA computes 
+  
+    
+      
+        C
+        e
+        r
+        t
+        =
+        
+          
+            Encode
+          
+        
+        (
+        γ
+        ,
+        
+          
+            
+              ID
+            
+          
+          
+            A
+          
+        
+        )
+        
+      
+    
+    {\displaystyle Cert={\textrm {Encode}}(\gamma ,{\textrm {ID}}_{A})\,}
+  
+
+CA computes 
+  
+    
+      
+        e
+        =
+        
+          H
+          
+            n
+          
+        
+        (
+        C
+        e
+        r
+        t
+        )
+      
+    
+    {\displaystyle e=H_{n}(Cert)}
+  
+
+CA computes 
+  
+    
+      
+        s
+        =
+        e
+        k
+        +
+        c
+        
+          
+          (
+          mod
+          
+          n
+          )
+        
+        
+      
+    
+    {\displaystyle s=ek+c{\pmod {n}}\,}
+  
+ (
+  
+    
+      
+        s
+        
+      
+    
+    {\displaystyle s\,}
+  
+ is the private key reconstruction data)
+CA sends 
+  
+    
+      
+        (
+        s
+        ,
+        C
+        e
+        r
+        t
+        )
+        
+      
+    
+    {\displaystyle (s,Cert)\,}
+  
+ to Alice
+Alice computes 
+  
+    
+      
+        
+          e
+          ′
+        
+        =
+        
+          H
+          
+            n
+          
+        
+        (
+        C
+        e
+        r
+        t
+        )
+      
+    
+    {\displaystyle e'=H_{n}(Cert)}
+  
+ and her private key 
+  
+    
+      
+        a
+        =
+        
+          e
+          ′
+        
+        α
+        +
+        s
+        
+          
+          (
+          mod
+          
+          n
+          )
+        
+        
+      
+    
+    {\displaystyle a=e'\alpha +s{\pmod {n}}\,}
+  
+
+Alice computes 
+  
+    
+      
+        
+          γ
+          ′
+        
+        =
+        
+          
+            
+              Decode
+            
+          
+          
+            γ
+          
+        
+        (
+        C
+        e
+        r
+        t
+        )
+      
+    
+    {\displaystyle \gamma '={\textrm {Decode}}_{\gamma }(Cert)}
+  
+ and her public key 
+  
+    
+      
+        
+          Q
+          
+            A
+          
+        
+        =
+        
+          e
+          ′
+        
+        
+          γ
+          ′
+        
+        +
+        
+          Q
+          
+            C
+            A
+          
+        
+        
+      
+    
+    {\displaystyle Q_{A}=e'\gamma '+Q_{CA}\,}
+  
+
+Alice verifies that the certificate is valid, i.e. that 
+  
+    
+      
+        
+          Q
+          
+            A
+          
+        
+        =
+        a
+        G
+      
+    
+    {\displaystyle Q_{A}=aG}
+  
+
+
+=== Using the certificate ===
+Here, Alice wants to prove her identity to Bob, who trusts the CA.
+
+Alice sends 
+  
+    
+      
+        C
+        e
+        r
+        t
+      
+    
+    {\displaystyle Cert}
+  
+ to Bob, and a ciphertext 
+  
+    
+      
+        C
+      
+    
+    {\displaystyle C}
+  
+ created using her private key 
+  
+    
+      
+        a
+      
+    
+    {\displaystyle a}
+  
+. The ciphertext can be a digital signature, or part of an Authenticated Key Exchange protocol.
+Bob computes 
+  
+    
+      
+        
+          γ
+          ″
+        
+        =
+        
+          
+            
+              Decode
+            
+          
+          
+            γ
+          
+        
+        (
+        C
+        e
+        r
+        t
+        )
+      
+    
+    {\displaystyle \gamma ''={\textrm {Decode}}_{\gamma }(Cert)}
+  
+ and 
+  
+    
+      
+        
+          e
+          ″
+        
+        =
+        
+          H
+          
+            n
+          
+        
+        (
+        C
+        e
+        r
+        t
+        )
+      
+    
+    {\displaystyle e''=H_{n}(Cert)}
+  
+.
+Bob computes Alice's alleged public key 
+  
+    
+      
+        
+          Q
+          
+            A
+          
+          ′
+        
+        =
+        
+          e
+          ″
+        
+        
+          γ
+          ″
+        
+        +
+        
+          Q
+          
+            C
+            A
+          
+        
+      
+    
+    {\displaystyle Q_{A}'=e''\gamma ''+Q_{CA}}
+  
+
+Bob validates ciphertext 
+  
+    
+      
+        C
+      
+    
+    {\displaystyle C}
+  
+ using 
+  
+    
+      
+        
+          Q
+          
+            A
+          
+          ′
+        
+      
+    
+    {\displaystyle Q_{A}'}
+  
+. If this validation is successful, he can trust that the key 
+  
+    
+      
+        
+          Q
+          
+            A
+          
+          ′
+        
+      
+    
+    {\displaystyle Q_{A}'}
+  
+ is owned by the user whose identity information is contained in 
+  
+    
+      
+        C
+        e
+        r
+        t
+      
+    
+    {\displaystyle Cert}
+  
+.
+
+
+=== Proof of equivalence of private and public keys ===
+Alice's private key is 
+  
+    
+      
+        a
+        =
+        
+          e
+          ′
+        
+        α
+        +
+        s
+        =
+        e
+        α
+        +
+        e
+        k
+        +
+        c
+        
+          
+          (
+          mod
+          
+          n
+          )
+        
+      
+    
+    {\displaystyle a=e'\alpha +s=e\alpha +ek+c{\pmod {n}}}
+  
+
+The public key reconstruction value 
+  
+    
+      
+        γ
+        =
+        A
+        +
+        k
+        G
+        =
+        (
+        α
+        +
+        k
+        )
+        G
+      
+    
+    {\displaystyle \gamma =A+kG=(\alpha +k)G}
+  
+
+Alice's public key is 
+  
+    
+      
+        
+          Q
+          
+            A
+          
+        
+        =
+        e
+        γ
+        +
+        
+          Q
+          
+            C
+            A
+          
+        
+        =
+        e
+        (
+        α
+        +
+        k
+        )
+        G
+        +
+        c
+        G
+        =
+        (
+        e
+        α
+        +
+        e
+        k
+        +
+        c
+        )
+        G
+      
+    
+    {\displaystyle Q_{A}=e\gamma +Q_{CA}=e(\alpha +k)G+cG=(e\alpha +ek+c)G}
+  
+
+Therefore, 
+  
+    
+      
+        
+          Q
+          
+            A
+          
+        
+        =
+        a
+        G
+      
+    
+    {\displaystyle Q_{A}=aG}
+  
+, which completes the proof.
+
+
+== Security ==
+A security proof for ECQV has been published by Brown et al.
+
+
+== See also ==
+Elliptic curve cryptography
+
+
+== References ==
+
+Hankerson, D.; Vanstone, S.; Menezes, A. (2004). Guide to Elliptic Curve Cryptography. Springer Professional Computing. New York: Springer. CiteSeerX 10.1.1.331.1248. doi:10.1007/b97644. ISBN 978-0-387-95273-4.
+certicom.com, Explaining Implicit Certificates, Code and Cipher Vol. 2, no. 2
+Leon Pintsov and Scott Vanstone, Postal Revenue Collection in the Digital Age, Financial Cryptography 2000, Lecture Notes in Computer Science 1962, pp. 105–120, Springer, February 2000.
+
+
+== External links ==
+Standards for Efficient Cryptography Group
+Blackberry Crypto API supports ECQV
+Blackberry's Certicom Corp. uses ECQV for Zigbee Smart Energy
+Standards for ISO/IEC 27001:2022 Certifications

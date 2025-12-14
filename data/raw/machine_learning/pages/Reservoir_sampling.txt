@@ -1,0 +1,1244 @@
+Reservoir sampling is a family of randomized algorithms for choosing a simple random sample, without replacement, of k items from a population of unknown size n in a single pass over the items.  The size of the population n is not known to the algorithm and is typically too large for all n items to fit into main memory.  The population is revealed to the algorithm over time, and the algorithm cannot look back at previous items. At any point, the current state of the algorithm must permit extraction of a simple random sample without replacement of size k over the part of the population seen so far.
+
+
+== Motivation ==
+Suppose we see a sequence of items, one at a time. We want to keep 10 items in memory, and we want them to be selected at random from the sequence. If we know the total number of items n and can access the items arbitrarily, then the solution is easy: select 10 distinct indices i between 1 and n with equal probability, and keep the i-th elements. The problem is that we do not always know the exact n in advance.
+
+
+== Simple: Algorithm R ==
+A simple and popular but slow algorithm, Algorithm R, was created by Jeffrey Vitter.
+Initialize an array 
+  
+    
+      
+        R
+      
+    
+    {\displaystyle R}
+  
+ indexed from 
+  
+    
+      
+        1
+      
+    
+    {\displaystyle 1}
+  
+ to 
+  
+    
+      
+        k
+      
+    
+    {\displaystyle k}
+  
+, containing the first k items of the input 
+  
+    
+      
+        
+          x
+          
+            1
+          
+        
+        ,
+        .
+        .
+        .
+        ,
+        
+          x
+          
+            k
+          
+        
+      
+    
+    {\displaystyle x_{1},...,x_{k}}
+  
+. This is the reservoir. 
+For each new input 
+  
+    
+      
+        
+          x
+          
+            i
+          
+        
+      
+    
+    {\displaystyle x_{i}}
+  
+, generate a random number j uniformly in 
+  
+    
+      
+        {
+        1
+        ,
+        .
+        .
+        .
+        ,
+        i
+        }
+      
+    
+    {\displaystyle \{1,...,i\}}
+  
+. If 
+  
+    
+      
+        j
+        ∈
+        {
+        1
+        ,
+        .
+        .
+        .
+        ,
+        k
+        }
+      
+    
+    {\displaystyle j\in \{1,...,k\}}
+  
+, then set 
+  
+    
+      
+        R
+        [
+        j
+        ]
+        :=
+        
+          x
+          
+            i
+          
+        
+        .
+      
+    
+    {\displaystyle R[j]:=x_{i}.}
+  
+ Otherwise, discard 
+  
+    
+      
+        
+          x
+          
+            i
+          
+        
+      
+    
+    {\displaystyle x_{i}}
+  
+. 
+Return 
+  
+    
+      
+        R
+      
+    
+    {\displaystyle R}
+  
+ after all inputs are processed.
+This algorithm works by induction on 
+  
+    
+      
+        i
+        ≥
+        k
+      
+    
+    {\displaystyle i\geq k}
+  
+.
+
+While conceptually simple and easy to understand, this algorithm needs to generate a random number for each item of the input, including the items that are discarded. The algorithm's asymptotic running time is thus 
+  
+    
+      
+        O
+        (
+        n
+        )
+      
+    
+    {\displaystyle O(n)}
+  
+. Generating this amount of randomness and the linear run time causes the algorithm to be unnecessarily slow if the input population is large.
+This is Algorithm R, implemented as follows:
+
+
+== Optimal: Algorithm L ==
+If we generate 
+  
+    
+      
+        n
+      
+    
+    {\displaystyle n}
+  
+ random numbers 
+  
+    
+      
+        
+          u
+          
+            1
+          
+        
+        ,
+        .
+        .
+        .
+        ,
+        
+          u
+          
+            n
+          
+        
+        ∼
+        U
+        [
+        0
+        ,
+        1
+        ]
+      
+    
+    {\displaystyle u_{1},...,u_{n}\sim U[0,1]}
+  
+ independently, then the indices of the smallest 
+  
+    
+      
+        k
+      
+    
+    {\displaystyle k}
+  
+ of them is a uniform sample of the k-subsets of 
+  
+    
+      
+        {
+        1
+        ,
+        .
+        .
+        .
+        ,
+        n
+        }
+      
+    
+    {\displaystyle \{1,...,n\}}
+  
+. 
+
+The process can be done without knowing 
+  
+    
+      
+        n
+      
+    
+    {\displaystyle n}
+  
+: Keep the smallest 
+  
+    
+      
+        k
+      
+    
+    {\displaystyle k}
+  
+ of 
+  
+    
+      
+        
+          u
+          
+            1
+          
+        
+        ,
+        .
+        .
+        .
+        ,
+        
+          u
+          
+            i
+          
+        
+      
+    
+    {\displaystyle u_{1},...,u_{i}}
+  
+ that has been seen so far, as well as 
+  
+    
+      
+        
+          w
+          
+            i
+          
+        
+      
+    
+    {\displaystyle w_{i}}
+  
+, the index of the largest among them. 
+For each new 
+  
+    
+      
+        
+          u
+          
+            i
+            +
+            1
+          
+        
+      
+    
+    {\displaystyle u_{i+1}}
+  
+, compare it with 
+  
+    
+      
+        
+          u
+          
+            
+              w
+              
+                i
+              
+            
+          
+        
+      
+    
+    {\displaystyle u_{w_{i}}}
+  
+. If 
+  
+    
+      
+        
+          u
+          
+            i
+            +
+            1
+          
+        
+        <
+        
+          u
+          
+            
+              w
+              
+                i
+              
+            
+          
+        
+      
+    
+    {\displaystyle u_{i+1}<u_{w_{i}}}
+  
+, then discard 
+  
+    
+      
+        
+          u
+          
+            
+              w
+              
+                i
+              
+            
+          
+        
+      
+    
+    {\displaystyle u_{w_{i}}}
+  
+, store 
+  
+    
+      
+        
+          u
+          
+            i
+            +
+            1
+          
+        
+      
+    
+    {\displaystyle u_{i+1}}
+  
+, and set 
+  
+    
+      
+        
+          w
+          
+            i
+            +
+            1
+          
+        
+      
+    
+    {\displaystyle w_{i+1}}
+  
+ to be the index of the largest among them. Otherwise, discard 
+  
+    
+      
+        
+          u
+          
+            i
+            +
+            1
+          
+        
+      
+    
+    {\displaystyle u_{i+1}}
+  
+, and set 
+  
+    
+      
+        
+          w
+          
+            i
+            +
+            1
+          
+        
+        =
+        
+          w
+          
+            i
+          
+        
+      
+    
+    {\displaystyle w_{i+1}=w_{i}}
+  
+.Now couple this with the stream of inputs 
+  
+    
+      
+        
+          x
+          
+            1
+          
+        
+        ,
+        .
+        .
+        .
+        ,
+        
+          x
+          
+            n
+          
+        
+      
+    
+    {\displaystyle x_{1},...,x_{n}}
+  
+. Every time some 
+  
+    
+      
+        
+          u
+          
+            i
+          
+        
+      
+    
+    {\displaystyle u_{i}}
+  
+ is accepted, store the corresponding 
+  
+    
+      
+        
+          x
+          
+            i
+          
+        
+      
+    
+    {\displaystyle x_{i}}
+  
+. Every time some 
+  
+    
+      
+        
+          u
+          
+            i
+          
+        
+      
+    
+    {\displaystyle u_{i}}
+  
+ is discarded, discard the corresponding 
+  
+    
+      
+        
+          x
+          
+            i
+          
+        
+      
+    
+    {\displaystyle x_{i}}
+  
+.
+This algorithm still needs 
+  
+    
+      
+        O
+        (
+        n
+        )
+      
+    
+    {\displaystyle O(n)}
+  
+ random numbers, thus taking 
+  
+    
+      
+        O
+        (
+        n
+        )
+      
+    
+    {\displaystyle O(n)}
+  
+ time. But it can be simplified.
+First simplification: it is unnecessary to test new 
+  
+    
+      
+        
+          u
+          
+            i
+            +
+            1
+          
+        
+        ,
+        
+          u
+          
+            i
+            +
+            2
+          
+        
+        ,
+        .
+        .
+        .
+      
+    
+    {\displaystyle u_{i+1},u_{i+2},...}
+  
+ one by one, since the probability that the next acceptance happens at 
+  
+    
+      
+        
+          u
+          
+            i
+            +
+            l
+          
+        
+      
+    
+    {\displaystyle u_{i+l}}
+  
+ is 
+  
+    
+      
+        (
+        1
+        −
+        
+          u
+          
+            
+              w
+              
+                i
+              
+            
+          
+        
+        
+          )
+          
+            l
+            −
+            1
+          
+        
+        
+        
+          u
+          
+            
+              w
+              
+                i
+              
+            
+          
+        
+        =
+        (
+        1
+        −
+        
+          u
+          
+            
+              w
+              
+                i
+              
+            
+          
+        
+        
+          )
+          
+            l
+            −
+            1
+          
+        
+        −
+        (
+        1
+        −
+        
+          u
+          
+            
+              w
+              
+                i
+              
+            
+          
+        
+        
+          )
+          
+            l
+          
+        
+      
+    
+    {\displaystyle (1-u_{w_{i}})^{l-1}\,u_{w_{i}}=(1-u_{w_{i}})^{l-1}-(1-u_{w_{i}})^{l}}
+  
+, that is, the interval 
+  
+    
+      
+        l
+      
+    
+    {\displaystyle l}
+  
+ of acceptance follows a geometric distribution.
+Second simplification: it's unnecessary to remember the entire array of the smallest 
+  
+    
+      
+        k
+      
+    
+    {\displaystyle k}
+  
+ of 
+  
+    
+      
+        
+          u
+          
+            1
+          
+        
+        ,
+        .
+        .
+        .
+        ,
+        
+          u
+          
+            i
+          
+        
+      
+    
+    {\displaystyle u_{1},...,u_{i}}
+  
+ that has been seen so far, but merely 
+  
+    
+      
+        w
+      
+    
+    {\displaystyle w}
+  
+, the largest among them. This is based on three observations:
+
+Every time some new 
+  
+    
+      
+        
+          x
+          
+            i
+            +
+            1
+          
+        
+      
+    
+    {\displaystyle x_{i+1}}
+  
+ is selected to be entered into storage, a uniformly random entry in storage is discarded.
+
+  
+    
+      
+        
+          u
+          
+            i
+            +
+            1
+          
+        
+        ∼
+        U
+        [
+        0
+        ,
+        w
+        ]
+      
+    
+    {\displaystyle u_{i+1}\sim U[0,w]}
+  
+
+  
+    
+      
+        
+          w
+          
+            i
+            +
+            1
+          
+        
+      
+    
+    {\displaystyle w_{i+1}}
+  
+ has the same distribution as 
+  
+    
+      
+        max
+        {
+        
+          u
+          
+            1
+          
+        
+        ,
+        .
+        .
+        .
+        ,
+        
+          u
+          
+            k
+          
+        
+        }
+      
+    
+    {\displaystyle \max\{u_{1},...,u_{k}\}}
+  
+, where all 
+  
+    
+      
+        
+          u
+          
+            1
+          
+        
+        ,
+        .
+        .
+        .
+        ,
+        
+          u
+          
+            k
+          
+        
+        ∼
+        U
+        [
+        0
+        ,
+        w
+        ]
+      
+    
+    {\displaystyle u_{1},...,u_{k}\sim U[0,w]}
+  
+ independently. This can be sampled by first sampling 
+  
+    
+      
+        u
+        ∼
+        U
+        [
+        0
+        ,
+        1
+        ]
+      
+    
+    {\displaystyle u\sim U[0,1]}
+  
+, then taking 
+  
+    
+      
+        w
+        ⋅
+        
+          u
+          
+            
+              1
+              k
+            
+          
+        
+      
+    
+    {\displaystyle w\cdot u^{\frac {1}{k}}}
+  
+.
+This is Algorithm L, which is implemented as follows:
+
+This algorithm computes three random numbers for each item that becomes part of the reservoir, and does not spend any time on items that do not.  Its expected running time is thus 
+  
+    
+      
+        O
+        (
+        k
+        (
+        1
+        +
+        log
+        ⁡
+        (
+        n
+        
+          /
+        
+        k
+        )
+        )
+        )
+      
+    
+    {\displaystyle O(k(1+\log(n/k)))}
+  
+, which is optimal.  At the same time, it is simple to implement efficiently and does not depend on random deviates from exotic or hard-to-compute distributions.
+
+
+== With random sort ==
+If we associate with each item of the input a uniformly generated random number, the k items with the largest (or, equivalently, smallest) associated values form a simple random sample.  A simple reservoir-sampling thus maintains the k items with the currently largest associated values in a priority queue.
+
+The expected running time of this algorithm is 
+  
+    
+      
+        O
+        (
+        n
+        +
+        k
+        log
+        ⁡
+        k
+        log
+        ⁡
+        (
+        n
+        
+          /
+        
+        k
+        )
+        )
+      
+    
+    {\displaystyle O(n+k\log k\log(n/k))}
+  
+ and it is relevant mainly because it can easily be extended to items with weights.
+
+
+== Weighted random sampling ==
+The methods presented in the previous sections do not allow to obtain a priori fixed inclusion probabilities.
+Some applications require items' sampling probabilities to be according to weights associated with each item. For example, it might be required to sample queries in a search engine with weight as number of times they were performed so that the sample can be analyzed for overall impact on user experience. Let the weight of item i be 
+  
+    
+      
+        
+          w
+          
+            i
+          
+        
+      
+    
+    {\displaystyle w_{i}}
+  
+, and the sum of all weights be W. There are two ways to interpret weights assigned to each item in the set:
+
+In each round, the probability of every unselected item to be selected in that round is proportional to its weight relative to the weights of all unselected items.  If X is the current sample, then the probability of an item 
+  
+    
+      
+        i
+        ∉
+        X
+      
+    
+    {\displaystyle i\notin X}
+  
+ to be selected in the current round is 
+  
+    
+      
+        
+          
+            w
+            
+              i
+            
+          
+          
+            /
+          
+          (
+          W
+          −
+          
+            ∑
+            
+              j
+              ∈
+              X
+            
+          
+          
+            
+              w
+              
+                j
+              
+            
+          
+          )
+        
+      
+    
+    {\displaystyle \textstyle w_{i}/(W-\sum _{j\in X}{w_{j}})}
+  
+.
+The probability of each item to be included in the random sample is proportional to its relative weight, i.e., 
+  
+    
+      
+        
+          w
+          
+            i
+          
+        
+        
+          /
+        
+        W
+      
+    
+    {\displaystyle w_{i}/W}
+  
+. Note that this interpretation might not be achievable in some cases, e.g., 
+  
+    
+      
+        k
+        =
+        n
+      
+    
+    {\displaystyle k=n}
+  
+.
+
+
+=== Algorithm A-Res ===
+The following algorithm was given by Efraimidis and Spirakis that uses interpretation 1:This algorithm is identical to the algorithm given in Reservoir Sampling with Random Sort except for the generation of the items' keys. The algorithm is equivalent to assigning each item a key 
+  
+    
+      
+        
+          r
+          
+            1
+            
+              /
+            
+            
+              w
+              
+                i
+              
+            
+          
+        
+      
+    
+    {\displaystyle r^{1/w_{i}}}
+  
+ where r is the random number and then selecting the k items with the largest keys.  Equivalently, a more numerically stable formulation of this algorithm computes the keys as 
+  
+    
+      
+        −
+        ln
+        ⁡
+        (
+        r
+        )
+        
+          /
+        
+        
+          w
+          
+            i
+          
+        
+      
+    
+    {\displaystyle -\ln(r)/w_{i}}
+  
+ and select the k items with the smallest keys.
+
+
+=== Algorithm A-ExpJ ===
+The following algorithm is a more efficient version of A-Res, also given by Efraimidis and Spirakis:
+
+This algorithm follows the same mathematical properties that are used in A-Res, but instead of calculating the key for each item and checking whether that item should be inserted or not, it calculates an exponential jump to the next item which will be inserted. This avoids having to create random variates for each item, which may be expensive. The number of random variates required is reduced from 
+  
+    
+      
+        O
+        (
+        n
+        )
+      
+    
+    {\displaystyle O(n)}
+  
+ to 
+  
+    
+      
+        O
+        (
+        k
+        log
+        ⁡
+        (
+        n
+        
+          /
+        
+        k
+        )
+        )
+      
+    
+    {\displaystyle O(k\log(n/k))}
+  
+ in expectation, where 
+  
+    
+      
+        k
+      
+    
+    {\displaystyle k}
+  
+ is the reservoir size, and 
+  
+    
+      
+        n
+      
+    
+    {\displaystyle n}
+  
+ is the number of items in the stream.
+
+
+=== Algorithm A-Chao ===
+Warning: the following description is wrong, see Chao's original paper and the discussion here.
+
+Following algorithm was given by M. T. Chao uses interpretation 2: and Tillé (2006).For each item, its relative weight is calculated and used to randomly decide if the item will be added into the reservoir. If the item is selected, then one of the existing items of the reservoir is uniformly selected and replaced with the new item. The trick here is that, if the probabilities of all items in the reservoir are already proportional to their weights, then by selecting uniformly which item to replace, the probabilities of all items remain proportional to their weight after the replacement.
+Note that Chao doesn't specify how to sample the first k elements.
+He simple assumes we have some other way of picking them in proportion to their weight.
+Chao: "Assume that we have a sampling plan of fixed size with respect to S_k at time A; such that its first-order inclusion probability of X_t is π(k; i)".
+
+
+==== Algorithm A-Chao with Jumps ====
+Similar to the other algorithms, it is possible to compute a random weight j and subtract items' probability mass values, skipping them while j > 0, reducing the number of random numbers that have to be generated.
+
+
+== Applications for Multi-Class Fairness ==
+In machine learning applications, fairness is a critical consideration, especially in scenarios where data streams exhibit class imbalance. To address this, Nikoloutsopoulos, Titsias, and Koutsopoulos proposed the Kullback-Leibler Reservoir Sampling (KLRS) algorithm as a solution to the challenges of Continual Learning, where models must learn incrementally from a continuous data stream.
+
+
+=== KLRS Algorithm ===
+The KLRS algorithm was designed to create a flexible policy that matches class percentages in the buffer to a target distribution while employing Reservoir Sampling techniques. This is achieved by minimizing the Kullback-Leibler (KL) divergence between the current buffer distribution and the desired target distribution.
+KLRS generalizes earlier methods like Reservoir Sampling and Class-Balancing Reservoir Sampling, as verified by experiments using confidence intervals, demonstrating its broader applicability and improved performance.
+
+
+==== Algorithm Description ====
+The KLRS algorithm operates by maintaining a buffer of size  and updating its contents as new data points arrive in a stream. Below is the pseudocode for the KLRS algorithm:
+
+
+== Algorithm: KLRS ==
+
+
+== Relation to Fisher–Yates shuffle ==
+Suppose one wanted to draw k random cards from a deck of cards.
+A natural approach would be to shuffle the deck and then take the top k cards.
+In the general case, the shuffle also needs to work even if the number of cards in the deck is not known in advance, a condition which is satisfied by the inside-out version of the Fisher–Yates shuffle:
+
+Note that although the rest of the cards are shuffled, only the first k are important in the present context.
+Therefore, the array R need only track the cards in the first k positions while performing the shuffle, reducing the amount of memory needed.
+Truncating R to length k, the algorithm is modified accordingly:
+
+Since the order of the first k cards is immaterial, the first loop can be removed and R can be initialized to be the first k items of the input.
+This yields Algorithm R.
+
+
+== Limitations ==
+Reservoir sampling makes the assumption that the desired sample fits into main memory, often implying that k is a constant independent of n. In applications where we would like to select a large subset of the input list (say a third, i.e. 
+  
+    
+      
+        k
+        =
+        n
+        
+          /
+        
+        3
+      
+    
+    {\displaystyle k=n/3}
+  
+), other methods need to be adopted. Distributed implementations for this problem have been proposed.
+
+
+== References ==

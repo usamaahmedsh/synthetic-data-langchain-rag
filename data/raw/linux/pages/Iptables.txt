@@ -1,0 +1,69 @@
+iptables is a user-space utility program that allows a system administrator to configure the IP packet filter rules of the Linux kernel firewall, implemented as different Netfilter modules. The filters are organized in a set of tables, which contain chains of rules for how to treat network traffic packets. Different kernel modules and programs are currently used for different protocols; iptables applies to IPv4, ip6tables to IPv6, arptables to ARP, and ebtables to Ethernet frames.
+iptables requires elevated privileges to operate and must be executed by user root, otherwise it fails to function.  On most Linux systems, iptables is installed as /usr/sbin/iptables and documented in its man pages, which can be opened using man iptables when installed. It may also be found in /sbin/iptables, but since iptables is more like a service rather than an "essential binary", the preferred location remains /usr/sbin.
+The term iptables is also commonly used to inclusively refer to the kernel-level components. x_tables is the name of the kernel module carrying the shared code portion used by all four modules that also provides the API used for extensions; subsequently, Xtables is more or less used to refer to the entire firewall (v4, v6, arp, and eb) architecture.
+iptables superseded ipchains; and the successor of iptables is nftables, which was released on 19 January 2014 and was merged into the Linux kernel mainline in kernel version 3.13.
+
+
+== Overview ==
+iptables allows the system administrator to define tables containing chains of rules for the treatment of packets. Each table is associated with a different kind of packet processing. Packets are processed by sequentially traversing the rules in chains. A rule in a chain can cause a goto or jump to another chain, and this can be repeated to whatever level of nesting is desired. (A jump is like a “call”, i.e. the point that was jumped from is remembered.) Every network packet arriving at or leaving from the computer traverses at least one chain.
+
+The origin of the packet determines which chain it traverses initially. There are five predefined chains (mapping to the five available Netfilter hooks), though a table may not have all chains. Predefined chains have a policy, for example DROP, which is applied to the packet if it reaches the end of the chain. The system administrator can create as many other chains as desired. These chains have no policy; if a packet reaches the end of the chain it is returned to the chain which called it. A chain may be empty.
+
+PREROUTING: Packets will enter this chain before a routing decision is made.
+INPUT: Packet is going to be locally delivered. It does not have anything to do with processes having an opened socket; local delivery is controlled by the "local-delivery" routing table: ip route show table local.
+FORWARD: All packets that have been routed and were not for local delivery will traverse this chain.
+OUTPUT: Packets sent from the machine itself will be visiting this chain.
+POSTROUTING: Routing decision has been made. Packets enter this chain just before handing them off to the hardware.
+A chain does not exist by itself; it belongs to a table. There are three tables: nat, filter, and mangle. Unless preceded by the option -t, an iptables command concerns the filter table by default. For example, the command iptables -L -v -n, which shows some chains and their rules, is equivalent to iptables -t filter -L -v -n. To show chains of table nat, use the command iptables -t nat -L -v -n
+Each rule in a chain contains the specification of which packets it matches. It may also contain a target (used for extensions) or verdict (one of the built-in decisions). As a packet traverses a chain, each rule in turn is examined. If a rule does not match the packet, the packet is passed to the next rule. If a rule does match the packet, the rule takes the action indicated by the target/verdict, which may result in the packet being allowed to continue along the chain or may not. Matches make up the large part of rulesets, as they contain the conditions packets are tested for. These can happen for about any layer in the OSI model, as with e.g. the --mac-source and -p tcp --dport parameters, and there are also protocol-independent matches, such as -m time.
+The packet continues to traverse the chain until either
+
+a rule matches the packet and decides the ultimate fate of the packet, for example by calling one of the ACCEPT or DROP, or a module returning such an ultimate fate; or
+a rule calls the RETURN verdict, in which case processing returns to the calling chain; or
+the end of the chain is reached; traversal either continues in the parent chain (as if RETURN was used), or the base chain policy, which is an ultimate fate, is used.
+Targets also return a verdict like ACCEPT (NAT modules will do this) or DROP (e.g. the REJECT module), but may also imply CONTINUE (e.g. the LOG module; CONTINUE is an internal name) to continue with the next rule as if no target/verdict was specified at all.
+
+
+== Userspace utilities ==
+
+
+=== Front-ends ===
+There are numerous third-party software applications for iptables that try to facilitate setting up rules. Front-ends in textual or graphical fashion allow users to click-generate simple rulesets; scripts usually refer to shell scripts (but other scripting languages are possible too) that call iptables or (the faster) iptables-restore with a set of predefined rules, or rules expanded from a template with the help of a simple configuration file. Linux distributions commonly employ the latter scheme of using templates. Such a template-based approach is practically a limited form of a rule generator, and such generators also exist in standalone fashion, for example, as PHP web pages.
+Such front-ends, generators and scripts are often limited by their built-in template systems and where the templates offer substitution spots for user-defined rules. Also, the generated rules are generally not optimized for the particular firewalling effect the user wishes, as doing so will likely increase the maintenance cost for the developer. Users who reasonably understand iptables and want their ruleset optimized are advised to construct their own ruleset.
+
+
+=== Other notable tools ===
+FireHOL – a shell script wrapping iptables with an easy-to-understand plain-text configuration file
+NuFW – an authenticating firewall extension to Netfilter
+Shorewall – a gateway/firewall configuration tool, making it possible to use easier rules and have them mapped to iptables
+
+
+== See also ==
+
+nftables
+NPF (firewall)
+PF (firewall)
+ipfirewall (ipfw)
+ipfilter
+XDP
+ipchains
+Uncomplicated Firewall (firewall)
+
+
+== References ==
+
+
+== Literature ==
+Gregor N. Purdy (25 August 2004). Linux iptables Pocket Reference: Firewalls, NAT & Accounting. O'Reilly Media, Inc. ISBN 978-1-4493-7898-1.
+
+
+== External links ==
+
+The netfilter/iptables project Web page
+"iptables". Freecode.
+The netfilter/iptables documentation page (outdated)
+Detecting and deceiving network scans –  countermeasures against nmap
+The IPTables ManPage for syntax help
+Iptables Tutorial 1.2.2 by Oskar Andreasson
+IPTABLES: The Default Linux Firewall
+Acceleration of iptables Linux Packet Filtering using GPGPU

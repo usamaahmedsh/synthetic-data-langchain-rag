@@ -1,0 +1,345 @@
+Prince is a block cipher targeting low latency, unrolled hardware implementations. It is based on the so-called FX construction. Its most notable feature is the alpha reflection: the decryption is the encryption with a related key which is very cheap to compute. Unlike most other "lightweight" ciphers, it has a small number of rounds and the layers constituting a round have low logic depth. As a result, fully unrolled implementation are able to reach much higher frequencies than AES or PRESENT. According to the authors, for the same time constraints and technologies, PRINCE uses 6–7 times less area than PRESENT-80 and 14–15 times less area than AES-128.
+
+
+== Overview ==
+
+The block size is 64 bits and the key size is 128 bits. The key is split into two 64 bit keys 
+  
+    
+      
+        
+          K
+          
+            0
+          
+        
+      
+    
+    {\displaystyle K_{0}}
+  
+ and 
+  
+    
+      
+        
+          K
+          
+            1
+          
+        
+      
+    
+    {\displaystyle K_{1}}
+  
+. The input is XORed with 
+  
+    
+      
+        
+          K
+          
+            0
+          
+        
+      
+    
+    {\displaystyle K_{0}}
+  
+, then is processed by a core function using 
+  
+    
+      
+        
+          K
+          
+            1
+          
+        
+      
+    
+    {\displaystyle K_{1}}
+  
+. The output of the core function is xored by 
+  
+    
+      
+        
+          K
+          
+            0
+          
+          ′
+        
+      
+    
+    {\displaystyle K'_{0}}
+  
+ to produce the final output (
+  
+    
+      
+        
+          K
+          
+            0
+          
+          ′
+        
+      
+    
+    {\displaystyle K_{0}'}
+  
+ is a value derived from 
+  
+    
+      
+        
+          K
+          
+            0
+          
+        
+      
+    
+    {\displaystyle K_{0}}
+  
+). The decryption is done by exchanging 
+  
+    
+      
+        
+          K
+          
+            0
+          
+        
+      
+    
+    {\displaystyle K_{0}}
+  
+ and 
+  
+    
+      
+        
+          K
+          
+            0
+          
+          ′
+        
+      
+    
+    {\displaystyle K'_{0}}
+  
+ and by feeding the core function with 
+  
+    
+      
+        
+          K
+          
+            1
+          
+        
+      
+    
+    {\displaystyle K_{1}}
+  
+ xored with a constant denoted alpha.
+The core function contain 5 "forward" rounds, a middle round, and 5 "backward" rounds, for 11 rounds in total. The original paper mentions 12 rounds without explicitly depicting them; if the middle round is counted as two rounds (as it contains two nonlinear layers), then the total number of rounds is 12.
+A forward round starts with a round constant XORed with 
+  
+    
+      
+        
+          K
+          
+            1
+          
+        
+      
+    
+    {\displaystyle K_{1}}
+  
+, then a nonlinear layer 
+  
+    
+      
+        S
+      
+    
+    {\displaystyle S}
+  
+, and finally a linear layer 
+  
+    
+      
+        M
+      
+    
+    {\displaystyle M}
+  
+. The "backward" rounds are exactly the inverse of the "forward" rounds except for the round constants.
+The nonlinear layer is based on a single 4-bit S-box which can be chosen among the affine-equivalent of 8 specified S-boxes.
+The linear layer consists of multiplication by a 64x64 matrix 
+  
+    
+      
+        
+          M
+          ′
+        
+      
+    
+    {\displaystyle M'}
+  
+ and a shift row similar to the one in AES but operating on 4-bit nibbles rather than bytes.
+
+  
+    
+      
+        
+          M
+          ′
+        
+      
+    
+    {\displaystyle M'}
+  
+ is constructed from 16x16 matrices 
+  
+    
+      
+        
+          M
+          
+            0
+          
+        
+      
+    
+    {\displaystyle M_{0}}
+  
+ and 
+  
+    
+      
+        
+          M
+          
+            1
+          
+        
+      
+    
+    {\displaystyle M_{1}}
+  
+ in such a way that the multiplication by 
+  
+    
+      
+        
+          M
+          ′
+        
+      
+    
+    {\displaystyle M'}
+  
+ can be computed by four smaller multiplications, two using 
+  
+    
+      
+        
+          M
+          
+            0
+          
+        
+      
+    
+    {\displaystyle M_{0}}
+  
+ and two using 
+  
+    
+      
+        
+          M
+          
+            1
+          
+        
+      
+    
+    {\displaystyle M_{1}}
+  
+.
+The middle round consists of the 
+  
+    
+      
+        S
+      
+    
+    {\displaystyle S}
+  
+ layer followed by 
+  
+    
+      
+        
+          M
+          ′
+        
+      
+    
+    {\displaystyle M'}
+  
+ followed by the 
+  
+    
+      
+        
+          S
+          
+            −
+            1
+          
+        
+      
+    
+    {\displaystyle S^{-1}}
+  
+ layer.
+
+
+== Cryptanalysis ==
+To encourage cryptanalysis of the Prince cipher, the organizations behind it created the "Prince challenge". Archived from the original on 2016-10-23. Retrieved 2016-10-09.
+The paper "Security analysis of PRINCE" presents several attacks on full and round reduced variants, in particular, an attack of complexity 2125.1 and a related key attack requiring 233 data.
+A generic time–memory–data tradeoff for FX constructions has been published, with an application to Prince. The paper argues that the FX construction is a fine solution to improve the security of a widely deployed cipher (like DES-X did for DES) but that it is a questionable choice for new designs. It presents a tweak to the Prince cipher to strengthen it against this particular kind of attack.
+A biclique cryptanalysis attack has been published on the full cipher. It is somewhat inline with the estimation of the designers since it reduces the key search space by 21.28 (the original paper mentions a factor 2).
+
+The paper "Reflection Cryptanalysis of PRINCE-Like Ciphers" focuses on the alpha reflection and establishes choice criteria for the alpha constant. It shows that a poorly chosen alpha would lead to efficient attacks on the full cipher; but the value randomly chosen by the designers is not among the weak ones.
+Several meet-in-the-middle attacks have been published on round reduced versions.
+An attack in the multi-user setting can find the keys of 2 users among a set of 232 users in time 265.
+An attack on 10 rounds with overall complexity of 118.56 bits has been published.
+An attack on 7 rounds with time complexity of 257 operations has been published.
+A differential fault attack has been published using 7 faulty cipher texts under random 4 bit nibble fault model.
+The paper "New approaches for round-reduced PRINCE cipher cryptanalysis" presents boomerang attack and known-plaintext attack on reduced round versions up to 6 rounds.
+In 2015 few additional attacks have been published but are not freely available.
+
+
+=== Most practical attacks on reduced round versions ===
+
+
+== References ==
+
+
+== External links ==
+http://eprint.iacr.org/2012/529.pdf original paper: "PRINCE – A Low-latency Block Cipher for Pervasive Computing Applications"
+https://www.emsec.rub.de/research/research_startseite/prince-challenge The Prince challenge home page
+https://github.com/sebastien-riou/prince-c-ref Software Implementations in C
+https://github.com/weedegee/prince Software Implementations in Python
+https://github.com/huljar/prince-vhdl Hardware Implementation in VHDL

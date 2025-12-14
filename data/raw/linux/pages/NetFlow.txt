@@ -1,0 +1,216 @@
+NetFlow is a feature that was introduced on Cisco routers around 1996 that provides the ability to collect IP network traffic as it enters or exits an interface. By analyzing the data provided by NetFlow, a network administrator can determine things such as the source and destination traffic, class of service, and the causes of congestion. A typical flow monitoring setup (using NetFlow) consists of three main components:
+
+Flow exporter: aggregates packets into flows and exports flow records towards one or more flow collectors.
+Flow collector: responsible for reception, storage and pre-processing of flow data received from a flow exporter.
+Analysis application: analyzes received flow data in the context of intrusion detection or traffic profiling, for example.
+
+
+== Protocol description ==
+Routers and switches that support NetFlow can collect IP traffic statistics on all interfaces where NetFlow is enabled, and later export those statistics as NetFlow records toward at least one NetFlow collector—typically a server that does the actual traffic analysis.
+
+
+=== Network flows ===
+Cisco standard NetFlow version 5 defines a flow as a unidirectional sequence of packets that all share seven values which define a unique key for the flow:
+
+Ingress interface (SNMP ifIndex)
+Source IP address
+Destination IP address
+IP protocol number
+Source port for UDP or TCP, 0 for other protocols
+Destination port for UDP or TCP, type and code for ICMP, or 0 for other protocols
+IP Type of Service
+Note that the Egress interface, IP Nexthop or BGP Nexthops are not part of the key, and may not be accurate if the route changes before the expiration of the flow, or if load-balancing is done per-packet.
+This definition of flows is also used for IPv6, and a similar definition is used for MPLS and Ethernet flows.
+Advanced NetFlow or IPFIX implementations like Cisco Flexible NetFlow allow user-defined flow keys.
+A typical output of a NetFlow command line tool (nfdump in this case) when printing the stored flows may look as follows:
+
+ Date flow start          Duration Proto   Src IP Addr:Port      Dst IP Addr:Port     Packets    Bytes Flows
+ 2010-09-01 00:00:00.459     0.000 UDP     127.0.0.1:24920   ->  192.168.0.1:22126        1       46     1
+ 2010-09-01 00:00:00.363     0.000 UDP     192.168.0.1:22126 ->  127.0.0.1:24920          1       80     1
+
+
+=== Export of records ===
+The router will output a flow record when it determines that the flow is finished.  It does this by flow aging: when the router sees new traffic for an existing flow it resets the aging counter. Also, TCP session termination in a TCP flow causes the router to expire the flow. Routers can also be configured to output a flow record at a fixed interval even if the flow is still ongoing.
+
+
+==== Packet transport protocol ====
+NetFlow records are traditionally exported using User Datagram Protocol (UDP) and collected using a NetFlow collector. 
+The IP address of the NetFlow collector and the destination UDP port must be configured on the sending router. A common value is UDP port 2055, but other values like 9555 or 9995, 9025, 9026 etc. can also be used.
+For efficiency reasons, the router traditionally does not keep track of flow records already exported, so if a NetFlow packet is dropped due to network congestion or packet corruption, all contained records are lost forever. The UDP protocol does not inform the router of the loss so it can send the packets again.
+This can be a real problem, especially with NetFlow v8 or v9 that can aggregate a lot of packets or flows into a single record. A single UDP packet loss can cause a huge impact on the statistics of some flows.
+That is why some modern implementations of NetFlow use the Stream Control Transmission Protocol (SCTP) to export packets so as to provide some protection against packet loss, and make sure that NetFlow v9 templates are received before any related record is exported. Note that TCP would not be suitable for NetFlow because a strict ordering of packets would cause excessive buffering and delays.
+The problem with SCTP is that it requires interaction between each NetFlow collector and each router exporting NetFlow. There may be performance limitations if a router has to deal with many NetFlow collectors, and a NetFlow collector has to deal with many routers, especially when some of them are unavailable due to failure or maintenance.
+SCTP may not be efficient if NetFlow must be exported toward several independent collectors, some of which may be test servers that can go down at any moment.
+UDP allows simple replication of NetFlow packets using Network taps or L2 or L3 Mirroring. Simple stateless equipment can also filter or change the destination address of NetFlow UDP packets if necessary. Since NetFlow export almost only use network backbone links, packet loss will often be negligible. If it happens, it will mostly be on the link between the network and the NetFlow collectors.
+
+
+==== Packet headers ====
+All NetFlow packets begin with version-dependent header, that contains at least these fields:
+
+Version number (v1, v5, v7, v8, v9)
+Sequence number to detect loss and duplication
+Timestamps at the moment of export, as system uptime or absolute time.
+Number of records (v5 or v8) or list of templates and records (v9)
+
+
+=== Records ===
+A NetFlow record can contain a wide variety of information about the traffic in a given flow.
+NetFlow version 5 (one of the most commonly used versions, followed by version 9) contains the following:
+
+Input interface index used by SNMP (ifIndex in IF-MIB).
+Output interface index or zero if the packet is dropped.
+Timestamps for the flow start and finish time, in milliseconds since the last boot.
+Number of bytes and packets observed in the flow
+Layer 3 headers:
+Source & destination IP addresses
+ICMP Type and Code.
+IP protocol
+Type of Service (ToS) value
+Source and destination port numbers for TCP, UDP, SCTP
+For TCP flows, the union of all TCP flags observed over the life of the flow.
+Layer 3 Routing information:
+IP address of the immediate next-hop (not the BGP nexthop) along the route to the destination
+Source & destination IP masks (prefix lengths in the CIDR notation)
+For ICMP flows, the Source Port is zero, and the Destination Port number field codes ICMP message Type and Code (port = ICMP-Type * 256 + ICMP-Code) .
+The source and destination Autonomous System (AS) number fields can report the destination AS (last AS of AS-Path) or the immediate neighbor AS (first AS of AS-Path) depending on the router configuration. But the AS number will be zero if the feature is not supported, the route is unknown or not announced by BGP, or the AS is the local AS. There is no explicit way to distinguish between these cases.
+NetFlow version 9 can include all of these fields and can optionally include additional information such as Multiprotocol Label Switching (MPLS) labels and IPv6 addresses and ports,
+By analyzing flow data, a picture of traffic flow and traffic volume in a network can be built. The NetFlow record format has evolved over time, hence the inclusion of version numbers. Cisco maintains details of the different version numbers and the layout of the packets for each version.
+
+
+=== Interfaces ===
+NetFlow is usually enabled on a per-interface basis to limit load on the router components involved in NetFlow, or to limit the amount of NetFlow records exported.
+NetFlow usually captures all packets received by an ingress IP interface, but some NetFlow implementations use IP filters to decide if a packet can be observed by NetFlow.
+Some NetFlow implementations also allow the observation of packets on the egress IP interface, but this must be used with care: all flows from any ingress interface with NetFlow enabled to any interface with NetFlow enabled could be counted twice.
+
+
+=== Sampled NetFlow ===
+Standard NetFlow was designed to process all IP packets on an interface.  But in some environments, e.g. on Internet backbones, that was too costly, due to the extra processing required for each packet, and large number of simultaneous flows.
+So Cisco introduced sampled NetFlow on Cisco 12000, and that is now used in all high-end routers that implement NetFlow.
+Only one packet out of n is processed, where n, the sampling rate, is determined by the router configuration.
+The exact selection process depends on the implementation:
+
+One packet every n packet, in Deterministic NetFlow, as used on Cisco's 12000.
+One packet randomly selected in an interval of n packet, in Random Sampled NetFlow, used on modern Cisco routers.
+Some implementations have more complex methods to sample packets, like per-flow sampling on Cisco Catalysts.
+The sampling rate is often the same for all interfaces, but can be adjusted per interface for some routers.
+When Sampled NetFlow is used, the NetFlow records must be adjusted for the effect of sampling - traffic volumes, in particular, are now an estimate rather than the actual measured flow volume.
+The sampling rate is indicated in a header field of NetFlow version 5 (same sampling rate for all interfaces) or in option records of NetFlow version 9 (sampling rate per interface)
+
+
+== Versions ==
+
+
+=== NetFlow and IPFIX ===
+NetFlow was initially implemented by Cisco, and described in an "informational" document that was not on the standards track: RFC 3954 – Cisco Systems NetFlow Services Export Version 9.  The NetFlow protocol itself has been superseded by Internet Protocol Flow Information eXport (IPFIX). Based on the NetFlow Version 9 implementation, IPFIX is on the IETF standards track with RFC 5101 (obsoleted by RFC 7011), RFC 5102 (obsoleted by RFC 7012), etc. which were published in 2008.
+
+
+=== Equivalents ===
+Many vendors other than Cisco provide similar network flow monitoring technology.  NetFlow may be a prevalent name in the area of flow monitoring, because of  Cisco dominant market share in the networking industry.  NetFlow is thought to be a Cisco trademark (even though as of March 2012 it is not listed in Cisco Trademarks):
+
+Argus - Audit Record Generation and Utilization System
+Jflow or cflowd for Juniper Networks
+NetStream for 3Com/HP
+NetStream for Huawei Technologies
+Cflowd for Nokia
+Rflow for Ericsson
+AppFlow Citrix
+sFlow vendors include: Alaxala, Alcatel Lucent, Allied Telesis, Arista Networks, Brocade, Cisco, Dell, D-Link, Enterasys, Extreme, F5 BIG-IP, Fortinet, Hewlett-Packard, Hitachi, Huawei, IBM, Juniper, LG-Ericsson, Mellanox, MRV, NEC, Netgear, Proxim Wireless, Quanta Computer, Vyatta, Telesoft, ZTE and ZyXEL
+Also flow-tools collection of software allows to process and manage NetFlow exports from Cisco and Juniper routers.
+
+
+=== Support ===
+
+
+== Variants ==
+
+
+=== Cisco's NetFlow Security Event Logging ===
+Introduced with the launch of the Cisco ASA 5580 products, NetFlow Security Event Logging utilizes NetFlow v9 fields and templates in order to efficiently deliver security telemetry in high performance environments.  NetFlow Security Event Logging scales better than syslog while offering the same level of detail and granularity in logged events.
+
+
+=== Monitoring based on standalone probes ===
+
+NetFlow collection using standalone NetFlow probes is an alternative to flow collection from routers and switches. This approach can overcome some limitations of router-based NetFlow monitoring. The probes are transparently connected to the monitored link as a passive appliance using the TAP or SPAN port of the appliance.
+Historically, NetFlow monitoring is easier to implement in a dedicated probe than in a router. However, this approach also has some drawbacks:
+
+probes must be deployed on every link that must be observed, causing additional hardware, setup and maintenance costs.
+probes will not report separate input and output interface information like a report from a router would.
+probes may have problems reporting reliably the NetFlow fields related to routing, like AS Numbers or IP masks, because they can hardly be expected to use exactly the same routing information as a router.
+The easiest way to address the above drawbacks is to use a packet capture appliance inline in front of the router and capture all of the NetFlow output from the router. This method allows for storage of large amount of NetFlow data (typically many years worth of data) and does not require reconfiguration of the network.
+NetFlow collection from dedicated probes is well suited for observation of critical links, whereas NetFlow on routers provides a Network-wide view of the traffic that can be used for capacity planning, accounting, performance monitoring, and security.
+
+
+== History ==
+NetFlow was originally a Cisco packet switching technology for Cisco routers, implemented in IOS 11.x around 1996.
+It was originally a software implementation for the Cisco 7000, 7200 and 7500, where it was thought as an improvement over the then current Cisco Fast Switching. Netflow was invented by Darren Kerr and Barry Bruin from Cisco (U.S. patent # 6,243,667 ).
+The idea was that the first packet of a flow would create a NetFlow switching record. This record would then be used for all later packets of the same flow, until the expiration of the flow. Only the first packet of a flow would require an investigation of the route table to find the most specific matching route. This is an expensive operation in software implementations, especially the old ones without Forwarding information base. The NetFlow switching record was actually some kind of route cache record, and old versions of IOS still refer to the NetFlow cache as ip route-cache.
+This technology was advantageous for local networks. This was especially true if some of the traffic had to be filtered by an ACL as only the first packet of a flow had to be evaluated by the ACL.
+NetFlow switching soon turned out to be unsuitable for big routers, especially Internet backbone routers, where the number of simultaneous flows was much more important than those on local networks, and where some traffic causes many short-lived flows, like Domain Name System requests (whose source port is random for security reasons).
+As a switching technology, NetFlow was replaced around 1995 by Cisco Express Forwarding. This first appeared on Cisco 12000 routers, and later replaced NetFlow switching on advanced IOS for the Cisco 7200 and Cisco 7500.
+As of 2012, technologies similar to NetFlow switching are still in use in most firewalls and software-based IP routers. For instance the conntrack feature of the Netfilter framework used by Linux.
+
+
+== RFCs ==
+RFC 3334 - Policy-Based Accounting
+RFC 3917 - Requirements for IP Flow Information Export (IPFIX)
+RFC 3954 - NetFlow Version 9
+RFC 3955 - Evaluation of Candidate Protocols for IP Flow Information Export (IPFIX)
+RFC 3917 - Requirements for IP Flow Information Export (IPFIX)
+RFC 3955 - Candidate Protocols for IP Flow Information Export (IPFIX)
+RFC 5101 - Specification of the IP Flow Information Export (IPFIX) Protocol for the Exchange of IP Traffic Flow Information
+RFC 5102 - Information Model for IP Flow Information Export
+RFC 5103 - Bidirectional Flow Export Using IP Flow Information Export (IPFIX)
+RFC 5153 - IP Flow Information Export (IPFIX) Implementation Guidelines
+RFC 5470 - Architecture for IP Flow Information Export
+RFC 5471 - Guidelines for IP Flow Information Export (IPFIX) Testing
+RFC 5472 - IP Flow Information Export (IPFIX) Applicability
+RFC 5473 - Reducing Redundancy in IP Flow Information Export (IPFIX) and Packet Sampling (PSAMP) Reports
+RFC 5476 - Packet Sampling (PSAMP) Protocol Specifications
+RFC 5477 - Information Model for Packet Sampling Exports
+RFC 5610 - Exporting Type Information for IP Flow Information Export (IPFIX) Information Elements
+RFC 5655 - Specification of the IP Flow Information Export (IPFIX) File Format
+RFC 5815 - Definitions of Managed Objects for IP Flow Information Export
+RFC 5982 - IP Flow Information Export (IPFIX) Mediation: Problem Statement
+RFC 6183 - IP Flow Information Export (IPFIX) Mediation: Framework
+RFC 6235 - IP Flow Anonymization Support
+RFC 6313 - Export of Structured Data in IP Flow Information Export (IPFIX)
+RFC 6526 - IP Flow Information Export (IPFIX) Per Stream Control Transmission Protocol (SCTP) Stream
+RFC 6615 - Definitions of Managed Objects for IP Flow Information Export
+RFC 6645 - IP Flow Information Accounting and Export Benchmarking Methodology
+RFC 6727 - Definitions of Managed Objects for Packet Sampling
+RFC 6728 - Configuration Data Model for the IP Flow Information Export (IPFIX) and Packet Sampling (PSAMP) Protocols
+RFC 6759 - Cisco Systems Export of Application Information in IP Flow Information Export (IPFIX)
+RFC 7011 - Specification of the IP Flow Information Export (IPFIX) Protocol for the Exchange of Flow Information
+RFC 7012 - Information Model for IP Flow Information Export (IPFIX)
+RFC 7013 - Guidelines for Authors and Reviewers of IP Flow Information Export (IPFIX) Information Elements
+RFC 7015 - Flow Aggregation for the IP Flow Information Export (IPFIX) Protocol
+RFC 7119 - Operation of the IP Flow Information Export (IPFIX) Protocol on IPFIX Mediators
+RFC 7125 - Revision of the tcpControlBits IP Flow Information Export (IPFIX) Information Element
+RFC 7133 - Information Elements for Data Link Layer Traffic Measurement
+RFC 7270 - Cisco-Specific Information Elements Reused in IP Flow Information Export (IPFIX)
+RFC 7373 - Textual Representation of IP Flow Information Export (IPFIX) Abstract Data Types
+RFC 8038 - Exporting MIB Variables Using the IP Flow Information Export (IPFIX) Protocol
+RFC 8158 - IP Flow Information Export (IPFIX) Information Elements for Logging NAT Events
+RFC 8272 - TinyIPFIX for Smart Meters in Constrained Networks
+RFC 8549 - Export of BGP Community Information in IP Flow Information Export (IPFIX)
+
+
+== See also ==
+Traffic flow (computer networking)
+IP Flow Information Export (IPFIX) - IETF standards-track flow export protocol, based on NetFlow version 9
+sFlow - alternative to NetFlow (mandatory sampling, no flow cache, no templates )
+
+
+== References ==
+
+
+== External links ==
+NetFlow/FloMA: Pointers and Software Provided by SWITCH. - One of the most comprehensive list including all the open source and research works.
+FloCon - The Annual Conference put on by CERT/CC dealing with network flow data and analysis.
+Basic NetFlow information on the Cisco Site
+Paessler IT Explained - NetFlow
+Using Netflow to store re-aggregated inbound and outbound flows
+AppFlow specifications and standards track discussion
+Understanding NetFlow Principle Animation
+Basics of NetFlow & Flow Cache
+List of Netflow Analyzers and Collectors

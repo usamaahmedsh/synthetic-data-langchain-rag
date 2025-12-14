@@ -1,0 +1,240 @@
+Time delay neural network (TDNN) is a multilayer artificial neural network architecture whose purpose is to 1) classify patterns with shift-invariance, and 2) model context at each layer of the network. It is essentially a 1-d convolutional neural network (CNN).
+Shift-invariant classification means that the classifier does not require explicit segmentation prior to classification. For the classification of a temporal pattern (such as speech), the TDNN thus avoids having to determine the beginning and end points of sounds before classifying them.
+For contextual modelling in a TDNN, each neural unit at each layer receives input not only from activations/features at the layer below, but from a pattern of unit output and its context.  For time signals each unit receives as input the activation patterns over time from units below.  Applied to two-dimensional classification (images, time-frequency patterns), the TDNN can be trained with shift-invariance in the coordinate space and avoids precise segmentation in the coordinate space.
+
+
+== History ==
+The TDNN was introduced in the late 1980s and applied to a task of phoneme classification for automatic speech recognition in speech signals where the automatic determination of precise segments or feature boundaries was difficult or impossible. Because the TDNN recognizes phonemes and their underlying acoustic/phonetic features, independent of position in time, it improved performance over static classification. It was also applied to two-dimensional signals (time-frequency patterns in speech, and coordinate space pattern in OCR).
+Kunihiko Fukushima published the neocognitron in 1980. Max pooling appears in a 1982 publication on the neocognitron and was in the 1989 publication in LeNet-5.
+In 1990, Yamaguchi et al. used max pooling in TDNNs in order to realize a speaker independent isolated word recognition system.
+
+
+== Overview ==
+
+
+=== Architecture ===
+In modern language, the design of TDNN is a 1D convolutional neural network, where the direction of convolution is across the dimension of time. In the original design, there are exactly 3 layers.
+The input to the network is a continuous speech signal, preprocessed into a 2D array (a mel scale spectrogram). One dimension is time at 10 ms per frame, and the other dimension is frequency. The time dimension can be arbitrarily long, but the frequency dimension was only 16-long. In the original experiment, they only considered very short speech signals pronouncing single words like "baa", "daa", "gaa". Because of this, the speech signals could be very short, indeed, only 15 frames long (150 ms in time). 
+In detail, they processed a voice signal as follows:
+
+Input speech is sampled at 12 kHz, Hamming-windowed.
+Its FFT is computed every 5 ms.
+The mel scale coefficients are computed from the power spectrum by taking log energies in each mel scale energy band.
+Adjacent coefficients in time are soothed over, resulting in one frame every 10 ms.
+For each signal, a human manually detect the onset of the vowel, and the entire speech signal is cut off except 7 frames before and 7 frames after, leaving just 15 frames in total, centered at the onset of the vowel.
+The coefficients are normalized by subtracting the mean, then scaling, so that the signals fall between -1 and +1.
+The first layer of the TDNN is a 1D convolutional layer. The layer contains 8 kernels of shape 
+  
+    
+      
+        3
+        ×
+        16
+      
+    
+    {\displaystyle 3\times 16}
+  
+. It outputs a tensor of shape 
+  
+    
+      
+        8
+        ×
+        13
+      
+    
+    {\displaystyle 8\times 13}
+  
+.
+The second layer of the TDNN is a 1D convolutional layer. The layer contains 3 kernels of shape 
+  
+    
+      
+        5
+        ×
+        8
+      
+    
+    {\displaystyle 5\times 8}
+  
+. It outputs a tensor of shape 
+  
+    
+      
+        3
+        ×
+        9
+      
+    
+    {\displaystyle 3\times 9}
+  
+.
+The third layer of the TDNN is not a convolutional layer. Instead, it is simply a fixed layer with 3 neurons. Let the output from the second layer be 
+  
+    
+      
+        
+          x
+          
+            i
+            ,
+            j
+          
+        
+      
+    
+    {\displaystyle x_{i,j}}
+  
+ where  
+  
+    
+      
+        i
+        ∈
+        1
+        :
+        3
+      
+    
+    {\displaystyle i\in 1:3}
+  
+ and 
+  
+    
+      
+        j
+        ∈
+        1
+        :
+        9
+      
+    
+    {\displaystyle j\in 1:9}
+  
+. The 
+  
+    
+      
+        i
+      
+    
+    {\displaystyle i}
+  
+-th neuron in the third layer computes 
+  
+    
+      
+        σ
+        (
+        
+          ∑
+          
+            j
+            ∈
+            1
+            :
+            9
+          
+        
+        
+          x
+          
+            i
+            ,
+            j
+          
+        
+        )
+      
+    
+    {\displaystyle \sigma (\sum _{j\in 1:9}x_{i,j})}
+  
+, where 
+  
+    
+      
+        σ
+      
+    
+    {\displaystyle \sigma }
+  
+ is the sigmoid function. Essentially, it can be thought of as a convolution layer with 3 kernels of shape 
+  
+    
+      
+        1
+        ×
+        9
+      
+    
+    {\displaystyle 1\times 9}
+  
+.
+It was trained on ~800 samples for 20000--50000 backpropagation steps. Each steps was computed in a batch over the entire training dataset, i.e. not stochastic. It required the use of an Alliant supercomputer with 4 processors.
+
+
+=== Example ===
+In the case of a speech signal, inputs are spectral coefficients over time.
+In order to learn critical acoustic-phonetic features (for example formant transitions, bursts, frication, etc.) without first requiring precise localization, the TDNN is trained time-shift-invariantly. Time-shift invariance is achieved through weight sharing across time during training:  Time shifted copies of the TDNN are made over the input range (from left to right in Fig.1).  Backpropagation is then performed from an overall classification target vector (see TDNN diagram, three phoneme class targets (/b/, /d/, /g/) are shown in the output layer), resulting in gradients that will generally vary for each of the time-shifted network copies.  Since such time-shifted networks are only copies, however, the position dependence is removed by weight sharing.  In this example, this is done by averaging the gradients from each time-shifted copy before performing the weight update.  In speech, time-shift invariant training was shown to learn weight matrices that are independent of precise positioning of the input. The weight matrices could also be shown to detect important acoustic-phonetic features that are known to be important for human speech perception, such as formant transitions, bursts, etc. TDNNs could also be combined or grown by way of pre-training.
+
+
+=== Implementation ===
+The precise architecture of TDNNs (time-delays, number of layers) is mostly determined by the designer depending on the classification problem and the most useful context sizes.  The delays or context windows are chosen specific to each application.  Work has also been done to create adaptable time-delay TDNNs where this manual tuning is eliminated.
+
+
+=== State of the art ===
+TDNN-based phoneme recognizers compared favourably in early comparisons with HMM-based phone models.  Modern deep TDNN architectures include many more hidden layers and sub-sample or pool connections over broader contexts at higher layers.  They achieve up to 50% word error reduction over GMM-based acoustic models.  While the different layers of TDNNs are intended to learn features of increasing context width, they do model local contexts.  When longer-distance relationships and pattern sequences have to be processed, learning states and state-sequences is important and TDNNs can be combined with other modelling techniques. TDNN architectures have also been adapted to Spiking Neural Networks, leading to state-of-the-art results while lending themselves to energy-efficient hardware implementations. 
+
+
+== Applications ==
+
+
+=== Speech recognition ===
+TDNNs used to solve problems in speech recognition that were introduced in 1989 and initially focused on shift-invariant phoneme recognition.  Speech lends itself nicely to TDNNs as spoken sounds are rarely of uniform length and precise segmentation is difficult or impossible.  By scanning a sound over past and future, the TDNN is able to construct a model for the key elements of that sound in a time-shift invariant manner.  This is particularly useful as sounds are smeared out through reverberation.  Large phonetic TDNNs can be constructed modularly through pre-training and combining smaller networks.
+
+
+=== Large vocabulary speech recognition ===
+Large vocabulary speech recognition requires recognizing sequences of phonemes that make up words subject to the constraints of a large pronunciation vocabulary.  Integration of TDNNs into large vocabulary speech recognizers is possible by introducing state transitions and search between phonemes that make up a word.  The resulting Multi-State Time-Delay Neural Network (MS-TDNN) can be trained discriminative from the word level, thereby optimizing the entire arrangement toward word recognition instead of phoneme classification.
+
+
+=== Speaker independence ===
+Two-dimensional variants of the TDNNs were proposed for speaker independence. Here, shift-invariance is applied to the time as well as to the frequency axis in order to learn hidden features that are independent of precise location in time and in frequency (the latter being due to speaker variability).
+
+
+=== Reverberation ===
+One of the persistent problems in speech recognition is recognizing speech when it is corrupted by echo and reverberation (as is the case in large rooms and distant microphones).  Reverberation can be viewed as corrupting speech with delayed versions of itself.  In general, it is difficult, however, to de-reverberate a signal as the impulse response function (and thus the convolutional noise experienced by the signal) is not known for any arbitrary space.  The TDNN was shown to be effective to recognize speech robustly despite different levels of reverberation.
+
+
+=== Lip-reading – audio-visual speech ===
+TDNNs were also successfully used in early demonstrations of audio-visual speech, where the sounds of speech are complemented by visually reading lip movement.  Here, TDNN-based recognizers used visual and acoustic features jointly to achieve improved recognition accuracy, particularly in the presence of noise, where complementary information from an alternate modality could be fused nicely in a neural net.
+
+
+=== Handwriting recognition ===
+TDNNs have been used effectively in compact and high-performance handwriting recognition systems. Shift-invariance was also adapted to spatial patterns (x/y-axes) in image offline handwriting recognition.
+
+
+=== Video analysis ===
+Video has a temporal dimension that makes a TDNN an ideal solution to analysing motion patterns. An example of this analysis is a combination of vehicle detection and recognizing pedestrians. When examining videos, subsequent images are fed into the TDNN as input where each image is the next frame in the video. The strength of the TDNN comes from its ability to examine objects shifted in time forward and backward to define an object detectable as the time is altered. If an object can be recognized in this manner, an application can plan on that object to be found in the future and perform an optimal action.
+
+
+=== Image recognition ===
+Two-dimensional TDNNs were later applied to other image-recognition tasks under the name of "Convolutional Neural Networks", where shift-invariant training is applied to the x/y axes of an image.
+
+
+=== Common libraries ===
+TDNNs can be implemented in virtually all machine-learning frameworks using one-dimensional convolutional neural networks, due to the equivalence of the methods.
+Matlab: The neural network toolbox has explicit functionality designed to produce a time delay neural network give the step size of time delays and an optional training function. The default training algorithm is a Supervised Learning back-propagation algorithm that updates filter weights based on the Levenberg-Marquardt optimizations. The function is timedelaynet(delays, hidden_layers, train_fnc) and returns a time-delay neural network architecture that a user can train and provide inputs to.
+The Kaldi ASR Toolkit has an implementation of TDNNs with several optimizations for speech recognition.
+
+
+== See also ==
+Convolutional neural network –  a convolutional neural net where the convolution is performed along the time axis of the data is very similar to a TDNN.
+Recurrent neural networks –  a recurrent neural network also handles temporal data, albeit in a different manner. Instead of a time-varied input, RNNs maintain internal hidden layers to keep track of past (and in the case of Bi-directional RNNs, future) inputs.
+
+
+== References ==
+
+Haffner, Patrick; Waibel (1991) [January 1991]. Lippman, Richard; Moody, John (eds.). "Multi-State Time Delay Networks for Continuous Speech Recognition". Advances in Neural Information Processing Systems. 4. Morgan Kaufman: 135–142.
+Hampshire, John; Waibel, Alex (1990) [November 30, 1989]. Touretzky, David (ed.). "Connectionist Architectures for Multi-Speaker Phoneme Recognition". Advances in Neural Information Processing Systems 2: 203-210.
+Waibel, Alex; Hanazawa, Toshiyuki; Hinton, Geoffrey; Shikano, Kiyohiro; Lang, Kevin (April 1989). "Phoneme recognition using time-delay neural networks". IEEE Transactions on Acoustics, Speech, and Signal Processing. 37 (3): 328–339. doi:10.1109/29.21701.
+Waibel, Alex (1987) [December]. "Phoneme Recognition Using Time-Delay Neural Networks". Conference: Meeting of the Institute of Electrical, Information and Communication Engineers (IEICE). Japan.

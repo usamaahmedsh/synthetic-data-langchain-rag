@@ -1,0 +1,807 @@
+The Advanced Encryption Standard uses a key schedule to expand a short key into a number of separate round keys.  The three AES variants have a different number of rounds. Each variant requires a separate 128-bit round key for each round plus one more. The key schedule produces the needed round keys from the initial key.
+
+
+== Round constants ==
+
+The round constant rconi for round i of the key expansion is the 32-bit word:
+
+  
+    
+      
+        r
+        c
+        o
+        
+          n
+          
+            i
+          
+        
+        =
+        
+          
+            [
+            
+              
+                
+                  r
+                  
+                    c
+                    
+                      i
+                    
+                  
+                
+                
+                  
+                    00
+                    
+                      8
+                    
+                  
+                
+                
+                  
+                    00
+                    
+                      8
+                    
+                  
+                
+                
+                  
+                    00
+                    
+                      8
+                    
+                  
+                
+              
+            
+            ]
+          
+        
+      
+    
+    {\displaystyle rcon_{i}={\begin{bmatrix}rc_{i}&00_{8}&00_{8}&00_{8}\end{bmatrix}}}
+  
+
+where rci is an eight-bit value defined as :
+
+  
+    
+      
+        r
+        
+          c
+          
+            i
+          
+        
+        =
+        
+          
+            {
+            
+              
+                
+                  1
+                
+                
+                  
+                    if 
+                  
+                  i
+                  =
+                  1
+                
+              
+              
+                
+                  2
+                  ⋅
+                  r
+                  
+                    c
+                    
+                      i
+                      −
+                      1
+                    
+                  
+                
+                
+                  
+                    if 
+                  
+                  i
+                  >
+                  1
+                  
+                     and 
+                  
+                  r
+                  
+                    c
+                    
+                      i
+                      −
+                      1
+                    
+                  
+                  <
+                  
+                    80
+                    
+                      16
+                    
+                  
+                
+              
+              
+                
+                  (
+                  (
+                  (
+                  2
+                  ⋅
+                  r
+                  
+                    c
+                    
+                      i
+                      −
+                      1
+                    
+                  
+                  )
+                  ⊕
+                  
+                    
+                      11B
+                    
+                    
+                      16
+                    
+                  
+                  )
+                  
+                     mod 
+                  
+                  
+                    
+                      100
+                    
+                    
+                      16
+                    
+                  
+                  )
+                
+                
+                  
+                    if 
+                  
+                  i
+                  >
+                  1
+                  
+                     and 
+                  
+                  r
+                  
+                    c
+                    
+                      i
+                      −
+                      1
+                    
+                  
+                  ≥
+                  
+                    80
+                    
+                      16
+                    
+                  
+                
+              
+            
+            
+          
+        
+      
+    
+    {\displaystyle rc_{i}={\begin{cases}1&{\text{if }}i=1\\2\cdot rc_{i-1}&{\text{if }}i>1{\text{ and }}rc_{i-1}<80_{16}\\(((2\cdot rc_{i-1})\oplus {\text{11B}}_{16}){\text{ mod }}{\text{100}}_{16})&{\text{if }}i>1{\text{ and }}rc_{i-1}\geq 80_{16}\end{cases}}}
+  
+
+where 
+  
+    
+      
+        ⊕
+      
+    
+    {\displaystyle \oplus }
+  
+ is the bitwise XOR operator and constants such as 0016 and 11B16 are given in hexadecimal. Equivalently:
+
+  
+    
+      
+        r
+        
+          c
+          
+            i
+          
+        
+        =
+        
+          x
+          
+            i
+            −
+            1
+          
+        
+      
+    
+    {\displaystyle rc_{i}=x^{i-1}}
+  
+
+where the bits of rci are treated as the coefficients of an element of the finite field 
+  
+    
+      
+        
+          
+            
+              G
+              F
+            
+            (
+            
+              2
+              
+                8
+              
+            
+            )
+            [
+            x
+            ]
+            
+              /
+            
+            (
+            
+              x
+              
+                8
+              
+            
+            +
+            
+              x
+              
+                4
+              
+            
+            +
+            
+              x
+              
+                3
+              
+            
+            +
+            x
+            +
+            1
+            )
+          
+        
+      
+    
+    {\displaystyle {\rm {{GF}(2^{8})[x]/(x^{8}+x^{4}+x^{3}+x+1)}}}
+  
+, so that e.g. 
+  
+    
+      
+        r
+        
+          c
+          
+            10
+          
+        
+        =
+        
+          36
+          
+            16
+          
+        
+        =
+        
+          00110110
+          
+            2
+          
+        
+      
+    
+    {\displaystyle rc_{10}=36_{16}=00110110_{2}}
+  
+ represents the polynomial 
+  
+    
+      
+        
+          x
+          
+            5
+          
+        
+        +
+        
+          x
+          
+            4
+          
+        
+        +
+        
+          x
+          
+            2
+          
+        
+        +
+        x
+      
+    
+    {\displaystyle x^{5}+x^{4}+x^{2}+x}
+  
+.
+AES uses up to rcon10 for AES-128 (as 11 round keys are needed), up to rcon8 for AES-192, and up to rcon7 for AES-256.
+
+
+== The key schedule ==
+
+Define:
+
+N as the length of the key in 32-bit words: 4 words for AES-128, 6 words for AES-192, and 8 words for AES-256
+K0, K1, ... KN-1 as the 32-bit words of the original key
+R as the number of round keys needed: 11 round keys for AES-128, 13 keys for AES-192, and 15 keys for AES-256
+W0, W1, ... W4R-1 as the 32-bit words of the expanded key
+Also define RotWord as a one-byte left circular shift:
+
+  
+    
+      
+        RotWord
+        ⁡
+        (
+        
+          
+            [
+            
+              
+                
+                  
+                    b
+                    
+                      0
+                    
+                  
+                
+                
+                  
+                    b
+                    
+                      1
+                    
+                  
+                
+                
+                  
+                    b
+                    
+                      2
+                    
+                  
+                
+                
+                  
+                    b
+                    
+                      3
+                    
+                  
+                
+              
+            
+            ]
+          
+        
+        )
+        =
+        
+          
+            [
+            
+              
+                
+                  
+                    b
+                    
+                      1
+                    
+                  
+                
+                
+                  
+                    b
+                    
+                      2
+                    
+                  
+                
+                
+                  
+                    b
+                    
+                      3
+                    
+                  
+                
+                
+                  
+                    b
+                    
+                      0
+                    
+                  
+                
+              
+            
+            ]
+          
+        
+      
+    
+    {\displaystyle \operatorname {RotWord} ({\begin{bmatrix}b_{0}&b_{1}&b_{2}&b_{3}\end{bmatrix}})={\begin{bmatrix}b_{1}&b_{2}&b_{3}&b_{0}\end{bmatrix}}}
+  
+
+and SubWord as an application of the AES S-box to each of the four bytes of the word:
+
+  
+    
+      
+        SubWord
+        ⁡
+        (
+        
+          
+            [
+            
+              
+                
+                  
+                    b
+                    
+                      0
+                    
+                  
+                
+                
+                  
+                    b
+                    
+                      1
+                    
+                  
+                
+                
+                  
+                    b
+                    
+                      2
+                    
+                  
+                
+                
+                  
+                    b
+                    
+                      3
+                    
+                  
+                
+              
+            
+            ]
+          
+        
+        )
+        =
+        
+          
+            [
+            
+              
+                
+                  S
+                  ⁡
+                  (
+                  
+                    b
+                    
+                      0
+                    
+                  
+                  )
+                
+                
+                  S
+                  ⁡
+                  (
+                  
+                    b
+                    
+                      1
+                    
+                  
+                  )
+                
+                
+                  S
+                  ⁡
+                  (
+                  
+                    b
+                    
+                      2
+                    
+                  
+                  )
+                
+                
+                  S
+                  ⁡
+                  (
+                  
+                    b
+                    
+                      3
+                    
+                  
+                  )
+                
+              
+            
+            ]
+          
+        
+      
+    
+    {\displaystyle \operatorname {SubWord} ({\begin{bmatrix}b_{0}&b_{1}&b_{2}&b_{3}\end{bmatrix}})={\begin{bmatrix}\operatorname {S} (b_{0})&\operatorname {S} (b_{1})&\operatorname {S} (b_{2})&\operatorname {S} (b_{3})\end{bmatrix}}}
+  
+
+Then for 
+  
+    
+      
+        i
+        =
+        0
+        …
+        4
+        R
+        −
+        1
+      
+    
+    {\displaystyle i=0\ldots 4R-1}
+  
+:
+
+  
+    
+      
+        
+          W
+          
+            i
+          
+        
+        =
+        
+          
+            {
+            
+              
+                
+                  
+                    K
+                    
+                      i
+                    
+                  
+                
+                
+                  
+                    if 
+                  
+                  i
+                  <
+                  N
+                
+              
+              
+                
+                  
+                    W
+                    
+                      i
+                      −
+                      N
+                    
+                  
+                  ⊕
+                  SubWord
+                  ⁡
+                  (
+                  RotWord
+                  ⁡
+                  (
+                  
+                    W
+                    
+                      i
+                      −
+                      1
+                    
+                  
+                  )
+                  )
+                  ⊕
+                  r
+                  c
+                  o
+                  
+                    n
+                    
+                      i
+                      
+                        /
+                      
+                      N
+                    
+                  
+                
+                
+                  
+                    if 
+                  
+                  i
+                  ≥
+                  N
+                  
+                     and 
+                  
+                  i
+                  ≡
+                  0
+                  
+                    
+                    (
+                    mod
+                    
+                    N
+                    )
+                  
+                
+              
+              
+                
+                  
+                    W
+                    
+                      i
+                      −
+                      N
+                    
+                  
+                  ⊕
+                  SubWord
+                  ⁡
+                  (
+                  
+                    W
+                    
+                      i
+                      −
+                      1
+                    
+                  
+                  )
+                
+                
+                  
+                    if 
+                  
+                  i
+                  ≥
+                  N
+                  
+                    , 
+                  
+                  N
+                  >
+                  6
+                  
+                    , and 
+                  
+                  i
+                  ≡
+                  4
+                  
+                    
+                    (
+                    mod
+                    
+                    N
+                    )
+                  
+                
+              
+              
+                
+                  
+                    W
+                    
+                      i
+                      −
+                      N
+                    
+                  
+                  ⊕
+                  
+                    W
+                    
+                      i
+                      −
+                      1
+                    
+                  
+                
+                
+                  
+                    otherwise.
+                  
+                
+              
+            
+            
+          
+        
+      
+    
+    {\displaystyle W_{i}={\begin{cases}K_{i}&{\text{if }}i<N\\W_{i-N}\oplus \operatorname {SubWord} (\operatorname {RotWord} (W_{i-1}))\oplus rcon_{i/N}&{\text{if }}i\geq N{\text{ and }}i\equiv 0{\pmod {N}}\\W_{i-N}\oplus \operatorname {SubWord} (W_{i-1})&{\text{if }}i\geq N{\text{, }}N>6{\text{, and }}i\equiv 4{\pmod {N}}\\W_{i-N}\oplus W_{i-1}&{\text{otherwise.}}\\\end{cases}}}
+  
+
+
+== Notes ==
+
+
+== References ==
+FIPS PUB 197: the official AES standard (PDF file)
+
+
+== External links ==
+Description of Rijndael's key schedule
+schematic view of the key schedule for 128 and 256 bit keys for 160-bit keys on Cryptography Stack Exchange

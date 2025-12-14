@@ -1,0 +1,49 @@
+In cryptography, CRAM-MD5 is a challenge–response authentication mechanism (CRAM) based on the HMAC-MD5 algorithm. As one of the mechanisms supported by the Simple Authentication and Security Layer (SASL), it is often used in email software as part of SMTP Authentication and for the authentication of POP and IMAP users, as well as in applications implementing LDAP, XMPP, BEEP, and other protocols.
+When such software requires authentication over unencrypted connections, CRAM-MD5 is preferred over mechanisms that transmit passwords "in the clear," such as LOGIN and PLAIN. However, it can't prevent derivation of a password through a brute-force attack, so it is less effective than alternative mechanisms that avoid passwords or that use connections encrypted with Transport Layer Security (TLS).
+
+
+== Protocol ==
+The CRAM-MD5 protocol involves a single challenge and response cycle, and is initiated by the server:
+
+Challenge: The server sends a base64-encoded string to the client. Before encoding, it could be any random string, but the standard that currently defines CRAM-MD5 says that it is in the format of a Message-ID email header value (including angle brackets) and includes an arbitrary string of random digits, a timestamp, and the server's fully qualified domain name.
+Response: The client responds with a string created as follows.
+The challenge is base64-decoded.
+The decoded challenge is hashed using HMAC-MD5, with a shared secret (typically, the user's password, or a hash thereof) as the secret key.
+The hashed challenge is converted to a string of lowercase hex digits.
+The username and a space character are prepended to the hex digits.
+The concatenation is then base64-encoded and sent to the server
+Comparison: The server uses the same method to compute the expected response. If the given response and the expected response match, then authentication was successful.
+
+
+== Strengths ==
+The one-way hash and the fresh random challenge provide three types of security:
+
+Others cannot duplicate the hash without knowing the password. This provides authentication.
+Others cannot replay the hash—it is dependent on the unpredictable challenge. This is variously called freshness or replay prevention.
+Observers do not learn the password; this is called secrecy.
+
+
+== Weaknesses ==
+No mutual authentication: the client does not verify the server. However, SASL authentication is usually done over a TLS connection, which verifies the server's identity.
+Weak password storage: some implementations require access to the users' plain text passwords, while others (e.g. Dovecot) use the intermediate step of the HMAC process to store the MD5-hash of the password (strictly speaking of HMAC's internal variables i_key_pad and o_key_pad). Such implementations leverage that for computing md5(something_with_64_bytes || something_else), only md5_internal(something_with_64_bytes) and something_else are needed to know (because of  Merkle–Damgård usage in MD5; md5_internal is md5 without the final block). As i_key_pad and o_key_pad are at the start of the inner and outer hash of HMAC, and have a length of 64 bytes, this fact can be used.
+Threat of reversibility: an offline dictionary attack to recover the password is feasible after capturing a successful CRAM-MD5 protocol exchange (e.g., using Cain & Abel). This threat is unavoidable in any password hashing scheme, but more modern algorithms use key stretching for increasing the cost of an attack by a factor of one thousand or more. Conversely, CRAM-MD5 digests can be calculated using very few computational resources on dedicated hardware, or even just standard CPUs.
+Proxy-ability: Unlike a password-authenticated key agreement (PAKE) scheme, CRAM-MD5 does not establish a secret shared between the two endpoints but unknown to an eavesdropper.  An active man in the middle can therefore open a connection to the server, get a challenge, offer that challenge to the client, receive the client's response, and forward that response to the server.  It can now drop the client's further messages while impersonating the client to the server.
+
+
+== Standards ==
+CRAM-MD5 is defined by the IETF standards-track document RFC 2195, which supersedes RFC 2095, from earlier in 1997. These de facto standards define CRAM-MD5 as an authentication method for the email mailbox-management protocols POP and IMAP.
+CRAM-MD5 is one of the authentication methods supported by Simple Authentication and Security Layer (SASL), defined in 2006 by RFC 4422, which supersedes the 1997 standard RFC 2222.
+The Internet Assigned Numbers Authority (IANA) maintains a registry of SASL mechanisms, including CRAM-MD5, for limited use.
+CRAM-MD5 is required for On-Demand Mail Relay (ODMR), defined in RFC 2645.
+
+
+== Obsolete ==
+It was recommended to deprecate the standard in 20 November 2008. As an alternative it recommends e.g. SCRAM or SASL Plain protected by TLS instead.
+
+
+== See also ==
+Simple Mail Transfer Protocol (SMTP)
+John Klensin
+
+
+== References ==

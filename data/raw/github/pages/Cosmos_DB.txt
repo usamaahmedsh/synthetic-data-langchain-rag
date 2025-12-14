@@ -1,0 +1,85 @@
+Azure Cosmos DB is a globally distributed, multi-model database service offered by Microsoft. It is designed to provide high availability, scalability, and low-latency access to data for modern applications. Unlike traditional relational databases, Cosmos DB is a NoSQL (meaning "Not only SQL", rather than "zero SQL") and vector database, which means it can handle unstructured, semi-structured, structured, and vector data types.
+
+
+== Data model ==
+Internally, Cosmos DB stores "items" in "containers", with these two concepts being surfaced differently depending on the API used (these would be "documents" in "collections" when using the MongoDB-compatible API, for example). Containers are grouped in "databases", which are analogous to namespaces above containers. Containers are schema-agnostic, which means that no schema is enforced when adding items.
+By default, every field in each item is automatically indexed, generally providing good performance without tuning to specific query patterns. These defaults can be modified by setting an indexing policy which can specify, for each field, the index type and precision desired. Cosmos DB offers two types of indexes:
+
+range, supporting range and ORDER BY queries
+spatial, supporting spatial queries from points, polygons, and line strings encoded in standard GeoJSON fragments
+Containers can also enforce unique key constraints to ensure data integrity.
+Each Cosmos DB container exposes a change feed, which clients can subscribe to in order to get notified of new items being added or updated in the container. As of 7 June 2021, item deletions are currently not exposed by the change feed. Changes are persisted by Cosmos DB, which makes it possible to request changes from any point in time since the creation of the container.
+A "Time to Live" (or TTL) can be specified at the container level to let Cosmos DB automatically delete items after a certain amount of time expressed in seconds. This countdown starts after the last update of the item. If needed, the TTL can also be overloaded at the item level.
+
+
+== Multi-model APIs ==
+The internal data model described in the previous section is exposed through:
+
+a proprietary SQL API.
+five different compatibility APIs, exposing endpoints that are partially compatible with the wire protocols of MongoDB, Gremlin, Cassandra, Azure Table Storage, and etcd; these compatibility APIs make it possible for any compatible application to connect to and use Cosmos DB through standard drivers or SDKs, while also benefiting from Cosmos DB's core features like partitioning and global distribution.
+
+
+=== SQL API ===
+The SQL API lets clients create, update and delete containers and items. Items can be queried with a read-only, JSON-friendly SQL dialect. As Cosmos DB embeds a JavaScript engine, the SQL API also enables:
+
+Stored procedures. Functions that bundle an arbitrarily complex set of operations and logic into an ACID-compliant transaction. They are isolated from changes made while the stored procedure is executing and either all write operations succeed or they all fail, leaving the database in a consistent state. Stored procedures are executed in a single partition. Therefore, the caller must provide a partition key when calling into a partitioned collection. Stored procedures can be used to make up for the lack of certain functionality. For instance, the lack of aggregation capability is made up for by the implementation of an OLAP cube as a stored procedure in the open sourced documentdb-lumenize project.
+Triggers. Functions that get executed before or after specific operations (like on a document insertion for example) that can either alter the operation or cancel it. Triggers are only executed on request.
+User-defined functions (UDF). Functions that can be called from and augment the SQL query language making up for limited SQL features.
+The SQL API is exposed as a REST API, which itself is implemented in various SDKs that are officially supported by Microsoft and available for .NET Framework, .NET, Node.js (JavaScript), Java and Python.
+
+
+== Partitioning ==
+Cosmos DB added automatic partitioning capability in 2016 with the introduction of partitioned containers. Behind the scenes, partitioned containers span multiple physical partitions with items distributed by a client-supplied partition key. Cosmos DB automatically decides how many partitions to spread data across depending on the size and throughput needs. When partitions are added or removed, the operation is performed without any downtime so data remains available while it is re-balanced across the new or remaining partitions.
+Before partitioned containers were available, it was common to write custom code to partition data and some of the Cosmos DB SDKs explicitly supported several different partitioning schemes. That mode is still available but only recommended when storage and throughput requirements do not exceed the capacity of one container, or when the built-in partitioning capability does not otherwise meet the application's needs.
+
+
+== Tunable throughput ==
+Developers can specify desired throughput to match the application's expected load. Cosmos DB reserves resources (memory, CPU and IOPS) to guarantee the requested throughput while maintaining request latency below 10ms for both reads and writes at the 99th percentile. Throughput is specified in Request Units (RUs) per second. The cost to read a 1 KB item is 1 Request Unit (or 1 RU).  Select by 'id' operations consume lower number of RUs compared to Delete, Update, and Insert operations for the same document. Large queries (e.g. aggregations like count) and stored procedure executions can consume hundreds to thousands of RUs depending on the complexity of the operations needed. The minimum billing is per hour.
+Throughput can be provisioned at either the container or the database level. When provisioned at the database level, the throughput is shared across all the containers within that database, with the additional ability to have dedicated throughput for some containers. The throughput provisioned on an Azure Cosmos container is exclusively reserved for that container. The default maximum RUs that can be provisioned per database and per container are 1,000,000 RUs, but customers can get this limit increased by contacting customer support.
+As an example of costing, using a single region instance, a count of 1,000,000 records of 1k each in 5s requires 1,000,000 RUs At $0.008/h, which would equal $800. Two regions double the cost.
+
+
+== Global distribution ==
+Cosmos DB databases can be configured to be available in any of the Microsoft Azure regions (54 regions as of December 2018), letting application developers place their data closer to where their users are. Each container's data gets transparently replicated across all configured regions. Adding or removing regions is performed without any downtime or impact on performance. By leveraging Cosmos DB's multi-homing API, applications don't have to be updated or redeployed when regions are added or removed, as Cosmos DB will automatically route their requests to the regions that are available and closest to their location.
+
+
+=== Consistency levels ===
+Data consistency is configurable on Cosmos DB, letting application developers choose among five different levels:
+
+Eventual does not guarantee any ordering and only ensures that replicas will eventually converge
+Consistent prefix adds ordering guarantees on top of eventual
+Session is scoped to a single client connection and basically ensures a read-your-own-writes consistency for each client; it is the default consistency level
+Bounded staleness augments consistent prefix by ensuring that reads won't lag beyond x versions of an item or some specified time window
+Strong consistency (or linearizable) ensures that clients always read the latest globally committed write
+The desired consistency level is defined at the account level but can be overridden on a per request basis by using a specific HTTP header or the corresponding feature exposed by the SDKs. All five consistency levels have been specified and verified using the TLA+ specification language, with the TLA+ model being open-sourced on GitHub.
+
+
+=== Multi-master ===
+Cosmos DB's original distribution model involves one single write region, with all other regions being read-only replicas. In March 2018, Microsoft announced a new multi-master capability for Azure Cosmos DB, allowing multiple regions to serve as write replicas. This feature introduced a significant improvement to its original single write-region model, where other regions were read-only. With multi-master, concurrent writes from different regions can lead to potential conflicts, which can be resolved either using the default "Last Write Wins" (LWW) policy or a custom conflict resolution mechanism, such as a JavaScript function. The LWW policy relies on timestamps to determine the winning write, while the custom option enables developers to handle conflicts through application-defined rule. 
+
+
+== Analytical Store ==
+This feature, announced in May 2020, is a fully isolated column store for enabling large scale analytics against operational data in the Azure Cosmos DB, without any impact to its transactional workloads. This feature addresses the complexity and latency challenges that occur with the traditional ETL pipelines required to have a data repository optimized to execute Online analytical processing by automatically syncing the operational data into a separate column store suitable for large scale analytical queries to be performed in an optimized manner, resulting in improving the latency of such queries.
+Using Microsoft Azure Synapse Link for Cosmos DB, it is possible to build no-ETL Hybrid transactional/analytical processing solutions by directly linking to Azure Cosmos DB analytical store from Synapse Analytics. It enables to run near real-time large-scale analytics directly on the operational data.
+
+
+== Real-world use cases ==
+Microsoft utilizes Cosmos DB in many of its own apps, including Microsoft Office, Skype, Active Directory, Xbox, and MSN.
+In building a more globally-resilient application / system, Cosmos DB combines with other Azure services, such as Azure App Services and Azure Traffic Manager.
+
+
+== Cosmos DB Profiler ==
+The Cosmos DB Profiler cloud cost optimization tool detects inefficient data queries in the interactions between an application and its Cosmos DB database. The profiler alerts users to wasted performance and excessive cloud expenditures. It also recommends how to resolve them by isolating and analyzing the code and directing its users to the exact location.
+
+
+== Limitations ==
+SQL is limited. Aggregations limited to COUNT, SUM, MIN, MAX, AVG functions but no support for GROUP BY or other aggregation functionality found in database systems. However, stored procedures can be used to implement in-the-database aggregation capability.
+SQL joins between "tables" are not possible,
+Support only for pure JSON data types. Most notably, Cosmos DB lacks support for date-time data requiring that you store this data using the available data types. For instance, it can be stored as an ISO-8601 string or epoch integer. MongoDB, the database to which Cosmos DB is most often compared, extended JSON in their BSON binary serialization specification to cover date-time data as well as traditional number types, regular expressions, and Undefined.
+
+
+== References ==
+
+
+== External links ==
+Official website

@@ -1,0 +1,121 @@
+A Domain Name System blocklist, Domain Name System-based blackhole list, Domain Name System blacklist (DNSBL) or real-time blackhole list (RBL) is a service for operation of mail servers to perform a check via a Domain Name System (DNS) query whether a sending host's IP address is blacklisted for email spam. Most mail server software can be configured to check such lists, typically rejecting or flagging messages from such sites.
+A DNSBL is a software mechanism, rather than a specific list or policy. Dozens of DNSBLs exist. They use a wide array of criteria for listing and delisting addresses. These may include listing the addresses of zombie computers or other machines being used to send spam, Internet service providers (ISPs) who willingly host spammers, or those which have sent spam to a honeypot system.
+Since the creation of the first DNSBL in 1998, the operation and policies of these lists have frequently been controversial, both in Internet advocacy circles and occasionally in lawsuits. Many email systems operators and users consider DNSBLs a valuable tool to share information about sources of spam, but others including some prominent Internet activists have objected to them as a form of censorship. In addition, a small number of DNSBL operators have been the target of lawsuits filed by spammers seeking to have the lists shut down.
+
+
+== History ==
+The first DNSBL was the Real-time Blackhole List (RBL), created in 1997, at first as a Border Gateway Protocol (BGP) feed by Paul Vixie, and then as a DNSBL by Eric Ziegast as part of Vixie's Mail Abuse Prevention System (MAPS); Dave Rand at Abovenet was its first subscriber. The very first version of the RBL was not published as a DNSBL, but rather a list of networks transmitted via BGP to routers owned by subscribers so that network operators could drop all TCP/IP traffic for machines used to send spam or host spam supporting services, such as a website. The inventor of the technique later commonly called a DNSBL was Eric Ziegast while employed at Vixie Enterprises.
+The term "blackhole" refers to a networking black hole, an expression for a link on a network that drops incoming traffic instead of forwarding it normally. The intent of the RBL was that sites using it would refuse traffic from sites which supported spam — whether by actively sending spam, or in other ways. Before an address would be listed on the RBL, volunteers and MAPS staff would attempt repeatedly to contact the persons responsible for it and get its problems corrected. Such effort was considered very important before black-holing all network traffic, but it also meant that spammers and spam supporting ISPs could delay being put on the RBL for long periods while such discussions went on.
+Later, the RBL was also released in a DNSBL form and Paul Vixie encouraged the authors of sendmail and other mail software to implement RBL support in their clients. These allowed the mail software to query the RBL and reject mail from listed sites on a per-mail-server basis instead of black-holing all traffic.
+Soon after the advent of the RBL, others started developing their own lists with different policies. One of the first was Alan Brown's Open Relay Behavior-modification System (ORBS). This used automated testing to discover and list mail servers running as open mail relays—exploitable by spammers to carry their spam. ORBS was controversial at the time because many people felt running an open relay was acceptable, and that scanning the Internet for open mail servers could be abusive.
+In 2003, a number of DNSBLs came under denial-of-service attacks (DOS). Since no party has admitted to these attacks nor been discovered responsible, their purpose is a matter of speculation. However, many observers believe the attacks are perpetrated by spammers in order to interfere with the DNSBLs' operation or hound them into shutting down. In August 2003, the firm Osirusoft, an operator of several DNSBLs including one based on the SPEWS data set, shut down its lists after suffering weeks of near-continuous attack.
+Technical specifications for DNSBLs came relatively late in RFC5782.
+
+
+=== URI DNSBLs ===
+A Uniform Resource Identifier (URI) DNSBL is a DNSBL that lists the domain names and sometimes also IP addresses which are found in the "clickable" links contained in the body of spams, but generally not found inside legitimate messages.
+URI DNSBLs were created when it was determined that much spam made it past spam filters during that short time frame between the first use of a spam-sending IP address and the point where that sending IP address was first listed on major sending-IP-based DNSBLs.
+In many cases, such elusive spam contains in their links domain names or IP addresses (collectively referred to as a URIs) where that URI was already spotted in previously caught spam and where that URI is not found in non-spam e-mail.
+Therefore, when a spam filter extracts all URIs from a message and checks them against a URI DNSBL, then the spam can be blocked even if the sending IP for that spam has not yet been listed on any sending IP DNSBL.
+Of the three major URI DNSBLs, the oldest and most popular is SURBL. After SURBL was created, some of the volunteers for SURBL started the second major URI DNSBL, URIBL. In 2008, another long-time SURBL volunteer started another URI DNSBL, ivmURI. The Spamhaus Project provides the Spamhaus Domain Block List (DBL) which they describe as domains "found in spam messages". The DBL is intended as both a URIBL and RHSBL, to be checked against both domains in a message's envelope and headers and domains in URLs in message bodies. Unlike other URIBLs, the DBL only lists domain names, not IP addresses, since Spamhaus provides other lists of IP addresses.
+URI DNSBLs are often confused with RHSBLs (Right Hand Side BLs). But they are different. A URI DNSBL lists domain names and IPs found in the body of the message. An RHSBL lists the domain names used in the "from" or "reply-to" e-mail address. RHSBLs are of debatable effectiveness since many spams either use forged "from" addresses or use "from" addresses containing popular free mail domain names, such as gmail.com, yahoo.com, or hotmail.com URI DNSBLs are more widely used than RHSBLs, are very effective, and are used by the majority of spam filters.
+
+
+== Principle ==
+To operate a DNSBL requires three things: a domain to host it under, a nameserver for that domain, and a list of addresses to publish.
+It is possible to serve a DNSBL using any general-purpose DNS server software. However this is typically inefficient for zones containing large numbers of addresses, particularly DNSBLs which list entire Classless Inter-Domain Routing netblocks. For the large resource consumption when using software designed as the role of a Domain Name Server, there are role-specific software applications designed specifically for servers with a role of a DNS blacklist.
+The hard part of operating a DNSBL is populating it with addresses. DNSBLs intended for public use usually have specific, published policies as to what a listing means, and must be operated accordingly to attain or sustain public confidence.
+
+
+=== DNSBL queries ===
+When a mail server receives a connection from a client, and wishes to check that client against a DNSBL (let's say, dnsbl.example.net), it does more or less the following:
+
+Take the client's IP address—say, 192.168.42.23—and reverse the order of octets, yielding 23.42.168.192.
+Append the DNSBL's domain name: 23.42.168.192.dnsbl.example.net.
+Look up this name in the DNS as a domain name ("A" record). This will return either an address, indicating that the client is listed; or an "NXDOMAIN" ("No such domain") code, indicating that the client is not.
+Optionally, if the client is listed, look up the name as a text record ("TXT" record). Most DNSBLs publish information about why a client is listed as TXT records.
+Looking up an address in a DNSBL is thus similar to looking it up in reverse-DNS. The differences are that a DNSBL lookup uses the "A" rather than "PTR" record type, and uses a forward domain (such as dnsbl.example.net above) rather than the special reverse domain in-addr.arpa.
+There is an informal protocol for the addresses returned by DNSBL queries which match. Most DNSBLs return an address in the 127.0.0.0/8 IP loopback network. The address 127.0.0.2 indicates a generic listing. Other addresses in this block may indicate something specific about the listing—that it indicates an open relay, proxy, spammer-owned host, etc. For details see RFC 5782.
+
+
+=== URI DNSBL ===
+A URI DNSBL query (and an RHSBL query) is fairly straightforward. The domain name to query is prepended to the DNS list host as follows:
+
+example.net.dnslist.example.com
+
+where dnslist.example.com is the DNS list host and example.net is the queried domain. Generally if an A record is returned the name is listed.
+
+
+=== DNSBL policies ===
+Different DNSBLs have different policies. DNSBL policies differ from one another on three fronts:
+
+Goals. What does the DNSBL seek to list? Is it a list of open-relay mail servers or open proxies—or of IP addresses known to send spam—or perhaps of IP addresses belonging to ISPs that harbor spammers?
+Nomination. How does the DNSBL discover addresses to list? Does it use nominations submitted by users? Spam-trap addresses or honeypots?
+Listing lifetime. How long does a listing last? Are they automatically expired, or only removed manually? What can the operator of a listed host do to have it delisted?
+
+
+== Types ==
+In addition to the different types of listed entities (IP addresses for traditional DNSBLs, host and domain names for RHSBLs, URIs for URIBLs) there is a wide range of semantic variations between lists as to what a listing means. List maintainers themselves have been divided on the issues of whether their listings should be seen as statements of objective fact or subjective opinion and on how their lists should best be used. As a result, there is no definitive taxonomy for DNSBLs. Some names defined here (e.g. "Yellow" and "NoBL") are varieties that are not in widespread use and so the names themselves are not in widespread use, but should be recognized by many spam control specialists.
+
+Whitelist / Allowlist
+A listing is an affirmative indication of essentially absolute trust
+Blacklist / Blocklist
+A listing is a negative indication of essentially absolute distrust
+Grey list
+Most frequently seen as one word (greylist or greylisting) not involving DNSBLs directly, but using temporary deferral of mail from unfamiliar sources to allow for the development of a public reputation (such as DNSBL listings) or to discourage speed-focused spamming. Occasionally used to refer to actual DNSBLs on which listings denote distinct non-absolute levels and forms of trust or distrust.
+Yellow list
+A listing indicates that the source is known to produce a mixture of spam and non-spam to a degree that makes checking other DNSBLs of any sort useless.
+NoBL list
+A listing indicates that the source is believed to send no spam and should not be subjected to blacklist testing, but is not quite as trusted as a whitelisted source.
+
+
+== Usage ==
+Most message transfer agents (MTA) can be configured to absolutely block or (less commonly) to accept email based on a DNSBL listing. This is the oldest usage form of DNSBLs. Depending on the specific MTA, there can be subtle distinctions in configuration that make list types such as Yellow and NoBL useful or pointless because of how the MTA handles multiple DNSBLs. A drawback of using the direct DNSBL support in most MTAs is that sources not on any list require checking all of the DNSBLs being used with relatively little utility to caching the negative results. In some cases this can cause a significant slowdown in mail delivery. Using White, Yellow, and NoBL lists to avoid some lookups  can be used to alleviate this in some MTAs.
+DNSBLs can be used in rule based spam analysis software like Spamassassin where each DNSBL has its own rule. Each rule has a specific positive or negative weight which is combined with other types of rules to score each message. This allows for the use of rules that act (by whatever criteria are available in the specific software) to "whitelist" mail that would otherwise be rejected due to a DNSBL listing or due to other rules. This can also have the problem of heavy DNS lookup load for no useful results, but it may not delay mail as much because scoring makes it possible for lookups to be done in parallel and asynchronously while the filter is checking the message against the other rules.
+It is possible with some toolsets to blend the binary testing and weighted rule approaches. One way to do this is to first check white lists and accept the message if the source is on a white list, bypassing all other testing mechanisms. A technique developed by Junk Email Filter uses Yellow Lists and NoBL lists to mitigate the false positives that occur routinely when using black lists that are not carefully maintained to avoid them.
+Some DNSBLs have been created for uses other than filtering email for spam, but rather for demonstration, informational, rhetorical, and testing control purposes. Examples include the "No False Negatives List," "Lucky Sevens List," "Fibonacci's List,"  various lists encoding GeoIP information, and random selection lists scaled to match coverage of another list, useful as a control for determining whether that list's effects are distinguishable from random rejections.
+
+
+== Criticism ==
+Some end-users and organizations have concerns regarding the concept of DNSBLs or the specifics of how they are created and used.  Some of the criticisms include:
+
+Legitimate emails blocked along with spam from shared mailservers. When an ISP's shared mailserver has one or more compromised machines sending spam, it can become listed on a DNSBL. End-users assigned to that same shared mailserver may find their emails blocked by receiving mailservers using such a DNSBL. In May 2016, the SORBS system was blocking the SMTP servers of Telstra Australia, Australia's largest internet service provider. This is no surprise as at any one time, there would be thousands of computers connected to this mail server infected by zombie type viruses sending spam. The effect is to cut off all the legitimate emails from the users of the Telstra Australia system.
+Lists of dynamic IP addresses. This type of DNSBL lists IP addresses submitted by ISPs as dynamic and therefore presumably unsuitable to send email directly; the end-user is supposed to use the ISP's mailserver for all sending of email.  But these lists can also accidentally include static addresses, which may be legitimately used by small-business owners or other end-users to host small email servers.
+Lists that include "spam-support operations", such as MAPS RBL. A spam-support operation is a site that may not directly send spam, but provides commercial services for spammers, such as hosting of Web sites that are advertised in spam. Refusal to accept mail from spam-support operations is intended as a boycott to encourage such sites to cease doing business with spammers, at the expense of inconveniencing non-spammers who use the same site as spammers.
+Some lists have unclear listing criteria and delisting may not happen automatically nor quickly. A few DNSBL operators will request payment (e.g. uceprotect.net) or donation (e.g. SORBS). Some of the many listing/delisting policies can be found in the Comparison of DNS blacklists article.
+Because lists have varying methods for adding IP addresses and/or URIs, it can be difficult for senders to configure their systems appropriately to avoid becoming listed on a DNSBL. For example, the UCEProtect DNSBL seems to list IP addresses merely once they have validated a recipient address or established a TCP connection, even if no spam message is ever delivered.
+Despite the criticisms, few people object to the principle that mail-receiving sites should be able to reject undesired mail systematically. One person who does is John Gilmore, who deliberately operates an open mail relay. Gilmore accuses DNSBL operators of violating antitrust law.
+
+For Joe Blow to refuse emails is legal (though it's bad policy, akin to "shooting the messenger"). But if Joe and ten million friends all gang up to make a blacklist, they are exercising illegal monopoly power.
+A number of parties, such as the Electronic Frontier Foundation and Peacefire, have raised concerns about some use of DNSBLs by ISPs. One joint statement issued by a group including EFF and Peacefire addressed "stealth blocking", in which ISPs use DNSBLs or other spam-blocking techniques without informing their clients.
+
+
+=== Lawsuits ===
+Spammers have pursued lawsuits against DNSBL operators on similar grounds:
+
+In 2003, EMarketersAmerica.org filed a lawsuit against a number of DNSBL operators in a Florida court. Backed by spammer Eddy Marin, the company claimed to be a trade organization for email marketers and that DNSBL operators Spamhaus and SPEWS were engaged in restraint of trade. The suit was eventually dismissed for lack of standing.
+In 2006, a U.S. court ordered Spamhaus to pay $11.7 million in damages to the spammer e360 Insight LLC. The order was a default judgment, as Spamhaus, which is based in the UK, had refused to recognize the court's jurisdiction and did not defend itself in the e360 lawsuit. In 2011, his decision was overturned by the United States Court of Appeals for the Seventh Circuit.
+
+
+== Notable examples ==
+AHBL
+CBL
+NJABL
+SORBS – List of e-mail servers suspected of enabling spamPages displaying short descriptions of redirect targets
+Dynablock
+
+
+== See also ==
+Internet filter
+Email spam
+
+
+== Notes ==
+
+
+== References ==
+
+
+== External links ==
+Blacklist Monitor - Weekly statistics of success and failure rates for specific blacklists
+How to Create a DNSBL - Tutorial on how to create a DNSBL (DNS Black List)

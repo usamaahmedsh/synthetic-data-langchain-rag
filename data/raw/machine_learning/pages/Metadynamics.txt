@@ -1,0 +1,1600 @@
+Metadynamics (MTD; also abbreviated as METAD or MetaD) is a computer simulation method in computational physics, chemistry and biology. It is used to estimate the free energy and other state functions of a system, where ergodicity is hindered by the form of the system's energy landscape. It was first suggested by Alessandro Laio and Michele Parrinello in 2002 and is usually applied within molecular dynamics simulations. MTD closely resembles a number of newer methods such as adaptively biased molecular dynamics, adaptive reaction coordinate forces and local elevation umbrella sampling. More recently, both the original and well-tempered metadynamics were derived in the context of importance sampling and shown to be a special case of the adaptive biasing potential setting. MTD is related to the Wang–Landau sampling.
+
+
+== Introduction ==
+The technique builds on a large number of related methods including (in a chronological order) the
+deflation,
+tunneling,
+tabu search,
+local elevation,
+conformational flooding,
+Engkvist-Karlström and
+Adaptive Biasing Force methods.
+Metadynamics has been informally described as "filling the free energy wells with computational sand". The algorithm assumes that the system can be described by a few collective variables (CV). During the simulation, the location of the system in the space determined by the collective variables is calculated and a positive Gaussian potential is added to the real energy landscape of the system. In this way the system is discouraged to come back to the previous point. During the evolution of the simulation, more and more Gaussians sum up, thus discouraging more and more the system to go back to its previous steps, until the system explores the full energy landscape—at this point the modified free energy becomes a constant as a function of the collective variables which is the reason for the collective variables to start fluctuating heavily. At this point the energy landscape can be recovered as the opposite of the sum of all Gaussians.
+The time interval between the addition of two Gaussian functions, as well as the Gaussian height and Gaussian width, are tuned to optimize the ratio between accuracy and computational cost. By simply changing the size of the Gaussian, metadynamics can be fitted to yield very quickly a rough map of the energy landscape by using large Gaussians, or can be used for a finer grained description by using smaller Gaussians. Usually, the well-tempered metadynamics is used to change the Gaussian size adaptively. Also, the Gaussian width can be adapted with the adaptive Gaussian metadynamics.
+Metadynamics has the advantage, upon methods like adaptive umbrella sampling, of not requiring an initial estimate of the energy landscape to explore. However, it is not trivial to choose proper collective variables for a complex simulation. Typically, it requires several trials to find a good set of collective variables, but there are several automatic procedures proposed: essential coordinates, Sketch-Map, and non-linear data-driven collective variables.
+
+
+=== Multi-replica approach ===
+Independent metadynamics simulations (replicas) can be coupled together to improve usability and parallel performance. There are several such methods proposed: the multiple walker MTD, the parallel tempering MTD, the bias-exchange MTD, and the collective-variable tempering MTD. The last three are similar to the parallel tempering method and use replica exchanges to improve sampling. Typically, the Metropolis–Hastings algorithm is used for replica exchanges, but the infinite swapping and Suwa-Todo algorithms give better replica exchange rates.
+
+
+=== High-dimensional approach ===
+Typical (single-replica) MTD simulations can include up to 3 CVs, even using the multi-replica approach, it is hard to exceed 8 CVs in practice. This limitation comes from the bias potential, constructed by adding Gaussian functions (kernels). It is a special case of the kernel density estimator (KDE). The number of required kernels, for a constant KDE accuracy, increases exponentially with the number of dimensions. So MTD simulation length has to increase exponentially with the number of CVs to maintain the same accuracy of the bias potential. Also, the bias potential, for fast evaluation, is typically approximated with a regular grid. The required memory to store the grid increases exponentially with the number of dimensions (CVs) too.
+A high-dimensional generalization of metadynamics is NN2B. It is based on two machine learning algorithms: the nearest-neighbor density estimator (NNDE) and the artificial neural network (ANN). NNDE replaces KDE to estimate the updates of bias potential from short biased simulations, while ANN is used to approximate the resulting bias potential. ANN is a memory-efficient representation of high-dimensional functions, where derivatives (biasing forces) are effectively computed with the backpropagation algorithm.
+An alternative method, exploiting ANN for the adaptive bias potential, uses mean potential forces for the estimation. This method is also a high-dimensional generalization of the Adaptive Biasing Force (ABF) method. Additionally, the training of ANN is improved using Bayesian regularization, and the error of approximation can be inferred by training an ensemble of ANNs.
+
+
+=== Developments since 2015 ===
+In 2015, White, Dama, and Voth introduced experiment-directed metadynamics, a method that allows for shaping molecular dynamics simulations to match a desired free energy surface. This technique guides the simulation towards conformations that align with experimental data, enhancing our understanding of complex molecular systems and their behavior.
+In 2020, an evolution of metadynamics was proposed, the on-the-fly probability enhanced sampling method (OPES), which is now the method of choice of Michele Parrinello's research group. The OPES method has only a few robust parameters, converges faster than metadynamics, and has a straightforward reweighting scheme. In 2024, a replica-exchange variant of OPES was developed, named OneOPES, designed to exploit a thermal gradient and multiple CVs to sample large biochemical systems with several degrees of freedom. This variant aims to address the challenge of describing such systems, where the numerous degrees of freedom are often difficult to capture with only a few CVs. OPES has been implemented in the PLUMED library since version 2.7.
+
+
+== Algorithm ==
+Assume we have a classical 
+  
+    
+      
+        N
+      
+    
+    {\textstyle N}
+  
+-particle system with positions at 
+  
+    
+      
+        {
+        
+          
+            
+              
+                r
+                →
+              
+            
+          
+          
+            i
+          
+        
+        }
+      
+    
+    {\textstyle \{{\vec {r}}_{i}\}}
+  
+ 
+  
+    
+      
+        (
+        i
+        ∈
+        1...
+        N
+        )
+      
+    
+    {\textstyle (i\in 1...N)}
+  
+ in the Cartesian coordinates 
+  
+    
+      
+        (
+        
+          
+            
+              
+                r
+                →
+              
+            
+          
+          
+            i
+          
+        
+        ∈
+        
+          
+            R
+          
+          
+            3
+          
+        
+        )
+      
+    
+    {\textstyle ({\vec {r}}_{i}\in \mathbb {R} ^{3})}
+  
+. The particle interaction are described with a potential function 
+  
+    
+      
+        V
+        ≡
+        V
+        (
+        {
+        
+          
+            
+              
+                r
+                →
+              
+            
+          
+          
+            i
+          
+        
+        }
+        )
+      
+    
+    {\textstyle V\equiv V(\{{\vec {r}}_{i}\})}
+  
+. The potential function form (e.g. two local minima separated by a high-energy barrier) prevents an ergodic sampling with molecular dynamics or Monte Carlo methods.
+
+
+=== Original metadynamics ===
+A general idea of MTD is to enhance the system sampling by discouraging revisiting of sampled states. It is achieved by augmenting the system Hamiltonian 
+  
+    
+      
+        H
+      
+    
+    {\textstyle H}
+  
+ with a bias potential 
+  
+    
+      
+        
+          V
+          
+            bias
+          
+        
+      
+    
+    {\displaystyle V_{\text{bias}}}
+  
+:
+
+  
+    
+      
+        H
+        =
+        T
+        +
+        V
+        +
+        
+          V
+          
+            bias
+          
+        
+      
+    
+    {\displaystyle H=T+V+V_{\text{bias}}}
+  
+.
+The bias potential is a function of collective variables 
+  
+    
+      
+        (
+        
+          V
+          
+            bias
+          
+        
+        ≡
+        
+          V
+          
+            bias
+          
+        
+        (
+        
+          
+            
+              s
+              →
+            
+          
+        
+        
+        )
+        )
+      
+    
+    {\textstyle (V_{\text{bias}}\equiv V_{\text{bias}}({\vec {s}}\,))}
+  
+. A collective variable is a function of the particle positions 
+  
+    
+      
+        (
+        
+          
+            
+              s
+              →
+            
+          
+        
+        ≡
+        
+          
+            
+              s
+              →
+            
+          
+        
+        (
+        {
+        
+          
+            
+              
+                r
+                →
+              
+            
+          
+          
+            i
+          
+        
+        }
+        )
+        )
+      
+    
+    {\displaystyle ({\vec {s}}\equiv {\vec {s}}(\{{\vec {r}}_{i}\}))}
+  
+. The bias potential is continuously updated by adding bias at rate 
+  
+    
+      
+        ω
+      
+    
+    {\displaystyle \omega }
+  
+, where  
+  
+    
+      
+        
+          
+            
+              
+                s
+                →
+              
+            
+          
+          
+            t
+          
+        
+      
+    
+    {\displaystyle {\vec {s}}_{t}}
+  
+ is an instantaneous collective variable value at time 
+  
+    
+      
+        t
+      
+    
+    {\displaystyle t}
+  
+:
+
+  
+    
+      
+        
+          
+            
+              ∂
+              
+                V
+                
+                  bias
+                
+              
+              (
+              
+                
+                  
+                    s
+                    →
+                  
+                
+              
+              
+              )
+            
+            
+              ∂
+              t
+            
+          
+        
+        =
+        ω
+        
+        δ
+        (
+        
+          |
+        
+        
+          
+            
+              s
+              →
+            
+          
+        
+        −
+        
+          
+            
+              
+                s
+                →
+              
+            
+          
+          
+            t
+          
+        
+        
+          |
+        
+        )
+      
+    
+    {\displaystyle {\frac {\partial V_{\text{bias}}({\vec {s}}\,)}{\partial t}}=\omega \,\delta (|{\vec {s}}-{\vec {s}}_{t}|)}
+  
+.
+At infinitely long simulation time 
+  
+    
+      
+        
+          t
+          
+            sim
+          
+        
+      
+    
+    {\displaystyle t_{\text{sim}}}
+  
+, the accumulated bias potential converges to free energy with opposite sign (and irrelevant constant 
+  
+    
+      
+        C
+      
+    
+    {\displaystyle C}
+  
+):
+
+  
+    
+      
+        
+          V
+          
+            bias
+          
+        
+        (
+        
+          
+            
+              s
+              →
+            
+          
+        
+        
+        )
+        =
+        
+        
+        
+          ∫
+          
+            0
+          
+          
+            
+              t
+              
+                sim
+              
+            
+          
+        
+        
+        
+        
+        ω
+        
+        δ
+        (
+        
+          |
+        
+        
+          
+            
+              s
+              →
+            
+          
+        
+        −
+        
+          
+            
+              
+                s
+                →
+              
+            
+          
+          
+            t
+          
+        
+        
+          |
+        
+        )
+        
+        d
+        t
+        
+        ⇒
+        
+        F
+        (
+        
+          
+            
+              s
+              →
+            
+          
+        
+        
+        )
+        =
+        −
+        
+        
+        
+        
+        
+          lim
+          
+            
+              t
+              
+                sim
+              
+            
+            →
+            ∞
+          
+        
+        
+        
+        
+          V
+          
+            bias
+          
+        
+        (
+        
+          
+            
+              s
+              →
+            
+          
+        
+        
+        )
+        +
+        C
+      
+    
+    {\displaystyle V_{\text{bias}}({\vec {s}}\,)=\!\!\int _{0}^{t_{\text{sim}}}\!\!\!\omega \,\delta (|{\vec {s}}-{\vec {s}}_{t}|)\;dt\quad \Rightarrow \quad F({\vec {s}}\,)=-\!\!\!\!\lim _{t_{\text{sim}}\to \infty }\!\!V_{\text{bias}}({\vec {s}}\,)+C}
+  
+
+For a computationally efficient implementation, the update process is discretised into 
+  
+    
+      
+        τ
+      
+    
+    {\displaystyle \tau }
+  
+ time intervals (
+  
+    
+      
+        ⌊
+        
+        ⌋
+      
+    
+    {\displaystyle \lfloor \;\rfloor }
+  
+ denotes the floor function) and 
+  
+    
+      
+        δ
+      
+    
+    {\displaystyle \delta }
+  
+-function is replaced with a localized positive kernel function 
+  
+    
+      
+        K
+      
+    
+    {\displaystyle K}
+  
+. The bias potential becomes a sum of the kernel functions centred at the instantaneous collective variable values 
+  
+    
+      
+        
+          
+            
+              
+                s
+                →
+              
+            
+          
+          
+            j
+          
+        
+      
+    
+    {\displaystyle {\vec {s}}_{j}}
+  
+ at time 
+  
+    
+      
+        τ
+        j
+      
+    
+    {\displaystyle \tau j}
+  
+:
+
+  
+    
+      
+        
+          V
+          
+            bias
+          
+        
+        (
+        
+          
+            
+              s
+              →
+            
+          
+        
+        
+        )
+        ≈
+        τ
+        
+        
+        
+        
+          ∑
+          
+            j
+            =
+            0
+          
+          
+            
+              ⌊
+              
+                
+                  
+                    t
+                    
+                      sim
+                    
+                  
+                  τ
+                
+              
+              ⌋
+            
+          
+        
+        
+        
+        ω
+        
+        K
+        (
+        
+          |
+        
+        
+          
+            
+              s
+              →
+            
+          
+        
+        −
+        
+          
+            
+              
+                s
+                →
+              
+            
+          
+          
+            j
+          
+        
+        
+          |
+        
+        )
+      
+    
+    {\displaystyle V_{\text{bias}}({\vec {s}}\,)\approx \tau \!\!\!\sum _{j=0}^{\left\lfloor {\frac {t_{\text{sim}}}{\tau }}\right\rfloor }\!\!\omega \,K(|{\vec {s}}-{\vec {s}}_{j}|)}
+  
+.
+Typically, the kernel is a multi-dimensional Gaussian function, whose covariance matrix has diagonal non-zero elements only:
+
+  
+    
+      
+        
+          V
+          
+            bias
+          
+        
+        (
+        
+          
+            
+              s
+              →
+            
+          
+        
+        
+        )
+        ≈
+        τ
+        
+        
+        
+        
+          ∑
+          
+            j
+            =
+            0
+          
+          
+            
+              ⌊
+              
+                
+                  
+                    t
+                    
+                      sim
+                    
+                  
+                  τ
+                
+              
+              ⌋
+            
+          
+        
+        
+        
+        ω
+        exp
+        
+        
+        
+          (
+          
+            
+            −
+            
+              
+                1
+                2
+              
+            
+            
+              
+                |
+                
+                  
+                    
+                      
+                        
+                          
+                            s
+                            →
+                          
+                        
+                      
+                      −
+                      
+                        
+                          
+                            
+                              s
+                              →
+                            
+                          
+                        
+                        
+                          j
+                        
+                      
+                    
+                    
+                      
+                        σ
+                        →
+                      
+                    
+                  
+                
+                |
+              
+              
+                2
+              
+            
+          
+          )
+        
+      
+    
+    {\displaystyle V_{\text{bias}}({\vec {s}}\,)\approx \tau \!\!\!\sum _{j=0}^{\left\lfloor {\frac {t_{\text{sim}}}{\tau }}\right\rfloor }\!\!\omega \exp \!\!\left(\!-{\frac {1}{2}}\left|{\frac {{\vec {s}}-{\vec {s}}_{j}}{\vec {\sigma }}}\right|^{2}\right)}
+  
+.
+The parameter 
+  
+    
+      
+        τ
+      
+    
+    {\displaystyle \tau }
+  
+, 
+  
+    
+      
+        ω
+      
+    
+    {\displaystyle \omega }
+  
+, and 
+  
+    
+      
+        
+          
+            
+              σ
+              →
+            
+          
+        
+      
+    
+    {\displaystyle {\vec {\sigma }}}
+  
+ are determined a priori and kept constant during the simulation.
+
+
+==== Implementation ====
+Below there is a pseudocode of MTD base on molecular dynamics (MD), where 
+  
+    
+      
+        {
+        
+          
+            
+              r
+              →
+            
+          
+        
+        }
+      
+    
+    {\displaystyle \{{\vec {r}}\}}
+  
+ and 
+  
+    
+      
+        {
+        
+          
+            
+              v
+              →
+            
+          
+        
+        }
+      
+    
+    {\displaystyle \{{\vec {v}}\}}
+  
+ are the 
+  
+    
+      
+        N
+      
+    
+    {\displaystyle N}
+  
+-particle  system positions and velocities, respectively. The bias 
+  
+    
+      
+        
+          V
+          
+            bias
+          
+        
+      
+    
+    {\displaystyle V_{\text{bias}}}
+  
+ is updated every 
+  
+    
+      
+        n
+        =
+        τ
+        
+          /
+        
+        Δ
+        t
+      
+    
+    {\displaystyle n=\tau /\Delta t}
+  
+ MD steps, and its contribution to the system forces 
+  
+    
+      
+        {
+        
+          
+            
+              F
+              →
+            
+          
+        
+        
+        }
+      
+    
+    {\displaystyle \{{\vec {F}}\,\}}
+  
+ is 
+  
+    
+      
+        {
+        
+          
+            
+              
+                F
+                →
+              
+            
+          
+          
+            bias
+          
+        
+        }
+      
+    
+    {\displaystyle \{{\vec {F}}_{\text{bias}}\}}
+  
+.
+
+set initial 
+  
+    
+      
+        {
+        
+          
+            
+              r
+              →
+            
+          
+        
+        }
+      
+    
+    {\displaystyle \{{\vec {r}}\}}
+  
+ and 
+  
+    
+      
+        {
+        
+          
+            
+              v
+              →
+            
+          
+        
+        }
+      
+    
+    {\displaystyle \{{\vec {v}}\}}
+  
+ 
+set 
+  
+    
+      
+        
+          V
+          
+            bias
+          
+        
+        (
+        
+          
+            
+              s
+              →
+            
+          
+        
+        
+        )
+        :=
+        0
+      
+    
+    {\displaystyle V_{\text{bias}}({\vec {s}}\,):=0}
+  
+
+every MD step:
+    compute CV values:
+        
+  
+    
+      
+        
+          
+            
+              
+                s
+                →
+              
+            
+          
+          
+            t
+          
+        
+        :=
+        
+          
+            
+              s
+              →
+            
+          
+        
+        (
+        {
+        
+          
+            
+              r
+              →
+            
+          
+        
+        }
+        )
+      
+    
+    {\displaystyle {\vec {s}}_{t}:={\vec {s}}(\{{\vec {r}}\})}
+  
+
+    
+    every 
+  
+    
+      
+        n
+      
+    
+    {\displaystyle n}
+  
+ MD steps:
+        update bias potential:
+            
+  
+    
+      
+        
+          V
+          
+            bias
+          
+        
+        (
+        
+          
+            
+              s
+              →
+            
+          
+        
+        
+        )
+        :=
+        
+          V
+          
+            bias
+          
+        
+        (
+        
+          
+            
+              s
+              →
+            
+          
+        
+        
+        )
+        +
+        τ
+        ω
+        exp
+        
+        
+        
+          (
+          
+            
+            −
+            
+              
+                1
+                2
+              
+            
+            
+              
+                |
+                
+                  
+                    
+                      
+                        
+                          
+                            s
+                            →
+                          
+                        
+                      
+                      −
+                      
+                        
+                          
+                            
+                              s
+                              →
+                            
+                          
+                        
+                        
+                          t
+                        
+                      
+                    
+                    
+                      
+                        σ
+                        →
+                      
+                    
+                  
+                
+                |
+              
+              
+                2
+              
+            
+          
+          )
+        
+      
+    
+    {\displaystyle V_{\text{bias}}({\vec {s}}\,):=V_{\text{bias}}({\vec {s}}\,)+\tau \omega \exp \!\!\left(\!-{\frac {1}{2}}\left|{\frac {{\vec {s}}-{\vec {s}}_{t}}{\vec {\sigma }}}\right|^{2}\right)}
+  
+
+    
+    compute atomic forces:
+        
+  
+    
+      
+        
+          
+            
+              
+                F
+                →
+              
+            
+          
+          
+            i
+          
+        
+        :=
+        −
+        
+          
+            
+              ∂
+              V
+              (
+              {
+              
+                
+                  
+                    r
+                    →
+                  
+                
+              
+              
+              }
+              )
+            
+            
+              ∂
+              
+                
+                  
+                    
+                      r
+                      →
+                    
+                  
+                
+                
+                  i
+                
+              
+            
+          
+        
+        
+          
+            
+              
+                
+                  
+                    
+                    
+                      −
+                      
+                        
+                          
+                            ∂
+                            
+                              V
+                              
+                                bias
+                              
+                            
+                            (
+                            
+                              
+                                
+                                  s
+                                  →
+                                
+                              
+                            
+                            
+                            )
+                          
+                          
+                            ∂
+                            
+                              
+                                
+                                  s
+                                  →
+                                
+                              
+                            
+                          
+                        
+                      
+                    
+                    |
+                  
+                  
+                    
+                      
+                        
+                          
+                            s
+                            →
+                          
+                        
+                      
+                      
+                        t
+                      
+                    
+                  
+                
+                
+                
+                
+                
+                  
+                    
+                      ∂
+                      
+                        
+                          
+                            s
+                            →
+                          
+                        
+                      
+                      (
+                      {
+                      
+                        
+                          
+                            r
+                            →
+                          
+                        
+                      
+                      
+                      }
+                      )
+                    
+                    
+                      ∂
+                      
+                        
+                          
+                            
+                              r
+                              →
+                            
+                          
+                        
+                        
+                          i
+                        
+                      
+                    
+                  
+                
+              
+              ⏞
+            
+          
+          
+            
+              
+                
+                  
+                    F
+                    →
+                  
+                
+              
+              
+                
+                  bias
+                
+                ,
+                i
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\vec {F}}_{i}:=-{\frac {\partial V(\{{\vec {r}}\,\})}{\partial {\vec {r}}_{i}}}\overbrace {\left.-{\frac {\partial V_{\text{bias}}({\vec {s}}\,)}{\partial {\vec {s}}}}\right|_{{\vec {s}}_{t}}\!\!\!{\frac {\partial {\vec {s}}(\{{\vec {r}}\,\})}{\partial {\vec {r}}_{i}}}} ^{{\vec {F}}_{{\text{bias}},i}}}
+  
+
+    
+    propagate 
+  
+    
+      
+        {
+        
+          
+            
+              r
+              →
+            
+          
+        
+        }
+      
+    
+    {\displaystyle \{{\vec {r}}\}}
+  
+ and 
+  
+    
+      
+        {
+        
+          
+            
+              v
+              →
+            
+          
+        
+        }
+      
+    
+    {\displaystyle \{{\vec {v}}\}}
+  
+ by 
+  
+    
+      
+        Δ
+        t
+      
+    
+    {\displaystyle \Delta t}
+  
+
+
+==== Free energy estimator ====
+The finite size of the kernel makes the bias potential to fluctuate around a mean value. A converged free energy can be obtained by averaging the bias potential. The averaging is started from 
+  
+    
+      
+        
+          t
+          
+            diff
+          
+        
+      
+    
+    {\displaystyle t_{\text{diff}}}
+  
+, when the motion along the collective variable becomes diffusive:
+
+  
+    
+      
+        
+          
+            
+              F
+              ¯
+            
+          
+        
+        (
+        
+          
+            
+              s
+              →
+            
+          
+        
+        )
+        =
+        −
+        
+          
+            1
+            
+              
+                t
+                
+                  sim
+                
+              
+              −
+              
+                t
+                
+                  diff
+                
+              
+            
+          
+        
+        
+          ∫
+          
+            
+              t
+              
+                diff
+              
+            
+          
+          
+            
+              t
+              
+                sim
+              
+            
+          
+        
+        
+        
+        
+        
+        
+        
+          V
+          
+            bias
+          
+        
+        (
+        
+          
+            
+              s
+              →
+            
+          
+        
+        ,
+        t
+        )
+        
+        d
+        t
+        +
+        C
+      
+    
+    {\displaystyle {\bar {F}}({\vec {s}})=-{\frac {1}{t_{\text{sim}}-t_{\text{diff}}}}\int _{t_{\text{diff}}}^{t_{\text{sim}}}\!\!\!\!\!V_{\text{bias}}({\vec {s}},t)\,dt+C}
+  
+
+
+== Applications ==
+Metadynamics has been used to study:
+
+protein folding
+chemical reactions
+molecular docking
+phase transitions.
+encapsulation of DNA onto hydrophobic and hydrophilic single-walled carbon nanotubes.
+
+
+== Implementations ==
+
+
+=== PLUMED ===
+PLUMED is an open-source library implementing many MTD algorithms and collective variables. It has a flexible object-oriented design and can be interfaced with several MD programs (AMBER, GROMACS, LAMMPS, NAMD, Quantum ESPRESSO, DL_POLY_4, CP2K, and OpenMM).
+
+
+=== Other ===
+Other MTD implementations exist in the Collective Variables Module (for LAMMPS, NAMD, and GROMACS), ORAC, CP2K, EDM, and Desmond.
+
+
+== External links ==
+Introduction to metadynamics
+PLUMED
+Colvars module website (NAMD, LAMMPS, Gromacs)
+Visual movie of metadynamics
+On-the-fly Probability Enhanced Sampling (OPES)
+
+
+== See also ==
+Local elevation
+Parallel tempering
+Umbrella sampling
+
+
+== References ==

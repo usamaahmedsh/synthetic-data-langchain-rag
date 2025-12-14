@@ -1,0 +1,59 @@
+Open Source Tripwire is a free software security and data integrity tool for monitoring and alerting on specific file change(s) on a range of systems originally developed by Eugene H. Spafford and Gene Kim. The project is based on code originally contributed by Tripwire, Inc. in 2000. It is released under the terms of GNU General Public License., but not maintained anymore. The latest update was in 2018.
+It works by creating a baseline database, and then regularly comparing the state of the file system with the database. If it detects changes (e.g. addition or modification of some files), it includes these changes in its report, so that the security administrators could check these changes.
+
+
+== History ==
+The Tripwire was created by Dr. Eugene Spafford and Gene Kim in 1992 in response to a series of stealthy intrusions that occurred in early 1991. These attacks circumvented the existing security systems by infecting the shared libraries in a way that their CRC checksums were unchanged. Tripwire was designed to use message digest functions from different hash families (e.g. MD5 and Snefru) in order to stay reliable even after one of the hashing algorithms gets compromised.
+The name "Tripwire" comes from the trap or tripwire files which alert administrators upon being accessed by intruders. Spafford recalls:
+
+We heard several stories where tripwire files were established, as per our original intent, which were used to detect insiders snooping into files and directories where they had no reason to explore. At least one such use was related to us as a trigger that uncovered insider-perpetrated fraud.
+Tripwire was written in C and its design emphasized the program and database portability. On November 2, 1992, it was released for a beta testing. In December 1993, the formal release was made after identifying and fixing several bugs. Early releases were developed in a cleanroom style, where Gene Kim did the development and Eugene Spafford ran the acceptance testing.
+The Tripwire was initially free and open-source, but it went commercial in 1997. Open Source Tripwire was released in October, 2000, under the GNU General Public License.
+On May 4, 2015, the source code was moved from SourceForge to GitHub.
+
+
+== Overview ==
+
+During the installation, Open Source Tripwire asks the user to set the site-key and local key passphrases. The site-key passphrase encrypts the policy and configuration files which are shared across multiple systems. The local passphrase is used to protect files on a specific machine. The policy file contains the list of files and directories to scan and the rules (e.g. which attributes of the directory tree to look at).
+Open Source Tripwire later asks for the local passphrase when creating an initial database with file signatures. It runs the first scan of the system and saves the result to the database. Afterwards, it runs integrity checks and compares the result with the database. For example, if a new file is created then it will be listed in the subsequent integrity check report. Open Source Tripwire can be configured to regularly run integrity checks and send report e-mails to the system administrator. The database should be initialized before the system is at risk of being compromised.
+The user can create the tripwire files which look like they have valuable information (e.g. the file called master-password.txt) and configure Open Source Tripwire to track these files in order to catch snooping intruders. When the intruder reads these files, their access timestamps get updated and the security administrators get notified about this incident.
+Unlike Tripwire Enterprise, Open Source Tripwire is not available for Windows and has only basic policies. Windows users can run the Open Source Tripwire using the Cygwin, but it will not scan Windows specific attributes such as Windows Registry.
+
+
+== Details ==
+
+
+=== Policy file ===
+The policy file is called twpol.txt (or tw.config in the previous versions), and it tells which files and directories need to be monitored. It supports preprocessing which allows administrators to write only one policy file for many different machines. In the policy file, along with each file or directory there is a selection-mask that tells which attributes to ignore and which to report. For example, the selection-mask could be written to report changes in modification timestamp, number of links, size of the file, permission and modes, but ignore changes to the access timestamp. Also, there is an option to specify whether or not Tripwire should be recursing into a directory, i.e. checking the subdirectories, subdirectories of those subdirectories, etc.
+Example of the policy file:
+
+The following example of the policy file from "The Design and Implementation of Tripwire: A File System Integrity Checker" by Spafford and Kim makes use of the preprocessing language. Here it is used to ignore the directory with printer logs on a specific host, and this directory will be scanned on all other hosts. Thus, the preprocessing allows to use the same policy file on this specific host and on other hosts, otherwise the user would need to write separate policy files.
+
+
+=== Configuration file ===
+The configuration file is called twcfg.txt, and it contains information about paths to the policy file, database file, report file, etc. It also has entries for mail settings (for instance, which program to use to send an e-mail with the report). Example of the configuration file:
+
+
+=== Database file ===
+The database file is unique for each machine, as opposed to the policy and configuration files which could be shared across multiple machines. It stores file permissions, modification dates and signatures of the files. For each file, the database can store up to ten signatures. The database does not store the content itself, because storing the content of the files would use too much disk space.  The database file is human-readable, and the user can verify properties of individual files and check the database for potential tampering.
+When the integrity check detects a new file, but its path does not have an entry in the policy file, Tripwire chooses the closest ancestor entry and copies its selection-mask, or uses the default selection-mask if the entry could not be found at all. Tripwire has an interactive update mode which simplifies the process of reviewing every updated file. For each created, deleted or modified file it asks whether or not the corresponding database entry should be changed.
+
+
+=== Signatures ===
+In order to minimize the impact of hash collisions (i.e. the signature would not change even when the file was changed) on the security, Tripwire uses multiple different hashing algorithms to compute multiple signatures for each file. Because different hashing algorithms have different performances, Tripwire allows to configure which signatures to use and how frequently. For example, the system could be configured to compare CRC32 signatures every hour and compare MD5 signatures every day. This way the hourly integrity checks would run faster, and even if some file gets modified without changing its CRC32 checksum, it will get reported during the daily integrity check. Tripwire provides a generic interface to signature routines, so the user can include their own checksum methods.
+
+
+== See also ==
+
+AIDE
+Host-based intrusion detection system comparison
+OSSEC
+Samhain
+
+
+== References ==
+
+
+== External links ==
+Tripwire, Inc.
+tripwire-open-source on GitHub

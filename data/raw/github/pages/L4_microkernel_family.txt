@@ -1,0 +1,113 @@
+L4 is a family of second-generation microkernels, used to implement a variety of types of operating systems (OS), though mostly for Unix-like, Portable Operating System Interface (POSIX) compliant types.
+L4, like its predecessor microkernel L3, was created by German computer scientist Jochen Liedtke as a response to the poor performance of earlier microkernel-based OSes. Liedtke felt that a system designed from the start for high performance, rather than other goals, could produce a microkernel of practical use. His original implementation in hand-coded Intel i386-specific assembly language code in 1993 created attention by being 20 times faster than Mach.
+The follow-up publication two years later was considered so influential that it won the 2015 ACM SIGOPS Hall of Fame Award.
+Since its introduction, L4 has been developed to be cross-platform and to improve security, isolation, and robustness.
+There have been various re-implementations of the original L4 kernel application binary interface (ABI) and its successors, including L4Ka::Pistachio (implemented by Liedtke and his students at Karlsruhe Institute of Technology), L4/MIPS (University of New South Wales (UNSW)), Fiasco (Dresden University of Technology (TU Dresden)). For this reason, the name L4 has been generalized and no longer refers to only Liedtke's original implementation. It now applies to the whole microkernel family including the L4 kernel interface and its different versions.
+L4 is widely deployed. One variant, OKL4 from Open Kernel Labs, shipped in billions of mobile devices.
+
+
+== Design paradigm ==
+Specifying the general idea of a microkernel, Liedtke states:
+
+A concept is tolerated inside the microkernel only if moving it outside the kernel, i.e., permitting competing implementations, would prevent the implementation of the system's required functionality.
+In this spirit, the L4 microkernel provides few basic mechanisms: address spaces (abstracting page tables and providing memory protection), threads and scheduling (abstracting execution and providing temporal protection), and inter-process communication (for controlled communication across isolation boundaries).
+An operating system based on a microkernel like L4 provides services as servers in user space that monolithic kernels like Linux or older generation microkernels include internally. For example, to implement a secure Unix-like system, servers must provide the rights management that Mach included inside the kernel.
+
+
+== History ==
+The poor performance of first-generation microkernels, such as Mach, led a number of developers to re-examine the entire microkernel concept in the mid-1990s. The asynchronous in-kernel-buffering process communication concept used in Mach turned out to be one of the main reasons for its poor performance. This induced developers of Mach-based operating systems to move some time-critical components, like file systems or drivers, back inside the kernel. While this somewhat ameliorated the performance issues, it plainly violates the minimality concept of a true microkernel (and squanders their major advantages).
+Detailed analysis of the Mach bottleneck indicated that, among other things, its working set is too large: the IPC code expresses poor spatial locality; that is, it results in too many cache misses, of which most are in-kernel. This analysis gave rise to the principle that an efficient microkernel should be small enough that the majority of performance-critical code fits into the (first-level) cache (preferably a small fraction of said cache).
+
+
+=== L3 ===
+Jochen Liedtke set out to prove that a well-designed thinner inter-process communication (IPC) layer, with careful attention to performance and machine-specific (in contrast to cross-platform software) design could yield large real-world performance improvements. Instead of Mach's complex IPC system, his L3 microkernel simply passed the message with no added overhead. Defining and implementing the required security policies were considered to be duties of the user space servers. The role of the kernel was only to provide the needed mechanism to enable the user-level servers to enforce the policies. L3, developed in 1988, proved itself a safe and robust operating system, used for many years for example by Technischer Überwachungsverein (Technical Inspection Association).
+
+
+=== L4 ===
+After some experience using L3, Liedtke came to the conclusion that several other Mach concepts were also misplaced. By simplifying the microkernel concepts even further he developed the first L4 kernel which was primarily designed for high performance. To maximise performance, the whole kernel was written in assembly language, and its IPC was 20 times faster than Mach's. Such dramatic performance increases are a rare event in operating systems, and Liedtke's work triggered new L4 implementations and work on L4-based systems at a number of universities and research institutes, including IBM, where Liedtke started to work in 1996, TU Dresden and UNSW. At IBM's Thomas J. Watson Research Center Liedtke and his colleagues continued research on L4 and microkernel based systems in general, especially the Sawmill OS.
+
+
+=== L4Ka::Hazelnut ===
+In 1999, Liedtke took over the Systems Architecture Group at the University of Karlsruhe, where he continued the research into microkernel systems. As a proof of concept that a high performance microkernel could also be constructed in a higher level language, the group developed L4Ka::Hazelnut, a C++ version of the kernel that ran on IA-32- and ARM-based machines. The effort was a success, performance was still acceptable, and with its release, the pure assembly language versions of the kernels were effectively discontinued.
+
+
+=== L4/Fiasco ===
+In parallel to the development of L4Ka::Hazelnut, in 1998 the Operating Systems Group TUD:OS of the TU Dresden started to develop their own C++ implementation of the L4 kernel interface, named L4/Fiasco. In contrast to L4Ka::Hazelnut, which allows no concurrency in the kernel, and its successor L4Ka::Pistachio, which allows interrupts in the kernel only at specific preemption points, L4/Fiasco was fully preemptible (with the exception of extremely short atomic operations) to achieve a low interrupt latency. This was considered necessary because L4/Fiasco is used as the basis of DROPS, a hard real-time computing capable operating system, also developed at the TU Dresden. However, the complexities of a fully preemptible design prompted later versions of Fiasco to return to the traditional L4 approach of running the kernel with interrupts disabled, except for a limited number of preemption points.
+
+
+== Cross-platform ==
+
+
+=== L4Ka::Pistachio ===
+Up until the release of L4Ka::Pistachio and newer versions of Fiasco, all L4 microkernels had been inherently tied close to the underlying CPU architecture. The next big shift in L4 development was the development of a cross-platform (platform-independent) application programming interface (API) that still retained the high performance characteristics despite its higher level of portability. Although the underlying concepts of the kernel were the same, the new API provided many significant changes relative to prior L4 versions, including better support for multi-processor systems, looser ties between threads and address spaces, and the introduction of user-level thread control blocks (UTCBs) and virtual registers. After releasing the new L4 API (version X.2 a.k.a. version 4) in early 2001, the System Architecture Group at the University of Karlsruhe implemented a new kernel, L4Ka::Pistachio, completely from scratch, now with focus on both high performance and portability. It was released under the two-clause BSD license.
+
+
+=== Newer Fiasco versions ===
+The L4/Fiasco microkernel has also been extensively improved over the years. It now supports several hardware platforms ranging from x86 through AMD64 to several ARM platforms. Notably, a version of Fiasco (Fiasco-UX) can run as a user-level application on Linux.
+L4/Fiasco implements several extensions to the L4v2 API. Exception IPC enables the kernel to send CPU exceptions to user-level handler applications. With the help of alien threads, it is possible to perform fine-grained control over system calls. X.2-style UTCBs have been added. Also, Fiasco contains mechanisms for controlling communication rights and kernel-level resource use. On Fiasco, a collection of basic user level services are developed (named L4Env) that among others are used to para-virtualise the current Linux version (4.19 as of May 2019) (named L4Linux).
+
+
+=== University of New South Wales and NICTA ===
+Development also occurred at the University of New South Wales (UNSW), where developers implemented L4 on several 64-bit platforms. Their work resulted in L4/MIPS and L4/Alpha, resulting in Liedtke's original version being retrospectively named L4/x86. Like Liedtke's original kernels, the UNSW kernels (written in a mix of assembly and C) were unportable and each implemented from scratch. With the release of the highly portable L4Ka::Pistachio, the UNSW group abandoned their own kernels in favor of producing highly tuned ports of L4Ka::Pistachio, including the fastest-ever reported implementation of message passing (36 cycles on the Itanium architecture). The group has also demonstrated that device drivers can perform equally well at user-level as in-kernel, and developed Wombat, a highly portable version of Linux on L4 that runs on x86, ARM, and MIPS processors. On XScale processors, Wombat context-switching costs are up to 50 times lower than in native Linux.
+Later the UNSW group, now at NICTA (formerly National ICT Australia, Ltd.), forked L4Ka::Pistachio into a new L4 version named NICTA::L4-embedded. It was for use in commercial embedded systems, and consequently the implementation trade-offs favored small memory size and reduced complexity. The API was modified to keep almost all system calls short enough that they need no preemption points in order to ensure high real-time responsiveness.
+
+
+== Commercial deployment ==
+In November 2005, NICTA announced that Qualcomm was deploying NICTA's L4 version on their Mobile Station Modem chipsets. This led to the use of L4 in mobile phone handsets on sale from late 2006. In August 2006, ERTOS leader and UNSW professor Gernot Heiser spun out a company named Open Kernel Labs (OK Labs) to support commercial L4 users and further develop L4 for commercial use under the brand name OKL4, in close collaboration with NICTA. OKL4 μKernel Version 2.1, released in April 2008, was the first generally available version of L4 which featured capability-based security. OKL4 μKernel 3.0, released in October 2008, was the last open-source version of OKL4 μKernel. More recent versions are closed source and based on a rewrite to support a native hypervisor variant named the OKL4 Microvisor. OK Labs also distributed a paravirtualized Linux named OK:Linux, a descendant of Wombat, and paravirtualized versions of SymbianOS and Android. OK Labs also acquired the rights to seL4 from NICTA.
+OKL4 shipments exceeded 1.5 billion in early 2012, mostly on Qualcomm wireless modem chips. Other deployments include automotive infotainment systems.
+Apple A series processors beginning with the A7 contain a Secure Enclave coprocessor running an L4 operating system called sepOS (Secure Enclave Processor OS)
+based on the L4-embedded kernel developed at NICTA in 2006.
+As a result, L4 ships on all modern Apple devices including Macs with Apple silicon. In 2015 alone, total shipments of iPhone was estimated at 310 million.
+
+
+== High assurance: seL4 ==
+In 2006, the NICTA group commenced a from-scratch design of a third-generation microkernel, named seL4, with the aim of providing a basis for highly secure and reliable systems, suitable for satisfying security requirements such as those of Common Criteria and beyond. From the beginning, development aimed for formal verification of the kernel. To ease meeting the sometimes conflicting requirements of performance and verification, the team used a middle-out software process starting from an executable specification written in the language Haskell.
+seL4 uses capability-based security access control to enable formal reasoning about object accessibility.
+A formal proof of functional correctness was completed in 2009.
+The proof provides a guarantee that the kernel's implementation is correct against its specification, and implies that it is free of implementation bugs such as deadlocks, livelocks, buffer overflows, arithmetic exceptions or use of uninitialised variables. seL4 is claimed to be the first-ever general-purpose operating-system kernel that has been verified. The work on seL4 won the 2019 ACM SIGOPS Hall of Fame Award.
+seL4 takes a novel approach to kernel resource management, exporting the management of kernel resources to user level and subjects them to the same capability-based access control as user resources. This model, which was also adopted by Barrelfish, simplifies reasoning about isolation properties, and was an enabler for later proofs that seL4 enforces the core security properties of integrity and confidentiality. The NICTA team also proved correctness of the translation from the programming language C to executable machine code, taking the compiler out of the trusted computing base of seL4.
+This implies that the high-level security proofs hold for the kernel executable. seL4 is also the first published protected-mode OS kernel with a complete and sound worst-case execution time (WCET) analysis, a prerequisite for its use in hard real-time computing.
+On 29 July 2014, NICTA and General Dynamics C4 Systems announced that seL4, with end to end proofs, was now released under open-source licenses.
+The kernel source code and proofs are licensed under GNU General Public License version 2 (GPLv2), and most libraries and tools are under the BSD 2-clause. In April 2020, it was announced that the seL4 Foundation was created under the umbrella of the Linux Foundation to accelerate development and deployment of seL4.
+The researchers state that the cost of formal software verification is lower than the cost of engineering traditional "high-assurance" software despite providing much more reliable results. Specifically, the cost of one line of code during the development of seL4 was estimated at around US$400, compared to US$1,000 for traditional high-assurance systems.
+Under the Defense Advanced Research Projects Agency (DARPA) High-Assurance Cyber Military Systems (HACMS) program, NICTA together with project partners Rockwell Collins, Galois Inc, the University of Minnesota and Boeing developed a high-assurance drone using seL4, along with other assurance tools and software, with planned technology transfer onto the optionally piloted autonomous Boeing AH-6 Unmanned Little Bird helicopter being developed by Boeing. Final demonstration of the HACMS technology took place in Sterling, VA in April 2017. DARPA also funded several Small Business Innovative Research (SBIR) contracts related to seL4 under a program started by John Launchbury. Small businesses receiving an seL4-related SBIR included: DornerWorks, Techshot, Wearable Inc, Real Time Innovations, and Critical Technologies.
+In October 2023, Nio Inc. announced that their seL4-based SkyOS operating systems will be in mass-produced electric cars from 2024.
+In 2023, seL4 won the ACM Software System Award.
+
+
+== Other research and development ==
+Osker, an OS written in Haskell, targeted the L4 specification; although this project focused mainly on the use of a functional programming language for OS development, not on microkernel research.
+RedoxOS is a Rust-based operating system, that is also inspired by seL4, and uses a microkernel design.
+CodeZero is an L4 microkernel for embedded systems with a focus on virtualization and implementation of native OS services. There is a GPL-licensed version, and a version that was relicensed by B Labs Ltd., acquired by Nvidia, as closed source and forked in 2010.
+F9 microkernel, a BSD-licensed L4 implementation, is dedicated to ARM Cortex-M processors for deeply embedded devices with memory protection.
+The NOVA OS Virtualization Architecture is a research project with focus on constructing a secure and efficient virtualization environment
+with a small trusted computing base. NOVA consists of a microhypervisor, a user level hypervisor (virtual machine monitor), and an unprivileged componentised multi-server user environment running on it named NUL. NOVA runs on ARMv8-A and x86-based multi-core systems.
+WrmOS is a real-time operating system based on L4 microkernel. It has own implementations of kernel, standard libraries, and network stack, supporting ARM, SPARC, x86, and x86-64 architectures. There is the paravirtualized Linux kernel (w4linux) working on WrmOS.
+Helios is a microkernel inspired by seL4. It is part of the Ares operating system, supports x86-64 and aarch64 and is still under active development as of February 2023.
+
+
+== See also ==
+PikeOS
+
+
+== References ==
+
+
+== Further reading ==
+Liedtke, Jochen; Bartling, Ulrich; Beyer, Uwe; Heinrichs, Dietmar; Ruland, Rudolf; Szalay, Gyula (April 1991). "Two years of experience with a μ-Kernel based OS". ACM SIGOPS Operating Systems Review. 25 (2): 51–62. doi:10.1145/122120.122124. S2CID 17602151.
+Liedtke, Jochen; Haeberlen, Andreas; Park, Yoonho; Reuther, Lars; Uhlig, Volkmar (22 October 2000). "Stub-Code Performance is Becoming Important". Proceedings of the 1st Workshop on Industrial Experiences with Systems Software (WIESS), San Diego, CA, October 2000. Archived from the original (PDF) on 5 September 2006. Retrieved 5 September 2006. (on L4 kernel and compiler)
+Cheng, Guanghui; McGuire, Nicholas. L4/Fiasco/L4Linux Kickstart (PDF). Distributed & Embedded Systems Lab (Report). Lanzhou University. Archived from the original (PDF) on 27 March 2012.
+Elphinstone, Kevin; Heiser, Gernot (November 2013). "From L3 to seL4: What Have We Learnt in 20 Years of L4 Microkernels?" (PDF). 24th ACM SIGOPS Symposium on Operating Systems Principles. Farmington, PA, USA. pp. 133–150. CiteSeerX 10.1.1.636.9410. doi:10.1145/2517349.2522720. ISBN 978-1-4503-2388-8. Evolution of L4 design and implementation approaches
+
+
+== External links ==
+L4Hq: L4 headquarters, community site for L4 projects Archived 2019-10-25 at the Wayback Machine
+The L4 μ-Kernel Family, overview of L4 implementations, documentation, projects
+Official TUD:OS Wiki
+L4Ka: Implementations L4Ka::Pistachio and L4Ka::Hazelnut
+Official website, seL4
+UNSW: Implementations for DEC Alpha and MIPS architecture
+OKL4 Archived 2008-08-20 at the Wayback Machine: Commercial L4 version from Open Kernel Labs Archived 2009-03-19 at the Wayback Machine
+NICTA L4: Research Overview and Publications Archived] 2014-07-17 at the Wayback Machine
+Trustworthy Systems Group at CSIRO's Data61: Present home of the former NICTA group that developed seL4
+Genode Operating System Framework: An offspring of the L4 community

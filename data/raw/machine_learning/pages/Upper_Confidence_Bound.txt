@@ -1,0 +1,349 @@
+Upper Confidence Bound (UCB) is a family of algorithms in machine learning and statistics for solving the multi-armed bandit problem and addressing the exploration–exploitation trade-off. UCB methods select actions by computing an upper confidence estimate of each action’s potential reward, thus balancing exploration of uncertain options with exploitation of those known to perform well. Introduced by Auer, Cesa-Bianchi & Fischer in 2002, UCB and its variants have become standard techniques in reinforcement learning, online advertising, recommender systems, clinical trials, and Monte Carlo tree search.
+
+
+== Background ==
+The multi-armed bandit problem models a scenario where an agent chooses repeatedly among K options ("arms"), each yielding stochastic rewards, with the goal of maximizing the sum of collected rewards over time. The main challenge is the exploration–exploitation trade-off: the agent must explore lesser-tried arms to learn their rewards, yet exploit the best-known arm to maximize payoff. Traditional ε-greedy or softmax strategies use randomness to force exploration; UCB algorithms instead use statistical confidence bounds to guide exploration more efficiently.
+
+
+== The UCB1 algorithm ==
+UCB1, the original UCB method, maintains for each arm i:
+
+the empirical mean reward 
+  
+    
+      
+        
+          
+            
+              
+                μ
+                ^
+              
+            
+          
+          
+            i
+          
+        
+      
+    
+    {\displaystyle {\hat {\mu }}_{i}}
+  
+,
+the count 
+  
+    
+      
+        
+          n
+          
+            i
+          
+        
+      
+    
+    {\displaystyle n_{i}}
+  
+ of times arm i has been played.
+At round 
+  
+    
+      
+        t
+      
+    
+    {\displaystyle t}
+  
+, it selects the arm maximizing:
+
+  
+    
+      
+        
+          
+            U
+            C
+            B
+            1
+          
+          
+            i
+          
+        
+        (
+        t
+        )
+        =
+        
+          
+            
+              
+                μ
+                ^
+              
+            
+          
+          
+            i
+          
+        
+        +
+        
+          
+            
+              
+                2
+                ln
+                ⁡
+                t
+              
+              
+                n
+                
+                  i
+                
+              
+            
+          
+        
+      
+    
+    {\displaystyle \mathrm {UCB1} _{i}(t)={\hat {\mu }}_{i}+{\sqrt {\frac {2\ln t}{n_{i}}}}}
+  
+
+Arms with 
+  
+    
+      
+        
+          n
+          
+            i
+          
+        
+        =
+        0
+      
+    
+    {\displaystyle n_{i}=0}
+  
+ are initially played once.  
+The bonus term 
+  
+    
+      
+        
+          
+            2
+            ln
+            ⁡
+            t
+            
+              /
+            
+            
+              n
+              
+                i
+              
+            
+          
+        
+      
+    
+    {\displaystyle {\sqrt {2\ln t/n_{i}}}}
+  
+ shrinks as 
+  
+    
+      
+        
+          n
+          
+            i
+          
+        
+      
+    
+    {\displaystyle n_{i}}
+  
+ grows, ensuring exploration of less-tried arms and exploitation of high-mean arms.
+
+
+=== Pseudocode ===
+for each arm i:
+    n[i] ← 0; Q[i] ← 0
+for t from 1 to T do:
+    for each arm i do
+        if n[i] = 0 then
+            select arm i
+        else
+            index[i] ← Q[i] + sqrt((2 * ln t) / n[i])
+    select arm a with highest index[a]
+    observe reward r
+    n[a] ← n[a] + 1
+    Q[a] ← Q[a] + (r - Q[a]) / n[a]
+
+
+== Theoretical properties ==
+Auer et al. proved that UCB1 achieves logarithmic regret: after _n_ rounds, the expected regret _R(n)_ satisfies
+
+  
+    
+      
+        R
+        (
+        n
+        )
+        =
+        O
+        
+          
+            (
+          
+        
+        
+          ∑
+          
+            i
+            :
+            
+              Δ
+              
+                i
+              
+            
+            >
+            0
+          
+        
+        
+          
+            
+              ln
+              ⁡
+              n
+            
+            
+              Δ
+              
+                i
+              
+            
+          
+        
+        
+          
+            )
+          
+        
+        ,
+      
+    
+    {\displaystyle R(n)=O{\Bigl (}\sum _{i:\Delta _{i}>0}{\frac {\ln n}{\Delta _{i}}}{\Bigr )},}
+  
+
+where _Δi_ is the gap between the optimal arm’s mean and arm _i_’s mean. Thus, average regret per round → 0 as _n_→∞, and UCB1 is near-optimal against the Lai-Robbins lower bound.
+
+
+== Variants ==
+Several extensions improve or adapt UCB to different settings:
+
+
+=== UCB2 ===
+Introduced in the same paper, UCB2 divides plays into epochs controlled by a parameter α, reducing the constant in the regret bound at the cost of more complex scheduling.
+
+
+=== UCB1-Tuned ===
+Incorporates empirical variance _Vi_ to tighten the bonus:  
+
+  
+    
+      
+        
+          
+            
+              
+                μ
+                ^
+              
+            
+          
+          
+            i
+          
+        
+        +
+        
+          
+            
+              
+                
+                  ln
+                  ⁡
+                  t
+                
+                
+                  n
+                  
+                    i
+                  
+                
+              
+            
+            min
+            {
+            1
+            
+              /
+            
+            4
+            ,
+            
+            
+              V
+              
+                i
+              
+            
+            }
+          
+        
+        .
+      
+    
+    {\displaystyle {\hat {\mu }}_{i}+{\sqrt {{\frac {\ln t}{n_{i}}}\min\{1/4,\,V_{i}\}}}.}
+  
+
+This often outperforms UCB1 in practice but lacks a simple regret proof.
+
+
+=== KL-UCB ===
+Replaces Hoeffding’s bound with a Kullback–Leibler divergence condition, yielding asymptotically optimal regret (constant = 1) for Bernoulli rewards.
+
+
+=== Bayesian UCB (Bayes-UCB) ===
+Computes the (1−δ)-quantile of a Bayesian posterior (e.g. Beta for Bernoulli) as the index. Proven asymptotically optimal under certain priors.
+
+
+=== Contextual UCB (e.g., LinUCB) ===
+Extends UCB to contextual bandits by estimating a linear reward model and confidence ellipsoids in parameter space. Widely used in news recommendation.
+
+
+== Applications ==
+UCB algorithms’ simplicity and strong guarantees make them popular in:
+
+Online advertising & A/B testing: adaptively allocate traffic to maximize conversion rates without fixed split ratios.
+Monte Carlo Tree Search: UCT uses UCB1 at each tree node to guide exploration in games like Go.
+Adaptive clinical trials: assign patients to treatments with highest upper confidence on success, improving outcomes over randomization.
+Recommender systems: personalized content selection under uncertainty.
+Robotics & control: efficient exploration of unknown dynamics.
+
+
+== See also ==
+Multi-armed bandit
+Reinforcement learning
+Monte Carlo tree search
+
+
+== References ==

@@ -1,0 +1,63 @@
+OpenTimestamps (OTS) is an open-source project that aims to provide a standard format for blockchain timestamping.
+With the advent of systems like Bitcoin, it is possible to create and verify proofs of existence of documents (timestamps) without relying on a trusted third party; this represents an enhancement in terms of security, since it excludes the possibility of a malicious (or careless) trusted third party to compromise the timestamp.
+OTS defines a set of rules for conveniently creating timestamps and later independently verifying them. Currently, timestamping with Bitcoin is fully supported, however the format is flexible enough to support a variety of methods.
+Anyone could create timestamps with the permissionless blockchain by paying the transaction fees, for convenience OTS built an infrastructure that aggregates timestamp requests from users and packs them into transactions funded by public calendar servers; as a result, users can timestamp for free, in a trust-minimized setting.
+
+
+== What is a timestamp ==
+A timestamp is a proof that some data d existed prior to a certain point in time.
+To create such proof, it turns out that it is not necessary to publish d on the blockchain, which would be expensive, but it is enough to commit d to the blockchain. 
+Such commitment proves that d existed prior to a certain block, in the sense that if d changes, then the proof becomes invalid and hence useless.
+The proof consists in a sequence of commitment operations, such as sha256, append, prepend. 
+These operations are the cryptographic path that proves that d commits to a certain block header. In other words, that d caused the block header to have its value, indeed, if d were different then, due to the mathematical properties of commitment operations, the block header would be different. 
+To verify the commitment, the operations are applied in sequence to the data d, then the result, which should be the transaction merkle root, is checked to be equal to the one observed in the blockchain; if the check goes fine, then one can assert that d existed prior to the block.
+For the timestamped file hello.txt, the OTS proof is encoded in a file named hello.txt.ots which contains:
+
+the hash of the timestamped file;
+the commitment operations;
+one or more attestations on the blockchain.
+With this information, a challenger can independently verify that hello.txt existed prior to a certain block.
+
+
+== Usage ==
+OTS provides users multiple and easy ways to create and independently verify timestamps:
+
+With opentimestamps-client in Python;
+With java-opentimestamps;
+With javascript-opentimestamps;
+On opentimestamps.org.
+In the following sections it is shown an example of the usage of the Python client.
+
+
+=== Timestamp creation ===
+The stamp operation creates the first version of the timestamp. It is applied to the file for which you want to prove its existence (original file).
+
+The stamp operation calculates the SHA256 hash of the original file, concatenates a random 128-bit nonce to maintain privacy, and recalculates the SHA256 hash, sending this unique value to the calendar servers. Each of the calendar servers will add the received hash to its Merkle tree and return the necessary response to generate the initial OTS file. This OTS file is still incomplete because it does not yet contain the record in the blockchain.
+Once a reasonable time has elapsed, the user will run the upgrade operation on the same OTS file. This will communicate with the calendar servers and update the OTS file with the Bitcoin block header attestation.
+
+It is also possible to create timestamps for several different files simultaneously. In that case, the stamp operation will send a single request to the calendar servers with a Merkle root derived from the original files, and later, that same operation will calculate the Merkle tree paths and create the timestamps for each one of the original files.
+
+
+=== Timestamp verification ===
+The verification of the OTS proof requires both the OTS file and the original file. The user must also have an up-to-date Bitcoin node on their own machine to perform the verification without relying on trusted third parties.
+
+
+=== Show timestamp information ===
+
+The basic structure of a timestamp is divided into three main sections:
+
+File hash
+Merkle tree construction
+Bitcoin block header attestation
+The timestamp is saved in a binary file to save space and avoid problems of interpretation, encoding and compatibility between systems. Generally, this file has a .ots extension and its magic number is \x00 O p e n T i m e s t a m p s \x00 \x00 P r o o f \x00 \xbf \x89 \xe2 \xe8 \x84 \xe8 \x92 \x94.
+The info operation presents the content of the timestamp on a human-readable format. In this case, a single attestation of the hello.txt file is shown, which hashes all the way to the Bitcoin block header at block 518387.
+
+
+== Use cases ==
+Applications include defensive publications  and digital multimedia file integrity. 
+
+
+== Notes ==
+
+
+== References ==

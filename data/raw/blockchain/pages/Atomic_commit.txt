@@ -1,0 +1,45 @@
+In the field of computer science, an atomic commit is an operation that applies a set of distinct changes as a single operation. If the changes are applied, then the atomic commit is said to have succeeded. If there is a failure before the atomic commit can be completed, then all of the changes completed in the atomic commit are reversed. This ensures that the system is always left in a consistent state. The other key property of isolation comes from their nature as atomic operations. Isolation ensures that only one atomic commit is processed at a time. The most common uses of atomic commits are in database systems and version control systems.
+The problem with atomic commits is that they require coordination between multiple systems. As computer networks are unreliable services, this means no algorithm can coordinate with all systems as proven in the Two Generals Problem. As databases become more and more distributed, this coordination will increase the difficulty of making truly atomic commits.
+
+
+== Usage ==
+Atomic commits are essential for multi-step updates to data. This can be clearly shown in a simple example of a money transfer between two checking accounts.
+This example is complicated by a transaction to check the balance of account Y during a transaction for transferring 100 dollars from account X to Y. To start, first 100 dollars is removed from account X. Second, 100 dollars is added to account Y. If the entire operation is not completed as one atomic commit, then several problems could occur. If the system fails in the middle of the operation, after removing the money from X and before adding into Y, then 100 dollars has just disappeared. Another issue is if the balance of Y is checked before the 100 dollars is added, the wrong balance for Y will be reported.
+With atomic commits neither of these cases can happen, in the first case of the system failure, the atomic commit would be rolled back and the money returned to X. In the second case, the request of the balance of Y cannot occur until the atomic commit is fully completed.
+
+
+== Database systems ==
+Atomic commits in database systems fulfil two of the key properties of ACID, atomicity and  consistency. Consistency is only achieved if each change in the atomic commit is consistent.
+As shown in the example atomic commits are critical to multistep operations in databases. Due to modern hardware design of the physical disk on which the database resides true atomic commits cannot exist. The smallest area that can be written to on disk is known as a sector. A single database entry may span several different sectors. Only one sector can be written at a time. This writing limit is why true atomic commits are not possible. After the database entries in memory have been modified they are queued up to be written to disk. This means the same problems identified in the example have reoccurred. Any algorithmic solution to this problem will still encounter the Two Generals’ Problem. The two-phase commit protocol and three-phase commit protocol attempt to solve this and some of the other problems associated with atomic commits.
+The two-phase commit protocol requires a coordinator to maintain all the information needed to recover the original state of the database if something goes wrong. As the name indicates there are two phases, voting and commit.
+During the voting phase each node writes the changes in the atomic commit to its own disk. The nodes then report their status to the coordinator. If any node does not report to the coordinator or their status message is lost the coordinator assumes the node's write failed. Once all of the nodes have reported to the coordinator the second phase begins.
+During the commit phase the coordinator sends a commit message to each of the nodes to record in their individual logs. Until this message is added to a node's log, any changes made will be recorded as incomplete. If any of the nodes reported a failure the coordinator will instead send a rollback message. This will remove any changes the nodes have written to disk.
+The three-phase commit protocol seeks to remove the main problem with the two phase commit protocol, which occurs if a coordinator and another node fail at the same time during the commit phase neither can tell what action should occur. To solve this problem a third phase is added to the protocol. The prepare to commit phase occurs after the voting phase and before the commit phase.
+In the voting phase, similar to the two-phase commit, the coordinator requests that each node is ready to commit. If any node fails the coordinator will timeout while waiting for the failed node. If this happens the coordinator sends an abort message to every node. The same action will be undertaken if any of the nodes return a failure message.
+Upon receiving success messages from each node in the voting phase the prepare to commit phase begins. During this phase the coordinator sends a prepare message to each node. Each node must acknowledge the prepare message and reply. If any reply is missed or any node return that they are not prepared then the coordinator sends an abort message. Any node that does not receive a prepare message before the timeout expires aborts the commit.
+After all nodes have replied to the prepare message then the commit phase begins. In this phase the coordinator sends a
+commit message to each node. When each node receives this message it performs the actual commit. If the commit message does not reach a node due to the message being lost or the coordinator fails they will perform the commit if the timeout expires. If the coordinator fails upon recovery it will send a commit message to each node.
+
+
+== Revision control ==
+Atomic commits are a common feature of version control software, and crucial for maintaining a consistent state in the repository. Most version control software will not apply any part of a commit that fails. Notable exceptions are CVS, VSS and IBM Rational ClearCase (when in UCM mode).
+For instance, if version control software encounters a merge conflict that can not be automatically resolved, then no part of the changeset is merged. Instead, the developer is given an opportunity to either revert their changes or manually resolve the conflict.
+This prevents the entire project from entering a broken state due to a partially applied change set, where one file from a commit is successfully committed, but another file with dependent changes fails.
+Atomic commits may also refer to the ability to simultaneously make changes across multiple projects using version control software in a single operation, using a version control software development strategy known as a monorepo.
+
+
+== Atomic commit convention ==
+When using a revision control systems a common convention is to use small commits. These are sometimes referred to as atomic commits as they (ideally) only affect a single aspect of the system.  These atomic commits allow for greater understandability, less effort to roll back changes, easier bug identification.
+The greater understandability comes from the small size and focused nature of the commit. It is much easier to understand what is changed and reasoning behind the changes if one is only looking for one kind of change. This becomes especially important when making format changes to the source code. If format and functional changes are combined it becomes very difficult to identify useful changes. Imagine if the spacing in a file is changed from using tabs to three spaces every tab in the file will show as having been changed. This becomes critical if some functional changes are also made as a reviewer may simply not see the functional changes.
+If only atomic commits are made then commits that introduce errors become much simpler to identify. One need not look through every commit to see if it was the cause of the error, only the commits dealing with that functionality need to be examined. If the error is to be rolled back, atomic commits again make the job much simpler. Instead of having to revert to the offending revision and remove the changes manually before integrating any later changes; the developer can simply revert any changes in the identified commit. This also reduces the risk of a developer accidentally removing unrelated changes that happened to be in the same commit.
+Atomic commits also allow bug fixes to be easily reviewed if only a single bug fix is committed at a time. Instead of having to check multiple potentially unrelated files the reviewer must only check files and changes that directly impact the bug being fixed. This also means that bug fixes can be easily packaged for testing as only the changes that fix the bug are in the commit.
+
+
+== See also ==
+Two-phase commit protocol
+Three-phase commit protocol
+Commit (data management)
+Atomic operation
+
+
+== References ==

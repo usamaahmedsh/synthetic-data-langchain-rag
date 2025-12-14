@@ -1,0 +1,1511 @@
+Proximal policy optimization (PPO) is a reinforcement learning (RL) algorithm for training an intelligent agent. Specifically, it is a policy gradient method, often used for deep RL when the policy network is very large.
+
+
+== History ==
+The predecessor to PPO, Trust Region Policy Optimization (TRPO), was published in 2015. It addressed the instability issue of another algorithm, the Deep Q-Network (DQN), by using the trust region method to limit the KL divergence between the old and new policies. However, TRPO uses the Hessian matrix (a matrix of second derivatives) to enforce the trust region, but the Hessian is inefficient for large-scale problems.
+PPO was published in 2017. It was essentially an approximation of TRPO that does not require computing the Hessian. The KL divergence constraint was approximated by simply clipping the policy gradient.
+Since 2018, PPO was the default RL algorithm at OpenAI. PPO has been applied to many areas, such as controlling a robotic arm, beating professional players at Dota 2 (OpenAI Five), and playing Atari games.
+
+
+== TRPO ==
+TRPO, the predecessor of PPO, is an on-policy algorithm. It can be used for environments with either discrete or continuous action spaces.
+The pseudocode is as follows:
+
+Input: initial policy parameters 
+  
+    
+      
+        
+          θ
+          
+            0
+          
+        
+      
+    
+    {\textstyle \theta _{0}}
+  
+, initial value function parameters 
+  
+    
+      
+        
+          ϕ
+          
+            0
+          
+        
+      
+    
+    {\textstyle \phi _{0}}
+  
+
+Hyperparameters: KL-divergence limit 
+  
+    
+      
+        δ
+      
+    
+    {\textstyle \delta }
+  
+, backtracking coefficient 
+  
+    
+      
+        α
+      
+    
+    {\textstyle \alpha }
+  
+, maximum number of backtracking steps 
+  
+    
+      
+        K
+      
+    
+    {\textstyle K}
+  
+
+for 
+  
+    
+      
+        k
+        =
+        0
+        ,
+        1
+        ,
+        2
+        ,
+        …
+      
+    
+    {\textstyle k=0,1,2,\ldots }
+  
+ do
+Collect set of trajectories 
+  
+    
+      
+        
+          
+            
+              D
+            
+          
+          
+            k
+          
+        
+        =
+        
+          {
+          
+            τ
+            
+              i
+            
+          
+          }
+        
+      
+    
+    {\textstyle {\mathcal {D}}_{k}=\left\{\tau _{i}\right\}}
+  
+ by running policy 
+  
+    
+      
+        
+          π
+          
+            k
+          
+        
+        =
+        π
+        
+          (
+          
+            θ
+            
+              k
+            
+          
+          )
+        
+      
+    
+    {\textstyle \pi _{k}=\pi \left(\theta _{k}\right)}
+  
+ in the environment.
+Compute rewards-to-go 
+  
+    
+      
+        
+          
+            
+              
+                R
+                ^
+              
+            
+          
+          
+            t
+          
+        
+      
+    
+    {\textstyle {\hat {R}}_{t}}
+  
+.
+Compute advantage estimates, 
+  
+    
+      
+        
+          
+            
+              
+                A
+                ^
+              
+            
+          
+          
+            t
+          
+        
+      
+    
+    {\textstyle {\hat {A}}_{t}}
+  
+ (using any method of advantage estimation) based on the current value function 
+  
+    
+      
+        
+          V
+          
+            
+              ϕ
+              
+                k
+              
+            
+          
+        
+      
+    
+    {\textstyle V_{\phi _{k}}}
+  
+.
+Estimate policy gradient as
+  
+    
+      
+        
+          
+            
+              
+                g
+                ^
+              
+            
+          
+          
+            k
+          
+        
+        =
+        
+          
+            
+            
+              
+                
+                  1
+                  
+                    |
+                    
+                      
+                        
+                          D
+                        
+                      
+                      
+                        k
+                      
+                    
+                    |
+                  
+                
+              
+              
+                ∑
+                
+                  τ
+                  ∈
+                  
+                    
+                      
+                        D
+                      
+                    
+                    
+                      k
+                    
+                  
+                
+              
+              
+                ∑
+                
+                  t
+                  =
+                  0
+                
+                
+                  T
+                
+              
+              
+                ∇
+                
+                  θ
+                
+              
+              log
+              ⁡
+              
+                π
+                
+                  θ
+                
+              
+              
+                (
+                
+                  
+                    a
+                    
+                      t
+                    
+                  
+                  ∣
+                  
+                    s
+                    
+                      t
+                    
+                  
+                
+                )
+              
+            
+            |
+          
+          
+            
+              θ
+              
+                k
+              
+            
+          
+        
+        
+          
+            
+              
+                A
+                ^
+              
+            
+          
+          
+            t
+          
+        
+      
+    
+    {\displaystyle {\hat {g}}_{k}=\left.{\frac {1}{\left|{\mathcal {D}}_{k}\right|}}\sum _{\tau \in {\mathcal {D}}_{k}}\sum _{t=0}^{T}\nabla _{\theta }\log \pi _{\theta }\left(a_{t}\mid s_{t}\right)\right|_{\theta _{k}}{\hat {A}}_{t}}
+  
+
+Use the conjugate gradient algorithm to compute
+  
+    
+      
+        
+          
+            
+              
+                x
+                ^
+              
+            
+          
+          
+            k
+          
+        
+        ≈
+        
+          
+            
+              
+                H
+                ^
+              
+            
+          
+          
+            k
+          
+          
+            −
+            1
+          
+        
+        
+          
+            
+              
+                g
+                ^
+              
+            
+          
+          
+            k
+          
+        
+      
+    
+    {\displaystyle {\hat {x}}_{k}\approx {\hat {H}}_{k}^{-1}{\hat {g}}_{k}}
+  
+where 
+  
+    
+      
+        
+          
+            
+              
+                H
+                ^
+              
+            
+          
+          
+            k
+          
+        
+      
+    
+    {\textstyle {\hat {H}}_{k}}
+  
+ is the Hessian of the sample average KL-divergence.
+Update the policy by backtracking line search with
+  
+    
+      
+        
+          θ
+          
+            k
+            +
+            1
+          
+        
+        =
+        
+          θ
+          
+            k
+          
+        
+        +
+        
+          α
+          
+            j
+          
+        
+        
+          
+            
+              
+                2
+                δ
+              
+              
+                
+                  
+                    
+                      
+                        x
+                        ^
+                      
+                    
+                  
+                  
+                    k
+                  
+                  
+                    T
+                  
+                
+                
+                  
+                    
+                      
+                        H
+                        ^
+                      
+                    
+                  
+                  
+                    k
+                  
+                
+                
+                  
+                    
+                      
+                        x
+                        ^
+                      
+                    
+                  
+                  
+                    k
+                  
+                
+              
+            
+          
+        
+        
+          
+            
+              
+                x
+                ^
+              
+            
+          
+          
+            k
+          
+        
+      
+    
+    {\displaystyle \theta _{k+1}=\theta _{k}+\alpha ^{j}{\sqrt {\frac {2\delta }{{\hat {x}}_{k}^{T}{\hat {H}}_{k}{\hat {x}}_{k}}}}{\hat {x}}_{k}}
+  
+where 
+  
+    
+      
+        j
+        ∈
+        {
+        0
+        ,
+        1
+        ,
+        2
+        ,
+        …
+        K
+        }
+      
+    
+    {\textstyle j\in \{0,1,2,\ldots K\}}
+  
+ is the smallest value which improves the sample loss and satisfies the sample KL-divergence constraint.
+Fit value function by regression on mean-squared error:
+  
+    
+      
+        
+          ϕ
+          
+            k
+            +
+            1
+          
+        
+        =
+        arg
+        ⁡
+        
+          min
+          
+            ϕ
+          
+        
+        
+          
+            1
+            
+              
+                |
+                
+                  
+                    
+                      D
+                    
+                  
+                  
+                    k
+                  
+                
+                |
+              
+              T
+            
+          
+        
+        
+          ∑
+          
+            τ
+            ∈
+            
+              
+                
+                  D
+                
+              
+              
+                k
+              
+            
+          
+        
+        
+          ∑
+          
+            t
+            =
+            0
+          
+          
+            T
+          
+        
+        
+          
+            (
+            
+              
+                V
+                
+                  ϕ
+                
+              
+              
+                (
+                
+                  s
+                  
+                    t
+                  
+                
+                )
+              
+              −
+              
+                
+                  
+                    
+                      R
+                      ^
+                    
+                  
+                
+                
+                  t
+                
+              
+            
+            )
+          
+          
+            2
+          
+        
+      
+    
+    {\displaystyle \phi _{k+1}=\arg \min _{\phi }{\frac {1}{\left|{\mathcal {D}}_{k}\right|T}}\sum _{\tau \in {\mathcal {D}}_{k}}\sum _{t=0}^{T}\left(V_{\phi }\left(s_{t}\right)-{\hat {R}}_{t}\right)^{2}}
+  
+typically via some gradient descent algorithm.
+
+
+== PPO ==
+The pseudocode is as follows:
+
+Input: initial policy parameters 
+  
+    
+      
+        
+          θ
+          
+            0
+          
+        
+      
+    
+    {\textstyle \theta _{0}}
+  
+, initial value function parameters 
+  
+    
+      
+        
+          ϕ
+          
+            0
+          
+        
+      
+    
+    {\textstyle \phi _{0}}
+  
+
+for 
+  
+    
+      
+        k
+        =
+        0
+        ,
+        1
+        ,
+        2
+        ,
+        …
+      
+    
+    {\textstyle k=0,1,2,\ldots }
+  
+ do
+Collect set of trajectories 
+  
+    
+      
+        
+          
+            
+              D
+            
+          
+          
+            k
+          
+        
+        =
+        
+          {
+          
+            τ
+            
+              i
+            
+          
+          }
+        
+      
+    
+    {\textstyle {\mathcal {D}}_{k}=\left\{\tau _{i}\right\}}
+  
+ by running policy 
+  
+    
+      
+        
+          π
+          
+            k
+          
+        
+        =
+        π
+        
+          (
+          
+            θ
+            
+              k
+            
+          
+          )
+        
+      
+    
+    {\textstyle \pi _{k}=\pi \left(\theta _{k}\right)}
+  
+ in the environment.
+Compute rewards-to-go 
+  
+    
+      
+        
+          
+            
+              
+                R
+                ^
+              
+            
+          
+          
+            t
+          
+        
+      
+    
+    {\textstyle {\hat {R}}_{t}}
+  
+.
+Compute advantage estimates, 
+  
+    
+      
+        
+          
+            
+              
+                A
+                ^
+              
+            
+          
+          
+            t
+          
+        
+      
+    
+    {\textstyle {\hat {A}}_{t}}
+  
+ (using any method of advantage estimation) based on the current value function 
+  
+    
+      
+        
+          V
+          
+            
+              ϕ
+              
+                k
+              
+            
+          
+        
+      
+    
+    {\textstyle V_{\phi _{k}}}
+  
+.
+Update the policy by maximizing the PPO-Clip objective:
+  
+    
+      
+        
+          θ
+          
+            k
+            +
+            1
+          
+        
+        =
+        arg
+        ⁡
+        
+          max
+          
+            θ
+          
+        
+        
+          
+            1
+            
+              
+                |
+                
+                  
+                    
+                      D
+                    
+                  
+                  
+                    k
+                  
+                
+                |
+              
+              T
+            
+          
+        
+        
+          ∑
+          
+            τ
+            ∈
+            
+              
+                
+                  D
+                
+              
+              
+                k
+              
+            
+          
+        
+        
+          ∑
+          
+            t
+            =
+            0
+          
+          
+            T
+          
+        
+        min
+        
+          (
+          
+            
+              
+                
+                  
+                    π
+                    
+                      θ
+                    
+                  
+                  
+                    (
+                    
+                      
+                        a
+                        
+                          t
+                        
+                      
+                      ∣
+                      
+                        s
+                        
+                          t
+                        
+                      
+                    
+                    )
+                  
+                
+                
+                  
+                    π
+                    
+                      
+                        θ
+                        
+                          k
+                        
+                      
+                    
+                  
+                  
+                    (
+                    
+                      
+                        a
+                        
+                          t
+                        
+                      
+                      ∣
+                      
+                        s
+                        
+                          t
+                        
+                      
+                    
+                    )
+                  
+                
+              
+            
+            
+              A
+              
+                
+                  π
+                  
+                    
+                      θ
+                      
+                        k
+                      
+                    
+                  
+                
+              
+            
+            
+              (
+              
+                
+                  s
+                  
+                    t
+                  
+                
+                ,
+                
+                  a
+                  
+                    t
+                  
+                
+              
+              )
+            
+            ,
+            
+            g
+            
+              (
+              
+                ϵ
+                ,
+                
+                  A
+                  
+                    
+                      π
+                      
+                        
+                          θ
+                          
+                            k
+                          
+                        
+                      
+                    
+                  
+                
+                
+                  (
+                  
+                    
+                      s
+                      
+                        t
+                      
+                    
+                    ,
+                    
+                      a
+                      
+                        t
+                      
+                    
+                  
+                  )
+                
+              
+              )
+            
+          
+          )
+        
+      
+    
+    {\displaystyle \theta _{k+1}=\arg \max _{\theta }{\frac {1}{\left|{\mathcal {D}}_{k}\right|T}}\sum _{\tau \in {\mathcal {D}}_{k}}\sum _{t=0}^{T}\min \left({\frac {\pi _{\theta }\left(a_{t}\mid s_{t}\right)}{\pi _{\theta _{k}}\left(a_{t}\mid s_{t}\right)}}A^{\pi _{\theta _{k}}}\left(s_{t},a_{t}\right),\quad g\left(\epsilon ,A^{\pi _{\theta _{k}}}\left(s_{t},a_{t}\right)\right)\right)}
+  
+typically via stochastic gradient ascent with Adam.
+Fit value function by regression on mean-squared error:
+  
+    
+      
+        
+          ϕ
+          
+            k
+            +
+            1
+          
+        
+        =
+        arg
+        ⁡
+        
+          min
+          
+            ϕ
+          
+        
+        
+          
+            1
+            
+              
+                |
+                
+                  
+                    
+                      D
+                    
+                  
+                  
+                    k
+                  
+                
+                |
+              
+              T
+            
+          
+        
+        
+          ∑
+          
+            τ
+            ∈
+            
+              
+                
+                  D
+                
+              
+              
+                k
+              
+            
+          
+        
+        
+          ∑
+          
+            t
+            =
+            0
+          
+          
+            T
+          
+        
+        
+          
+            (
+            
+              
+                V
+                
+                  ϕ
+                
+              
+              
+                (
+                
+                  s
+                  
+                    t
+                  
+                
+                )
+              
+              −
+              
+                
+                  
+                    
+                      R
+                      ^
+                    
+                  
+                
+                
+                  t
+                
+              
+            
+            )
+          
+          
+            2
+          
+        
+      
+    
+    {\displaystyle \phi _{k+1}=\arg \min _{\phi }{\frac {1}{\left|{\mathcal {D}}_{k}\right|T}}\sum _{\tau \in {\mathcal {D}}_{k}}\sum _{t=0}^{T}\left(V_{\phi }\left(s_{t}\right)-{\hat {R}}_{t}\right)^{2}}
+  
+typically via some gradient descent algorithm.
+Like all policy gradient methods, PPO is used for training an RL agent whose actions are determined by a differentiable policy function by gradient ascent. 
+Intuitively, a policy gradient method takes small policy update steps, so the agent can reach higher and higher rewards in expectation. 
+Policy gradient methods may be unstable: A step size that is too big may direct the policy in a suboptimal direction, thus having little possibility of recovery; a step size that is too small lowers the overall efficiency. 
+To solve the instability, PPO implements a clip function that constrains the policy update of an agent from being too large, so that larger step sizes may be used without negatively affecting the gradient ascent process.
+
+
+=== Basic concepts ===
+To begin the PPO training process, the agent is set in an environment to perform actions based on its current input. In the early phase of training, the agent can freely explore solutions and keep track of the result. Later, with a certain amount of transition samples and policy updates, the agent will select an action to take by randomly sampling from the probability distribution 
+  
+    
+      
+        P
+        (
+        A
+        
+          |
+        
+        S
+        )
+      
+    
+    {\displaystyle P(A|S)}
+  
+ generated by the policy network. The actions that are most likely to be beneficial will have the highest probability of being selected from the random sample. After an agent arrives at a different scenario (a new state) by acting, it is rewarded with a positive reward or a negative reward. The objective of an agent is to maximize the cumulative reward signal across sequences of states, known as episodes.
+
+
+=== Policy gradient laws: the advantage function ===
+The advantage function (denoted as 
+  
+    
+      
+        A
+      
+    
+    {\displaystyle A}
+  
+) is central to PPO, as it tries to answer the question of whether a specific action of the agent is better or worse than some other possible action in a given state. By definition, the advantage function is an estimate of the relative value for a selected action. If the output of this function is positive, it means that the action in question is better than the average return, so the possibilities of selecting that specific action will increase. The opposite is true for a negative advantage output.
+The advantage function can be defined as 
+  
+    
+      
+        A
+        =
+        Q
+        −
+        V
+      
+    
+    {\displaystyle A=Q-V}
+  
+, where 
+  
+    
+      
+        Q
+      
+    
+    {\displaystyle Q}
+  
+ is the discounted sum of rewards (the total weighted reward for the completion of an episode) and 
+  
+    
+      
+        V
+      
+    
+    {\displaystyle V}
+  
+ is the baseline estimate. Since the advantage function is calculated after the completion of an episode, the program records the outcome of the episode. Therefore, calculating advantage is essentially an unsupervised learning problem. The baseline estimate comes from the value function that outputs the expected discounted sum of an episode starting from the current state. In the PPO algorithm, the baseline estimate will be noisy (with some variance), as it also uses a neural network, like the policy function itself. With 
+  
+    
+      
+        Q
+      
+    
+    {\displaystyle Q}
+  
+ and 
+  
+    
+      
+        V
+      
+    
+    {\displaystyle V}
+  
+ computed, the advantage function is calculated by subtracting the baseline estimate from the actual discounted return. If 
+  
+    
+      
+        A
+        >
+        0
+      
+    
+    {\displaystyle A>0}
+  
+, the actual return of the action is better than the expected return from experience; if 
+  
+    
+      
+        A
+        <
+        0
+      
+    
+    {\displaystyle A<0}
+  
+, the actual return is worse.
+
+
+=== Ratio function ===
+In PPO, the ratio function (
+  
+    
+      
+        
+          r
+          
+            t
+          
+        
+      
+    
+    {\displaystyle r_{t}}
+  
+) calculates the probability of selecting action 
+  
+    
+      
+        a
+      
+    
+    {\displaystyle a}
+  
+ in state 
+  
+    
+      
+        s
+      
+    
+    {\displaystyle s}
+  
+ given the current policy network, divided by the previous probability under the old policy. In other words:
+
+If 
+  
+    
+      
+        
+          r
+          
+            t
+          
+        
+        (
+        θ
+        )
+        >
+        1
+      
+    
+    {\displaystyle r_{t}(\theta )>1}
+  
+, where 
+  
+    
+      
+        θ
+      
+    
+    {\displaystyle \theta }
+  
+ are the policy network parameters, then selecting action 
+  
+    
+      
+        a
+      
+    
+    {\displaystyle a}
+  
+ in state 
+  
+    
+      
+        s
+      
+    
+    {\displaystyle s}
+  
+ is more likely based on the current policy than the previous policy.
+If 
+  
+    
+      
+        0
+        ≤
+        
+          r
+          
+            t
+          
+        
+        (
+        θ
+        )
+        <
+        1
+      
+    
+    {\displaystyle 0\leq r_{t}(\theta )<1}
+  
+, then selecting action 
+  
+    
+      
+        a
+      
+    
+    {\displaystyle a}
+  
+ in state 
+  
+    
+      
+        s
+      
+    
+    {\displaystyle s}
+  
+ is less likely based on the current policy than the old policy.
+Hence, this ratio function can easily estimate the divergence between old and current policies.
+
+
+=== PPO objective function ===
+The objective function of PPO takes the expectation operator (denoted as 
+  
+    
+      
+        E
+      
+    
+    {\displaystyle E}
+  
+) which means that this function will be computed over quantities of trajectories. The expectation operator takes the minimum of two terms:
+
+  
+    
+      
+        
+          r
+          
+            t
+          
+        
+        (
+        θ
+        )
+        ⋅
+        A
+      
+    
+    {\displaystyle r_{t}(\theta )\cdot A}
+  
+: this is the product of the ratio function and the advantage function introduced in TRPO, also known as the normal policy gradient objective.
+
+  
+    
+      
+        clip
+        ⁡
+        (
+        
+          r
+          
+            t
+          
+        
+        (
+        θ
+        )
+        )
+        ⋅
+        A
+      
+    
+    {\displaystyle \operatorname {clip} (r_{t}(\theta ))\cdot A}
+  
+: the policy ratio is first clipped to the range 
+  
+    
+      
+        [
+        1
+        −
+        ϵ
+        ,
+        1
+        +
+        ϵ
+        ]
+      
+    
+    {\displaystyle [1-\epsilon ,1+\epsilon ]}
+  
+; generally, 
+  
+    
+      
+        ϵ
+      
+    
+    {\displaystyle \epsilon }
+  
+ is defined to be 0.2. Then, as before, it is multiplied by the advantage.
+The fundamental intuition behind PPO is the same as that of TRPO: conservatism. Clipping results in a conservative advantage estimate of the new policy. The reasoning is that if an agent makes significant changes due to high advantage estimates, its policy update will be large and unstable, and may diverge from the optimal policy with little possibility of recovery. There are two common applications of the clipping function: when an action under a new policy happens to be a good choice based on the advantage function, the clipping function limits how much credit can be given to a new policy for up-weighted good actions. On the other hand, when an action under the old policy is judged to be bad, the clipping function constrains how much the agent can accept the down-weighted bad actions of the new policy. Consequently, the clipping mechanism is designed to discourage the incentive of moving beyond the defined range by clipping both directions. The advantage of this method is that it can be optimized directly with gradient descent, as opposed to the strict KL divergence constraint of TRPO, making the implementation faster and more intuitive.
+After computing the clipped surrogate objective function, the agent has two probability ratios: one non-clipped and one clipped. Then, by taking the minimum of the two objectives, the final objective becomes a lower bound (a pessimistic bound) of what the agent knows is possible. In other words, the minimum method makes sure that the agent is doing the safest possible update.
+
+
+== Advantages ==
+
+
+=== Simplicity ===
+PPO approximates what TRPO does, with considerably less computation. It uses first-order optimization (the clip function) to constrain the policy update, while TRPO uses KL divergence constraints (second-order optimization). Compared to TRPO, the PPO method is relatively easy to implement and requires less computational resource and time. Therefore, it is cheaper and more efficient to use PPO in large-scale problems.
+
+
+=== Stability ===
+While other RL algorithms require hyperparameter tuning, PPO comparatively does not require as much (0.2 for epsilon can be used in most cases). Also, PPO does not require sophisticated optimization techniques. It can be easily practiced with standard deep learning frameworks and generalized to a broad range of tasks.
+
+
+=== Sample efficiency ===
+Sample efficiency indicates whether the algorithms need more or less data to train a good policy. PPO achieved sample efficiency because of its use of surrogate objectives. The surrogate objective allows PPO to avoid the new policy moving too far from the old policy; the clip function regularizes the policy update and reuses training data. Sample efficiency is especially useful for complicated and high-dimensional tasks, where data collection and computation can be costly.
+
+
+== See also ==
+Reinforcement learning
+Temporal difference learning
+Game theory
+
+
+== References ==
+
+
+== External links ==
+Announcement of Proximal Policy Optimization by OpenAI
+GitHub repo

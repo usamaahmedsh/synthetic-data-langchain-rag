@@ -1,0 +1,187 @@
+Opus is a free and open source lossy audio coding format developed by the Xiph.Org Foundation and standardized by the Internet Engineering Task Force, designed for efficient low-latency encoding of both speech and general audio. Due to its lower latency relative to other standard codecs, Opus finds specific use cases in real-time interactive communication for low-end embedded processors. Opus replaces both Vorbis and Speex for new applications.
+Opus combines the speech-oriented LPC-based SILK algorithm and the lower-latency MDCT-based CELT algorithm, switching between or combining them as needed. Bitrate, audio bandwidth, complexity, and algorithm choice can be adjusted for each individual frame. Opus has low algorithmic delay (26.5 ms by default) ideal for use as part of a real-time communication link, networked music performances, and live lip sync; by trading off quality or bitrate, the delay can be further reduced down to 5 ms. Its delay thus is significantly lower compared to competing codecs, which require well over 100 ms. Opus remains competitive with these formats in terms of quality per bitrate.
+As an open format standardized through RFC 6716, a reference implementation called libopus is available under the New BSD License. The reference has both fixed-point and floating-point optimizations for low- and high-end devices, with SIMD optimizations on platforms that support them. All known software patents that cover Opus are licensed under royalty-free terms. Opus is widely used as a voice over IP (VoIP) codec in applications such as Discord, WhatsApp, and the PlayStation 4.  Listening tests have ranked it higher-quality than other standard audio formats at any given bitrate until transparency is reached, including MP3, AAC, and HE-AAC.
+
+
+== Features ==
+
+Opus supports constant and variable bitrate encoding from 6 kbit/s to 510 kbit/s (or up to 256 kbit/s per channel for multi-channel tracks), frame sizes from 2.5 ms to 60 ms, and five sampling rates from 8 kHz (with 4 kHz bandwidth) to 48 kHz (with 20 kHz bandwidth, the human hearing range). An Opus stream can support up to 255 audio channels, and it allows channel coupling between channels in groups of two using mid-side coding.
+Opus has very short latency (26.5 ms using the libopus default of 20 ms frames and default application setting), which makes it suitable for real-time applications such as telephony, voice over IP and videoconferencing; research by Xiph led to the CELT codec currently adopted by Opus, which preserved quality while maintaining low delay. In any Opus stream, the bitrate, bandwidth, and delay can be continually varied without introducing any distortion or discontinuity; mixing packets from different streams will cause a smooth non-intrusive change, rather than the distortion common in other codecs. Unlike Vorbis, Opus does not require large codebooks for each individual file, making it relatively more efficient and resilient for short clips of audio.
+
+The Opus format is based on a combination of the full-bandwidth CELT format and the speech-oriented SILK format, both heavily modified: CELT is based on the modified discrete cosine transform (MDCT) that most music codecs use, using CELP techniques in the frequency domain for better prediction, while SILK uses linear predictive coding (LPC) and an optional long-term prediction filter to model speech. In Opus, both were modified to support more frame sizes, as well as further algorithmic improvements and integration, such as using CELT's range encoder for both types. To minimize overhead at low bitrates, if latency is not as pressing, SILK has support for packing multiple 20 ms frames together, sharing context and headers; SILK also allows Low Bitrate Redundancy (LBRR) frames, allowing low-quality packet loss recovery. CELT includes both spectral replication and noise generation, similar to AAC's SBR and PNS, and can further save bits by filtering out all harmonics of tonal sounds entirely, then replicating them in the decoder. Better tone detection is an ongoing project to improve quality.
+The format has three different modes: speech, hybrid, and CELT. When compressing speech, SILK is used for audio frequencies up to 8 kHz. If wider bandwidth is desired, a hybrid mode uses CELT to encode the frequency range above 8 kHz. The third mode is pure-CELT, designed for general audio. SILK is inherently VBR and cannot hit a bitrate target, while CELT can always be encoded to any specific number of bytes, enabling hybrid and CELT mode when CBR is required.
+SILK supports frame sizes of 10, 20, 40 and 60 ms. CELT supports frame sizes of 2.5, 5, 10 and 20 ms. Thus, hybrid mode only supports frame sizes of 10 and 20 ms; frames shorter than 10 ms will always use CELT mode. A typical Opus packet contains a single frame, but packets of up to 120 ms are produced by combining multiple frames per packet. Opus can transparently switch between modes, frame sizes, bandwidths, and channel counts on a per-packet basis, although specific applications may choose to limit this.
+The reference implementation is written in C and compiles on hardware architectures with or without a floating-point unit, although floating-point is currently required for audio bandwidth detection (dynamic switching between SILK, CELT, and hybrid encoding) and most speed optimizations.
+
+
+=== Containers ===
+Opus packets are not self-delimiting, but are designed to be used inside a container of some sort which supplies the decoder with each packet's length. Opus was originally specified for encapsulation in Ogg containers, specified as audio/ogg; codecs=opus, and for Ogg Opus files the .opus filename extension is recommended. Opus streams are also supported in Matroska, WebM, MPEG-TS, and MP4.
+Alternatively, each Opus packet may be wrapped in a network packet which supplies the packet length. Opus packets may be sent over an ordered datagram protocol such as RTP.
+An optional self-delimited packet format is defined in an appendix to the specification. This uses one or two additional bytes per packet to encode the packet length, allowing packets to be concatenated without encapsulation.
+
+
+=== Bandwidth and sampling rate ===
+
+Opus allows the following bandwidths during encoding. Opus compression does not depend on the input sample rate; timestamps are measured in 48 kHz units even if the full bandwidth is not used. Likewise, the output sample rate may be freely chosen. For example, audio can be input at 16 kHz yet be set to encode only narrowband audio.
+
+
+== History ==
+
+Opus was proposed for the standardization of a new audio format at the IETF, which was eventually accepted and granted by the codec working group. It is based on two initially separate standard proposals from the Xiph.Org Foundation and Skype Technologies S.A. (now Microsoft). Its main developers are Jean-Marc Valin (Xiph.Org, Octasic, Mozilla Corporation, Amazon), Koen Vos (Skype), and Timothy B. Terriberry (Xiph.Org, Mozilla Corporation, Amazon). Among others, Juin-Hwey (Raymond) Chen (Broadcom), Gregory Maxwell (Xiph.Org, Wikimedia), and Chris Montgomery (Xiph.Org) were also involved.
+The development of the CELT part of the format originated from discussions on a successor for Vorbis under the working name Ghost. As a newer speech codec from the Xiph.Org Foundation, Opus replaces Xiph's older speech codec Speex, an earlier project of Jean-Marc Valin. CELT has been worked on since November 2007.
+The SILK part has been under development at Skype since January 2007 as the successor of their SVOPC, an internal project to make the company independent from third-party codecs like iSAC and iLBC and respective license payments.
+In March 2009, Skype suggested the development and standardization of a wideband audio format within the IETF. Nearly a year passed with much debate on the formation of an appropriate working group. Representatives of several companies which were taking part in the standardization of patent-encumbered competing format, including Polycom and Ericsson—the creators and licensors of G.719—as well as France Télécom, Huawei and the Orange Labs (department of France Télécom), which were involved in the creation of G.718, stated objections against the start of the standardization process for a royalty-free format. (Some of the opponents would later claim patent rights that Xiph dismissed; see below.) The working group finally formed in February 2010, and even the corresponding Study Group 16 from the ITU-T pledged to support its work.
+In July 2010, a prototype of a hybrid format was presented that combined the two proposed format candidates SILK and CELT. In September 2010, Opus was submitted to the IETF as proposal for standardization. For a short time the format went under the name of Harmony before it got its present name in October 2010. At the beginning of February 2011, the bitstream format was tentatively frozen, subject to last changes. Near the end of July 2011, Jean-Marc Valin was hired by the Mozilla Corporation to continue working on Opus.
+
+
+=== Finalization (1.0) ===
+In November 2011, the working group issued the last call for changes on the bitstream format. The bitstream has been frozen since January 8, 2012. On July 2, 2012, Opus was approved by the IETF for standardization. The reference software entered release candidate state on August 8, 2012. The final specification was released as RFC 6716 on September 10, 2012. and versions 1.0 and 1.0.1 of the reference implementation libopus were released the day after.
+On July 11, 2013, libopus 1.0.3 brought bug fixes and a new surround sound API that improves channel allocation and quality, especially for LFE.
+
+
+=== 1.1 ===
+On December 5, 2013, libopus 1.1 was released, incorporating overall speed improvements and significant encoder quality improvements: Tonality estimation boosts bitrate and quality for previously problematic samples, like harpsichords; automated speech/music detection improves quality in mixed audio; mid-side stereo reduces the bitrate needs of many songs; band precision boosting for improved transients; and DC rejection below 3 Hz. Two new VBR modes were added: unconstrained for more consistent quality, and temporal VBR that boosts louder frames and generally improves quality.
+libopus 1.1.1 was released on November 26, 2015, and 1.1.2 on January 12, 2016, both adding speed optimizations and bug fixes. July 15, 2016 saw the release of version 1.1.3 and includes bug fixes, optimizations, documentation updates and experimental Ambisonics work.
+
+
+=== 1.2 ===
+libopus 1.2 Beta was released on May 24, 2017. libopus 1.2 was released on June 20, 2017. Improvements brought in 1.2 allow it to create fullband music at bitrates as low as 32 kbit/s, and wideband speech at just 12 kbit/s.
+libopus 1.2 includes optional support for the decoder specification changes made in drafts of RFC 8251, improving the quality of output from such low-rate streams.
+
+
+=== 1.3 ===
+libopus 1.3 was released on October 18, 2018. The Opus 1.3 major release again brings quality improvements, new features, and bug fixes. Changes since 1.2.x include:
+
+Improvements to voice activity detection (VAD) and speech/music classification using a recurrent neural network (RNN)
+Support for ambisonics coding using channel mapping families 2 and 3
+Improvements to stereo speech coding at low bitrate
+Using wideband speech encoding down to 9 kbit/s (mediumband is no longer used)
+Making it possible to use SILK down to bitrates around 5 kbit/s
+Minor quality improvement on tones
+Enabling the spec fixes in RFC 8251 by default
+Security/hardening improvements
+Notable bug fixes include:
+
+Fixes to the CELT PLC
+Bandwidth detection fixes
+
+
+==== 1.3.1 ====
+libopus 1.3.1 was released on April 12, 2019. This Opus 1.3.1 minor release fixes an issue with the analysis on files with digital silence (all zeros), especially on x87 builds (mostly affects 32-bit builds). It also includes two new features:
+
+A new OPUS_GET_IN_DTX query to know if the encoder is in DTX mode (last frame was either a comfort noise frame or not encoded at all)
+A new (and still experimental) CMake-based build system that is eventually meant to replace the VS2015 build system (the autotools build system will stay)
+
+
+=== 1.4 ===
+libopus 1.4 was released on April 20, 2023. Opus 1.4 brings the following improvements and fixes:
+
+Improved tuning of the Opus in-band FEC called LBRR (Low-bitrate redundancy) which previously was causing a significant drop in audio quality under certain circumstances
+Added a OPUS_SET_INBAND_FEC(2) option that turns on FEC, but does not force SILK mode (FEC will be disabled in CELT mode)
+Improved tuning and various fixes to DTX
+Added Meson support, improved CMake support
+
+
+=== 1.5 ===
+libopus 1.5 was released on March 4, 2024. It added the following backward-compatible improvements:
+
+Improved packet loss concealment using a deep neural network.
+Improved redundancy to prevent packet loss using a rate-distortion-optimized variational autoencoder.
+Improved concealment of coding artifacts by adjusting post-filter coefficients using a deep neural network.
+Support for additional SIMD CPU instructions; AVX2 on x86-64 and NEON on Aarch64.
+
+
+=== Current development ===
+The codec is under active development. The current focus is on adding a deep learning based redundancy encoder that enhances packet loss concealment by embedding one second of recovery data in each encoded packet. The deep redundancy (DRED) algorithm was developed by among others Jean-Marc Valin, Ahmed Mustafa, Jan Büthe, Timothy Terriberry, Chris Montgomery, Michael Klingbeil, and Paris Smaragdis from Amazon Web Services with sponsorship to open source the algorithm and subsequently extend the IETF standard from Sid Rao. This encoder is a backwards compatible change to the codec enabling customers to easily upgrade applications to take advantage of this machine learning capability. A draft RFC is underway to standardize the new capability. This RFC is one of the first attempts to standardize a deep learning algorithm in the IETF.
+
+
+== Quality comparison and low-latency performance ==
+
+Opus performs relatively well at both low and high bitrates.
+
+In listening tests around 64 kbit/s, Opus shows superior quality compared to HE-AAC codecs, which were previously dominant due to their use of the patented spectral band replication (SBR) technology. In listening tests around 96 kbit/s, Opus shows slightly superior quality compared to AAC and significantly better quality compared to Vorbis and MP3.
+Opus has very low algorithmic delay, a necessity for use as part of a low-audio-latency communication link, which can permit natural conversation, networked music performances, or lip sync at live events. Total algorithmic delay for an audio format is the sum of delays that must be incurred in the encoder and the decoder of a live audio stream regardless of processing speed and transmission speed, such as buffering audio samples into blocks or frames, allowing for window overlap and possibly allowing for noise-shaping look-ahead in a decoder and any other forms of look-ahead, or for an MP3 encoder, the use of bit reservoir.
+Total one-way latency below 150 ms is the preferred target of most VoIP systems to enable natural conversation with turn-taking little affected by delay. Musicians typically feel in-time with up to around 30 ms audio latency, roughly in accord with the fusion time of the Haas effect, though matching playback delay of each user's own instrument to the round-trip latency can also help. It is suggested for lip sync that around 45–100 ms audio latency may be acceptable.
+Opus permits trading-off reduced quality or increased bitrate to achieve an even smaller algorithmic delay (5.0 ms minimum). While the reference implementation's default Opus frame is 20.0 ms long, the SILK layer requires a further 5.0 ms lookahead plus 1.5 ms for resampling, giving a default delay of 26.5 ms. When the CELT layer is active, it requires 2.5 ms lookahead for window overlap to which a matching delay of 4.0 ms is added by default to synchronize with the SILK layer. If the encoder is instantiated in the special restricted low delay mode, the 4.0 ms matching delay is removed and the SILK layer is disabled, permitting the minimal algorithmic delay of 5.0 ms.
+
+
+== Support ==
+The format and algorithms are openly documented and the reference implementation is published as free software. Xiph's reference implementation is called libopus and a package called opus-tools provides command-line encoder and decoder utilities. It is published under the terms of a BSD-like license. It is written in C and can be compiled for hardware architectures with or without a floating-point unit. The accompanying diagnostic tool opusinfo reports detailed technical information about Opus files, including information on the standard compliance of the bitstream format. It is based on ogginfo from the vorbis-tools and therefore — unlike the encoder and decoder — is available under the terms of version 2 of the GPL.
+
+
+=== Implementations ===
+RFC 6716 contains a complete source code for an older version of the reference implementation written in C. RFC 8251 contains errata. Libopus is the more up-to-date but non-normative branch of the reference implementation.
+The FFmpeg project has encoder and decoder implementations not derived from the reference library. The documentation describes it as CELT-only and poorer-quality than the reference.
+The libopus reference library has been ported to both C# and Java as part of a project called Concentus. These ports sacrifice performance for the sake of being easily integrated into cross-platform applications.
+
+
+=== Software and content providers ===
+
+Digital Radio Mondiale – a digital radio format for AM frequencies – can broadcast and receive Opus audio (albeit not recognised in official standard) using Dream software-defined radio.
+The Wikimedia Foundation sponsored a free and open source online JavaScript Opus encoder for browsers supporting the required HTML5 features.
+A list of radio stations that stream using Opus audio codec can be found on the Xiph.Org Foundation Icecast directory.
+In late 2014 and 2015, Google's video platform YouTube started offering Opus audio along with VP9 video in the WebM file format, through DASH streaming. In July 2024, YouTube rolled out an additional high quality audio format option, 256 kbit/s Opus, to YouTube Music Premium subscribers.
+Since 2016, WhatsApp has been using Opus as its audio file format.
+Signal switched from Speex to Opus audio codec for better audio quality in the beginning of 2017.
+In 2018, SoundCloud switched from MP3 to Opus, reducing half of its required bandwidth for music streaming.
+In January 2021, Vimeo introduced Opus to its video platform.
+In 2021, the Danish journalism website Zetland switched from MP3 to Opus for its articles' audio recordings, which attained a 35 percent reduction in bandwidth and reduced climate footprint.
+
+
+==== Operating system support ====
+Most end-user software relies on multimedia frameworks provided by the operating system. Native Opus codec support is implemented in most major multimedia frameworks for Unix-like operating systems, including GStreamer, FFmpeg, and Libav libraries.
+The WebM container .webm is mostly used on online video platforms (e.g. YouTube), and is usually treated as a video file by operating systems & media players. Even if a WebM file contains only Opus audio and no video, some music players do not recognize WebM files as audio files and do not support reading of file metadata.
+The Ogg container .opus is preferred for audio-only files, and most media players have support for audio file metadata tagged in the Vorbis comment format.
+Google added native support for Opus audio playback in Android 5.0 "Lollipop". However, it was limited to Opus audio encapsulated in Matroska and WebM containers, such as .mkv, .mka and .webm files. Android 7.0 "Nougat" introduced support for Opus audio encapsulated in Ogg containers. Android 10 finally added native support for .opus extensions.
+Due to the addition of WebRTC support in Apple's WebKit rendering engine, macOS High Sierra and iOS 11 were released with native playback support for Opus audio encapsulated in Core Audio Format containers. macOS Sonoma added support for mono and stereo Opus audio encapsulated in MPEG-4 and WebM containers in Safari. Safari 18.4 added support for Opus and Vorbis codecs with Ogg containers when using macOS Sequoia 15.4 or iOS 18.4 and later.
+On Windows 10, version 1607, Microsoft provided native support for Opus audio encapsulated in Matroska and WebM containers. On version 1709, support for Opus audio encapsulated in Ogg containers was made available through a pre-installed add-on called Web Media Extensions. On Windows 10 version 1903, native support for the .opus extension was added. On Windows 8.1 and older, third-party decoders, such as LAV Filters, are available to provide support for the format. A January 2024 update for Windows 10 & 11 caused File Explorer to freeze up when renaming or deleting Ogg files (including .oga, .ogg, .ogm, .ogv, .ogx, .opus), due to bugs involving the MF Media Source Pack Property Handler shell extension by Microsoft and the Web Media Extensions package in Windows, which were not patched before the Windows Updates were rolled out.
+iOS 17 includes support for natively encoding and decoding the Opus codec through the operating system's AudioToolbox framework. Playback of Ogg files in the .opus container is supported through the Files application. Opus is additionally supported within the Core Audio Format .caf container, the QuickTime .mov container, and the ISOBMFF or MP4 file format .mp4 container. As the AudioToolbox framework is shared with macOS, similar support should be present in both operating systems as they further develop. In 2024, Apple Podcasts does not support Opus.
+
+
+==== Media player support ====
+While support in multimedia frameworks automatically enables Opus support in software which is built on top of such frameworks, several applications developers made additional efforts for supporting the Opus audio format in their software. Such support was added to AIMP, Amarok, cmus, Music Player Daemon, foobar2000, Mpxplay, MusicBee, SMplayer, VLC media player, Winamp and XMPlay audio players; Icecast, Airtime (software) audio streaming software; and Asunder audio CD ripper, CDBurnerXP CD burner, FFmpeg, Libav and MediaCoder media encoding tools. Streaming Icecast radio trials are live since September 2012 and January 2013. SteamOS uses Opus or Vorbis for streaming audio.
+
+
+==== Browser support ====
+Opus support is mandatory for WebRTC implementations. Opus is supported in Mozilla Firefox, Chromium and Google Chrome, Blink-based Opera, as well as all browsers for Unix-like systems relying on GStreamer for multimedia formats support. Although Internet Explorer will not provide Opus playback natively, support for the format is built into the Edge browser, along with VP9, for full WebM support. Safari supports Opus as of iOS 11 and macOS High Sierra.
+
+
+==== VoIP support ====
+Due to its abilities, Opus gained early interest from voice over IP (VoIP) software vendors. Several SIP clients, including Acrobits Softphone, CSipSimple (via additional plug-in), Empathy (via GStreamer), Jitsi, Tuenti, Line2 (currently only on iOS), Linphone, Phoner and PhonerLite, SFLphone, Telephone, Mumble, Discord and TeamSpeak 3 voice chat software also support Opus. TrueConf supports Opus in its VoIP products. Asterisk lacked builtin Opus support for legal reasons, but a third-party patch was available for download and official support via a binary blob was added in September 2016. Tox P2P videoconferencing software uses Opus exclusively. Classified-ads distributed messaging app sends raw opus frames inside TLS socket in its VoIP implementation.
+Opus is widely used as the voice codec in WhatsApp, which has over 1.5 billion users worldwide. WhatsApp uses Opus at 8–16 kHz sampling rates, with the Real-time Transport Protocol (RTP). The PlayStation 4 video game console also uses the CELT/Opus codec for its PlayStation Network system party chat. The Source Engine uses Opus for its voice chat system. It is also used in the Zoom videoconferencing app.
+
+
+=== Hardware ===
+Since version 3.13, Rockbox enables Opus playback on supported portable media players, including some products from the iPod series by Apple, devices made by iriver, Archos and Sandisk, and on Android devices using "Rockbox as an Application". All recent Grandstream IP phones support Opus audio both for encoding and decoding. OBihai OBi1062, OBi1032 and OBi1022 IP phones all support Opus. Recent BlueSound wireless speakers support Opus playback. Devices running Hiby OS, like the Hiby R3, are capable of decoding Opus files natively.
+Many broadcast IP codecs include Opus such as those manufactured by Comrex, GatesAir and Tieline.
+The Sony PlayStation 5 supports capturing 1080p and 2160p footage using VP9 video and Opus audio in a WebM container.
+Android 13 supports Opus as a bluetooth headphone (A2DP) codec, motivated by its low latency, which is important for head-tracked spatial audio. Google's Pixel Buds Pro supports this A2DP codec.
+
+
+== Patent claims ==
+As an open standard, the algorithms are openly documented, and a reference implementation (including the source code) is published. Broadcom and the Xiph.Org Foundation own software patents on some of the CELT algorithms, and Skype Technologies/Microsoft own some on the SILK algorithms; each offers a royalty-free perpetual license for use with Opus, reserving only the right to make use of their patents to defend against infringement suits of third parties. Qualcomm, Huawei, France Telecom, and Ericsson have claimed that their patents may apply, which Xiph's legal counsel denies, and none have pursued any legal action. The Opus license automatically and retroactively terminates for any entity that attempts to file a patent suit.
+
+
+== Notes ==
+
+
+== See also ==
+
+Comparison of audio coding formats
+Streaming media
+xHE-AAC
+
+
+== References ==
+
+
+=== Citations ===
+
+
+=== Sources ===
+
+
+== External links ==
+
+Official website
+Opus on Hydrogenaudio Knowledgebase

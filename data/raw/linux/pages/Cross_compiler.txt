@@ -1,0 +1,132 @@
+A cross compiler is a compiler capable of creating executable code for a platform other than the one on which the compiler is running.  For example, a compiler that runs on a PC but generates code that runs on Android devices is a cross compiler.
+A cross compiler is useful to compile code for multiple platforms from one development host. Direct compilation on the target platform might be infeasible, for example on embedded systems with limited computing resources.
+Cross compilers are distinct from source-to-source compilers. A cross compiler is for cross-platform software generation of machine code, while a source-to-source compiler translates from one coding language to another in text code. Both are programming tools.
+
+
+== Use ==
+The fundamental use of a cross compiler is to separate the build environment from target environment.  This is useful in several situations:
+
+Embedded computers where a device has highly limited resources. For example, a microwave oven will have an extremely small computer to read its keypad and door sensor, provide output to a digital display and speaker, and to control the microwave for cooking food. This computer is generally not powerful enough to run a compiler, a file system, or a development environment.
+Compiling for multiple machines.  For example, a company may wish to support several different versions of an operating system or to support several different operating systems.  By using a cross compiler, a single build environment can be set up to compile for each of these targets.
+Compiling on a server farm. Similar to compiling for multiple machines, a complicated build that involves many compile operations can be executed across any machine that is free, regardless of its underlying hardware or the operating system version that it is running.
+Bootstrapping to a new platform. When developing software for a new platform, or the emulator of a future platform, one uses a cross compiler to compile necessary tools such as the operating system and a native compiler.
+Compiling native code for emulators for older now-obsolete platforms like the Commodore 64 or Apple II by enthusiasts who use cross compilers that run on a current platform (such as Aztec C's MS-DOS 6502 cross compilers running under Windows XP).
+Use of virtual machines (such as Java's JVM) resolves some of the reasons for which cross compilers were developed. The virtual machine paradigm allows the same compiler output to be used across multiple target systems, although this is not always ideal because virtual machines are often slower and the compiled program can only be run on computers with that virtual machine.
+Typically the hardware architecture differs (e.g. coding a program destined for the MIPS architecture on an x86 computer) but cross-compilation is also usable when only the operating system environment differs, as when compiling a FreeBSD program under Linux, or even just the system library, as when compiling programs with uClibc on a glibc host.
+
+
+== Canadian Cross ==
+The Canadian Cross is a technique for building cross compilers for other machines, where the original machine is much slower or less convenient than the target. Given three machines A, B, and C, one uses machine A (e.g. running Windows XP on an IA-32 processor) to build a cross compiler that runs on machine B (e.g. running macOS on an x86-64 processor) to create executables for machine C (e.g. running Android on an ARM processor).  The practical advantage in this example is that Machine A is slow but has a proprietary compiler, while Machine B is fast but has no compiler at all, and Machine C is impractically slow to be used for compilation.
+When using the Canadian Cross with GCC, and as in this example, there may be four compilers involved
+
+The proprietary native Compiler for machine A (1) (e.g. compiler from Microsoft Visual Studio) is used to build the gcc native compiler for machine A (2).
+The gcc native compiler for machine A (2) is used to build the gcc cross compiler from machine A to machine B (3)
+The gcc cross compiler from machine A to machine B (3) is used to build the gcc cross compiler from machine B to machine C (4)
+
+The end-result cross compiler (4) will not be able to run on build machine A; instead it would run on machine B to compile an application into executable code that would then be copied to machine C and executed on machine C.
+For instance, NetBSD provides a POSIX Unix shell script named build.sh which will first build its own toolchain with the host's compiler; this, in turn, will be used to build the cross compiler which will be used to build the whole system.
+The term Canadian Cross came about because at the time that these issues were under discussion, Canada had three national political parties.
+
+
+== Timeline of early cross compilers ==
+
+1969  –The first version of UNIX was developed by Ken Thompson on a PDP-7, but due to the lack of tools and cost, it was cross-compiled on a GECOS system and transferred via paper tape. This showed practical cross-compilation for OS development.
+1979  –ALGOL 68C generated ZCODE; this aided porting the compiler and other ALGOL 68 applications to alternate platforms. To compile the ALGOL 68C compiler required about 120 KB of memory. With Z80 its 64 KB memory is too small to actually compile the compiler. So for the Z80 the compiler itself had to be cross compiled from the larger CAP capability computer or an IBM System/370 mainframe.
+1980s  –Aztec C offered native and cross-compilation for home computers like Apple II and Commodore 64.
+
+
+== GCC and cross compilation ==
+GCC, a free software collection of compilers, can be set up to cross compile. It supports many platforms and languages.
+GCC requires that a compiled copy of binutils is available for each targeted platform. Especially important is the GNU Assembler. Therefore, binutils first has to be compiled correctly with the switch --target=some-target sent to the configure script. GCC also has to be configured with the same --target option. GCC can then be run normally provided that the tools, which binutils creates, are available in the path, which can be done using the following (on UNIX-like operating systems with bash):
+
+PATH=/path/to/binutils/bin:${PATH} make
+
+Cross-compiling GCC requires that a portion of the target platform's C standard library be available on the host platform. The programmer may choose to compile the full C library, but this choice could be unreliable. The alternative is to use newlib, which is a small C library containing only the most essential components required to compile C source code. 
+The GNU Autotools packages (i.e. autoconf, automake, and libtool) use the notion of a build platform, a host platform, and a target platform.  The build platform is where the compiler is actually compiled. In most cases, build should be left undefined (it will default from host). The host platform is always where the output artifacts from the compiler will be executed whether the output is another compiler or not. The target platform is used when cross-compiling cross compilers, it represents what type of object code the package will produce; otherwise the target platform setting is irrelevant.  For example, consider cross-compiling a video game that will run on a Dreamcast.  The machine where the game is compiled is the build platform while the Dreamcast is the host platform. The names host and target are relative to the compiler being used and shifted like son and grandson.
+Another method popularly used by embedded Linux developers involves the combination of GCC compilers with specialized sandboxes like Scratchbox and Scratchbox 2, or PRoot. These tools create a "chrooted" sandbox where the programmer can build up necessary tools, libc, and libraries without having to set extra paths. Facilities are also provided to "deceive" the runtime so that it "believes" it is actually running on the intended target CPU (such as an ARM architecture); this allows configuration scripts and the like to run without error. Scratchbox runs more slowly by comparison to "non-chrooted" methods, and most tools that are on the host must be moved into Scratchbox to function.
+
+
+== Manx Aztec C cross compilers ==
+Manx Software Systems, of Shrewsbury, New Jersey, produced C compilers beginning in the 1980s targeted at professional developers for a variety of platforms up to and including IBM PC compatibles and Macs.
+Manx's Aztec C programming language was available for a variety of platforms including MS-DOS, Apple II, DOS 3.3 and ProDOS, Commodore 64, Mac 68k and Amiga.
+From the 1980s and continuing throughout the 1990s until Manx Software Systems disappeared, the MS-DOS version of Aztec C was offered both as a native mode compiler or as a cross compiler for other platforms with different processors including the Commodore 64 and Apple II. Internet distributions still exist for Aztec C including their MS-DOS based cross compilers. They are still in use today.
+Manx's Aztec C86, their native mode 8086 MS-DOS compiler, was also a cross compiler. Although it did not compile code for a different processor like their Aztec C65 6502 cross compilers for the Commodore 64 and Apple II, it created binary executables for then-legacy operating systems for the 16-bit 8086 family of processors.
+When the IBM PC was first introduced it was available with a choice of operating systems, CP/M-86 and PC DOS being two of them. Aztec C86 was provided with link libraries for generating code for both IBM PC operating systems. Throughout the 1980s later versions of Aztec C86 (3.xx, 4.xx and 5.xx) added support for MS-DOS "transitory" versions 1 and 2 and which were less robust than the "baseline" MS-DOS version 3 and later which Aztec C86 targeted until its demise.
+Finally, Aztec C86 provided C language developers with the ability to produce ROM-able "HEX" code which could then be transferred using a ROM burner directly to an 8086 based processor. Paravirtualization may be more common today but the practice of creating low-level ROM code was more common per-capita during those years when device driver development was often done by application programmers for individual applications, and new devices amounted to a cottage industry. It was not uncommon for application programmers to interface directly with hardware without support from the manufacturer. This practice was similar to Embedded Systems Development today.
+Thomas Fenwick and James Goodnow II were the two principal developers of Aztec-C. Fenwick later became notable as the author of the Microsoft Windows CE kernel or NK ("New Kernel") as it was then called.
+
+
+== Microsoft C cross compilers ==
+
+
+=== Early history – 1980s ===
+Microsoft C (MSC) has a shorter history than others dating back to the 1980s. The first Microsoft C Compilers were made by the same company who made Lattice C and were rebranded by Microsoft as their own, until MSC 4 was released, which was the first version that Microsoft produced themselves.
+In 1987, many developers started switching to Microsoft C, and many more would follow throughout the development of Microsoft Windows to its present state. Products like Clipper and later Clarion emerged that offered easy database application development by using cross language techniques, allowing part of their programs to be compiled with Microsoft C.
+Borland C (California company) was available for purchase years before Microsoft released its first C product.
+
+
+=== 1987 ===
+C programs had long been linked with modules written in assembly language. Most C compilers (even current compilers) offer an assembly language pass (that can be tweaked for efficiency then linked to the rest of the program after assembling).
+Compilers like Aztec-C converted everything to assembly language as a distinct pass and then assembled the code in a distinct pass, and were noted for their very efficient and small code, but by 1987 the optimizer built into Microsoft C was very good, and only "mission critical" parts of a program were usually considered for rewriting. In fact, C language programming had taken over as the "lowest-level" language, with programming becoming a multi-disciplinary growth industry and projects becoming larger, with programmers writing user interfaces and database interfaces in higher-level languages, and a need had emerged for cross language development that continues to this day.
+By 1987, with the release of MSC 5.1, Microsoft offered a cross language development environment for MS-DOS. 16-bit binary object code written in assembly language (MASM) and Microsoft's other languages including QuickBASIC, Pascal, and Fortran could be linked together into one program, in a process they called "Mixed Language Programming" and now "InterLanguage Calling". If BASIC was used in this mix, the main program needed to be in BASIC to support the internal runtime system that compiled BASIC required for garbage collection and its other managed operations that simulated a BASIC interpreter like QBasic in MS-DOS.
+The calling convention for C code, in particular, was to pass parameters in "reverse order" on the stack and return values on the stack rather than in a processor register. There were other programming rules to make all the languages work together, but this particular rule persisted through the cross language development that continued throughout Windows 16- and 32-bit versions and in the development of programs for OS/2, and which persists to this day. It is known as the Pascal calling convention.
+Another type of cross compilation that Microsoft C was used for during this time was in retail applications that require handheld devices like the Symbol Technologies PDT3100 (used to take inventory), which provided a link library targeted at an 8088 based barcode reader. The application was built on the host computer then transferred to the handheld device (via a serial cable) where it was run, similar to what is done today for that same market using Windows Mobile by companies like Motorola, who bought Symbol.
+
+
+=== Early 1990s ===
+Throughout the 1990s and beginning with MSC 6 (their first ANSI C compliant compiler) Microsoft re-focused their C compilers on the emerging Windows market, and also on OS/2 and in the development of GUI programs. Mixed language compatibility remained through MSC 6 on the MS-DOS side, but the API for Microsoft Windows 3.0 and 3.1 was written in MSC 6. MSC 6 was also extended to provide support for 32-bit assemblies and support for the emerging Windows for Workgroups and Windows NT which would form the foundation for Windows XP. A programming practice called a thunk was introduced to allow passing between 16- and 32-bit programs that took advantage of runtime binding (dynamic linking) rather than the static binding that was favoured in monolithic 16-bit MS-DOS applications. Static binding is still favoured by some native code developers but does not generally provide the degree of code reuse required by newer best practices like the Capability Maturity Model (CMM).
+MS-DOS support was still provided with the release of Microsoft's first C++ Compiler, MSC 7, which was backwardly compatible with the C programming language and MS-DOS and supported both 16- and 32-bit code generation.
+MSC took over where Aztec C86 left off. The market share for C compilers had turned to cross compilers which took advantage of the latest and greatest Windows features, offered C and C++ in a single bundle, and still supported MS-DOS systems that were already a decade old, and the smaller companies that produced compilers like Aztec C could no longer compete and either turned to niche markets like embedded systems or disappeared.
+MS-DOS and 16-bit code generation support continued until MSC 8.00c which was bundled with Microsoft C++ and Microsoft Application Studio 1.5, the forerunner of Microsoft Visual Studio which is the cross development environment that Microsoft provide today.
+
+
+=== Late 1990s ===
+MSC 12 was released with Microsoft Visual Studio 6 and no longer provided support for MS-DOS 16-bit binaries, instead providing support for 32-bit console applications, but provided support for Windows 95 and Windows 98 code generation as well as for Windows NT. Link libraries were available for other processors that ran Microsoft Windows; a practice that Microsoft continues to this day.
+MSC 13 was released with Visual Studio 2003, and MSC 14 was released with Visual Studio 2005, both of which still produce code for older systems like Windows 95, but which will produce code for several target platforms including the mobile market and the ARM architecture.
+
+
+=== .NET and beyond ===
+In 2001 Microsoft developed the Common Language Runtime (CLR), which formed the core for their .NET Framework compiler in the Visual Studio IDE. This layer on the operating system which is in the API allows the mixing of development languages compiled across platforms that run the Windows operating system.
+The .NET Framework runtime and CLR provide a mapping layer to the core routines for the processor and the devices on the target computer. The command-line C compiler in Visual Studio will compile native code for a variety of processors and can be used to build the core routines themselves.
+Microsoft .NET applications for target platforms like Windows Mobile on the ARM architecture cross-compile on Windows machines with a variety of processors and Microsoft also offer emulators and remote deployment environments that require very little configuration, unlike the cross compilers in days gone by or on other platforms.
+Runtime libraries, such as Mono, provide compatibility for cross-compiled .NET programs to other operating systems, such as Linux.
+Libraries like Qt and its predecessors including XVT provide source code level cross development capability with other platforms, while still using Microsoft C to build the Windows versions. Other compilers like MinGW have also become popular in this area since they are more directly compatible with the Unixes that comprise the non-Windows side of software development allowing those developers to target all platforms using a familiar build environment.
+
+
+== Free Pascal ==
+Free Pascal was developed from the beginning as a cross compiler. The compiler executable (ppcXXX where XXX is a target architecture) is capable of producing executables (or just object files if no internal linker exists, or even just assembly files if no internal assembler exists) for all OS of the same architecture. For example, ppc386 is capable of producing executables for i386-linux, i386-win32, i386-go32v2 (DOS) and all other OSes (see ). For compiling to another architecture, however, a cross architecture version of the compiler must be built first. The resulting compiler executable would have additional 'ross' before the target architecture in its name. i.e. if the compiler is built to target x64, then the executable would be ppcrossx64.
+To compile for a chosen architecture-OS, the compiler switch (for the compiler driver fpc) -P and -T can be used. This is also done when cross-compiling the compiler itself, but is set via make option CPU_TARGET and OS_TARGET. GNU assembler and linker for the target platform is required if Free Pascal does not yet have internal version of the tools for the target platform.
+
+
+== Clang ==
+Clang is natively a cross compiler, at build time you can select which architectures you want Clang to be able to target.
+
+
+== Plan 9 ==
+The heterogenous system Plan 9 and its toolchain does not distinguish between cross and native compilation. Makefiles are architecture independent.
+
+
+== See also ==
+MinGW
+Tombstone diagram
+Scratchbox 2
+Free Pascal
+Cross assembler
+
+
+== References ==
+
+
+== External links ==
+Cross Compilation Tools – reference for configuring GNU cross compilation tools
+Building Cross Toolchains with gcc is a wiki of other GCC cross-compilation references
+Scratchbox is a toolkit for Linux cross-compilation to ARM and x86 targets
+Grand Unified Builder (GUB) for Linux to cross-compile multiple architectures e.g.:Win32/Mac OS/FreeBSD/Linux used by GNU LilyPond
+Crosstool is a helpful toolchain of scripts, which create a Linux cross-compile environment for the desired architecture, including embedded systems
+crosstool-NG is a rewrite of Crosstool and helps building toolchains.
+buildroot is another set of scripts for building a uClibc-based toolchain, usually for embedded systems. It is utilized by OpenWrt.
+ELDK (Embedded Linux Development Kit). Utilized by Das U-Boot.
+T2 SDE is another set of scripts for building whole Linux Systems based on either GNU libC, uClibc or dietlibc for a variety of architectures
+Cross Linux from Scratch Project
+IBM has a very clear structured tutorial about cross-building a GCC toolchain.
+(in French) Cross-compilation avec GCC 4 sous Windows pour Linux - A tutorial to build a cross-GCC toolchain, but from Windows to Linux, a subject rarely developed

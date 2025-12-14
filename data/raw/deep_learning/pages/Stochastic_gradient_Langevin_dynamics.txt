@@ -1,0 +1,1043 @@
+Stochastic gradient Langevin dynamics (SGLD) is an optimization and sampling technique composed of characteristics from Stochastic gradient descent, a Robbins–Monro optimization algorithm, and Langevin dynamics, a mathematical extension of molecular dynamics models. Like stochastic gradient descent, SGLD is an iterative optimization algorithm which uses minibatching to create a stochastic gradient estimator, as used in SGD to optimize a differentiable objective function. Unlike traditional SGD, SGLD can be used for Bayesian learning as a sampling method. SGLD may be viewed as Langevin dynamics applied to posterior distributions, but the key difference is that the likelihood gradient terms are minibatched, like in SGD. SGLD, like Langevin dynamics, produces samples from a posterior distribution of parameters based on available data. First described by Welling and Teh in 2011, the method has applications in many contexts which require optimization, and is most notably applied in machine learning problems.
+
+
+== Formal definition ==
+Given some parameter vector 
+  
+    
+      
+        θ
+      
+    
+    {\displaystyle \theta }
+  
+, its prior distribution 
+  
+    
+      
+        p
+        (
+        θ
+        )
+      
+    
+    {\displaystyle p(\theta )}
+  
+, and a set of data points 
+  
+    
+      
+        X
+        =
+        {
+        
+          x
+          
+            i
+          
+        
+        
+          }
+          
+            i
+            =
+            1
+          
+          
+            N
+          
+        
+      
+    
+    {\displaystyle X=\{x_{i}\}_{i=1}^{N}}
+  
+, Langevin dynamics samples from the posterior distribution 
+  
+    
+      
+        p
+        (
+        θ
+        ∣
+        X
+        )
+        ∝
+        p
+        (
+        θ
+        )
+        
+          ∏
+          
+            i
+            =
+            1
+          
+          
+            N
+          
+        
+        p
+        (
+        
+          x
+          
+            i
+          
+        
+        ∣
+        θ
+        )
+      
+    
+    {\displaystyle p(\theta \mid X)\propto p(\theta )\prod _{i=1}^{N}p(x_{i}\mid \theta )}
+  
+ by updating the chain:
+
+  
+    
+      
+        Δ
+        
+          θ
+          
+            t
+          
+        
+        =
+        
+          
+            
+              ε
+              
+                t
+              
+            
+            2
+          
+        
+        
+          (
+          
+            ∇
+            log
+            ⁡
+            p
+            (
+            
+              θ
+              
+                t
+              
+            
+            )
+            +
+            
+              ∑
+              
+                i
+                =
+                1
+              
+              
+                N
+              
+            
+            ∇
+            log
+            ⁡
+            p
+            (
+            
+              x
+              
+                
+                  t
+                  
+                    i
+                  
+                
+              
+            
+            ∣
+            
+              θ
+              
+                t
+              
+            
+            )
+          
+          )
+        
+        +
+        
+          η
+          
+            t
+          
+        
+      
+    
+    {\displaystyle \Delta \theta _{t}={\frac {\varepsilon _{t}}{2}}\left(\nabla \log p(\theta _{t})+\sum _{i=1}^{N}\nabla \log p(x_{t_{i}}\mid \theta _{t})\right)+\eta _{t}}
+  
+
+Stochastic gradient Langevin dynamics uses a modified update procedure with minibatched likelihood terms:
+
+  
+    
+      
+        Δ
+        
+          θ
+          
+            t
+          
+        
+        =
+        
+          
+            
+              ε
+              
+                t
+              
+            
+            2
+          
+        
+        
+          (
+          
+            ∇
+            log
+            ⁡
+            p
+            (
+            
+              θ
+              
+                t
+              
+            
+            )
+            +
+            
+              
+                N
+                n
+              
+            
+            
+              ∑
+              
+                i
+                =
+                1
+              
+              
+                n
+              
+            
+            ∇
+            log
+            ⁡
+            p
+            (
+            
+              x
+              
+                
+                  t
+                  
+                    i
+                  
+                
+              
+            
+            ∣
+            
+              θ
+              
+                t
+              
+            
+            )
+          
+          )
+        
+        +
+        
+          η
+          
+            t
+          
+        
+      
+    
+    {\displaystyle \Delta \theta _{t}={\frac {\varepsilon _{t}}{2}}\left(\nabla \log p(\theta _{t})+{\frac {N}{n}}\sum _{i=1}^{n}\nabla \log p(x_{t_{i}}\mid \theta _{t})\right)+\eta _{t}}
+  
+
+where 
+  
+    
+      
+        n
+        <
+        N
+      
+    
+    {\displaystyle n<N}
+  
+ is a positive integer, 
+  
+    
+      
+        
+          η
+          
+            t
+          
+        
+        ∼
+        
+          
+            N
+          
+        
+        (
+        0
+        ,
+        
+          ε
+          
+            t
+          
+        
+        )
+      
+    
+    {\displaystyle \eta _{t}\sim {\mathcal {N}}(0,\varepsilon _{t})}
+  
+ is Gaussian noise, 
+  
+    
+      
+        p
+        (
+        x
+        ∣
+        θ
+        )
+      
+    
+    {\displaystyle p(x\mid \theta )}
+  
+ is the likelihood of the data given the parameter vector 
+  
+    
+      
+        θ
+      
+    
+    {\displaystyle \theta }
+  
+, and our step sizes 
+  
+    
+      
+        
+          ε
+          
+            t
+          
+        
+      
+    
+    {\displaystyle \varepsilon _{t}}
+  
+ satisfy the following conditions:
+
+  
+    
+      
+        
+          ∑
+          
+            t
+            =
+            1
+          
+          
+            ∞
+          
+        
+        
+          ε
+          
+            t
+          
+        
+        =
+        ∞
+        
+        
+          ∑
+          
+            t
+            =
+            1
+          
+          
+            ∞
+          
+        
+        
+          ε
+          
+            t
+          
+          
+            2
+          
+        
+        <
+        ∞
+      
+    
+    {\displaystyle \sum _{t=1}^{\infty }\varepsilon _{t}=\infty \quad \sum _{t=1}^{\infty }\varepsilon _{t}^{2}<\infty }
+  
+
+For early iterations of the algorithm, each parameter update mimics Stochastic Gradient Descent; however, as the algorithm approaches a local minimum or maximum, the gradient shrinks to zero and the chain produces samples surrounding the maximum a posteriori mode allowing for posterior inference. This process generates approximate samples from the posterior as by balancing variance from the injected Gaussian noise and stochastic gradient computation.
+
+
+== Application ==
+SGLD is applicable in any optimization context for which it is desirable to quickly obtain posterior samples instead of a maximum a posteriori mode. In doing so, the method maintains the computational efficiency of stochastic gradient descent when compared to traditional gradient descent while providing additional information regarding the landscape around the critical point of the objective function. In practice, SGLD can be applied to the training of Bayesian Neural Networks in Deep Learning, a task in which the method provides a distribution over model parameters. By introducing information about the variance of these parameters, SGLD characterizes the generalizability of these models at certain points in training. Additionally, obtaining samples from a posterior distribution permits uncertainty quantification by means of confidence intervals, a feature which is not possible using traditional stochastic gradient descent.
+
+
+== Variants and associated algorithms ==
+If gradient computations are exact, SGLD reduces down to the Langevin Monte Carlo algorithm, first coined in the literature of lattice field theory. This algorithm is also a reduction of Hamiltonian Monte Carlo, consisting of a single leapfrog step proposal rather than a series of steps. Since SGLD can be formulated as a modification of both stochastic gradient descent and MCMC methods, the method lies at the intersection between optimization and sampling algorithms; the method maintains SGD's ability to quickly converge to regions of low cost while providing samples to facilitate posterior inference.
+Considering relaxed constraints on the step sizes 
+  
+    
+      
+        
+          ε
+          
+            t
+          
+        
+      
+    
+    {\displaystyle \varepsilon _{t}}
+  
+ such that they do not approach zero asymptotically, SGLD fails to produce samples for which the Metropolis Hastings rejection rate is zero, and thus a MH rejection step becomes necessary. The resulting algorithm, dubbed the Metropolis Adjusted Langevin algorithm, requires the step:
+
+  
+    
+      
+        
+          
+            
+              p
+              (
+              
+                
+                  θ
+                
+                
+                  t
+                
+              
+              ∣
+              
+                
+                  θ
+                
+                
+                  t
+                  +
+                  1
+                
+              
+              )
+              
+                p
+                
+                  ∗
+                
+              
+              
+                (
+                
+                  
+                    θ
+                  
+                  
+                    t
+                  
+                
+                )
+              
+            
+            
+              p
+              
+                (
+                
+                  
+                    
+                      θ
+                    
+                    
+                      t
+                      +
+                      1
+                    
+                  
+                  ∣
+                  
+                    
+                      θ
+                    
+                    
+                      t
+                    
+                  
+                
+                )
+              
+              
+                p
+                
+                  ∗
+                
+              
+              (
+              
+                
+                  θ
+                
+                
+                  t
+                  +
+                  1
+                
+              
+              )
+            
+          
+        
+        <
+        u
+        ,
+         
+        u
+        ∼
+        
+          
+            U
+          
+        
+        [
+        0
+        ,
+        1
+        ]
+      
+    
+    {\displaystyle {\frac {p(\mathbf {\theta } ^{t}\mid \mathbf {\theta } ^{t+1})p^{*}\left(\mathbf {\theta } ^{t}\right)}{p\left(\mathbf {\theta } ^{t+1}\mid \mathbf {\theta } ^{t}\right)p^{*}(\mathbf {\theta } ^{t+1})}}<u,\ u\sim {\mathcal {U}}[0,1]}
+  
+
+where 
+  
+    
+      
+        p
+        (
+        
+          θ
+          
+            t
+          
+        
+        ∣
+        
+          θ
+          
+            t
+            +
+            1
+          
+        
+        )
+      
+    
+    {\displaystyle p(\theta ^{t}\mid \theta ^{t+1})}
+  
+ is a normal distribution centered one gradient descent step from 
+  
+    
+      
+        
+          θ
+          
+            t
+          
+        
+      
+    
+    {\displaystyle \theta ^{t}}
+  
+ and 
+  
+    
+      
+        p
+        (
+        θ
+        )
+      
+    
+    {\displaystyle p(\theta )}
+  
+ is our target distribution.
+
+
+== Mixing rates and algorithmic convergence ==
+Recent contributions have proven upper bounds on mixing times for both the traditional Langevin algorithm and the Metropolis adjusted Langevin algorithm. Released in Ma et al., 2018, these bounds define the rate at which the algorithms converge to the true posterior distribution, defined formally as:
+
+  
+    
+      
+        τ
+        (
+        ε
+        ;
+        
+          p
+          
+            0
+          
+        
+        )
+        =
+        min
+        
+          {
+          
+            k
+            ∣
+            
+              
+                ‖
+                
+                  
+                    p
+                    
+                      k
+                    
+                  
+                  −
+                  
+                    p
+                    
+                      ∗
+                    
+                  
+                
+                ‖
+              
+              
+                
+                  V
+                
+              
+            
+            ≤
+            ε
+          
+          }
+        
+      
+    
+    {\displaystyle \tau (\varepsilon ;p^{0})=\min \left\{k\mid \left\|p^{k}-p^{*}\right\|_{\mathrm {V} }\leq \varepsilon \right\}}
+  
+
+where 
+  
+    
+      
+        ε
+        ∈
+        (
+        0
+        ,
+        1
+        )
+      
+    
+    {\displaystyle \varepsilon \in (0,1)}
+  
+ is an arbitrary error tolerance, 
+  
+    
+      
+        
+          p
+          
+            0
+          
+        
+      
+    
+    {\displaystyle p^{0}}
+  
+ is some initial distribution, 
+  
+    
+      
+        
+          p
+          
+            ∗
+          
+        
+      
+    
+    {\displaystyle p^{*}}
+  
+ is the posterior distribution, and 
+  
+    
+      
+        
+          |
+        
+        
+          |
+        
+        ∗
+        
+          |
+        
+        
+          
+            |
+          
+          
+            T
+            V
+          
+        
+      
+    
+    {\displaystyle ||*||_{TV}}
+  
+ is the total variation norm. Under some regularity conditions of an L-Lipschitz smooth objective function 
+  
+    
+      
+        U
+        (
+        x
+        )
+      
+    
+    {\displaystyle U(x)}
+  
+ which is m-strongly convex outside of a region of radius 
+  
+    
+      
+        R
+      
+    
+    {\displaystyle R}
+  
+ with condition number 
+  
+    
+      
+        κ
+        =
+        
+          
+            L
+            m
+          
+        
+      
+    
+    {\displaystyle \kappa ={\frac {L}{m}}}
+  
+, we have mixing rate bounds:
+
+  
+    
+      
+        
+          τ
+          
+            U
+            L
+            A
+          
+        
+        (
+        ε
+        ,
+        
+          p
+          
+            0
+          
+        
+        )
+        ≤
+        
+          
+            O
+          
+        
+        
+          (
+          
+            
+              e
+              
+                32
+                L
+                
+                  R
+                  
+                    2
+                  
+                
+              
+            
+            
+              κ
+              
+                2
+              
+            
+            
+              
+                d
+                
+                  ε
+                  
+                    2
+                  
+                
+              
+            
+            ln
+            ⁡
+            
+              (
+              
+                
+                  d
+                  
+                    ε
+                    
+                      2
+                    
+                  
+                
+              
+              )
+            
+          
+          )
+        
+      
+    
+    {\displaystyle \tau _{ULA}(\varepsilon ,p^{0})\leq {\mathcal {O}}\left(e^{32LR^{2}}\kappa ^{2}{\frac {d}{\varepsilon ^{2}}}\ln \left({\frac {d}{\varepsilon ^{2}}}\right)\right)}
+  
+
+  
+    
+      
+        
+          τ
+          
+            M
+            A
+            L
+            A
+          
+        
+        (
+        ε
+        ,
+        
+          p
+          
+            0
+          
+        
+        )
+        ≤
+        
+          
+            O
+          
+        
+        
+          (
+          
+            
+              e
+              
+                16
+                L
+                
+                  R
+                  
+                    2
+                  
+                
+              
+            
+            
+              κ
+              
+                3
+                
+                  /
+                
+                2
+              
+            
+            
+              d
+              
+                1
+                
+                  /
+                
+                2
+              
+            
+            
+              
+                (
+                
+                  d
+                  ln
+                  ⁡
+                  κ
+                  +
+                  ln
+                  ⁡
+                  
+                    (
+                    
+                      
+                        1
+                        ε
+                      
+                    
+                    )
+                  
+                
+                )
+              
+              
+                3
+                
+                  /
+                
+                2
+              
+            
+          
+          )
+        
+      
+    
+    {\displaystyle \tau _{MALA}(\varepsilon ,p^{0})\leq {\mathcal {O}}\left(e^{16LR^{2}}\kappa ^{3/2}d^{1/2}\left(d\ln \kappa +\ln \left({\frac {1}{\varepsilon }}\right)\right)^{3/2}\right)}
+  
+
+where 
+  
+    
+      
+        
+          τ
+          
+            U
+            L
+            A
+          
+        
+      
+    
+    {\displaystyle \tau _{ULA}}
+  
+ and 
+  
+    
+      
+        
+          τ
+          
+            M
+            A
+            L
+            A
+          
+        
+      
+    
+    {\displaystyle \tau _{MALA}}
+  
+ refer to the mixing rates of the Unadjusted Langevin Algorithm and the Metropolis Adjusted Langevin Algorithm respectively. These bounds are important because they show computational complexity is polynomial in dimension 
+  
+    
+      
+        d
+      
+    
+    {\displaystyle d}
+  
+ conditional on 
+  
+    
+      
+        L
+        
+          R
+          
+            2
+          
+        
+      
+    
+    {\displaystyle LR^{2}}
+  
+ being 
+  
+    
+      
+        
+          
+            O
+          
+        
+        (
+        log
+        ⁡
+        d
+        )
+      
+    
+    {\displaystyle {\mathcal {O}}(\log d)}
+  
+.
+
+
+== References ==

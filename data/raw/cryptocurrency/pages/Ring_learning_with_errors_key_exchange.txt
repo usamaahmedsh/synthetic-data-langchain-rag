@@ -1,0 +1,1367 @@
+In cryptography, a public key exchange algorithm is a cryptographic algorithm which allows two parties to create and share a secret key, which they can use to encrypt messages between themselves. The ring learning with errors key exchange (RLWE-KEX) is one of a new class of public key exchange algorithms that are designed to be secure against an adversary that possesses a quantum computer.  This is important because some public key algorithms in use today will be easily broken by a quantum computer if such computers are implemented. RLWE-KEX is one of a set of post-quantum cryptographic algorithms which are based on the difficulty of solving certain mathematical problems involving lattices.  Unlike older lattice based cryptographic algorithms, the RLWE-KEX is provably reducible to a known hard problem in lattices.
+
+
+== Background ==
+Since the 1980s the security of cryptographic key exchanges and digital signatures over the Internet has been primarily based on a small number of public key algorithms.  The security of these algorithms is based on a similarly small number of computationally hard problems in classical computing.  These problems are the difficulty of factoring the product of two carefully chosen prime numbers, the difficulty to compute discrete logarithms in a carefully chosen finite field, and the difficulty of computing discrete logarithms in a carefully chosen elliptic curve group.  These problems are very difficult to solve on a classical computer (the type of computer the world has known since the 1940s through today) but are rather easily solved by a relatively small quantum computer using only 5 to 10 thousand of bits of memory.  There is optimism in the computer industry that larger scale quantum computers will be available around 2030.  If a quantum computer of sufficient size were built, all of the public key algorithms based on these three classically hard problems would be insecure.  This public key cryptography is used today to secure Internet websites, protect computer login information, and prevent our computers from accepting malicious software.
+Cryptography that is not susceptible to attack by a quantum computer is referred to as quantum safe, or post-quantum cryptography.  One class of quantum resistant cryptographic algorithms is based on a concept called "learning with errors" introduced by Oded Regev in 2005.  A specialized form of Learning with errors operates within the ring of polynomials over a finite field.  This specialized form is called ring learning with errors or RLWE.
+There are a variety of cryptographic algorithms which work using the RLWE paradigm.  There are public-key encryption algorithms, homomorphic encryption algorithms, and RLWE digital signature algorithms in addition to the public key, key exchange algorithm presented in this article
+A key exchange algorithm is a type of public key algorithm which establishes a shared secret key between two communicants on a communications link.  The classic example of a key exchange is the Diffie–Hellman key exchange.  The exchange consists of one transmission from one end of the line and one transmission from the other end of the link.  Diffie–Hellman and Elliptic Curve Diffie–Hellman are the two most popular key exchange algorithms.
+The RLWE Key Exchange is designed to be a "quantum safe" replacement for the widely used Diffie–Hellman and elliptic curve Diffie–Hellman key exchanges that are used to secure the establishment of secret keys over untrusted communications channels.  Like Diffie–Hellman and Elliptic Curve Diffie–Hellman, the Ring-LWE key exchange provides a cryptographic property called "forward secrecy"; the aim of which is to reduce the effectiveness of mass surveillance programs and ensure that there are no long term secret keys that can be compromised that would enable bulk decryption.
+
+
+== Introduction ==
+Starting with a prime integer q, the Ring-LWE key exchange works in the ring of polynomials modulo a polynomial 
+  
+    
+      
+        Φ
+        (
+        x
+        )
+      
+    
+    {\displaystyle \Phi (x)}
+  
+ with coefficients in the field of integers mod q (i.e. the ring 
+  
+    
+      
+        
+          R
+          
+            q
+          
+        
+        :=
+        
+          Z
+          
+            q
+          
+        
+        [
+        x
+        ]
+        
+          /
+        
+        Φ
+        (
+        x
+        )
+      
+    
+    {\displaystyle R_{q}:=Z_{q}[x]/\Phi (x)}
+  
+). Multiplication and addition of polynomials will work in the usual fashion with results of a multiplication reduced mod 
+  
+    
+      
+        Φ
+        (
+        x
+        )
+      
+    
+    {\displaystyle \Phi (x)}
+  
+.
+The idea of using LWE and Ring LWE for key exchange was first proposed and filed at the University of Cincinnati in 2011 by Jintai Ding. The idea comes from the associativity of matrix multiplications, and the errors are used to provide the security. The paper appeared in 2012 after a provisional patent application was filed in 2012. The security of the protocol is proven based on the hardness of solving the LWE problem.
+In 2014, Peikert presented a key-transport scheme following the same basic idea of Ding's, where the new idea of sending an additional 1-bit signal for rounding in Ding's construction is also used.
+The "New Hope" implementation selected for Google's post-quantum experiment, uses Peikert's scheme with variation in the error distribution.
+For somewhat greater than 128 bits of security, Singh presents a set of parameters which have 6956-bit public keys for the Peikert's scheme. The corresponding private key would be roughly 14,000 bits. An RLWE version of the classic MQV variant of a Diffie–Hellman key exchange was later published by Zhang et al. in 2014. The security of both key exchanges is directly related to the problem of finding approximate short vectors in an ideal lattice. This article will closely follow the RLWE work of Ding in "A Simple Provably Secure Key Exchange Scheme Based on the Learning with Errors Problem".  For this presentation a typical polynomial is expressed as:
+
+  
+    
+      
+        a
+        (
+        x
+        )
+        =
+        
+          a
+          
+            0
+          
+        
+        +
+        
+          a
+          
+            1
+          
+        
+        x
+        +
+        
+          a
+          
+            2
+          
+        
+        
+          x
+          
+            2
+          
+        
+        +
+        ⋯
+        +
+        
+          a
+          
+            n
+            −
+            3
+          
+        
+        
+          x
+          
+            n
+            −
+            3
+          
+        
+        +
+        
+          a
+          
+            n
+            −
+            2
+          
+        
+        
+          x
+          
+            n
+            −
+            2
+          
+        
+        +
+        
+          a
+          
+            n
+            −
+            1
+          
+        
+        
+          x
+          
+            n
+            −
+            1
+          
+        
+      
+    
+    {\displaystyle a(x)=a_{0}+a_{1}x+a_{2}x^{2}+\cdots +a_{n-3}x^{n-3}+a_{n-2}x^{n-2}+a_{n-1}x^{n-1}}
+  
+
+The coefficients 
+  
+    
+      
+        
+          a
+          
+            i
+          
+        
+      
+    
+    {\displaystyle a_{i}}
+  
+ of this polynomial are integers mod q.  The polynomial 
+  
+    
+      
+        Φ
+        (
+        x
+        )
+      
+    
+    {\displaystyle \Phi (x)}
+  
+ will be the cyclotomic polynomial. When n is a power of 2 then 
+  
+    
+      
+        Φ
+        (
+        x
+        )
+        =
+        
+          x
+          
+            n
+          
+        
+        +
+        1.
+      
+    
+    {\displaystyle \Phi (x)=x^{n}+1.}
+  
+
+The RLWE-KEX uses polynomials which are considered "small" with respect to a measure called the "infinity norm."  The infinity norm for a polynomial is simply the value of the largest coefficient of the polynomial when the coefficients are considered as integers in Z rather than 
+  
+    
+      
+        Z
+        q
+      
+    
+    {\displaystyle Zq}
+  
+ (i.e.from the set {−(q − 1)/2,..., 0, ... (q − 1)/2} ).  The algorithm's security depends on an ability to generate random polynomials which are small with respect to the infinity norm.  This is done simply by randomly generating the coefficients for a polynomial (sn-1, ..., s0) which are guaranteed or very likely to be small. There are two common ways to do this:
+
+Using Uniform Sampling – The coefficients of the small polynomial are uniformly sampled from a set of small coefficients.  Let b be an integer that is much less than q.  If we randomly choose coefficients from the set: { −b, −b + 1, −b + 2. ... −2, −1, 0, 1, 2, ... , b − 2, b − 1, b} the polynomial will be small with respect to the bound (b).  Singh suggest using b = 5.  Thus coefficients would be chosen from the set {q − 5, q − 4, q − 3, q − 2, q − 1, 0, 1, 2, 3, 4, 5 }.
+Using Discrete Gaussian Sampling – For an odd value for q, the coefficients are randomly chosen by sampling from the set { −(q − 1)/2 to (q − 1)/2 } according to a discrete Gaussian distribution with mean 0 and distribution parameter σ.  The references describe in full detail how this can be accomplished.  It is more complicated than uniform sampling but it allows for a proof of security of the algorithm.  An overview of Gaussian sampling is found in a presentation by Peikert.
+For the rest of this article, the random small polynomials will be sampled according to a distribution which is simply specified as D.  Further q will be an odd prime such that q is congruent to 1 mod 4 and 1 mod 2n. Other cases for q and n are thoroughly discussed in "A Toolkit for Ring-LWE Cryptography" and in Singh's "Even More Practical Key Exchange for the Internet using Lattice Cryptography." and another paper by Singh.   A fixed public polynomial, a(x), shared by all users of the network.  It is deterministically generated from a cryptographically secure source.
+Given a(x) as stated, we can randomly choose small polynomials s(x) and e(x) to be the "private key" in a public key exchange. The corresponding public key will be the polynomial p(x) = a(x)s(x) + 2e(x).
+
+
+== The key exchange ==
+The key exchange will take place between two devices.  There will be an initiator for the key exchange designated as (I) and a respondent designated as (R).  Both I and R know q, n, a(x), and have the ability to generate small polynomials according to the distribution 
+  
+    
+      
+        
+          χ
+          
+            α
+          
+        
+      
+    
+    {\displaystyle \chi _{\alpha }}
+  
+ with parameter 
+  
+    
+      
+        α
+      
+    
+    {\displaystyle \alpha }
+  
+.  The distribution 
+  
+    
+      
+        
+          χ
+          
+            α
+          
+        
+      
+    
+    {\displaystyle \chi _{\alpha }}
+  
+ is usually the discrete Gaussian distribution on the ring 
+  
+    
+      
+        
+          R
+          
+            q
+          
+        
+        =
+        
+          Z
+          
+            q
+          
+        
+        [
+        x
+        ]
+        
+          /
+        
+        Φ
+        (
+        x
+        )
+      
+    
+    {\displaystyle R_{q}=Z_{q}[x]/\Phi (x)}
+  
+. The description which follows does not contain any explanation of why the key exchange results in the same key at both ends of a link.  Rather, it succinctly specifies the steps to be taken.  For a thorough understanding of why the key exchange results in the initiator and responder having the same key, the reader should look at the referenced work by Ding et al.
+The key exchange begins with the initiator (I) doing the following:
+Initiation:
+
+Generate two polynomials 
+  
+    
+      
+        
+          s
+          
+            I
+          
+        
+      
+    
+    {\displaystyle s_{I}}
+  
+ and 
+  
+    
+      
+        
+          e
+          
+            I
+          
+        
+      
+    
+    {\displaystyle e_{I}}
+  
+ with small coefficients by sampling from the distribution 
+  
+    
+      
+        
+          χ
+          
+            α
+          
+        
+      
+    
+    {\displaystyle \chi _{\alpha }}
+  
+.
+Compute 
+  
+    
+      
+        
+          p
+          
+            I
+          
+        
+        =
+        a
+        
+          s
+          
+            I
+          
+        
+        +
+        2
+        
+          e
+          
+            I
+          
+        
+        .
+      
+    
+    {\displaystyle p_{I}=as_{I}+2e_{I}.}
+  
+
+The initiator sends the polynomial 
+  
+    
+      
+        
+          p
+          
+            I
+          
+        
+      
+    
+    {\displaystyle p_{I}}
+  
+ to the Responder.
+Response:
+
+Generate two polynomials 
+  
+    
+      
+        
+          s
+          
+            R
+          
+        
+      
+    
+    {\displaystyle s_{R}}
+  
+ and 
+  
+    
+      
+        
+          e
+          
+            R
+          
+        
+      
+    
+    {\displaystyle e_{R}}
+  
+ with small coefficients by sampling from the distribution 
+  
+    
+      
+        
+          χ
+          
+            α
+          
+        
+      
+    
+    {\displaystyle \chi _{\alpha }}
+  
+.
+Compute 
+  
+    
+      
+        
+          p
+          
+            R
+          
+        
+        =
+        a
+        
+          s
+          
+            R
+          
+        
+        +
+        2
+        
+          e
+          
+            R
+          
+        
+      
+    
+    {\displaystyle p_{R}=as_{R}+2e_{R}}
+  
+.
+Generate a small 
+  
+    
+      
+        
+          e
+          
+            R
+          
+          ′
+        
+      
+    
+    {\displaystyle e'_{R}}
+  
+ from 
+  
+    
+      
+        
+          χ
+          
+            α
+          
+        
+      
+    
+    {\displaystyle \chi _{\alpha }}
+  
+. Compute 
+  
+    
+      
+        
+          k
+          
+            R
+          
+        
+        =
+        
+          p
+          
+            I
+          
+        
+        
+          s
+          
+            R
+          
+        
+        +
+        2
+        
+          e
+          
+            R
+          
+          ′
+        
+      
+    
+    {\displaystyle k_{R}=p_{I}s_{R}+2e'_{R}}
+  
+ . Then 
+  
+    
+      
+        
+          k
+          
+            R
+          
+        
+        =
+        a
+        
+          s
+          
+            I
+          
+        
+        
+          s
+          
+            R
+          
+        
+        +
+        2
+        
+          e
+          
+            I
+          
+        
+        
+          s
+          
+            R
+          
+        
+        +
+        2
+        
+          e
+          
+            R
+          
+          ′
+        
+      
+    
+    {\displaystyle k_{R}=as_{I}s_{R}+2e_{I}s_{R}+2e'_{R}}
+  
+.
+Use the signal function 
+  
+    
+      
+        Sig
+      
+    
+    {\displaystyle \operatorname {Sig} }
+  
+ to find  
+  
+    
+      
+        w
+        =
+        Sig
+        ⁡
+        (
+        
+          k
+          
+            R
+          
+        
+        )
+      
+    
+    {\displaystyle w=\operatorname {Sig} (k_{R})}
+  
+. This is computed by applying 
+  
+    
+      
+        S
+        i
+        g
+      
+    
+    {\displaystyle Sig}
+  
+ function on each coefficient of 
+  
+    
+      
+        
+          k
+          
+            R
+          
+        
+      
+    
+    {\displaystyle k_{R}}
+  
+
+Respondent side's key stream 
+  
+    
+      
+        s
+        
+          k
+          
+            R
+          
+        
+        =
+        
+          Mod
+          
+            2
+          
+        
+        ⁡
+        (
+        
+          k
+          
+            R
+          
+        
+        ,
+        w
+        )
+      
+    
+    {\displaystyle sk_{R}=\operatorname {Mod} _{2}(k_{R},w)}
+  
+ is calculated, based on the reconciliation information 
+  
+    
+      
+        w
+      
+    
+    {\displaystyle w}
+  
+ and the polynomial 
+  
+    
+      
+        
+          k
+          
+            R
+          
+        
+      
+    
+    {\displaystyle k_{R}}
+  
+.
+The Respondent sends 
+  
+    
+      
+        
+          p
+          
+            R
+          
+        
+      
+    
+    {\displaystyle p_{R}}
+  
+ and 
+  
+    
+      
+        w
+      
+    
+    {\displaystyle w}
+  
+ to the Initiator.
+Finish:
+
+Receive 
+  
+    
+      
+        
+          p
+          
+            R
+          
+        
+      
+    
+    {\displaystyle p_{R}}
+  
+ and 
+  
+    
+      
+        w
+      
+    
+    {\displaystyle w}
+  
+ from the Responder.
+Sample 
+  
+    
+      
+        
+          e
+          
+            I
+          
+          ′
+        
+      
+    
+    {\displaystyle e'_{I}}
+  
+ from 
+  
+    
+      
+        
+          χ
+          
+            α
+          
+        
+      
+    
+    {\displaystyle \chi _{\alpha }}
+  
+ and Compute 
+  
+    
+      
+        
+          k
+          
+            I
+          
+        
+        =
+        
+          p
+          
+            R
+          
+        
+        
+          s
+          
+            I
+          
+        
+        +
+        2
+        
+          e
+          
+            I
+          
+          ′
+        
+        =
+        a
+        
+          s
+          
+            I
+          
+        
+        
+          s
+          
+            R
+          
+        
+        +
+        2
+        
+          e
+          
+            R
+          
+        
+        
+          s
+          
+            I
+          
+        
+        +
+        2
+        
+          e
+          
+            I
+          
+          ′
+        
+      
+    
+    {\displaystyle k_{I}=p_{R}s_{I}+2e'_{I}=as_{I}s_{R}+2e_{R}s_{I}+2e'_{I}}
+  
+.
+Initiator side's key stream is produced as 
+  
+    
+      
+        s
+        
+          k
+          
+            I
+          
+        
+        =
+        
+          Mod
+          
+            2
+          
+        
+        ⁡
+        (
+        
+          k
+          
+            I
+          
+        
+        ,
+        w
+        )
+      
+    
+    {\displaystyle sk_{I}=\operatorname {Mod} _{2}(k_{I},w)}
+  
+ from the reconciliation information 
+  
+    
+      
+        w
+      
+    
+    {\displaystyle w}
+  
+ and polynomial 
+  
+    
+      
+        
+          k
+          
+            I
+          
+        
+      
+    
+    {\displaystyle k_{I}}
+  
+.
+In the above key exchange, 
+  
+    
+      
+        Sig
+      
+    
+    {\displaystyle \operatorname {Sig} }
+  
+ is the signal function defined as below:
+Define subset 
+  
+    
+      
+        
+          E
+        
+        :=
+        {
+        −
+        ⌊
+        
+          
+            q
+            4
+          
+        
+        ⌋
+        ,
+        …
+        ,
+        ⌊
+        
+          
+            q
+            4
+          
+        
+        ⌉
+        }
+      
+    
+    {\displaystyle \mathbf {E} :=\{-\lfloor {\frac {q}{4}}\rfloor ,\ldots ,\lfloor {\frac {q}{4}}\rceil \}}
+  
+ of 
+  
+    
+      
+        Z
+        q
+        =
+        {
+        −
+        
+          
+            
+              q
+              −
+              1
+            
+            2
+          
+        
+        ,
+        …
+        ,
+        
+          
+            
+              q
+              −
+              1
+            
+            2
+          
+        
+        }
+      
+    
+    {\displaystyle Zq=\{-{\frac {q-1}{2}},\ldots ,{\frac {q-1}{2}}\}}
+  
+. Here, 
+  
+    
+      
+        ⌊
+        .
+        ⌋
+      
+    
+    {\displaystyle \lfloor .\rfloor }
+  
+ and 
+  
+    
+      
+        ⌊
+        .
+        ⌉
+      
+    
+    {\displaystyle \lfloor .\rceil }
+  
+denotes the floor and the rounding to the nearest integer respectively.
+Function 
+  
+    
+      
+        Sig
+      
+    
+    {\displaystyle \operatorname {Sig} }
+  
+ is the characteristic function of the complement of E.
+
+  
+    
+      
+        Sig
+        :
+        Z
+        q
+        →
+        {
+        0
+        ,
+        1
+        }
+      
+    
+    {\displaystyle \operatorname {Sig} :Zq\rightarrow \{0,1\}}
+  
+: 
+  
+    
+      
+        Sig
+        ⁡
+        (
+        v
+        )
+        =
+        
+          
+            {
+            
+              
+                
+                  0
+                  ,
+                
+                
+                  
+                    if 
+                  
+                  v
+                  ∈
+                  E
+                
+              
+              
+                
+                  1
+                  ,
+                
+                
+                  
+                    if 
+                  
+                  v
+                  ∉
+                  E
+                  .
+                
+              
+            
+            
+          
+        
+      
+    
+    {\displaystyle \operatorname {Sig} (v)={\begin{cases}0,&{\text{if }}v\in E\\1,&{\text{if }}v\notin E.\end{cases}}}
+  
+
+  
+    
+      
+        
+          Mod
+          
+            2
+          
+        
+      
+    
+    {\displaystyle \operatorname {Mod} _{2}}
+  
+ is the mod 2 operation to eliminate the error terms defined as follows: 
+  
+    
+      
+        
+          Mod
+          
+            2
+          
+        
+        ⁡
+        (
+        v
+        ,
+        w
+        )
+        =
+        
+          
+            (
+          
+        
+        v
+        +
+        w
+        .
+        
+          
+            
+              q
+              −
+              1
+            
+            2
+          
+        
+        
+          
+            )
+          
+        
+        
+          mod
+          
+            q
+          
+        
+        
+          mod
+          
+            2
+          
+        
+      
+    
+    {\displaystyle \operatorname {Mod} _{2}(v,w)={\biggl (}v+w.{\frac {q-1}{2}}{\Biggr )}{\bmod {q}}{\bmod {2}}}
+  
+
+Note that the values of 
+  
+    
+      
+        
+          k
+          
+            I
+          
+        
+      
+    
+    {\displaystyle k_{I}}
+  
+ and 
+  
+    
+      
+        
+          k
+          
+            R
+          
+        
+      
+    
+    {\displaystyle k_{R}}
+  
+  are only approximately equal. In order to extract a shared key using this approximate equal values, a reconciliation function, also known as a signal function is used. This function indicates the region in which each coefficient of a polynomial 
+  
+    
+      
+        v
+      
+    
+    {\displaystyle v}
+  
+ in 
+  
+    
+      
+        
+          R
+          
+            q
+          
+        
+      
+    
+    {\displaystyle R_{q}}
+  
+ lies and helps to make sure that the error terms in 
+  
+    
+      
+        
+          k
+          
+            R
+          
+        
+      
+    
+    {\displaystyle k_{R}}
+  
+ and  
+  
+    
+      
+        
+          k
+          
+            I
+          
+        
+      
+    
+    {\displaystyle k_{I}}
+  
+ do not result in different mod q operations.
+The methods of reconciliation and key string generation depends on the specific RLWE-KEX scheme in question. Some method is based on modular arithmetic, while others may be based on high-dimension geometry.
+If the key exchange worked properly, the initiator's string and the respondent's string will be the same.
+Depending on the specifics of the parameters chosen, there is an extremely small probability that this key exchange will fail to produce the same key.  Parameters for the key exchange can be chosen to make the probability of failure in the key exchange very small; much less than the probability of undetectable garbles or device failures.
+
+
+== Parameter choices ==
+The RLWE-KEX exchange presented above worked in the Ring of Polynomials of degree n − 1 or less mod a polynomial 
+  
+    
+      
+        Φ
+        (
+        x
+        )
+      
+    
+    {\displaystyle \Phi (x)}
+  
+.  The presentation assumed that n was a power of 2 and that q was a prime which was congruent to 1 (mod 2n).  Following the guidance given in Peikert's paper, Singh suggested two sets of parameters for the RLWE-KEX.
+For 128 bits of security, n = 512, q = 25601, and 
+  
+    
+      
+        Φ
+        (
+        x
+        )
+        =
+        
+          x
+          
+            512
+          
+        
+        +
+        1
+      
+    
+    {\displaystyle \Phi (x)=x^{512}+1}
+  
+
+For 256 bits of security, n = 1024, q = 40961, and 
+  
+    
+      
+        Φ
+        (
+        x
+        )
+        =
+        
+          x
+          
+            1024
+          
+        
+        +
+        1
+      
+    
+    {\displaystyle \Phi (x)=x^{1024}+1}
+  
+
+Because the key exchange uses random sampling and fixed bounds there is a small probability that the key exchange will fail to produce the same key for the initiator and responder. If we assume that the Gaussian parameter σ is 
+  
+    
+      
+        
+          
+            8
+            
+              2
+              π
+            
+          
+        
+      
+    
+    {\textstyle {\frac {8}{\sqrt {2\pi }}}}
+  
+ and the uniform sampling bound (b) = 5 (see Singh),  then the probability of key agreement failure is less than 2−71 for the 128-bit secure parameters and less than 2−91 for the 256-bit secure parameters.
+In their November 2015 paper, Alkim, Ducas, Pöppelmann, and Schwabe recommend the following parameters n = 1024, q =12289, and 
+  
+    
+      
+        Φ
+        (
+        x
+        )
+      
+    
+    {\displaystyle \Phi (x)}
+  
+ = x1024 + 1. This represents a 70% reduction in public key size over the n = 1024 parameters of Singh, and was submitted to NIST's Post-Quantum Cryptography Standardization project under the name NewHope.
+Also in their November 2015 paper, Alkim, Ducas, Pöppelmann and Schwabe recommend that the choice of the base polynomial for the key exchange ( a(x) above ) be either generated randomly from a secure random number generator for each exchange or created in a verifiable fashion using a "nothing up my sleeve" or NUMS technique. An example of parameters generated in this way are the prime numbers for the Internet Key Exchange (RFC 2409) which embed the digits of the mathematical constant pi in the digital representation of the prime number. Their first method prevents amortization of attack costs across many key exchanges at the risk of leaving open the possibility of a hidden attack like that described by Dan Bernstein against the NIST elliptic curves.  The NUMS approach is open to amortization but generally avoids the Bernstein attack if only common mathematical constants such as pi and e are used.
+
+
+== Key exchange security ==
+The security of this key exchange is based on the underlying hardness of ring learning with errors problem that has been proven to be as hard as the worst case solution to the shortest vector problem (SVP) in an ideal lattice.  The best method to gauge the practical security of a given set of lattice parameters is the BKZ 2.0 lattice reduction algorithm.  According to the BKZ 2.0 algorithm the key exchange parameters listed above will provide greater than 128 or 256 bits of security, respectively.
+
+
+== Implementations ==
+In 2014 Douglas Stebila made a patch for OpenSSL 1.0.1f. based on his work and others published in "Post-quantum key exchange for the TLS protocol from the ring learning with errors problem."  Software implementing the work of Singh is found on GitHub at https://github.com/vscrypto/ringlwe.
+
+
+== Other approaches ==
+A variant of the approach described above is an authenticated version in the work of Zhang, Zhang, Ding, Snook and Dagdelen in their paper, "Post Quantum Authenticated Key Exchange from Ideal Lattices."  The concept of creating what has been called a Diffie–Hellman-like Key Exchange using lattices with a reconciliation function appears to have first been presented by French researchers Aguilar, Gaborit, Lacharme, Schrek, and Zemor at PQCrypto 2010 in their talk, "Noisy Diffie–Hellman Protocols."
+In November 2015, Alkim, Ducas, Pöppelmann, and Schwabe built on the prior work of Peikert and used what they believe is a more conservative costing of lattice attacks to recommend parameters. Software based on the work of Alkim, Ducas, Pöppelmann, and Schwabe is found on GitHub at https://github.com/tpoeppelmann/newhope
+
+
+== See also ==
+Post-quantum cryptography
+Lattice-based cryptography
+Ideal lattice cryptography
+Ring learning with errors signature
+Ring learning with errors
+
+
+== References ==
+
+
+== External links ==

@@ -1,0 +1,111 @@
+A vision–language model (VLM) is a type of artificial intelligence system that can jointly interpret and generate information from both images and text, extending the capabilities of large language models (LLMs), which are limited to text.  It is an example of multimodal learning.
+Many widely used commercial applications now rely on this ability.  OpenAI introduced vision capabilities to its GPT-4V variant of the GPT-4 model, enabling users to incorporate uploaded photographs or diagrams into their discussions with ChatGPT.  It has since become an integral part of ChatGPT's standard offering.  Similar capabilities were added to Google’s Gemini, Anthropic’s Claude 3 Opus, and Microsoft’s Copilot with Vision.    Alongside these models, several open-source vision–language models — such as LLaVA, InstructBLIP, and MiniGPT-4 — have been released by the research community, offering smaller-scale alternatives for experimentation and academic study.
+
+
+== History ==
+Vision language models evolved from image captioning systems.  Such systems were designed to take images alone (without accompanying instructions), and produce descriptions.
+Most image captioning systems used an encoder-decoder architecture, where an encoder summarized images to into feature vectors, which were fed to a decoder to generate the associated description.  Early methods (early 2010s), combined handcrafted visual features to encode images, and n-gram or rule-based text templates to generate descriptions.
+With the rise of deep learning, neural networks became dominant in image captioning.  In 2015, methods emerged that used variations of convolutional neural networks (CNN) to encode images, and recurrent neural networks (RNN) to generate the captions.   By 2018, transformer networks replaced RNNs in the role of language decoders.  Importantly, training of network parameters was based on datasets of image-text pairs, like MS COCO.   The scope of applications was also broadened, to include visual question answering (VQA),  phrase grounding and others.
+In 2021, OpenAI's release of CLIP (Contrastive Language–Image Pretraining) was a major step towards the later evolution of VLMs.   Rather than focus on a specific task like image captioning, CLIP is a general-purpose foundation model which can be extended to a broad range of downstream tasks.  Importantly, CLIP's components were trained on a vast dataset of 400 million image-text pairs, producing powerful models.  CLIP's general-purpose structure also places this powerful capability at the disposal of systems with far smaller computational budgets.
+Starting in 2022, a plethora of VLM architectures have been proposed, based on similar design philosophies (elaborated below).  These included Google DeepMind's proprietary Flamingo and an open-source variant, LLaVA,  SalesForce's InstructBLIP, Microsoft's Kosmos, KAUST's  MiniGPT-4 and others.  All these merged a separately trained CLIP-like image encoder, an off-the-shelf large language model (LLM) for text encoding, stitched together using specialized components.  The resulting joint system was trained on curated datasets.
+The release of GPT-4V in 2023 marked the emergence of highly-impactful commercial applications.  This was quickly followed by other systems mentioned above (including Google’s Gemini, Anthropic’s Claude 3 Opus, and Microsoft’s Copilot with Vision).  These applications are substantially more powerful for general-purpose assignments, typically containing substantially more parameters, trained on massive datasets, requiring enormous compute power.  Their architectures have not been disclosed.
+
+
+== Architecture ==
+The input to VLMs consists of vision elements (images and videos) and text.  The output is typically corresponding text.  Generative models, which also generate vision elements (e.g., DALL-E), are beyond the scope of this article.
+Below is a description of a few representative models, for whom the architecture is known.  Commercial VLMs like GPT-4V, whose designs were not publicly disclosed, are likely based on similar concepts.
+
+
+=== LLaVA 1.0 ===
+LLaVA (Large Language and Vision Assistant) 1.0 is a simple model which captures some of the main concepts of open-source VLMs.  The input to the model is an image and an accompanying textual language instruction.    
+
+
+==== Language model backbone ====
+Conceptually, the design is built around an off-the-shelf foundation LLM (a fine-tuned variant of Llama called Vicuna), with components patched on to support the image inputs.
+LLaVA borrows the tokenizer and the transformer modules (including their weights) from Vicuna, and uses them to handle the accompanying text.  Recall that in a legacy (non-VLM) application of Vicuna, the tokenizer converts text into a stream of tokens, which are transferred into the transformer module, which in turn produces a stream response tokens.  These are then converted back to text using the tokenizer.
+
+
+==== Vision encoding ====
+To this, LLaVA adds two components, to support image inputs:
+
+Vision Encoder:  This is constructed from an off-the-shelf, separately trained CLIP model (specifically, variant ViT-L/14) from OpenAI.  The vision encoder converts the image into an array of embedding vectors (more on this below), which encode useful information on the image.   This information could be used straightforwardly by the LLM.  This is because the LLM is designed to receive tokens, which have different dimensions.  Furthermore, being an off-the-shelf LLM, Vicuna  was not trained to recognize and respond to such information.
+Projection (known elsewhere as a bridge): This module links the vision encoder with the LLM.  Namely, it is a simple matrix of trainable parameters, which converts the dimensions of the vision encoder outputs, and can also be trained (see below) to be useful to the LLM.  Its outputs are called image tokens.
+The image tokens are prepended to the text tokens and processed by the LLM exactly as ordinary text tokens, yielding the final response.
+A simple hack on CLIP ViT-L/14 vision encoder was used to obtain more effective encoded vectors.  As that module is a vision transformer, a straightforward application would have used the class token at the output of its last transformer layer (see vision transformer class) as a single vector output.   LLaVA 1.0, however, uses the grid (non-class) tokens at the output of the previous (penultimate) layer, to produce multiple vector outputs.  The grid tokens correspond to spatial patches in these image input and thus capture finer-granularity information.
+
+
+==== Training ====
+Training was required to align the modules so that they could be combined into a single model.  In VLM terminology, this step is referred to as instruction tuning.  LLaVA 1.0 achieved this in two stages.  Stage 1 focused on preliminary alignment of the projection layer.  Only the weights of that module were trained, with those of the other modules being frozen.  The dataset was a subset of the CC3M dataset of image-captioning pairs.  This dataset was small (595,000 pairs), and limited in its scope, containing only simple image-caption pairs.  Stage 2 focused on a more elaborate training of both the projection layer and the LLM.  The vision encoder remained frozen.  A rich training dataset (LLaVA-Instruct-158K) of image-text pairs was produced for this stage, by harnessing a text-only LLM (GPT-4) to convert the simple captions of image-caption pairs (from the COCO dataset) into elaborate conversation-style prompts.
+Subsequent versions of LLaVA introduced several improvements over LLaVA 1.0.   Some notable conceptual improvements include the replacement on LLaVA 1.5 of the simple projection module with a more elaborate MLP.  LLaVA-NeXT added support for multiple image aspect ratios, beyond than LLaVA 1.0's 224x224.
+
+
+=== Flamingo ===
+Predating LLaVA 1.0 by a year, Flamingo (DeepMind, 2022) actually involves a more elaborate design than LLaVA. Among its benefits are support for multiple images in a single conversation, and support for video.
+
+Architecturally, the design involves a more tightly-coupled integration between the language and vision modules, and a perception-resampler module (described below).
+
+
+==== LLM and Vision Backbones ====
+Like LLaVA, Flamingo begins with independently designed LLM and vision encoder, for text analysis and image embedding, respectively. Both are pre-trained for their narrow purposes, independently of their final utility as components of Flamingo. Furthermore, as components, their weights remain frozen in the course of joint training (see below).
+Flamingo uses DeepMind's off-the-shelf Chinchilla as its LLM backbone. For the vision encoder, they opted for a non-transformer design (the ResNet-based NFNet-F6). They trained this using a CLIP-style contrastive loss on image-caption pairs from the ALIGN and a specially curated dataset called LTIP (Long Text & Image Pairs).
+The vision encoder takes single images as inputs (more on videos below) and produces a two-dimensional grid of feature vectors.
+
+
+==== Perceiver-Resampler ====
+The perceiver-resampler component plays a key role in support for video and variable-number of images at the Flamingo input.
+Multiple consecutive images (one or more) are first fed one-by-one into the vision encoder, producing a three-dimensional grid of feature vectors. Videos are converted into a sequence of images by sampling at a rate of 1 frame per second. The resulting grid is flattened into a long, variable-size array of feature vectors.
+The perceiver-resampler converts this into a short, fixed-length array of tokens. It uses a design that is based on cross-attention between a fixed number of artificial, predetermined query vectors (whose values are determined by training), and (key,value) pairs derived from the array of feature vectors.
+Note that in this context, the consecutive images are assumed to be contiguous, without intervening text. The general case will be discussed later, below.
+
+
+==== Gated cross-attention/dense blocks ====
+These are multiple blocks (see the figure above), that play a role parallel to LLaVA's Projection module, serving as an interface between the vision and text processing modules. Their design, however, is more entangled with the language model. 
+
+Specifically, between select transformer blocks of the language model, Flamingo inserts these cross-attention-and-dense blocks. These blocks resemble the decoder blocks of encoder-decoder transformer architectures. That is, their queries are obtained from the preceding legacy self-attention transformer block of the backbone LLM. Their keys and values are derived from the vision feature vectors. Their outputs are forwarded to the consecutive backbone LLM block. They also include skip connections.
+One important modification to the added blocks, relative to the blocks of encoder-decoder transformers, is the inclusion of a tanh gating. These small modules multiply their inputs are controlled by a trainable scalar weight in the interval (-1, 1), specific to each such block. These weights modulate the impact of the cross-attention-dense block on the text generation process. They are initialized at zero at the beginning of training, when the weights of the other modules of the block are still untrained and random. As training progresses, their values gradually increase. These gates have a crucial role in ensuring training stability.
+
+
+==== Chunking ====
+To support interleaved images and text sequences, Flamingo introduced a simple adaptation which arguably increases performance for in-context (few-shot) learning. Specifically, they break the input stream into chunks, each of which contains a single vision input (image, contiguous sequence of images, or video). When applying the above-mentioned cross-attention between text and visual features, text tokens are only allowed to attend to the vision input within their chunk. Other vision inputs are masked out.
+Note that text tokens are still indirectly influenced by all video inputs, via the intra-text self-attention.
+
+
+==== Training ====
+During training, the language and text backbones are frozen (as noted above). Training used three datasets: The LTIP dataset mentioned above, a curated dataset of video-text pairs (called VTP), and a massive dataset of interleaved text-image sequences, derived from HTML documents (MultiModal MassiveWeb - M3W).
+
+
+=== Qwen2-VL ===
+Qwen2-VL by Alibaba (2024) has a conceptually simple architecture that also provides functionality and flexibility exceeding Flamingo.
+Like LLaVA 1.0 and Flamingo, it begins with backbone language model (Qwen2) and vision encoder (DFN  vision transformer).
+Like LLaVA and unlike Flamingo, Qwen2-VL uses unified processing of vision and text data, feeding all tokens into the input of the language model, rather than injecting them into internal blocks.   Tokens are then treated equally by the language model, using self-attention rather than cross-attention.  To support interleaved text and vision data, and delimit streams of tokens from the latter, special tokens (vision_start and vision_end) are used.
+
+
+==== Naive dynamic resolution ====
+A key difference from LLaVA 1.0 and Flamingo is that the vision encoder supports arbitrary image resolutions, without first reshaping the image to a fixed shape.  The number of encoded tokens is variable and depends on the image shape.
+Videos are sampled at 2 frames per second to produce a steam of images, which are each encoded separately.  This too contributes to the variable length of the token array.
+An MLP aligns the embedding dimension of the ViT with that of the language model.  It also has a role in reducing the dimensionality of the image encoding by merging the vector embeddings 2x2 adjacent patches (see ViT).  Video encoding also benefits from a 3D convolution that also operates on the temporal dimension.
+
+
+==== Multimodal rotary positional encoding (M-RoPE) ====
+Standard positional encoding is poorly suited for vision data, especially when the data is encoded into variable-length token embeddings.  Specifically, its 1-dimensional representation loses the spatial layout of images and temporal continuity of video.
+Qwen2-VL uses a multidimensional variant for vision data, which it calls multimodal rotary positional encoding (M-RoPE).  With this implementation, each token is assigned a triplet of indices (i,x,y), defined as follows.  For images, x and y represent the spacial coordinates of the token in the image.  i is constant for all tokens of the image, and equals the sequence number of the image within the unified input stream to the model.  M-RoPE positional encoding is then constructed by interleaving separate 1-D RoPE encodings for the three indices.
+Video positional encoding uses similar triplets, except that i is not constant and progresses with each image in the video stream.  It thus encodes temporal location.
+
+
+==== Training ====
+Qwen2-VL is trained in a three-stage process that progressively integrates visual and linguistic understanding.   In Stage 1, the vision encoder is trained, keeping the other modules frozen. In Stage 2, the entire architecture is unfrozen, and in Stage 3, the vision encoder is frozen while the language model is fine-tuned.  The training dataset includes a diverse range of modalities, ultimately amounting to 1.4 trillion tokens (including encoded vision tokens).  The training loss is computed over text tokens at the output of the language model.
+
+
+==== Visual grounding ====
+A key functionality that is enabled by multimodal positional encoding is visual grounding; namely, the ability to reason about specific objects within an image.  M-RoPE's preservation of the spatial location of image tokens is essential for this.
+To support grounding, much of the training data includes information on objects in images, including captions and bounding box coordinates.  Training dataset preparation involves formatting this data into a standard structure, which includes special tokens (object_ref_start, object_ref_end, box_start, box_end).
+
+
+== See also ==
+Vision-language-action model
+Multimodal learning
+Large language model (LLM)
+Foundation model
+
+
+== References ==

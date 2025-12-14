@@ -1,0 +1,74 @@
+In computing, position-independent code (PIC) or position-independent executable (PIE) is a body of machine code that executes properly regardless of its memory address. PIC is commonly used for shared libraries, so that the same library code can be loaded at a location in each program's address space where it does not overlap with other memory in use by, for example, other shared libraries. PIC was also used on older computer systems that lacked an MMU, so that the operating system could keep applications away from each other even within the single address space of an MMU-less system.
+Position-independent code can be executed at any memory address without modification. This differs from absolute code, which must be loaded at a specific location to function correctly, and load-time locatable (LTL) code, in which a linker or program loader modifies a program before execution, so it can be run only from a particular memory location. The latter terms are sometimes referred to as position-dependent code. Generating position-independent code is often the default behavior for compilers, but they may place restrictions on the use of some language features, such as disallowing use of absolute addresses (position-independent code has to use relative addressing). Instructions that refer directly to specific memory addresses sometimes execute faster, and replacing them with equivalent relative-addressing instructions may result in slightly slower execution, although modern processors make the difference practically negligible.
+
+
+== History ==
+In early computers such as the IBM 701 (29 April 1952) or the UNIVAC I (31 March 1951) code was not position-independent: each program was built to load into and run from a particular address. Those early computers did not have an operating system and were not multitasking-capable. Programs were loaded into main storage (or even stored on magnetic drum for execution directly from there) and run one at a time. In such an operational context, position-independent code was not necessary.
+Even on  base and bounds systems such as the CDC 6600, the GE 625 and the UNIVAC 1107, once the OS loaded code into a job's storage, it could only run from the relative address at which it was loaded.
+Burroughs introduced a segmented system, the B5000 (1961), in which programs addressed segments indirectly via control words on the stack or in the program reference table (PRT); a shared segment could be addressed via different PRT locations in different processes. Similarly, on the later B6500, all segment references were via positions in a stack frame.
+The IBM System/360 (7 April 1964) was designed with truncated addressing  similar to that of the UNIVAC III, with code position independence in mind. In truncated addressing, memory addresses are calculated from a base register and an offset. At the beginning of a program, the programmer must establish addressability by loading a base register; normally, the programmer also informs the assembler with a USING pseudo-op. The programmer can load the base register from a register known to contain the entry point address, typically R15, or can use the BALR (Branch And Link, Register form) instruction (with a R2 Value of 0) to store the next sequential instruction's address into the base register, which was then coded explicitly or implicitly in each instruction that referred to a storage location within the program. Multiple base registers could be used, for code or for data. Such instructions require less memory because they do not have to hold a full 24, 31, 32, or 64 bit address (4 or 8 bytes), but instead a base register number (encoded in 4 bits) and a 12–bit address offset (encoded in 12 bits), requiring only two bytes.
+This programming technique is standard on IBM S/360 type systems. It has been in use through to today's IBM System/z. When coding in assembly language, the programmer has to establish addressability for the program as described above and also use other base registers for dynamically allocated storage. Compilers automatically take care of this kind of addressing.
+IBM's early operating system DOS/360 (1966) was not using virtual storage (since the early models of System S/360 did not support it), but it did have the ability to place programs to an arbitrary (or automatically chosen) storage location during loading via the PHASE name,* JCL (Job Control Language) statement.
+So, on S/360 systems without virtual storage, a program could be loaded at any storage location, but this required a contiguous memory area large enough to hold that program. Sometimes memory fragmentation would occur from loading and unloading differently sized modules. Virtual storage - by design - does not have that limitation.
+While DOS/360 and OS/360 did not support PIC, transient SVC routines in OS/360 could not contain relocatable address constants and could run in any of the transient areas without relocation.
+IBM first introduced virtual storage on IBM System/360 model 67 in (1965) to support IBM's first multi-tasking operating and time-sharing operating system TSS/360. Later versions of DOS/360 (DOS/VS etc.) and later IBM operating systems all utilized virtual storage. Truncated addressing remained as part of the base architecture, and still advantageous when multiple modules must be loaded into the same virtual address space.
+By way of comparison, on early segmented systems such as Burroughs MCP on the Burroughs B5000 (1961) and Multics (1964), and on paging systems such as IBM TSS/360 (1967), code was also inherently position-independent, since subroutine virtual addresses in a program were located in private data external to the code, e.g., program reference table, linkage segment, prototype section.
+The invention of dynamic address translation (the function provided by an MMU) originally reduced the need for position-independent code because every process could have its own independent address space (range of addresses).  
+However, multiple simultaneous jobs using the same code created a waste of physical memory. If two jobs run entirely identical programs, dynamic address translation provides a solution by allowing the system simply to map two different jobs' address 32K to the same bytes of real memory, containing the single copy of the program.
+Different programs may share common code. For example, the payroll program and the accounts receivable program may both contain an identical sort subroutine. A shared module (a shared library is a form of shared module) gets loaded once and mapped into the two address spaces.
+
+
+== SunOS 4.x and ELF ==
+Procedure calls inside a shared library are typically made through small procedure linkage table (PLT) stubs, which then call the definitive function. This notably allows a shared library to inherit certain function calls from previously loaded libraries rather than using its own versions.
+Data references from position-independent code are usually made indirectly, through Global Offset Tables (GOTs), which store the addresses of all accessed global variables. There is one GOT per compilation unit or object module, and it is located at a fixed offset from the code (although this offset is not known until the library is linked). When a linker links modules to create a shared library, it merges the GOTs and sets the final offsets in code. It is not necessary to adjust the offsets when loading the shared library later.
+Position-independent code that accesses global data does so by fetching the address for the global variable from its entry in the GOT. As the GOT is at a fixed offset from the code, the offset between the address of a given instruction in the code and the address of a GOT entry for a given global variable is also fixed, so that the offset does not need to be changed depending on the address at which the position-independent code is loaded. An instruction that fetches the GOT entry for a global variable would use an addressing mode that contains an offset relative to some instruction in the code; this might be a PC-relative addressing mode if the instruction set architecture supports it, or a register-relative addressing mode, with functions loading that register with the address of an instruction in the function prologue.
+
+
+== Windows DLLs ==
+
+Dynamic-link libraries (DLLs) in Microsoft Windows use variant E8 of the CALL instruction (Call near, relative, displacement relative to next instruction). These instructions do not need modification when the DLL is loaded.
+Some global variables (e.g. arrays of string literals, virtual function tables) are expected to contain an address of an object in data section respectively in code section of the dynamic library; therefore, the stored address in the global variable must be updated to reflect the address where the DLL was loaded to. The dynamic loader calculates the address referred to by a global variable and stores the value in such global variable; this triggers copy-on-write of a memory page containing such global variable. Pages with code and pages with global variables that do not contain pointers to code or global data remain shared between processes. This operation must be done in any OS that can load a dynamic library at arbitrary address.
+In Windows Vista and later versions of Windows, the relocation of DLLs and executables is done by the kernel memory manager, which shares the relocated binaries across multiple processes. Images are always relocated from their preferred base addresses, achieving address space layout randomization (ASLR).
+Versions of Windows prior to Vista require that system DLLs be prelinked at non-conflicting fixed addresses at the link time in order to avoid runtime relocation of images. Runtime relocation in these older versions of Windows is performed by the DLL loader within the context of each process, and the resulting relocated portions of each image can no longer be shared between processes.
+The handling of DLLs in Windows differs from the earlier OS/2 procedure it derives from. OS/2 presents a third alternative and attempts to load DLLs that are not position-independent into a dedicated "shared arena" in memory, and maps them once they are loaded.  All users of the DLL are able to use the same in-memory copy.
+
+
+== Multics ==
+In Multics each procedure conceptually has a code segment and a linkage segment.
+ The code segment contains only code and the linkage section serves as a template for a new linkage segment. Pointer register 4 (PR4) points to the linkage segment of the procedure. A call to a procedure saves PR4 in the stack before loading it with a pointer to the callee's linkage segment. The procedure call uses an indirect pointer pair with a flag to cause a trap on the first call so that the dynamic linkage mechanism can add the new procedure and its linkage segment to the Known Segment Table (KST), construct a new linkage segment, put their segment numbers in the caller's linkage section and reset the flag in the indirect pointer pair.
+
+
+== TSS ==
+In IBM S/360 Time Sharing System (TSS/360 and TSS/370) each procedure may have a read-only public CSECT and a writable private Prototype Section (PSECT). A caller loads a V-constant for the routine into General Register 15 (GR15) and copies an R-constant for the routine's PSECT into the 19th word of the save area pointed to be GR13.
+The Dynamic Loader does not load program pages or resolve address constants until the first page fault.
+
+
+== Position-independent executables ==
+
+Position-independent executables (PIE) are executable binaries made entirely from position-independent code. While some systems only run PIC executables, there are other reasons they are used. PIE binaries are used in some security-focused Linux distributions to allow PaX or Exec Shield to use address space layout randomization (ASLR) to prevent attackers from knowing where existing executable code is during a security attack using exploits that rely on knowing the offset of the executable code in the binary, such as return-to-libc attacks. (The official Linux kernel since 2.6.12 of 2005 has a weaker ASLR that also works with PIE. It is weak in that randomness is applied to whole ELF file units.)
+Apple's macOS and iOS fully support PIE executables as of versions 10.7 and 4.3, respectively; a warning is issued when non-PIE iOS executables are submitted for approval to Apple's App Store but there's no hard requirement yet  and non-PIE applications are not rejected.
+OpenBSD has PIE enabled by default on most architectures since OpenBSD 5.3, released on 1 May 2013.  Support for PIE in statically linked binaries, such as the executables in /bin and /sbin directories, was added near the end of 2014. openSUSE added PIE as a default in 2015–02. Beginning with Fedora 23, Fedora maintainers decided to build packages with PIE enabled as the default. Ubuntu 17.10 has PIE enabled by default across all architectures. Gentoo's new profiles now support PIE by default. Around July 2017, Debian enabled PIE by default.
+Android enabled support for PIEs in Jelly Bean and removed non-PIE linker support in Lollipop.
+
+
+== See also ==
+
+Dynamic linker
+Object file
+Code segment
+
+
+== Notes ==
+
+
+== References ==
+
+"7.9.5. Linux Position-Independent Code". Nios II Processor Reference Guide. Intel.
+"Position-Independent Code". Linker and Libraries Guide. Oracle.
+
+
+== External links ==
+Introduction to Position Independent Code
+Position Independent Code internals
+Programming in Assembly Language with PIC
+The Curious Case of Position Independent Executables

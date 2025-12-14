@@ -1,0 +1,136 @@
+In data management and data warehousing, a slowly changing dimension (SCD) is a dimension that stores data which, while generally stable, may change over time, often in an unpredictable manner. This contrasts with a rapidly changing dimension, such as transactional parameters like customer ID, product ID, quantity, and price, which undergo frequent updates. Common examples of SCDs include geographical locations, customer details, or product attributes.
+Various methodologies address the complexities of SCD management. Ralph Kimball's Data Warehouse Toolkit has popularized a categorization of techniques for handling SCD attributes as Types 1 through 6. These range from simple overwrites (Type 1), to creating new rows for each change (Type 2), adding new attributes (Type 3), maintaining separate history tables (Type 4), or employing hybrid approaches (Type 6 and 7). Type 0 is available to model an attribute as not really changing at all. Each type offers a trade-off between historical accuracy, data complexity, and system performance, catering to different analytical and reporting needs. 
+The challenge with SCDs lies in preserving historical accuracy while maintaining data integrity and referential integrity. For instance, a fact table tracking sales might be linked to a dimension table containing information about salespeople and their assigned regional offices. If a salesperson is transferred to a new office, historical sales reports need to reflect their previous assignment without breaking the relationships between the fact and dimension tables. SCDs provide mechanisms to manage such changes effectively.
+
+
+== Type 0: retain original ==
+The Type 0 dimension attributes never change and are assigned to attributes that have durable values or are described as 'Original'. Examples: Date of Birth, Original Credit Score. Type 0 applies to most date dimension attributes.
+
+
+== Type 1: overwrite ==
+This method overwrites old with new data, and therefore does not track historical data.
+Example of a supplier table:
+
+In the above example, Supplier_Code is the natural key and Supplier_Key is a surrogate key. Technically, the surrogate key is not necessary, since the row will be unique by the natural key (Supplier_Code).
+If the supplier relocates the headquarters to Illinois the record would be overwritten:
+
+The disadvantage of the Type 1 method is that there is no history in the data warehouse. It has the advantage however that it's easy to maintain.
+If one has calculated an aggregate table summarizing facts by supplier state, it will need to be recalculated when the Supplier_State is changed.
+
+
+== Type 2: add new row ==
+This method tracks historical data by creating multiple records for a given natural key in the dimensional tables with separate surrogate keys and/or different version numbers.  Unlimited history is preserved for each insert.  The natural key in these examples is the "Supplier_Code" of "ABC".
+For example, if the supplier relocates to Illinois the version numbers will be incremented sequentially:
+
+Another method is to add 'effective date' columns.
+
+The Start date/time of the second row is equal to the End date/time (or next) of the previous row. The null End_Date in row two indicates the current tuple version. A standardized surrogate high date (e.g. 9999-12-31) may instead be used as an end date so that null-value substitution is not required when querying. In some database software, using an artificial high date value could cause performance issues, that using a null value would prevent. 
+And a third method uses an effective date and a current flag.
+
+The Current_Flag value of 'Y' indicates the current tuple version.
+Transactions that reference a particular surrogate key (Supplier_Key) are then permanently bound to the time slices defined by that row of the slowly changing dimension table. An aggregate table summarizing facts by supplier state continues to reflect the historical state, i.e. the state the supplier was in at the time of the transaction; no update is needed. To reference the entity via the natural key, it is necessary to remove the unique constraint making referential integrity by DBMS (DataBase Management System) impossible.
+If there are retroactive changes made to the contents of the dimension, or if new attributes are added to the dimension (for example a Sales_Rep column) which have different effective dates from those already defined, then this can result in the existing transactions needing to be updated to reflect the new situation. This can be an expensive database operation, so Type 2 SCDs are not a good choice if the dimensional model is subject to frequent change.
+
+
+== Type 3: add new attribute ==
+This method tracks changes using separate columns and preserves limited history.  The Type 3 preserves limited history as it is limited to the number of columns designated for storing historical data.  The original table structure in Type 1 and Type 2 is the same but Type 3 adds additional columns. In the following example, an additional column has been added to the table to record the supplier's original state - only the previous history is stored.
+
+This record contains a column for the original state and current state—cannot track the changes if the supplier relocates a second time.
+One variation of this is to create the field Previous_Supplier_State instead of Original_Supplier_State which would track only the most recent historical change.
+
+
+== Type 4: add history table ==
+The Type 4 method is usually referred to as using "history tables", where one table keeps the current data, and an additional table is used to keep a record of some or all changes. Both the surrogate keys are referenced in the fact table to enhance query performance.
+For the example below, the original table name is Supplier and the history table is Supplier_History:
+
+This method resembles how database audit tables and change data capture techniques function.
+
+
+== Type 5 ==
+The type 5 technique builds on the type 4 mini-dimension by embedding a “current profile” mini-dimension key in the base dimension that's overwritten as a type 1 attribute. This approach is called type 5 because 4 + 1 equals 5. The type 5 slowly changing dimension allows the currently-assigned mini-dimension attribute values to be accessed along with the base dimension's others without linking through a fact table. Logically, we typically represent the base dimension and current mini-dimension profile outrigger as a single table in the presentation layer. The outrigger attributes should have distinct column names, like “Current Income Level,” to differentiate them from attributes in the mini-dimension linked to the fact table. The ETL team must update/overwrite the type 1 mini-dimension reference whenever the current mini-dimension changes over time. If the outrigger approach does not deliver satisfactory query performance, then the mini-dimension attributes could be physically embedded (and updated) in the base dimension.
+
+
+== Type 6: combined approach ==
+The Type 6 method combines the approaches of types 1, 2 and 3 (1 + 2 + 3 = 6). One possible explanation of the origin of the term was that it was coined by Ralph Kimball during a conversation with Stephen Pace from Kalido. Ralph Kimball calls this method "Unpredictable Changes with Single-Version Overlay" in The Data Warehouse Toolkit.
+The Supplier table starts out with one record for our example supplier:
+
+The Current_State and the Historical_State are the same. The optional Current_Flag attribute indicates that this is the current or most recent record for this supplier.
+When Acme Supply Company moves to Illinois, we add a new record, as in Type 2 processing, however a row key is included to ensure we have a unique key for each row:
+
+We overwrite the Current_State information in the first record (Row_Key = 1) with the new information, as in Type 1 processing. We create a new record to track the changes, as in Type 2 processing. And we store the history in a second State column (Historical_State), which incorporates Type 3 processing.
+For example, if the supplier were to relocate again, we would add another record to the Supplier dimension, and we would overwrite the contents of the Current_State column:
+
+
+== Type 2 / type 6 fact implementation ==
+
+
+=== Type 2 surrogate key with type 3 attribute ===
+In many Type 2 and Type 6 SCD implementations, the surrogate key from the dimension is put into the fact table in place of the natural key when the fact data is loaded into the data repository. The surrogate key is selected for a given fact record based on its effective date and the Start_Date and End_Date from the dimension table. This allows the fact data to be easily joined to the correct dimension data for the corresponding effective date.
+Here is the Supplier table as we created it above using Type 6 Hybrid methodology:
+
+Once the Delivery table contains the correct Supplier_Key, it can easily be joined to the Supplier table using that key. The following SQL retrieves, for each fact record, the current supplier state and the state the supplier was located in at the time of the delivery:
+
+
+=== Pure type 6 implementation ===
+Having a Type 2 surrogate key for each time slice can cause problems if the dimension is subject to change. A pure Type 6 implementation does not use this, but uses a surrogate key for each master data item (e.g. each unique supplier has a single surrogate key). This avoids any changes in the master data having an impact on the existing transaction data. It also allows more options when querying the transactions.
+Here is the Supplier table using the pure Type 6 methodology:
+
+The following example shows how the query must be extended to ensure a single supplier record is retrieved for each transaction.
+
+A fact record with an effective date (Delivery_Date) of August 9, 2001 will be linked to Supplier_Code of ABC, with a Supplier_State of 'CA'. A fact record with an effective date of October 11, 2007 will also be linked to the same Supplier_Code ABC, but with a Supplier_State of 'IL'.
+While more complex, there are a number of advantages of this approach, including:
+
+Referential integrity by DBMS is now possible, but one cannot use Supplier_Code as foreign key on Product table and using Supplier_Key as foreign key each product is tied on specific time slice.
+If there is more than one date on the fact (e.g. Order_Date, Delivery_Date, Invoice_Payment_Date) one can choose which date to use for a query.
+You can do "as at now", "as at transaction time" or "as at a point in time" queries by changing the date filter logic.
+You don't need to reprocess the fact table if there is a change in the dimension table (e.g. adding additional fields retrospectively which change the time slices, or if one makes a mistake in the dates on the dimension table one can correct them easily).
+You can introduce bi-temporal dates in the dimension table.
+You can join the fact to the multiple versions of the dimension table to allow reporting of the same information with different effective dates, in the same query.
+The following example shows how a specific date such as '2012-01-01T00:00:00' (which could be the current datetime) can be used.
+
+
+== Type 7: Hybrid - Both surrogate and natural key ==
+An alternative implementation is to place both the surrogate key and the natural key into the fact table. This allows the user to select the appropriate dimension records based on:
+
+the primary effective date on the fact record (above),
+the most recent or current information,
+any other date associated with the fact record.
+This method allows more flexible links to the dimension, even if one has used the Type 2 approach instead of Type 6.
+Here is the Supplier table as we might have created it using Type 2 methodology:
+
+To get current records:
+
+To get history records:
+
+To get history records based on a specific date (if more than one date exists in the fact table):
+
+Some cautions:
+
+Referential integrity by DBMS is not possible since there is not a unique key to create the relationship.
+If relationship is made with surrogate to solve problem above then one ends with entity tied to a specific time slice.
+If the join query is not written correctly, it may return duplicate rows and/or give incorrect answers.
+The date comparison might not perform well.
+Some business intelligence tools do not handle generating complex joins well.
+The ETL processes needed to create the dimension table needs to be carefully designed to ensure that there are no overlaps in the time periods for each distinct item of reference data.
+
+
+== Combining types ==
+
+Different SCD Types can be applied to different columns of a table. For example, we can apply Type 1 to the Supplier_Name column and Type 2 to the Supplier_State column of the same table.
+
+
+== See also ==
+Change data capture
+Temporal database
+Log trigger
+Entity–attribute–value model
+Multitenancy
+Operational planning
+Business process management
+Data element
+
+
+== References ==
+
+
+== Bibliography ==

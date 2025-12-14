@@ -1,0 +1,42 @@
+New API (also referred to as NAPI) is an interface to use interrupt mitigation techniques for networking devices in the Linux kernel. Such an approach is intended to reduce the overhead of packet receiving. The idea is to defer incoming message handling until there is a sufficient amount of them so that it is worth handling them all at once.
+
+
+== Motivation ==
+A straightforward method of implementing a network driver is to interrupt the kernel by issuing an interrupt request (IRQ) for each and every incoming packet.  However, servicing IRQs is costly in terms of processor resources and time.  Therefore, the straightforward implementation can be very inefficient in high-speed networks, constantly interrupting the kernel with the thousands of packets per second.  Overall performance of the system as well as network throughput can suffer as a result.
+Polling is an alternative to interrupt-based processing.  The kernel can periodically check for the arrival of incoming network packets without being interrupted, which eliminates the overhead of interrupt processing.  Establishing an optimal polling frequency is important, however.  Too frequent polling wastes CPU resources by repeatedly checking for incoming packets that have not yet arrived.  On the other hand, polling too infrequently introduces latency by reducing system reactivity to incoming packets, and it may result in the loss of packets if the incoming packet buffer fills up before being processed.
+As a compromise, the Linux kernel uses the interrupt-driven mode by default and only switches to polling mode when the flow of incoming packets exceeds a certain threshold, known as the "weight" of the network interface.
+
+
+== Compliant drivers ==
+A driver using the NAPI interface will work as follow:
+
+Packet receive interrupts are disabled.
+The driver provides a poll method to the kernel. That method will fetch all incoming packets available, on the network card or a DMA ring, so that they will then be handled by the kernel.
+When allowed to, the kernel calls the device poll method to possibly handle many packets at once.
+
+
+== Advantages ==
+The load induced by interrupts is reduced even though the kernel has to poll.
+Packets are less likely to be re-ordered, while out of order packet handling might be a bottleneck otherwise. 
+In case the kernel is unable to handle all incoming packets, the kernel does not have to do any work in order to drop them: they are simply overwritten in the network card's incoming ring buffer. Without NAPI, the kernel has to handle every incoming packet regardless of whether there is time to service it, which leads to thrashing.
+
+
+== History ==
+NAPI was an over-three-year effort by Alexey Kuznetsov, Jamal Hadi Salim and Robert Olsson.  Initial effort to include NAPI was met with resistance by some members of the community, however David Miller worked hard to ensure NAPI's inclusion.
+A lot of real world testing was done in the Uppsala university network before inclusion. In fact, www.slu.se was the first production NAPI-based OS and is still powered to this day by NAPI-based Bifrost/Linux routers. The pktgen traffic generator was also born around this time.  Pktgen was extensively used to test NAPI scenarios not induced by real world traffic.
+
+
+== References ==
+
+
+== Further reading ==
+Jamal Hadi Salim; Robert Olsson; Alexey Kuznetsov (2001-11-10). Beyond softnet (PDF). 5th Annual Linux Showcase & Conference (ALS '01). pp. 165–172. Retrieved 2011-03-06. The classical NAPI paper.
+Jonathan Corbet (2003-04-28). "Driver porting: Network drivers". LWN.net. Retrieved 2011-03-06.
+Jonathan Corbet (2006-12-18). "Reworking NAPI". LWN.net. Retrieved 2011-03-06.
+Jonathan Corbet; Alessandro Rubini; Greg Kroah-Hartman (February 2005). "Chapter 17: Networking drivers" (PDF). Linux Device Drivers (3rd ed.). O'Reilly Media. ISBN 978-0-596-00590-0. Retrieved 2011-03-06.
+
+
+== External links ==
+Early NAPI work
+NAPI description on  Linux Foundation Archived 2016-06-11 at the Wayback Machine
+Network overview, November 19, 2009, The Linux Foundation, by Rami Rosen (archived from the original on October 30, 2011)

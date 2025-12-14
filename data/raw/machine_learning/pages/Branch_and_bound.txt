@@ -1,0 +1,600 @@
+Branch-and-bound (BB, B&B, or BnB)  is a method for solving optimization problems by breaking them down into smaller subproblems and using a bounding function to eliminate subproblems that cannot contain the optimal solution. 
+It is an algorithm design paradigm for discrete and combinatorial optimization problems, as well as mathematical optimization. A branch-and-bound algorithm consists of a systematic enumeration of candidate solutions by means of state-space search: the set of candidate solutions is thought of as forming a rooted tree with the full set at the root. 
+The algorithm explores branches of this tree, which represent subsets of the solution set. Before enumerating the candidate solutions of a branch, the branch is checked against upper and lower estimated bounds on the optimal solution, and is discarded if it cannot produce a better solution than the best one found so far by the algorithm.
+The algorithm depends on efficient estimation of the lower and upper bounds of regions/branches of the search space. If no bounds are available, then the algorithm degenerates to an exhaustive search.
+The method was first proposed by Ailsa Land and Alison Doig whilst carrying out research at the London School of Economics sponsored by British Petroleum in 1960 for discrete programming, and has become the most commonly used tool for solving NP-hard optimization problems. The name "branch and bound" first occurred in the work of Little et al. on the traveling salesman problem.
+
+
+== Overview ==
+The goal of a branch-and-bound algorithm is to find a value x that maximizes or minimizes the value of a real-valued function f(x), called an objective function, among some set S of admissible or candidate solutions. The set S is called the search space, or feasible region. The rest of this section assumes that minimization of f(x) is desired; this assumption comes without loss of generality, since one can find the maximum value of f(x) by finding the minimum of g(x) = −f(x). A B&B algorithm operates according to two principles:
+
+It recursively splits the search space into smaller spaces, then minimizes f(x) on these smaller spaces; the splitting is called branching.
+Branching alone would amount to brute-force enumeration of candidate solutions and testing them all. To improve on the performance of brute-force search, a B&B algorithm keeps track of bounds on the minimum that it is trying to find, and uses these bounds to "prune" the search space, eliminating candidate solutions that it can prove will not contain an optimal solution.
+Turning these principles into a concrete algorithm for a specific optimization problem requires some kind of data structure that represents sets of candidate solutions. Such a representation is called an instance of the problem. Denote the set of candidate solutions of an instance I by SI. The instance representation has to come with three operations:
+
+branch(I) produces two or more instances that each represent a subset of SI. (Typically, the subsets are disjoint to prevent the algorithm from visiting the same candidate solution twice, but this is not required. However, an optimal solution among SI must be contained in at least one of the subsets.)
+bound(I) computes a lower bound on the value of any candidate solution in the space represented by I, that is, bound(I) ≤ f(x) for all x in SI.
+solution(I) determines whether I represents a single candidate solution. (Optionally, if it does not, then the operation may choose to return some feasible solution from among SI.) If solution(I) returns a solution, then f(solution(I)) provides an upper bound for the optimal objective value over the whole space of feasible solutions.
+Using these operations, a B&B algorithm performs a top-down recursive search through the tree of instances formed by the branch operation. Upon visiting an instance I, it checks whether bound(I) is equal to or greater than the current upper bound; if so, I may be safely discarded from the search and the recursion stops. This pruning step is usually implemented by maintaining a global variable that records the minimum upper bound seen among all instances examined so far.
+
+
+=== Generic version ===
+The following is the skeleton of a generic branch-and-bound algorithm for minimizing an arbitrary objective function f. To obtain an actual algorithm from this, one requires a bounding function bound, that computes lower bounds of f on nodes of the search tree, as well as a problem-specific branching rule. As such, the generic algorithm presented here is a higher-order function.
+
+Using a heuristic, find a solution xh to the optimization problem. Store its value, B = f(xh). (If no heuristic is available, set B to infinity.) B will denote the best solution found so far, and will be used as an upper bound on candidate solutions.
+Initialize a queue to hold a partial solution with none of the variables of the problem assigned.
+Loop until the queue is empty:
+Take a node N off the queue.
+If N represents a single candidate solution x and f(x) < B, then x is the best solution so far. Record it and set B ← f(x).
+Else, branch on N to produce new nodes Ni. For each of these:
+If bound(Ni) > B, do nothing; since the lower bound on this node is greater than the upper bound of the problem, it will never lead to the optimal solution, and can be discarded.
+Else, store Ni on the queue.
+Several different queue data structures can be used. This FIFO-queue-based implementation yields a breadth-first search. A stack (LIFO queue) will yield a depth-first algorithm. A best-first branch-and-bound algorithm can be obtained by using a priority queue that sorts nodes on their lower bounds. 
+Examples of best-first search algorithms with this premise are Dijkstra's algorithm and its descendant A* search. The depth-first variant is recommended when no good heuristic is available for producing an initial solution, because it quickly produces full solutions, and therefore upper bounds.
+
+
+==== Pseudocode ====
+A C++-like pseudocode implementation of the above is:
+
+In the above pseudocode, the functions heuristic_solve and populate_candidates called as subroutines must be provided as applicable to the problem. The functions f (objective_function) and bound (lower_bound_function) are treated as function objects as written, and could correspond to lambda expressions, function pointers, and other types of callable objects in the C++ programming language.
+
+
+=== Improvements ===
+When 
+  
+    
+      
+        
+          x
+        
+      
+    
+    {\displaystyle \mathbf {x} }
+  
+ is a vector of 
+  
+    
+      
+        
+          
+            R
+          
+          
+            n
+          
+        
+      
+    
+    {\displaystyle \mathbb {R} ^{n}}
+  
+, branch-and-bound algorithms can be combined with interval analysis and contractor techniques to provide guaranteed enclosures of the global minimum.
+
+
+== Applications ==
+
+This approach is used for a number of NP-hard problems:
+
+Integer programming
+Nonlinear programming
+Travelling salesman problem (TSP)
+Quadratic assignment problem (QAP)
+Maximum satisfiability problem (MAX-SAT)
+Nearest neighbor search (by Keinosuke Fukunaga)
+Flow shop scheduling
+Cutting stock problem
+Computational phylogenetics
+Set inversion
+Parameter estimation
+0/1 knapsack problem
+Set cover problem
+Feature selection in machine learning
+Structured prediction in computer vision
+Arc routing problem, including the Chinese Postman problem
+Talent Scheduling, scenes-shooting arrangement problem
+Branch-and-bound may also be a base of various heuristics. For example, one may wish to stop branching when the gap between the upper and lower bounds becomes smaller than a certain threshold. This is used when the solution is "good enough for practical purposes" and can greatly reduce the computations required. This type of solution is particularly applicable when the cost function used is noisy or is the result of statistical estimates and so is not known precisely but rather only known to lie within a range of values with a specific probability.
+
+
+== Relation to other algorithms ==
+Nau et al. present a generalization of branch and bound that also subsumes the A*, B* and alpha-beta search algorithms.
+
+
+== Optimization example ==
+Branch-and-bound can be used maximize 
+  
+    
+      
+        Z
+        =
+        5
+        
+          x
+          
+            1
+          
+        
+        +
+        6
+        
+          x
+          
+            2
+          
+        
+      
+    
+    {\displaystyle Z=5x_{1}+6x_{2}}
+  
+ with the constraints
+  
+    
+      
+        
+          x
+          
+            1
+          
+        
+        +
+        
+          x
+          
+            2
+          
+        
+        ≤
+        50
+      
+    
+    {\displaystyle x_{1}+x_{2}\leq 50}
+  
+
+  
+    
+      
+        4
+        
+          x
+          
+            1
+          
+        
+        +
+        7
+        
+          x
+          
+            2
+          
+        
+        ≤
+        280
+      
+    
+    {\displaystyle 4x_{1}+7x_{2}\leq 280}
+  
+
+  
+    
+      
+        
+          x
+          
+            1
+          
+        
+        ,
+        
+          x
+          
+            2
+          
+        
+        ≥
+        0
+      
+    
+    {\displaystyle x_{1},x_{2}\geq 0}
+  
+
+  
+    
+      
+        
+          x
+          
+            1
+          
+        
+      
+    
+    {\displaystyle x_{1}}
+  
+ and 
+  
+    
+      
+        
+          x
+          
+            2
+          
+        
+      
+    
+    {\displaystyle x_{2}}
+  
+ are integers. The first step is to relax the integer constraint. We have two extreme points for the first equation that form a line: 
+  
+    
+      
+        
+          
+            [
+            
+              
+                
+                  
+                    x
+                    
+                      1
+                    
+                  
+                
+              
+              
+                
+                  
+                    x
+                    
+                      2
+                    
+                  
+                
+              
+            
+            ]
+          
+        
+        =
+        
+          
+            [
+            
+              
+                
+                  50
+                
+              
+              
+                
+                  0
+                
+              
+            
+            ]
+          
+        
+      
+    
+    {\displaystyle {\begin{bmatrix}x_{1}\\x_{2}\end{bmatrix}}={\begin{bmatrix}50\\0\end{bmatrix}}}
+  
+ and 
+  
+    
+      
+        
+          
+            [
+            
+              
+                
+                  0
+                
+              
+              
+                
+                  50
+                
+              
+            
+            ]
+          
+        
+      
+    
+    {\displaystyle {\begin{bmatrix}0\\50\end{bmatrix}}}
+  
+. We can form the second line with the vector points 
+  
+    
+      
+        
+          
+            [
+            
+              
+                
+                  0
+                
+              
+              
+                
+                  40
+                
+              
+            
+            ]
+          
+        
+      
+    
+    {\displaystyle {\begin{bmatrix}0\\40\end{bmatrix}}}
+  
+ and 
+  
+    
+      
+        
+          
+            [
+            
+              
+                
+                  70
+                
+              
+              
+                
+                  0
+                
+              
+            
+            ]
+          
+        
+      
+    
+    {\displaystyle {\begin{bmatrix}70\\0\end{bmatrix}}}
+  
+. 
+
+The third point is 
+  
+    
+      
+        
+          
+            [
+            
+              
+                
+                  0
+                
+              
+              
+                
+                  0
+                
+              
+            
+            ]
+          
+        
+      
+    
+    {\displaystyle {\begin{bmatrix}0\\0\end{bmatrix}}}
+  
+. This is a convex hull region, so the solution lies on one of the vertices of the region. We can find the intersection using row reduction, which is 
+  
+    
+      
+        
+          
+            [
+            
+              
+                
+                  70
+                  
+                    /
+                  
+                  3
+                
+              
+              
+                
+                  80
+                  
+                    /
+                  
+                  3
+                
+              
+            
+            ]
+          
+        
+      
+    
+    {\displaystyle {\begin{bmatrix}70/3\\80/3\end{bmatrix}}}
+  
+ with a value of 276 + 2/3. We test the other endpoints by sweeping the line over the region and find this is the maximum over the reals.  
+We choose the variable with the maximum fractional part, in this case 
+  
+    
+      
+        
+          x
+          
+            2
+          
+        
+      
+    
+    {\displaystyle x_{2}}
+  
+ becomes the parameter for the branch and bound method. We branch to 
+  
+    
+      
+        
+          x
+          
+            2
+          
+        
+        ≤
+        26
+      
+    
+    {\displaystyle x_{2}\leq 26}
+  
+ and obtain 276 at 
+  
+    
+      
+        ⟨
+        24
+        ,
+        26
+        ⟩
+      
+    
+    {\displaystyle \langle 24,26\rangle }
+  
+. We have reached an integer solution so we move to the other branch 
+  
+    
+      
+        
+          x
+          
+            2
+          
+        
+        ≥
+        27
+      
+    
+    {\displaystyle x_{2}\geq 27}
+  
+. We obtain 275.75 at 
+  
+    
+      
+        ⟨
+        22.75
+        ,
+        27
+        ⟩
+      
+    
+    {\displaystyle \langle 22.75,27\rangle }
+  
+. We have a decimal, so we branch 
+  
+    
+      
+        
+          x
+          
+            1
+          
+        
+      
+    
+    {\displaystyle x_{1}}
+  
+ to 
+  
+    
+      
+        
+          x
+          
+            1
+          
+        
+        ≤
+        22
+      
+    
+    {\displaystyle x_{1}\leq 22}
+  
+ and we find 274.571 at 
+  
+    
+      
+        ⟨
+        22
+        ,
+        27.4286
+        ⟩
+      
+    
+    {\displaystyle \langle 22,27.4286\rangle }
+  
+. We try the other branch 
+  
+    
+      
+        
+          x
+          
+            1
+          
+        
+        ≥
+        23
+      
+    
+    {\displaystyle x_{1}\geq 23}
+  
+ and there are no feasible solutions. Therefore, the maximum is 276 with 
+  
+    
+      
+        
+          x
+          
+            1
+          
+        
+        =
+        24
+      
+    
+    {\displaystyle x_{1}=24}
+  
+ and 
+  
+    
+      
+        
+          x
+          
+            2
+          
+        
+        =
+        26
+      
+    
+    {\displaystyle x_{2}=26}
+  
+.
+
+
+== See also ==
+Backtracking
+Branch-and-cut, a hybrid between branch-and-bound and the cutting plane methods that is used extensively for solving integer linear programs.
+Evolutionary algorithm
+Alpha–beta pruning
+
+
+== References ==
+
+
+== External links ==
+LiPS – Free easy-to-use GUI program intended for solving linear, integer and goal programming problems.
+Cbc – (Coin-or branch and cut) is an open-source mixed integer programming solver written in C++.

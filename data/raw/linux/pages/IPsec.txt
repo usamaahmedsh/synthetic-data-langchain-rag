@@ -1,0 +1,250 @@
+In computing, Internet Protocol Security (IPsec) is a secure network protocol suite that authenticates and encrypts packets of data to provide secure encrypted communication between two computers over an Internet Protocol network. It is used in virtual private networks (VPNs).
+IPsec includes protocols for establishing mutual authentication between agents at the beginning of a session and negotiation of cryptographic keys to use during the session. IPsec can protect data flows between a pair of hosts (host-to-host), between a pair of security gateways (network-to-network), or between a security gateway and a host (network-to-host).
+IPsec uses cryptographic security services to protect communications over Internet Protocol (IP) networks. It supports network-level peer authentication, data origin authentication, data integrity, data confidentiality (encryption), and protection from replay attacks.
+The protocol was designed by a committee instead of being designed via a competition. Some experts criticized it, stating that it is complex and with a lot of options, which has a devastating effect on a security standard. There is alleged interference of the NSA to weaken its security features.
+
+
+== History ==
+Starting in the early 1970s, the Advanced Research Projects Agency sponsored a series of experimental ARPANET encryption devices, at first for native ARPANET packet encryption and subsequently for TCP/IP packet encryption; some of these were certified and fielded. From 1986 to 1991, the NSA sponsored the development of security protocols for the Internet under its Secure Data Network Systems (SDNS) program. This brought together various vendors including Motorola who produced a network encryption device in 1988. The work was openly published from about 1988 by NIST and, of these, Security Protocol at Layer 3 (SP3) would eventually morph into the ISO standard Network Layer Security Protocol (NLSP).
+In 1992, the US Naval Research Laboratory (NRL) was funded by DARPA CSTO to implement IPv6 and to research and implement IP encryption in 4.4 BSD, supporting both SPARC and x86 CPU architectures. DARPA made its implementation freely available via MIT.  Under NRL's DARPA-funded research effort, NRL developed the IETF standards-track specifications (RFC 1825 through RFC 1827) for IPsec.  NRL's IPsec implementation was described in their paper in the 1996 USENIX Conference Proceedings.  NRL's open-source IPsec implementation was made available online by MIT and became the basis for most initial commercial implementations.
+The Internet Engineering Task Force (IETF) formed the IP Security Working Group in 1992 to standardize openly specified security extensions to IP, called IPsec. The NRL developed standards were published by the IETF as RFC 1825 through RFC 1827.
+
+
+== Security architecture ==
+The initial IPv4 suite was developed with few security provisions. As a part of the IPv4 enhancement, IPsec is a layer 3 OSI model or internet layer end-to-end security scheme. In contrast, while some other Internet security systems in widespread use operate above the network layer, such as Transport Layer Security (TLS) that operates above the transport layer and Secure Shell (SSH) that operates at the application layer, IPsec can automatically secure applications at the internet layer.
+IPsec is an open standard as a part of the IPv4 suite and uses the following protocols to perform various functions:
+
+Authentication Header (AH) provides connectionless data integrity and data origin authentication for IP datagrams and provides protection against IP header modification attacks and replay attacks.
+Encapsulating Security Payload (ESP) provides confidentiality, connectionless data integrity, data origin authentication, an anti-replay service (a form of partial sequence integrity), and limited traffic-flow confidentiality.
+Internet Security Association and Key Management Protocol (ISAKMP) provides a framework for authentication and key exchange, with actual authenticated keying material provided either by manual configuration with pre-shared keys, Internet Key Exchange (IKE and IKEv2), Kerberized Internet Negotiation of Keys (KINK), or IPSECKEY DNS records. The purpose is to generate the security associations (SA) with the bundle of algorithms and parameters necessary for AH and/or ESP operations.
+
+
+=== Authentication Header ===
+
+The Security Authentication Header (AH) was developed at the US Naval Research Laboratory in the early 1990s and is derived in part from previous IETF standards' work for authentication of the Simple Network Management Protocol (SNMP) version 2. Authentication Header (AH) is a member of the IPsec protocol suite. AH ensures connectionless integrity by using a hash function and a secret shared key in the AH algorithm. AH also guarantees the data origin by authenticating IP packets. Optionally a sequence number can protect the IPsec packet's contents against replay attacks, using the sliding window technique and discarding old packets.
+
+In IPv4, AH prevents option-insertion attacks. In IPv6, AH protects both against header insertion attacks and option insertion attacks.
+In IPv4, the AH protects the IP payload and all header fields of an IP datagram except for mutable fields (i.e. those that might be altered in transit), and also IP options such as the IP Security Option. Mutable (and therefore unauthenticated) IPv4 header fields are DSCP/ToS, ECN, Flags, Fragment Offset, TTL and Header Checksum.
+In IPv6, the AH protects most of the IPv6 base header, AH itself, non-mutable extension headers after the AH, and the IP payload. Protection for the IPv6 header excludes the mutable fields: DSCP, ECN, Flow Label, and Hop Limit.
+AH operates directly on top of IP, using IP protocol number 51.
+The following AH packet diagram shows how an AH packet is constructed and interpreted:
+
+Next Header: 8 bits
+Type of the next header, indicating what upper-layer protocol was protected. The value is taken from the list of IP protocol numbers.
+Payload Len: 8 bits
+The length of this Authentication Header in 4-octet units, minus 2. For example, an AH value of 4 equals 3×(32-bit fixed-length AH fields) + 3×(32-bit ICV fields) − 2 and thus an AH value of 4 means 24 octets. Although the size is measured in 4-octet units, the length of this header needs to be a multiple of 8 octets if carried in an IPv6 packet. This restriction does not apply to an Authentication Header carried in an IPv4 packet.
+Reserved: 16 bits
+Reserved for future use (all zeroes until then).
+Security Parameters Index: 32 bits
+Arbitrary value which is used (together with the destination IP address) to identify the security association of the receiving party.
+Sequence Number: 32 bits
+A monotonic strictly increasing sequence number (incremented by 1 for every packet sent) to prevent replay attacks. When replay detection is enabled, sequence numbers are never reused, because a new security association must be renegotiated before an attempt to increment the sequence number beyond its maximum value.
+Integrity Check Value: multiple of 32 bits
+Variable length check value.  It may contain padding to align the field to an 8-octet boundary for IPv6, or a 4-octet boundary for IPv4.
+
+
+=== Encapsulating Security Payload ===
+
+The IP Encapsulating Security Payload (ESP) was developed at the Naval Research Laboratory starting in 1992 as part of a DARPA-sponsored research project, and was openly published by IETF SIPP Working Group drafted in December 1993 as a security extension for SIPP. This ESP was originally derived from the US Department of Defense SP3D protocol, rather than being derived from the ISO Network-Layer Security Protocol (NLSP). The SP3D protocol specification was published by NIST in the late 1980s, but designed by the Secure Data Network System project of the US Department of Defense. 
+Encapsulating Security Payload (ESP) is a member of the IPsec protocol suite. It provides origin authenticity through source authentication, data integrity through hash functions and confidentiality through encryption protection for IP packets. ESP also supports encryption-only and authentication-only configurations, but using encryption without authentication is strongly discouraged because it is insecure.
+Unlike Authentication Header (AH), ESP in transport mode does not provide integrity and authentication for the entire IP packet. However, in tunnel mode, where the entire original IP packet is encapsulated with a new packet header added, ESP protection is afforded to the whole inner IP packet (including the inner header) while the outer header (including any outer IPv4 options or IPv6 extension headers) remains unprotected.
+ESP operates directly on top of IP, using IP protocol number 50.
+The following ESP packet diagram shows how an ESP packet is constructed and interpreted:
+
+Security Parameters Index (SPI): 32 bits
+Arbitrary value used (together with the destination IP address) to identify the security association of the receiving party.
+Sequence Number: 32 bits
+A monotonically increasing sequence number (incremented by 1 for every packet sent) to protect against replay attacks. There is a separate counter kept for every security association.
+Payload Data: variable
+The protected contents of the original IP packet, including any data used to protect the contents (e.g. an Initialisation Vector for the cryptographic algorithm). The type of content that was protected is indicated by the Next Header field.
+Padding: 0-255 octets
+Optional. Padding for encryption, to extend the payload data to a size that fits the encryption's cipher block size, and to align the next field.
+Pad Length: 8 bits
+Size of the padding (in octets).
+Next Header: 8 bits
+Indicates the protocol type of the Payload Data, like the value 6 for TCP. As ESP is an encapsulation protocol, a value of 4 is also possible, indicating IP in IP. A value of 41 indicates IPv6 encapsulated in IPv4, e.g. 6to4. The value 59 (meaning: No Next Header) is used for dummy packets, which may be inserted in the stream, and which contents should be discarded.
+Integrity Check Value (ICV): variable
+Variable length check value.  It may contain padding to align the field to an 8-octet boundary for IPv6, or a 4-octet boundary for IPv4.
+
+
+=== Security association ===
+
+The IPsec protocols use a security association, where the communicating parties establish shared security attributes such as algorithms and keys. As such, IPsec provides a range of options once it has been determined whether AH or ESP is used. Before exchanging data, the two hosts agree on which symmetric encryption algorithm is used to encrypt the IP packet, for example AES or ChaCha20, and which hash function is used to ensure the integrity of the data, such as BLAKE2 or SHA256. These parameters are agreed for the particular session, for which a lifetime must be agreed and a session key.
+The algorithm for authentication is also agreed before the data transfer takes place and IPsec supports a range of methods. Authentication is possible through pre-shared key, where a symmetric key is already in the possession of both hosts, and the hosts send each other hashes of the shared key to prove that they are in possession of the same key. IPsec also supports public key encryption, where each host has a public and a private key, they exchange their public keys and each host sends the other a nonce encrypted with the other host's public key. Alternatively if both hosts hold a public key certificate from a certificate authority, this can be used for IPsec authentication.
+The security associations of IPsec are established using the Internet Security Association and Key Management Protocol (ISAKMP). ISAKMP is implemented by manual configuration with pre-shared secrets, Internet Key Exchange (IKE and IKEv2), Kerberized Internet Negotiation of Keys (KINK), and the use of IPSECKEY DNS records. RFC 5386 defines Better-Than-Nothing Security (BTNS) as an unauthenticated mode of IPsec using an extended IKE protocol.  C. Meadows, C. Cremers, and others have used formal methods to identify various anomalies which exist in IKEv1 and also in IKEv2.
+In order to decide what protection is to be provided for an outgoing packet, IPsec uses the Security Parameter Index (SPI), an index to the security association database (SADB), along with the destination address in a packet header, which together uniquely identifies a security association for that packet. A similar procedure is performed for an incoming packet, where IPsec gathers decryption and verification keys from the security association database.
+For IP multicast a security association is provided for the group, and is duplicated across all authorized receivers of the group. There may be more than one security association for a group, using different SPIs, thereby allowing multiple levels and sets of security within a group. Indeed, each sender can have multiple security associations, allowing authentication, since a receiver can only know that someone knowing the keys sent the data. Note that the relevant standard does not describe how the association is chosen and duplicated across the group; it is assumed that a responsible party will have made the choice.
+
+
+== Keepalives ==
+To ensure that the connection between two endpoints has not been interrupted, endpoints exchange keepalive messages at regular intervals, which can also be used to automatically reestablish a tunnel lost due to connection interruption.
+Dead Peer Detection (DPD) is a method of detecting a dead Internet Key Exchange (IKE) peer. The method uses IPsec traffic patterns to minimize the number of messages required to confirm the availability of a peer. DPD is used to reclaim the lost resources in case a peer is found dead and it is also used to perform IKE peer failover.
+UDP keepalive is an alternative to DPD.
+
+
+== Modes of operation ==
+The IPsec protocols AH and ESP can be implemented in a host-to-host transport mode, as well as in a network tunneling mode.
+
+
+=== Transport mode ===
+In transport mode, only the payload of the IP packet is usually encrypted or authenticated. The routing is intact, since the IP header is neither modified nor encrypted; however, when the authentication header is used, the IP addresses cannot be modified by network address translation, as this always invalidates the hash value. The transport and application layers are always secured by a hash, so they cannot be modified in any way, for example by translating the port numbers.
+A means to encapsulate IPsec messages for NAT traversal (NAT-T) has been defined by RFC documents describing the NAT-T mechanism.
+
+
+=== Tunnel mode ===
+In tunnel mode, the entire IP packet is encrypted and authenticated. It is then encapsulated into a new IP packet with a new IP header. Tunnel mode is used to create virtual private networks for network-to-network communications (e.g. between routers to link sites), host-to-network communications (e.g. remote user access) and host-to-host communications (e.g. private chat).
+Tunnel mode supports NAT traversal.
+
+
+== Algorithms ==
+
+
+=== Symmetric encryption algorithms ===
+Cryptographic algorithms defined for use with IPsec include:
+
+HMAC-SHA1/SHA2 for integrity protection and authenticity.
+TripleDES-CBC for confidentiality
+AES-CBC and AES-CTR for confidentiality.
+AES-GCM and ChaCha20-Poly1305 providing confidentiality and authentication together efficiently.
+Refer to RFC 8221 for details.
+
+
+=== Key exchange algorithms ===
+Diffie–Hellman (RFC 3526)
+ECDH (RFC 4753)
+
+
+=== Authentication algorithms ===
+RSA
+ECDSA (RFC 4754)
+PSK (RFC 6617)
+EdDSA (RFC 8420)
+
+
+== Implementations ==
+The IPsec can be implemented in the IP stack of an operating system. This method of implementation is done for hosts and security gateways. Various IPsec capable IP stacks are available from companies, such as HP or IBM. An alternative is so called bump-in-the-stack (BITS) implementation, where the operating system source code does not have to be modified. Here IPsec is installed between the IP stack and the network drivers. This way operating systems can be retrofitted with IPsec. This method of implementation is also used for both hosts and gateways. However, when retrofitting IPsec the encapsulation of IP packets may cause problems for the automatic path MTU discovery, where the maximum transmission unit (MTU) size on the network path between two IP hosts is established. If a host or gateway has a separate cryptoprocessor, which is common in the military and can also be found in commercial systems, a so-called bump-in-the-wire (BITW) implementation of IPsec is possible.
+When IPsec is implemented in the kernel, the key management and ISAKMP/IKE negotiation is carried out from user space. The NRL-developed and openly specified "PF_KEY Key Management API, Version 2" is often used to enable the application-space key management application to update the IPsec security associations stored within the kernel-space IPsec implementation. Existing IPsec implementations usually include ESP, AH, and IKE version 2.  Existing IPsec implementations on Unix-like operating systems, for example, Solaris or Linux, usually include PF_KEY version 2.
+Embedded IPsec can be used to ensure the secure communication among applications running over constrained resource systems with a small overhead.
+
+
+== Standards status ==
+IPsec was developed in conjunction with IPv6 and was originally required to be supported by all standards-compliant implementations of IPv6 before RFC 6434 made it only a recommendation. IPsec is also optional for IPv4 implementations. IPsec is most commonly used to secure IPv4 traffic.
+IPsec protocols were originally defined in RFC 1825 through RFC 1829, which were published in 1995. In 1998, these documents were superseded by RFC 2401 and RFC 2412 with a few incompatible engineering details, although they were conceptually identical. In addition, a mutual authentication and key exchange protocol Internet Key Exchange (IKE) was defined to create and manage security associations. In December 2005, new standards were defined in RFC 4301 and RFC 4309 which are largely a superset of the previous editions with a second version of the Internet Key Exchange standard IKEv2. These third-generation documents standardized the abbreviation of IPsec to uppercase "IP" and lowercase "sec".  "ESP" generally refers to RFC 4303, which is the most recent version of the specification.
+Since mid-2008, an IPsec Maintenance and Extensions (ipsecme) working group is active at the IETF.
+
+
+== Alleged NSA interference ==
+In 2013, as part of  the Snowden leaks, it was revealed that the US National Security Agency had been actively working to "Insert vulnerabilities into commercial encryption systems, IT systems, networks, and endpoint communications devices used by targets" as part of the Bullrun program. There are allegations that IPsec was a targeted encryption system.
+The OpenBSD IPsec stack came later on and also was widely copied.  In a letter which OpenBSD lead developer Theo de Raadt received on 11 Dec 2010 from Gregory Perry, it is alleged that Jason Wright and others, working for the FBI, inserted "a number of backdoors and side channel key leaking mechanisms" into the OpenBSD crypto code. In the forwarded email from 2010, Theo de Raadt did not at first express an official position on the validity of the claims, apart from the implicit endorsement from forwarding the email. Jason Wright's response to the allegations: "Every urban legend is made more real by the inclusion of real names, dates, and times. Gregory Perry's email falls into this category. ... I will state clearly that I did not add backdoors to the OpenBSD operating system or the OpenBSD Cryptographic Framework (OCF)." Some days later, de Raadt commented that "I believe that NETSEC was probably contracted to write backdoors as alleged. ... If those were written, I don't believe they made it into our tree." This was published before the Snowden leaks.
+An alternative explanation put forward by the authors of the Logjam attack suggests that the NSA compromised IPsec VPNs by undermining the Diffie-Hellman algorithm used in the key exchange.  In their paper, they allege the NSA specially built a computing cluster to precompute multiplicative subgroups for specific primes and generators, such as for the second Oakley group defined in RFC 2409.  As of May 2015, 90% of addressable IPsec VPNs supported the second Oakley group as part of IKE.  If an organization were to precompute this group, they could derive the keys being exchanged and decrypt traffic without inserting any software backdoors.
+A second alternative explanation that was put forward was that the Equation Group used zero-day exploits against several manufacturers' VPN equipment which were validated by Kaspersky Lab as being tied to the Equation Group and validated by those manufacturers as being real exploits, some of which were zero-day exploits at the time of their exposure. The Cisco PIX and ASA firewalls had vulnerabilities that were used for wiretapping by the NSA.
+Furthermore, IPsec VPNs using "Aggressive Mode" settings send a hash of the PSK in the clear. This can be and apparently is targeted by the NSA using offline dictionary attacks.
+
+
+== See also ==
+Dynamic Multipoint Virtual Private Network
+Information security
+NAT traversal
+Opportunistic encryption
+tcpcrypt
+Tunneling protocol
+
+
+== References ==
+
+
+== Further reading ==
+
+
+=== Standards track ===
+RFC 1829: The ESP DES-CBC Transform
+RFC 2403: The Use of HMAC-MD5-96 within ESP and AH
+RFC 2404: The Use of HMAC-SHA-1-96 within ESP and AH
+RFC 2405: The ESP DES-CBC Cipher Algorithm With Explicit IV
+RFC 2410: The NULL Encryption Algorithm and Its Use With IPsec
+RFC 2451: The ESP CBC-Mode Cipher Algorithms
+RFC 2857: The Use of HMAC-RIPEMD-160-96 within ESP and AH
+RFC 3526: More Modular Exponential (MODP) Diffie-Hellman groups for Internet Key Exchange (IKE)
+RFC 3602: The AES-CBC Cipher Algorithm and Its Use with IPsec
+RFC 3686: Using Advanced Encryption Standard (AES) Counter Mode With IPsec Encapsulating Security Payload (ESP)
+RFC 3947: Negotiation of NAT-Traversal in the IKE
+RFC 3948: UDP Encapsulation of IPsec ESP Packets
+RFC 4106: The Use of Galois/Counter Mode (GCM) in IPsec Encapsulating Security Payload (ESP)
+RFC 4301: Security Architecture for the Internet Protocol
+RFC 4302: IP Authentication Header
+RFC 4303: IP Encapsulating Security Payload
+RFC 4304: Extended Sequence Number (ESN) Addendum to IPsec Domain of Interpretation (DOI) for Internet Security Association and Key Management Protocol (ISAKMP)
+RFC 4307: Cryptographic Algorithms for Use in the Internet Key Exchange Version 2 (IKEv2)
+RFC 4308: Cryptographic Suites for IPsec
+RFC 4309: Using Advanced Encryption Standard (AES) CCM mode with IPsec Encapsulating Security Payload (ESP)
+RFC 4543: The Use of Galois Message Authentication Code (GMAC) in IPsec ESP and AH
+RFC 4555: IKEv2 Mobility and Multihoming Protocol (MOBIKE)
+RFC 4806: Online Certificate Status Protocol (OCSP) Extensions to IKEv2
+RFC 4868: Using HMAC-SHA-256, HMAC-SHA-384, and HMAC-SHA-512 with IPsec
+RFC 4945: The Internet IP Security PKI Profile of IKEv1/ISAKMP, IKEv2, and PKIX
+RFC 5280: Internet X.509 Public Key Infrastructure Certificate and Certificate Revocation List (CRL) Profile
+RFC 5282: Using Authenticated Encryption Algorithms with the Encrypted Payload of the Internet Key Exchange version 2 (IKEv2) Protocol
+RFC 5386: Better-Than-Nothing Security: An Unauthenticated Mode of IPsec
+RFC 5529: Modes of Operation for Camellia for Use with IPsec
+RFC 5685: Redirect Mechanism for the Internet Key Exchange Protocol Version 2 (IKEv2)
+RFC 5723: Internet Key Exchange Protocol Version 2 (IKEv2) Session Resumption
+RFC 5857: IKEv2 Extensions to Support Robust Header Compression over IPsec
+RFC 5858: IPsec Extensions to Support Robust Header Compression over IPsec
+RFC 7296: Internet Key Exchange Protocol Version 2 (IKEv2)
+RFC 7321: Cryptographic Algorithm Implementation Requirements and Usage Guidance for Encapsulating Security Payload (ESP) and Authentication Header (AH)
+RFC 7383: Internet Key Exchange Protocol Version 2 (IKEv2) Message Fragmentation
+RFC 7427: Signature Authentication in the Internet Key Exchange Version 2 (IKEv2)
+RFC 7634: ChaCha20, Poly1305, and Their Use in the Internet Key Exchange Protocol (IKE) and IPsec
+
+
+=== Experimental RFCs ===
+RFC 4478: Repeated Authentication in Internet Key Exchange (IKEv2) Protocol
+
+
+=== Informational RFCs ===
+RFC 2367: PF_KEY Interface
+RFC 2412: The OAKLEY Key Determination Protocol
+RFC 3706: A Traffic-Based Method of Detecting Dead Internet Key Exchange (IKE) Peers
+RFC 3715: IPsec-Network Address Translation (NAT) Compatibility Requirements
+RFC 4621: Design of the IKEv2 Mobility and Multihoming (MOBIKE) Protocol
+RFC 4809: Requirements for an IPsec Certificate Management Profile
+RFC 5387: Problem and Applicability Statement for Better-Than-Nothing Security (BTNS)
+RFC 5856: Integration of Robust Header Compression over IPsec Security Associations
+RFC 5930: Using Advanced Encryption Standard Counter Mode (AES-CTR) with the Internet Key Exchange version 02 (IKEv2) Protocol
+RFC 6027: IPsec Cluster Problem Statement
+RFC 6071: IPsec and IKE Document Roadmap
+RFC 6379: Suite B Cryptographic Suites for IPsec
+RFC 6380: Suite B Profile for Internet Protocol Security (IPsec)
+RFC 6467: Secure Password Framework for Internet Key Exchange Version 2 (IKEv2)
+
+
+=== Best current practice RFCs ===
+RFC 5406: Guidelines for Specifying the Use of IPsec Version 2
+
+
+=== Obsolete/historic RFCs ===
+RFC 1825: Security Architecture for the Internet Protocol (obsoleted by RFC 2401)
+RFC 1826: IP Authentication Header (obsoleted by RFC 2402)
+RFC 1827: IP Encapsulating Security Payload (ESP) (obsoleted by RFC 2406)
+RFC 1828: IP Authentication using Keyed MD5 (historic)
+RFC 2401: Security Architecture for the Internet Protocol (IPsec overview) (obsoleted by RFC 4301)
+RFC 2406: IP Encapsulating Security Payload (ESP) (obsoleted by RFC 4303 and RFC 4305)
+RFC 2407: The Internet IP Security Domain of Interpretation for ISAKMP (obsoleted by RFC 4306)
+RFC 2409: The Internet Key Exchange (obsoleted by RFC 4306)
+RFC 4305: Cryptographic Algorithm Implementation Requirements for Encapsulating Security Payload (ESP) and Authentication Header (AH) (obsoleted by RFC 4835)
+RFC 4306: Internet Key Exchange (IKEv2) Protocol (obsoleted by RFC 5996)
+RFC 4718: IKEv2 Clarifications and Implementation Guidelines (obsoleted by RFC 7296)
+RFC 4835: Cryptographic Algorithm Implementation Requirements for Encapsulating Security Payload (ESP) and Authentication Header (AH) (obsoleted by RFC 7321)
+RFC 5996: Internet Key Exchange Protocol Version 2 (IKEv2) (obsoleted by RFC 7296)
+
+
+== External links ==
+All IETF active security WGs
+IETF ipsecme WG ("IP Security Maintenance and Extensions" Working Group)
+IETF btns WG ("Better-Than-Nothing Security" Working Group) (chartered to work on unauthenticated IPsec, IPsec APIs, connection latching)]
+Securing Data in Transit with IPsec Archived 2008-10-13 at the Wayback Machine WindowsSecurity.com article by Deb Shinder
+IPsec on Microsoft TechNet
+Microsoft IPsec Diagnostic Tool on Microsoft Download Center
+An Illustrated Guide to IPsec by Steve Friedl
+Security Architecture for IP (IPsec) Data Communication Lectures by Manfred Lindner Part IPsec
+Creating VPNs with IPsec and SSL/TLS Linux Journal article by Rami Rosen

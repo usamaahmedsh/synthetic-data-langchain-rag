@@ -1,0 +1,70 @@
+In computer science, a sparse file is a type of computer file that attempts to use file system space more efficiently when the file itself is partially empty. This is achieved by writing brief information (metadata) representing the empty blocks to the data storage media instead of the actual "empty" space which makes up the block, thus consuming less storage space. The full block is written to the media as the actual size only when the block contains "real" (non-empty) data.
+Most commonly, sparse files are created when blocks of the file are never written to. This is typical for random-access files like databases. Some operating systems or utilities go further by "sparsifying" files when writing or copying them: if a block contains only null bytes, it is not written to storage but rather marked as empty.
+When reading sparse files, the file system transparently converts metadata representing empty blocks into "real" blocks filled with null bytes at runtime. The application is unaware of this conversion.
+Most modern file systems support sparse files, including most Unix variants and NTFS. Apple's HFS+ does not provide support for sparse files, but in OS X, the virtual file system layer supports storing them in any supported file system, including HFS+. Apple File System (APFS) also supports them. Sparse files are commonly used for disk images, database snapshots, log files and in scientific applications.
+
+
+== Advantages ==
+The advantage of sparse files is that storage space is only allocated when actually needed: Storage capacity is conserved, and large files can occasionally be created even if insufficient free space for the original file is available on the storage media. This also reduces the time of the first write as the system does not have to allocate blocks for the "skipped" space. If the initial allocation requires writing all zeros to the space, it also keeps the system from having to write over the "skipped" space twice.
+For example, a virtual machine image with max size of 100 GB that has 2 GB of files actually written would require the full 100 GB when backed by pre-allocated storage, yet only 2 GB on a sparse file. If the file system supports hole punching and the guest operating system issues TRIM commands, deleting files on the guest will accordingly reduce the space needed.
+
+
+== Disadvantages ==
+Disadvantages are that sparse files may become fragmented; file system free space reports may be misleading; filling up file systems containing sparse files can have unexpected effects (such as disk-full or quota-exceeded errors when merely overwriting an existing portion of a file that happened to have been sparse); and copying a sparse file with a program that does not explicitly support them may copy the entire, uncompressed size of the file, including the zero sections which are not allocated on the storage media—losing the benefits of the sparse property in the file. Sparse files are also not fully supported by all backup software or applications. However, the VFS implementation sidesteps  the prior two disadvantages. Loading executables on 32 bit Windows (exe or dll) which are sparse takes a much longer time since the file cannot be memory mapped in the limited 4 GB address space, and are not cached as there is no codepath for caching 32 bit sparse executables (Windows on 64 bit architectures can map sparse executables). On NTFS sparse files (or rather their non-zero areas) cannot be compressed. NTFS implements sparseness as a special kind of compression so a file may be either sparse or compressed.
+
+
+== Sparse files in Unix ==
+Sparse files are typically handled transparently to the user. But the differences between a normal file and sparse file become apparent in some situations.
+
+
+=== Creation ===
+The Unix command
+
+will create a file of five mebibytes in size, but with no data stored on the media (only metadata). (GNU dd has this behavior because it calls ftruncate to set the file size; other implementations may merely create an empty file.)
+Similarly the truncate command may be used, if available:
+
+On Linux, an existing file can be converted to sparse by:
+
+There is no portable system call to punch holes; Linux provides fallocate(FALLOC_FL_PUNCH_HOLE), and Solaris provides fcntl(F_FREESP).
+
+
+=== Detection ===
+The -s option of the ls command shows the occupied space in blocks.
+
+Alternatively, the du command prints the occupied space, while ls prints the apparent size.
+In some non-standard versions of du, the option --block-size=1 prints the occupied space in bytes instead of blocks, so that it can be compared to the ls output:
+
+Note the above du usage has the abbreviated option syntax format "du -B 1 sf", itself equivalent to the shortest version "du -b sf" as stated in the du manual: -b, --bytes is equivalent to --apparent-size --block-size=1.
+Also, the tool filefrag from e2fsprogs package can be used to show block allocation details of the file.
+
+
+=== Copying ===
+Normally, the GNU version of cp is good at detecting whether a file is sparse, so
+
+cp sparse-file new-file
+
+creates new-file, which will be sparse. GNU also has a --sparse option, which is especially useful if a file containing long zero blocks is saved in a non-sparse way (i.e. the zero blocks have been written to the storage media in full). Storage space can be conserved by doing:
+
+cp --sparse=always file1 file1_sparsed
+
+Some cp implementations, like FreeBSD's cp, do not support the --sparse option and will always expand sparse files. A partially viable alternative on those systems is to use rsync with its own --sparse option instead of cp.  Unfortunately, older versions of rsync do not support --sparse combined with --inplace.
+Via standard input, sparse file copying is achieved as follows:
+
+
+== See also ==
+Comparison of file systems
+
+
+== References ==
+
+
+== External links ==
+NTFS Sparse Files For Programmers
+Creating sparse files in Windows Server using fsutil
+Creating sparse files in Solaris using mkfile(1M)
+View the Size of the Sparse File of a Database Snapshot
+SEEK_HOLE or FIEMAP: Detecting holes in sparse files
+virtsync is a commercial solution to rsync's --sparse and --inplace issue.
+SparseChecker – Utility that allows to manage the sparse files on NTFS file system
+Phantom – a program to convert files to sparse files to reduce storage consumption
+ArchLinux Wiki: Sparse file

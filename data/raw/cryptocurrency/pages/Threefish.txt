@@ -1,0 +1,963 @@
+Threefish is a symmetric-key tweakable block cipher designed as part of the Skein hash function, an entry in the NIST hash function competition. Threefish uses no S-boxes or other table lookups in order to avoid cache timing attacks; its nonlinearity comes from alternating additions with exclusive ORs.  In that respect, it is similar to Salsa20, TEA, and the SHA-3 candidates CubeHash and BLAKE.
+Threefish and the Skein hash function were designed by Bruce Schneier, Niels Ferguson, Stefan Lucks, Doug Whiting, Mihir Bellare, Tadayoshi Kohno, Jon Callas, and Jesse Walker. "Threefish is unpatented, and the source code is uncopyrighted and license-free; it is free for all uses."
+
+
+== Description of the cipher ==
+Threefish works on words of 64 bits (unsigned Little endian integers). 
+  
+    
+      
+        w
+        ∈
+        {
+        4
+        ,
+        8
+        ,
+        16
+        }
+      
+    
+    {\displaystyle w\in \{4,8,16\}}
+  
+ is the number of plaintext words and also of key words. The tweak consists of two words. All additions and subtractions are defined modulo 
+  
+    
+      
+        
+          2
+          
+            64
+          
+        
+      
+    
+    {\displaystyle 2^{64}}
+  
+.
+
+
+=== Key schedule ===
+Threefish encrypts in 
+  
+    
+      
+        r
+      
+    
+    {\displaystyle r}
+  
+ rounds and uses 
+  
+    
+      
+        
+          
+            r
+            4
+          
+        
+        +
+        1
+      
+    
+    {\displaystyle {\frac {r}{4}}+1}
+  
+ different round keys. After every four rounds, and before the first, 
+  
+    
+      
+        w
+      
+    
+    {\displaystyle w}
+  
+ round key words are added to the 
+  
+    
+      
+        w
+      
+    
+    {\displaystyle w}
+  
+ data words. To calculate the round keys an additional key word 
+  
+    
+      
+        
+          k
+          
+            w
+          
+        
+      
+    
+    {\displaystyle k_{w}}
+  
+ is appended to the original key words 
+  
+    
+      
+        
+          k
+          
+            0
+          
+        
+        ,
+        
+          k
+          
+            1
+          
+        
+        ,
+        …
+        ,
+        
+          k
+          
+            w
+            −
+            1
+          
+        
+      
+    
+    {\displaystyle k_{0},k_{1},\dots ,k_{w-1}}
+  
+. Also, an additional tweak word 
+  
+    
+      
+        
+          t
+          
+            2
+          
+        
+      
+    
+    {\displaystyle t_{2}}
+  
+ is appended to the tweak words 
+  
+    
+      
+        
+          t
+          
+            0
+          
+        
+        ,
+        
+          t
+          
+            1
+          
+        
+      
+    
+    {\displaystyle t_{0},t_{1}}
+  
+.
+
+  
+    
+      
+        
+          k
+          
+            w
+          
+        
+        =
+        C
+        ⊕
+        
+          k
+          
+            0
+          
+        
+        ⊕
+        
+          k
+          
+            1
+          
+        
+        ⊕
+        ⋯
+        ⊕
+        
+          k
+          
+            w
+            −
+            1
+          
+        
+        ;
+        
+        C
+        =
+        
+          0x1BD11BDAA9FC1A22
+        
+      
+    
+    {\displaystyle k_{w}=C\oplus k_{0}\oplus k_{1}\oplus \dots \oplus k_{w-1};\quad C={\text{0x1BD11BDAA9FC1A22}}}
+  
+
+  
+    
+      
+        
+          t
+          
+            2
+          
+        
+        =
+        
+          t
+          
+            0
+          
+        
+        ⊕
+        
+          t
+          
+            1
+          
+        
+      
+    
+    {\displaystyle t_{2}=t_{0}\oplus t_{1}}
+  
+
+The purpose of the seemingly arbitrary constant 
+  
+    
+      
+        C
+      
+    
+    {\displaystyle C}
+  
+ is to frustrate some attacks that take advantage of the relationship between 
+  
+    
+      
+        
+          k
+          
+            w
+          
+        
+      
+    
+    {\displaystyle k_{w}}
+  
+ and the other keywords.
+The round key words 
+  
+    
+      
+        
+          k
+          
+            s
+            ,
+            i
+          
+        
+      
+    
+    {\displaystyle k_{s,i}}
+  
+ are now defined like this:
+
+  
+    
+      
+        
+          k
+          
+            s
+            ,
+            i
+          
+        
+        =
+        
+          
+            {
+            
+              
+                
+                  
+                    k
+                    
+                      (
+                      s
+                      +
+                      i
+                      )
+                      
+                        mod
+                        
+                          (
+                        
+                      
+                      w
+                      +
+                      1
+                      )
+                    
+                  
+                
+                
+                  i
+                  =
+                  0
+                  ,
+                  …
+                  ,
+                  w
+                  −
+                  4
+                
+              
+              
+                
+                  
+                    k
+                    
+                      (
+                      s
+                      +
+                      i
+                      )
+                      
+                        mod
+                        
+                          (
+                        
+                      
+                      w
+                      +
+                      1
+                      )
+                    
+                  
+                  +
+                  
+                    t
+                    
+                      s
+                      
+                        mod
+                        
+                          3
+                        
+                      
+                    
+                  
+                
+                
+                  i
+                  =
+                  w
+                  −
+                  3
+                
+              
+              
+                
+                  
+                    k
+                    
+                      (
+                      s
+                      +
+                      i
+                      )
+                      
+                        mod
+                        
+                          (
+                        
+                      
+                      w
+                      +
+                      1
+                      )
+                    
+                  
+                  +
+                  
+                    t
+                    
+                      (
+                      s
+                      +
+                      1
+                      )
+                      
+                        mod
+                        
+                          3
+                        
+                      
+                    
+                  
+                
+                
+                  i
+                  =
+                  w
+                  −
+                  2
+                
+              
+              
+                
+                  
+                    k
+                    
+                      (
+                      s
+                      +
+                      i
+                      )
+                      
+                        mod
+                        
+                          (
+                        
+                      
+                      w
+                      +
+                      1
+                      )
+                    
+                  
+                  +
+                  s
+                
+                
+                  i
+                  =
+                  w
+                  −
+                  1
+                
+              
+            
+            
+          
+        
+      
+    
+    {\displaystyle k_{s,i}={\begin{cases}k_{(s+i){\bmod {(}}w+1)}&i=0,\dots ,w-4\\k_{(s+i){\bmod {(}}w+1)}+t_{s{\bmod {3}}}&i=w-3\\k_{(s+i){\bmod {(}}w+1)}+t_{(s+1){\bmod {3}}}&i=w-2\\k_{(s+i){\bmod {(}}w+1)}+s&i=w-1\end{cases}}}
+  
+
+Here 
+  
+    
+      
+        s
+        =
+        0
+        ,
+        1
+        ,
+        …
+        ,
+        r
+        
+          /
+        
+        4
+      
+    
+    {\displaystyle s=0,1,\dots ,r/4}
+  
+, where 
+  
+    
+      
+        4
+        s
+      
+    
+    {\displaystyle 4s}
+  
+ is the number of the round in which the round key word 
+  
+    
+      
+        
+          k
+          
+            s
+            ,
+            i
+          
+        
+      
+    
+    {\displaystyle k_{s,i}}
+  
+ is used.
+
+
+=== Mix function ===
+
+The mix function takes a tuple of words 
+  
+    
+      
+        (
+        
+          x
+          
+            0
+          
+        
+        ,
+        
+          x
+          
+            1
+          
+        
+        )
+      
+    
+    {\displaystyle (x_{0},x_{1})}
+  
+ and returns another tuple of words 
+  
+    
+      
+        (
+        
+          y
+          
+            0
+          
+        
+        ,
+        
+          y
+          
+            1
+          
+        
+        )
+      
+    
+    {\displaystyle (y_{0},y_{1})}
+  
+. The function is defined like this:
+
+  
+    
+      
+        
+          y
+          
+            0
+          
+        
+        =
+        (
+        
+          x
+          
+            0
+          
+        
+        +
+        
+          x
+          
+            1
+          
+        
+        )
+        
+          
+            mod
+            
+              2
+            
+          
+          
+            64
+          
+        
+      
+    
+    {\displaystyle y_{0}=(x_{0}+x_{1}){\bmod {2}}^{64}}
+  
+
+  
+    
+      
+        
+          y
+          
+            1
+          
+        
+        =
+        (
+        
+          x
+          
+            1
+          
+        
+        ⋘
+        
+          R
+          
+            (
+            d
+            
+              mod
+              
+                8
+              
+            
+            )
+            ,
+            j
+          
+        
+        )
+        ⊕
+        
+          y
+          
+            0
+          
+        
+      
+    
+    {\displaystyle y_{1}=(x_{1}\lll R_{(d{\bmod {8}}),j})\oplus y_{0}}
+  
+
+  
+    
+      
+        
+          R
+          
+            d
+            ,
+            j
+          
+        
+      
+    
+    {\displaystyle R_{d,j}}
+  
+ is a fixed set of rotation constants chosen to achieve quick diffusion.
+
+
+=== Permute ===
+The permutation step swaps the positions of the words according to a constant pattern.
+Bit-level permutation is not achieved in this step, but this is not necessary since the MIX functions
+provides bit-level permutations in the form of bitwise rotations. The Permute step and rotation constants
+in the MIX functions are chosen in such a way that the overall effect is complete diffusion of all the bits
+in a data block.
+Because this permutation is fixed and independent of the key, the time needed to compute it does not provide 
+information about the key or plaintext. This is important because on most modern microprocessors performance 
+optimisations can make the time taken to compute an array operation dependent on where the data is stored in memory.
+In ciphers where array lookup depends on either the key or plaintext (as is the case for the substitution step in AES),
+it can make the cipher vulnerable to timing attacks by examining the time required
+for encryption. The permutation is therefore deliberately designed to ensure that it should execute in the same fashion
+independent of the key being used or the data encrypted.
+
+
+=== A full Threefish round ===
+if 
+  
+    
+      
+        d
+        
+        
+          mod
+          
+            
+          
+        
+        4
+        =
+        0
+      
+    
+    {\displaystyle d\;{\bmod {\;}}4=0}
+  
+ the round key 
+  
+    
+      
+        
+          k
+          
+            d
+            
+              /
+            
+            4
+            ,
+            i
+          
+        
+      
+    
+    {\displaystyle k_{d/4,i}}
+  
+ is added to word 
+  
+    
+      
+        i
+      
+    
+    {\displaystyle i}
+  
+
+the mix function is applied to pairs of words, the rotation widths 
+  
+    
+      
+        
+          R
+          
+            d
+            
+              mod
+              
+                8
+              
+            
+            ,
+            j
+          
+        
+      
+    
+    {\displaystyle R_{d{\bmod {8}},j}}
+  
+ depend on round number 
+  
+    
+      
+        d
+      
+    
+    {\displaystyle d}
+  
+ and word pair 
+  
+    
+      
+        j
+        ∈
+        {
+        0
+        ,
+        ⋯
+        ,
+        w
+        
+          /
+        
+        2
+        −
+        1
+        }
+      
+    
+    {\displaystyle j\in \{0,\cdots ,w/2-1\}}
+  
+
+the words are permutated using a permutation independent from the round number
+Threefish256 and Threefish512 apply this round 
+  
+    
+      
+        r
+        =
+        72
+      
+    
+    {\displaystyle r=72}
+  
+ times (
+  
+    
+      
+        d
+        =
+        0
+        ,
+        1
+        ,
+        …
+        ,
+        71
+      
+    
+    {\displaystyle d=0,1,\dots ,71}
+  
+). Threefish1024 applies it 80 times (
+  
+    
+      
+        d
+        =
+        0
+        ,
+        1
+        ,
+        …
+        ,
+        79
+      
+    
+    {\displaystyle d=0,1,\dots ,79}
+  
+).
+
+
+=== Final operations ===
+After all rounds are applied, the last round key words 
+  
+    
+      
+        
+          k
+          
+            r
+            
+              /
+            
+            4
+            ,
+            i
+          
+        
+      
+    
+    {\displaystyle k_{r/4,i}}
+  
+ are added to the words and the words are converted back to a string of bytes.
+
+
+== Security ==
+In October 2010, an attack that combines rotational cryptanalysis with the rebound attack was published. The attack mounts a known-key distinguisher against 53 of 72 rounds in Threefish-256, and 57 of 72 rounds in Threefish-512. It also affects the Skein hash function. This is a follow-up to the earlier attack published in February, which breaks 39 and 42 rounds respectively. In response to this attack, the Skein team tweaked the rotation constants used in Threefish and thereby the key schedule constants for round 3 of the NIST hash function competition.
+In 2009, a related key boomerang attack against a reduced round Threefish version was published. For the 32-round version, the time complexity is 
+  
+    
+      
+        
+          2
+          
+            226
+          
+        
+      
+    
+    {\displaystyle 2^{226}}
+  
+ and the memory complexity is 
+  
+    
+      
+        
+          2
+          
+            12
+          
+        
+      
+    
+    {\displaystyle 2^{12}}
+  
+; for the 33-round version, the time complexity is 
+  
+    
+      
+        
+          2
+          
+            352.17
+          
+        
+      
+    
+    {\displaystyle 2^{352.17}}
+  
+ with a negligible memory usage. The attacks also work against the tweaked version of Threefish: for the 32-round version, the time complexity is 
+  
+    
+      
+        
+          2
+          
+            222
+          
+        
+      
+    
+    {\displaystyle 2^{222}}
+  
+ and the memory complexity is 
+  
+    
+      
+        
+          2
+          
+            12
+          
+        
+      
+    
+    {\displaystyle 2^{12}}
+  
+; for the 33-round version, the time complexity is 
+  
+    
+      
+        
+          2
+          
+            355.5
+          
+        
+      
+    
+    {\displaystyle 2^{355.5}}
+  
+ with a negligible memory usage.
+
+
+== See also ==
+Twofish
+Blowfish (cipher)
+
+
+== References ==

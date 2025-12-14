@@ -1,0 +1,340 @@
+A neural radiance field (NeRF) is a neural field for reconstructing a three-dimensional representation of a scene from two-dimensional images. The NeRF model enables downstream applications of novel view synthesis, scene geometry reconstruction, and obtaining the reflectance properties of the scene. Additional scene properties such as camera poses may also be jointly learned. First introduced in 2020, it has since gained significant attention for its potential applications in computer graphics and content creation.
+
+
+== Algorithm ==
+The NeRF algorithm represents a scene as a radiance field parametrized by a deep neural network (DNN). The network predicts a volume density and view-dependent emitted radiance given the spatial location 
+  
+    
+      
+        (
+        x
+        ,
+        y
+        ,
+        z
+        )
+      
+    
+    {\displaystyle (x,y,z)}
+  
+ and viewing direction in Euler angles 
+  
+    
+      
+        (
+        θ
+        ,
+        Φ
+        )
+      
+    
+    {\displaystyle (\theta ,\Phi )}
+  
+ of the camera. By sampling many points along camera rays, traditional volume rendering techniques can produce an image.
+
+
+=== Data collection ===
+A NeRF needs to be retrained for each unique scene. The first step is to collect images of the scene from different angles and their respective camera pose. These images are standard 2D images and do not require a specialized camera or software. Any camera is able to generate datasets, provided the settings and capture method meet the requirements for SfM (Structure from Motion).
+This requires tracking of the camera position and orientation, often through some combination of SLAM, GPS, or inertial estimation. Researchers often use synthetic data to evaluate NeRF and related techniques. For such data, images (rendered through traditional non-learned methods) and respective camera poses are reproducible and error-free.
+
+
+=== Training ===
+For each sparse viewpoint (image and camera pose) provided, camera rays are marched through the scene, generating a set of 3D points with a given radiance direction (into the camera). For these points, volume density and emitted radiance are predicted using the multi-layer perceptron (MLP). An image is then generated through classical volume rendering. Because this process is fully differentiable, the error between the predicted image and the original image can be minimized with gradient descent over multiple viewpoints, encouraging the MLP to develop a coherent model of the scene.
+
+
+== Variations and improvements ==
+Early versions of NeRF were slow to optimize and required that all input views were taken with the same camera in the same lighting conditions. These performed best when limited to orbiting around individual objects, such as a drum set, plants or small toys. Since the original paper in 2020, many improvements have been made to the NeRF algorithm, with variations for special use cases. 
+
+
+=== Fourier feature mapping ===
+In 2020, shortly after the release of NeRF, the addition of Fourier Feature Mapping improved training speed and image accuracy. Deep neural networks struggle to learn high frequency functions in low dimensional domains; a phenomenon known as spectral bias. To overcome this shortcoming, points are mapped to a higher dimensional feature space before being fed into the MLP. 
+
+  
+    
+      
+        γ
+        (
+        
+          v
+        
+        )
+        =
+        
+          
+            [
+            
+              
+                
+                  
+                    a
+                    
+                      1
+                    
+                  
+                  cos
+                  ⁡
+                  (
+                  2
+                  
+                    π
+                  
+                  
+                    
+                      
+                        B
+                      
+                    
+                    
+                      1
+                    
+                    
+                      T
+                    
+                  
+                  
+                    v
+                  
+                  )
+                
+              
+              
+                
+                  
+                    a
+                    
+                      1
+                    
+                  
+                  sin
+                  ⁡
+                  (
+                  2
+                  π
+                  
+                    
+                      
+                        B
+                      
+                    
+                    
+                      1
+                    
+                    
+                      T
+                    
+                  
+                  
+                    v
+                  
+                  )
+                
+              
+              
+                
+                  ⋮
+                
+              
+              
+                
+                  
+                    a
+                    
+                      m
+                    
+                  
+                  cos
+                  ⁡
+                  (
+                  2
+                  
+                    π
+                  
+                  
+                    
+                      
+                        B
+                      
+                    
+                    
+                      m
+                    
+                    
+                      T
+                    
+                  
+                  
+                    v
+                  
+                  )
+                
+              
+              
+                
+                  
+                    a
+                    
+                      m
+                    
+                  
+                  sin
+                  ⁡
+                  (
+                  2
+                  
+                    π
+                  
+                  
+                    
+                      
+                        B
+                      
+                    
+                    
+                      m
+                    
+                    
+                      T
+                    
+                  
+                  
+                    v
+                  
+                  )
+                
+              
+            
+            ]
+          
+        
+      
+    
+    {\displaystyle \gamma (\mathrm {v} )={\begin{bmatrix}a_{1}\cos(2{\pi }{\mathrm {B} }_{1}^{T}\mathrm {v} )\\a_{1}\sin(2\pi {\mathrm {B} }_{1}^{T}\mathrm {v} )\\\vdots \\a_{m}\cos(2{\pi }{\mathrm {B} }_{m}^{T}\mathrm {v} )\\a_{m}\sin(2{\pi }{\mathrm {B} }_{m}^{T}\mathrm {v} )\end{bmatrix}}}
+  
+
+Where 
+  
+    
+      
+        
+          v
+        
+      
+    
+    {\displaystyle \mathrm {v} }
+  
+ is the input point, 
+  
+    
+      
+        
+          
+            B
+          
+          
+            i
+          
+        
+      
+    
+    {\displaystyle \mathrm {B} _{i}}
+  
+ are the frequency vectors, and 
+  
+    
+      
+        
+          a
+          
+            i
+          
+        
+      
+    
+    {\displaystyle a_{i}}
+  
+ are coefficients.   
+This allows for rapid convergence to high frequency functions, such as pixels in a detailed image.   
+
+
+=== Bundle-adjusting neural radiance fields ===
+One limitation of NeRFs is the requirement of knowing accurate camera poses to train the model. Often times, pose estimation methods are not completely accurate, nor is the camera pose even possible to know. These imperfections result in artifacts and suboptimal convergence. So, a method was developed to optimize the camera pose along with the volumetric function itself. Called Bundle-Adjusting Neural Radiance Field (BARF), the technique uses a dynamic low-pass filter (DLPF) to go from coarse to fine adjustment, minimizing error by finding the geometric transformation to the desired image. This corrects imperfect camera poses and greatly improves the quality of NeRF renders.
+
+
+=== Multiscale representation ===
+Conventional NeRFs struggle to represent detail at all viewing distances, producing blurry images up close and overly aliased images from distant views. In 2021, researchers introduced a technique to improve the sharpness of details at different viewing scales known as mip-NeRF (comes from mipmap). Rather than sampling a single ray per pixel, the technique fits a gaussian to the conical frustum cast by the camera. This improvement effectively anti-aliases across all viewing scales. mip-NeRF also reduces overall image error and is faster to converge at about half the size of ray-based NeRF.   
+
+
+=== Learned initializations ===
+In 2021, researchers applied meta-learning to assign initial weights to the MLP. This rapidly speeds up convergence by effectively giving the network a head start in gradient descent. Meta-learning also allowed the MLP to learn an underlying representation of certain scene types. For example, given a dataset of famous tourist landmarks, an initialized NeRF could partially reconstruct a scene given one image.
+
+
+=== NeRF in the wild ===
+Conventional NeRFs are vulnerable to slight variations in input images (objects, lighting) often resulting in ghosting and artifacts. As a result, NeRFs struggle to represent dynamic scenes, such as bustling city streets with changes in lighting and dynamic objects. In 2021, researchers at Google developed a new method for accounting for these variations, named NeRF in the Wild (NeRF-W). This method splits the neural network (MLP) into three separate models. The main MLP is retained to encode the static volumetric radiance. However, it operates in sequence with a separate MLP for appearance embedding (changes in lighting, camera properties) and an MLP for transient embedding (changes in scene objects). This allows the NeRF to be trained on diverse photo collections, such as those taken by mobile phones at different times of day.
+
+
+=== Relighting ===
+In 2021, researchers added more outputs to the MLP at the heart of NeRFs. The output now included: volume density, surface normal, material parameters, distance to the first surface intersection (in any direction), and visibility of the external environment in any direction. The inclusion of these new parameters lets the MLP learn material properties, rather than pure radiance values. This facilitates a more complex rendering pipeline, calculating direct and global illumination, specular highlights, and shadows. As a result, the NeRF can render the scene under any lighting conditions with no re-training.
+
+
+=== Plenoctrees ===
+Although NeRFs had reached high levels of fidelity, their costly compute time made them useless for many applications requiring real-time rendering, such as VR/AR and interactive content. Introduced in 2021, Plenoctrees (plenoptic octrees) enabled real-time rendering of pre-trained NeRFs through division of the volumetric radiance function into an octree. Rather than assigning a radiance direction into the camera, viewing direction is taken out of the network input and spherical radiance is predicted for each region. This makes rendering over 3000x faster than conventional NeRFs.
+
+
+=== Sparse Neural Radiance Grid ===
+Similar to Plenoctrees, this method enabled real-time rendering of pretrained NeRFs. To avoid querying the large MLP for each point, this method bakes NeRFs into Sparse Neural Radiance Grids (SNeRG). A SNeRG is a sparse voxel grid containing opacity and color, with learned feature vectors to encode view-dependent information. A lightweight, more efficient MLP is then used to produce view-dependent residuals to modify the color and opacity. To enable this compressive baking, small changes to the NeRF architecture were made, such as running the MLP once per pixel rather than for each point along the ray. These improvements make SNeRG extremely efficient, outperforming Plenoctrees. 
+
+
+=== Instant NeRFs ===
+In 2022, researchers at Nvidia enabled real-time training of NeRFs through a technique known as Instant Neural Graphics Primitives. An innovative input encoding reduces computation, enabling real-time training of a NeRF, an improvement orders of magnitude above previous methods. The speedup stems from the use of spatial hash functions, which have 
+  
+    
+      
+        O
+        (
+        1
+        )
+      
+    
+    {\displaystyle O(1)}
+  
+ access times, and parallelized architectures which run fast on modern GPUs. 
+
+
+== Related techniques ==
+
+
+=== Plenoxels ===
+Plenoxel (plenoptic volume element) uses a sparse voxel representation instead of a volumetric approach as seen in NeRFs. Plenoxel also completely removes the MLP, instead directly performing gradient descent on the voxel coefficients. Plenoxel can match the fidelity of a conventional NeRF in orders of magnitude less training time. Published in 2022, this method disproved the importance of the MLP, showing that the differentiable rendering pipeline is the critical component.
+
+
+=== Gaussian splatting ===
+
+Gaussian splatting is a newer method that can outperform NeRF in render time and fidelity. Rather than representing the scene as a volumetric function, it uses a sparse cloud of 3D gaussians. First, a point cloud is generated (through structure from motion) and converted to gaussians of initial covariance, color, and opacity. The gaussians are directly optimized through stochastic gradient descent to match the input image. This saves computation by removing empty space and foregoing the need to query a neural network for each point. Instead, simply "splat" all the gaussians onto the screen and they overlap to produce the desired image.
+
+
+=== Photogrammetry ===
+Traditional photogrammetry is not neural, instead using robust geometric equations to obtain 3D measurements. NeRFs, unlike photogrammetric methods, do not inherently produce dimensionally accurate 3D geometry. While their results are often sufficient for extracting accurate geometry (ex: via cube marching), the process is fuzzy, as with most neural methods. This limits NeRF to cases where the output image is valued, rather than raw scene geometry. However, NeRFs excel in situations with unfavorable lighting. For example, photogrammetric methods completely break down when trying to reconstruct reflective or transparent objects in a scene, while a NeRF is able to infer the geometry.
+
+
+== Applications ==
+NeRFs have a wide range of applications, and are starting to grow in popularity as they become integrated into user-friendly applications. 
+
+
+=== Content creation ===
+NeRFs have huge potential in content creation, where on-demand photorealistic views are extremely valuable. The technology democratizes a space previously only accessible by teams of VFX artists with expensive assets. Neural radiance fields now allow anyone with a camera to create compelling 3D environments. NeRF has been combined with generative AI, allowing users with no modelling experience to instruct changes in photorealistic 3D scenes. NeRFs have potential uses in video production, computer graphics, and product design.  
+
+
+==== Interactive content ====
+The photorealism of NeRFs make them appealing for applications where immersion is important, such as virtual reality or videogames. NeRFs can be combined with classical rendering techniques to insert synthetic objects and create believable virtual experiences.
+
+
+=== Medical imaging ===
+NeRFs have been used to reconstruct 3D CT scans from sparse or even single X-ray views. The model demonstrated high fidelity renderings of chest and knee data. If adopted, this method can save patients from excess doses of ionizing radiation, allowing for safer diagnosis.
+
+
+=== Robotics and autonomy ===
+The unique ability of NeRFs to understand transparent and reflective objects makes them useful for robots interacting in such environments. The use of NeRF allowed a robot arm to precisely manipulate a transparent wine glass; a task where traditional computer vision would struggle.
+NeRFs can also generate photorealistic human faces, making them valuable tools for human-computer interaction. Traditionally rendered faces can be uncanny, while other neural methods are too slow to run in real-time.
+
+
+== References ==

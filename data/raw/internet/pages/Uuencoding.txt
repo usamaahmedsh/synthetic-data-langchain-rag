@@ -1,0 +1,136 @@
+uuencoding is a form of binary-to-text encoding that originated in the Unix programs uuencode and uudecode written by Mary Ann Horton at the University of California, Berkeley in 1980, for encoding binary data for transmission in email systems.
+The name "uuencoding" is derived from Unix-to-Unix Copy, i.e. "Unix-to-Unix encoding" is a safe encoding for the transfer of arbitrary files from one Unix system to another Unix system but without guarantee that the intervening links would all be Unix systems. Since an email message might be forwarded through or to computers with different character sets or through transports which are not 8-bit clean, or handled by programs that are not 8-bit clean, forwarding a binary file via email might cause it to be corrupted. By encoding such data into a character subset common to most character sets, the encoded form of such data files was unlikely to be "translated" or corrupted, and would thus arrive intact and unchanged at the destination. The program uudecode reverses the effect of uuencode, recreating the original binary file exactly. uuencode/decode became popular for sending binary (and especially compressed) files by email and posting to Usenet newsgroups, etc.
+It has now been largely replaced by MIME and yEnc. With MIME, files that might have been uuencoded are instead transferred with Base64 encoding.
+
+
+== Encoded format ==
+A uuencoded file starts with a header line of the form:
+
+begin <mode> <file><newline>
+
+<mode> is the file's Unix file permissions as three octal digits (e.g. 644, 744). This is typically only significant to Unix-like operating systems.
+<file> is the file name to be used when recreating the binary data.
+<newline> signifies a newline character, used to terminate each line.
+Each data line uses the format:
+
+<length character><formatted characters><newline>
+
+<length character> is a character indicating the number of data bytes which have been encoded on that line. This is an ASCII character determined by adding 32 to the actual byte count, with the sole exception of a grave accent "`" (ASCII code 96) signifying zero bytes. All data lines, except the last (if the data length was not divisible by 45), have 45 bytes of encoded data (60 characters after encoding). Therefore, the vast majority of length values are 'M', (32 + 45 = ASCII code 77 or "M").
+<formatted characters> are encoded characters.  See § Formatting mechanism for more details on the actual implementation.
+The file ends with two lines:
+
+`<newline>
+end<newline>
+
+The second to last line is also a character indicating the line length, with the grave accent signifying zero bytes.
+As a complete file, the uuencoded output for a plain text file named cat.txt containing only the characters Cat would be
+
+begin 644 cat.txt
+#0V%T
+`
+end
+
+The begin line is a standard uuencode header; the '#' indicates that its line encodes three characters; the last two lines appear at the end of all uuencoded files.
+
+
+== Formatting mechanism ==
+The mechanism of uuencoding repeats the following for every 3 bytes, encoding them into 4 printable characters, each character representing a radix-64 numerical digit:
+
+Start with 3 bytes from the source, 24 bits in total.
+Split into 4 6-bit groupings, each representing a value in the range 0 to 63: bits (00-05), (06-11), (12-17) and (18-23).
+Add 32 to each of the values. With the addition of 32 this means that the possible results can be between 32 (" " space) and 95 ("_" underline). 96 ("`" grave accent) as the "special character" is a logical extension of this range. Despite space character being documented as the encoding for value of 0, implementations, such as GNU sharutils, actually use the grave accent character to encode zeros in the body of the file as well, never using space.
+Output the ASCII equivalent of these numbers.
+If the source length is not divisible by 3, then the last 4-byte section will contain padding bytes to make it cleanly divisible. These bytes are subtracted from the line's <length character> so that the decoder does not append unwanted characters to the file.
+uudecoding is reverse of the above, subtract 32 from each character's ASCII code (modulo 64 to account for the grave accent usage) to get a 6-bit value, concatenate 4 6-bit groups to get 24 bits, then output 3 bytes.
+The encoding process is demonstrated by this table, which shows the derivation of the above encoding for "Cat".
+
+
+== uuencode table ==
+The following table shows the conversion of the decimal value of the 6-bit fields obtained during the conversion process and their corresponding ASCII character output code and character.
+Note that some encoders might produce space (code 32) instead of grave accent ("`", code 96), while some decoders might refuse to decode data containing space.
+
+
+== Example ==
+The following is an example of uuencoding a one-line text file.  In this example, %0D is the byte representation for carriage return, and %0A is the byte representation for line feed.
+
+file
+File Name = wikipedia-url.txt
+File Contents = http://www.wikipedia.org%0D%0A
+
+uuencoding
+begin 644 wikipedia-url.txt
+::'1T<#HO+W=W=RYW:6MI<&5D:6$N;W)G#0H`
+`
+end
+
+
+== Forks (file, resource) ==
+Unix traditionally has a single fork where file data is stored. However, some file systems support multiple forks associated with a single file. For example, classic Mac OS Hierarchical File System (HFS) supported a data fork and a resource fork. Mac OS HFS+ supports multiple forks, as does Microsoft Windows NTFS alternate data streams. Most uucoding tools will only handle data from the primary data fork, which can result in a loss of information when encoding/decoding (for example, Windows NTFS file comments are kept in a different fork). Some tools (like the classic Mac OS application UUTool) solved the problem by concatenating the different forks into one file and differentiating them by file name.
+
+
+== Relation to xxencode, Base64, and Ascii85 ==
+
+Despite its limited range of characters, uuencoded data is sometimes corrupted on passage through certain computers using non-ASCII character sets such as EBCDIC. One attempt to solve the problem was the xxencode format, which used only alphanumeric characters and the plus and minus symbols. More common today is the Base64 format, which is based on the same concept of alphanumeric-only as opposed to ASCII 32–95. All three formats use 6 bits (64 different characters) to represent their input data.
+Base64 can also be generated by the uuencode program and is similar in format, except for the actual character translation:
+The header is changed to
+
+begin-base64 <mode> <file>
+
+the trailer becomes
+
+====
+
+and lines between are encoded with characters chosen from
+
+ABCDEFGHIJKLMNOP
+QRSTUVWXYZabcdef
+ghijklmnopqrstuv
+wxyz0123456789+/
+
+Another alternative is Ascii85, which encodes four binary characters in five ASCII characters. Ascii85 is used in PostScript and PDF formats.
+
+
+== Disadvantages ==
+uuencoding takes 3 pre-formatted bytes and turns them into 4 and also adds begin/end tags, filename, and delimiters.  This adds at least 33% data overhead compared to the source alone, though this can be at least somewhat compensated for by compressing the file before uuencoding it.
+
+
+== Support in languages ==
+
+
+=== Python ===
+The Python language supports uuencoding using the codecs module with the codec "uu":
+For Python 2 (deprecated/sunset as of January 1st 2020):
+
+For Python 3 where the codecs module needs to be imported and used directly:
+
+To decode, pass the whole file:
+
+
+=== Perl ===
+The Perl language supports uuencoding natively using the pack() and unpack() operators with the format string "u":
+
+Decoding base64 with unpack can likewise be accomplished by translating the characters:
+
+To produce wellformed uuencoded files, you need to use modules, or a little bit more of code:
+
+
+==== Encode (oneliner) ====
+
+
+== See also ==
+Binary-to-text encoding for a comparison of various encoding algorithms
+
+
+== References ==
+
+
+== External links ==
+
+uuencode entry in POSIX.1-2008
+GNU-sharutils – open source suite of shar/unshar/uuencode/uudecode utilities
+UUDeview – open-source program to encode/decode Base64, BinHex, uuencode, xxencode, etc. for Unix/Windows/DOS
+UUENCODE-UUDECODE – open-source program to encode/decode created by Clem "Grandad" Dye
+StUU – open source fast UUDecoder for Macintosh by Stuart Cheshire
+UUENCODE-UUDECODE – free on-line UUEncoder and UUDecoder
+Java UUDecoder – open source Java library for decoding uuencoded (mail) attachments
+AN11229 – NXP application note: UUencoding for UART ISP
